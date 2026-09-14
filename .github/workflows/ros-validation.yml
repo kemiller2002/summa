@@ -17,7 +17,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: ./ros registry check
-      - run: ./ros validate
+      # The ./ros launcher fetches a prebuilt binary for the rosVersion pinned
+      # in ros.json (2.0.1-main.78.1), but that tag has no published release
+      # assets. tools/ros_cli.mjs is the Node implementation the launcher
+      # documents as the fallback; switch back to ./ros once the assets exist.
+      - run: node tools/ros_cli.mjs registry check
+      - run: node tools/ros_cli.mjs validate
         env:
           ROS_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}

@@ -1,6 +1,39 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 1,
-  "items": []
+  "nextSeq": 3,
+  "items": [
+    {
+      "id": "WI-0001",
+      "title": "Vendor SDE methodology, Visual Engineering context, and WASM kernel dependency",
+      "description": null,
+      "tags": [
+        "setup"
+      ],
+      "priority": "medium",
+      "status": "ready",
+      "attachments": [],
+      "createdAt": "2026-09-14T07:39:31.762Z",
+      "updatedAt": "2026-09-14T07:39:36.684Z",
+      "createdBy": "unknown",
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0002",
+      "title": "Attribute pre-ROS setup artifacts (kernel dep, VE context, SDE)",
+      "description": null,
+      "tags": [
+        "setup"
+      ],
+      "priority": "medium",
+      "status": "ready",
+      "attachments": [],
+      "createdAt": "2026-09-14T07:40:46.183Z",
+      "updatedAt": "2026-09-14T07:40:46.251Z",
+      "createdBy": "unknown",
+      "source": "manual",
+      "sourceReference": null
+    }
+  ]
 }
