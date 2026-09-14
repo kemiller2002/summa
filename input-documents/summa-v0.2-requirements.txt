@@ -1,0 +1,770 @@
+# Summa v0.2 Requirements
+
+## Billing and Accounting Edge Cases
+
+The goal of this pass is:
+
+> Prove that the core model survives normal business exceptions without corrupting the ledger, receivables, invoice state, or audit trail.
+
+---
+
+## 1. Partial Payments
+
+The system shall support payments that are less than the outstanding invoice balance.
+
+Example:
+
+Invoice total:       $10,000
+Payment received:     $4,000
+Outstanding:          $6,000
+
+Requirements:
+
+- Invoice remains open.
+- Invoice becomes PartiallyPaid.
+- Receivable obligation remains open.
+- Outstanding amount becomes $6,000.
+- Ledger posts only $4,000 against AR.
+- Subsequent payments may settle the remaining balance.
+
+Invariant:
+
+AmountPaid + AmountOutstanding = InvoiceTotal
+
+---
+
+## 2. Multiple Payments Against One Invoice
+
+The system shall support multiple payments against the same invoice.
+
+Example:
+
+Invoice             $10,000
+
+Payment 1            $2,000
+Payment 2            $3,000
+Payment 3            $5,000
+
+Requirements:
+
+- All allocations must remain traceable.
+- The invoice becomes paid only when outstanding balance reaches zero.
+- Payment history must remain visible after settlement.
+
+---
+
+## 3. One Payment Applied to Multiple Invoices
+
+A single payment may be allocated across multiple invoices.
+
+Example:
+
+Payment: $12,000
+
+INV-001   $5,000
+INV-002   $4,000
+INV-003   $3,000
+
+Requirements:
+
+- Allocation sum may not exceed payment amount.
+- Allocation sum may be less than payment amount.
+- Unallocated payment balances must remain visible.
+- Each invoice updates independently.
+
+---
+
+## 4. Overpayments
+
+The system shall support customer payments exceeding the amount allocated to invoices.
+
+Example:
+
+Invoice:     $5,000
+Payment:     $6,000
+Allocated:   $5,000
+Unallocated: $1,000
+
+The remaining $1,000 shall not become revenue automatically.
+
+It should remain a customer credit or unapplied payment.
+
+Proposed model:
+
+CustomerCredit
+  Customer
+  Amount
+  SourcePayment
+  RemainingAmount
+
+Accounting treatment initially:
+
+Debit  Cash
+Credit Accounts Receivable / Customer Credit Liability
+
+Exact treatment should be configurable or reviewed before final implementation.
+
+---
+
+## 5. Customer Deposits and Retainers
+
+The system shall support money received before revenue is earned.
+
+Example:
+
+Customer pays $10,000 deposit.
+Work has not yet been performed.
+
+This must not become revenue immediately.
+
+Accounting treatment:
+
+Debit  Cash
+Credit Customer Deposits / Deferred Revenue
+
+Later, when earned:
+
+Debit  Deferred Revenue
+Credit Consulting Revenue
+
+Requirements:
+
+- Deposits must remain distinguishable from invoice payments.
+- Deposit balances must be traceable by customer.
+- A deposit may later be applied against an invoice.
+
+---
+
+## 6. Invoice Corrections Before Issue
+
+Draft invoices may be freely edited.
+
+Changes may include:
+
+- Customer
+- Descriptions
+- Quantities
+- Rates
+- Dates
+- Terms
+- Dimensions
+
+No accounting entry should exist yet.
+
+---
+
+## 7. Invoice Corrections After Issue
+
+Issued invoices shall not simply be edited in ways that rewrite financial history.
+
+For material changes, Summa should require one of:
+
+- Void and reissue
+- Credit adjustment
+- Correcting invoice
+
+The original issued invoice shall remain visible.
+
+Important rule:
+
+> Issued financial records must preserve their historical state.
+
+---
+
+## 8. Voiding Invoices
+
+An issued invoice may need to be voided.
+
+Requirements:
+
+- Invoice cannot simply be deleted.
+- Original invoice remains in audit history.
+- Related receivable must be cancelled or reversed.
+- Related ledger entry must be reversed.
+- Invoice state becomes Voided.
+
+Example accounting:
+
+Original:
+
+Debit AR       5,000
+Credit Revenue 5,000
+
+Void:
+
+Debit Revenue  5,000
+Credit AR      5,000
+
+---
+
+## 9. Credit Memos
+
+Summa shall support customer credits.
+
+Example:
+
+Original invoice      $10,000
+Approved credit        $2,000
+Remaining amount       $8,000
+
+A credit memo shall:
+
+- Have its own identifier
+- Reference the originating customer
+- Optionally reference the invoice
+- Create appropriate accounting entries
+- Reduce the outstanding customer balance
+
+Suggested state:
+
+Draft
+Issued
+Applied
+FullyApplied
+Voided
+
+---
+
+## 10. Refunds
+
+The system shall distinguish:
+
+Customer credit
+
+from:
+
+Cash refund
+
+A refund should represent money actually leaving the business.
+
+Example:
+
+Debit  Customer Credit / AR
+Credit Cash
+
+Requirements:
+
+- Refund shall reference the customer.
+- Refund should optionally reference original payment/invoice.
+- Refund shall be auditable.
+- Refund shall never silently delete the original payment.
+
+---
+
+## 11. Bounced or Reversed Payments
+
+Payments can fail after initially being recorded.
+
+Examples:
+
+- Bounced check
+- ACH reversal
+- Credit-card chargeback
+
+Summa must support:
+
+PaymentRecorded
+    ↓
+PaymentReversed
+
+Requirements:
+
+- Original payment remains in history.
+- Reversal creates compensating journal entries.
+- Invoice outstanding balance reopens appropriately.
+- Receivable obligation returns to open status where necessary.
+
+---
+
+## 12. Write-Offs
+
+The system shall support intentional write-off of uncollectible balances.
+
+Example:
+
+Invoice outstanding: $500
+Decision: write off
+
+Accounting:
+
+Debit  Bad Debt Expense
+Credit Accounts Receivable
+
+Requirements:
+
+- Write-off must be explicit.
+- Reason should be recorded.
+- Original invoice remains visible.
+- Written-off amount remains reportable separately from collected revenue.
+
+---
+
+## 13. Discounts
+
+Support at least:
+
+- Line-item discount
+- Invoice-level discount
+
+Requirements:
+
+- Discounts must be represented explicitly.
+- The system must not silently modify unit prices if a discount was intended.
+- Accounting treatment must remain deterministic.
+
+For v0.2, percentage and fixed-amount discounts are sufficient.
+
+---
+
+## 14. Reimbursable Client Expenses
+
+The system shall support expenses incurred on behalf of a client.
+
+Examples:
+
+- Travel
+- Hosting
+- Materials
+- External services
+
+Requirements:
+
+- Expense may be associated with customer/project/engagement.
+- Expense may be marked billable or non-billable.
+- Billable expenses may be proposed for invoice inclusion.
+- Original business expense and later customer reimbursement must remain separate accounting events.
+
+Do not simply net them together.
+
+---
+
+## 15. Hourly Billing
+
+Support invoice generation from billable time.
+
+Time entry minimum data:
+
+Person
+Client
+Project
+Date
+Hours
+Rate
+Description
+Billable
+Approved
+
+Flow:
+
+Approved Time
+     ↓
+Invoice Proposal
+     ↓
+Human Review
+     ↓
+Invoice
+
+Requirements:
+
+- Time should not disappear after invoicing.
+- Invoice line should retain traceability to originating time entries.
+- Time entries may not be invoiced twice.
+
+---
+
+## 16. Fixed-Price Billing
+
+The system shall support invoices not tied to hours.
+
+Example:
+
+Architecture Assessment
+Fixed fee: $15,000
+
+Requirements:
+
+- Fixed-price invoices may exist without time-entry linkage.
+- Internal time tracking may still associate costs with the engagement.
+- Revenue amount shall be based on the billing agreement, not hours worked.
+
+This distinction matters because later profitability analysis may compare internal effort to fixed-fee revenue.
+
+---
+
+## 17. Milestone Billing
+
+Support engagements such as:
+
+30% kickoff
+40% midpoint
+30% completion
+
+Requirements:
+
+- Engagement may define billing milestones.
+- Milestone invoice proposal may reference the engagement.
+- Milestone completion and invoice issuance must remain separate actions.
+
+---
+
+## 18. Payment Terms per Customer and Invoice
+
+Customers may have default payment terms.
+
+Invoices may override them.
+
+Priority:
+
+Invoice-specific terms
+    ↓
+Customer default terms
+    ↓
+System default terms
+
+All derived due dates must retain the original terms used.
+
+---
+
+## 19. Late Status
+
+Overdue status shall be derived.
+
+Example:
+
+OutstandingAmount > 0
+AND
+CurrentDate > DueDate
+
+Then:
+
+Overdue = true
+
+No user should manually mark an invoice overdue.
+
+---
+
+## 20. Receivable Aging Must Use Outstanding Amount
+
+AR aging shall not use original invoice total.
+
+Example:
+
+Invoice total:       $10,000
+Paid:                 $8,000
+Outstanding:          $2,000
+
+Only $2,000 belongs in aging.
+
+---
+
+## 21. Opening Balances
+
+If Summa replaces or supplements an existing accounting system, it must support controlled opening balances.
+
+Requirements:
+
+- Opening balances shall be identifiable as such.
+- Migration date shall be explicit.
+- Summa shall not require recreation of every historical transaction.
+- Opening trial balance must balance before posting.
+
+Suggested source:
+
+Source = OpeningBalanceMigration
+
+---
+
+## 22. CPA Adjustments
+
+The system shall allow manual adjusting journal entries.
+
+Typical examples:
+
+- Depreciation
+- Accruals
+- Prepaid expense adjustments
+- Tax adjustments
+- Reclassifications
+
+Requirements:
+
+- Adjusting entries must be distinguishable from operational entries.
+- Entry must identify who created it.
+- Optional external reference should support CPA workpaper references.
+
+---
+
+## 23. Year-End Closing
+
+The model shall support closing temporary accounts.
+
+Eventually:
+
+Revenue
+Expenses
+   ↓
+Retained Earnings
+
+For v0.2, do not automate this yet.
+
+Requirement:
+
+> The ledger design must not prevent formal year-end closing entries.
+
+---
+
+## 24. Cash vs Accrual Reporting
+
+The authoritative ledger should remain accrual-based.
+
+Example:
+
+Invoice issued
+    ↓
+Revenue recognized
+
+even before payment arrives.
+
+Later Summa may provide a cash-basis reporting projection.
+
+Do not maintain two competing ledgers.
+
+---
+
+## 25. Duplicate Detection
+
+The system should protect against accidental duplication.
+
+Potential duplicates:
+
+- Same invoice
+- Same payment
+- Same imported time entry
+- Same journal entry request
+
+At minimum use:
+
+- Idempotency keys
+- External references
+- Source identifiers
+- Correlation IDs
+
+A duplicate request should return the existing result rather than create another financial record.
+
+---
+
+## 26. Currency Precision
+
+Use a decimal or fixed-precision type everywhere money is represented.
+
+Never use:
+
+- float
+- double
+
+for monetary amounts.
+
+Requirements:
+
+- Explicit currency
+- Deterministic rounding
+- Consistent rounding policy
+
+For v0.2, USD-only is acceptable.
+
+---
+
+## 27. Date Semantics
+
+Distinguish:
+
+- CreatedAt
+- OccurredAt
+- AccountingDate
+- IssuedAt
+- DueDate
+- PaidAt
+- PostedAt
+
+These are not interchangeable.
+
+An agent should not collapse them into one generic Date field.
+
+---
+
+## 28. Audit Provenance
+
+Every externally triggered financial operation should preserve origin.
+
+Example:
+
+SourceSystem = TimeEntry
+SourceId = TE-9821
+CorrelationId = ...
+Actor = Kevin
+Agent = ...
+
+If an AI agent initiates an action, that fact should be preserved.
+
+---
+
+## 29. Permissions Boundary
+
+Full RBAC is still out of scope, but Summa should distinguish capabilities such as:
+
+- CreateDraftInvoice
+- IssueInvoice
+- RecordPayment
+- PostJournalEntry
+- ReverseJournalEntry
+- ClosePeriod
+- ReopenPeriod
+
+This is preferable to generic CRUD permissions.
+
+---
+
+## 30. Agent Execution Safety
+
+Since an agent will be building and eventually may operate against Summa, automated agents shall not be able to perform irreversible financial operations without satisfying domain rules.
+
+Examples:
+
+- IssueInvoice
+- PostJournalEntry
+- ReversePayment
+- ClosePeriod
+- WriteOffReceivable
+
+These operations must use explicit commands with validation.
+
+No direct database mutation should bypass domain transitions.
+
+---
+
+## 31. Integration Boundaries
+
+Summa should expose domain-level operations rather than generic CRUD wherever possible.
+
+Prefer:
+
+- IssueInvoice
+- RecordPayment
+- AllocatePayment
+- VoidInvoice
+- ApplyCreditMemo
+- ReversePayment
+- CloseAccountingPeriod
+
+over:
+
+- PUT /invoice
+- PATCH /payment
+- DELETE /journal-entry
+
+This keeps agents and future integrations inside legal business transitions.
+
+---
+
+## 32. Required Scenario Tests
+
+Before v0.2 is considered complete, the implementation should prove at least these scenarios:
+
+1. Full invoice payment
+2. Partial payment
+3. Multiple payments
+4. One payment across multiple invoices
+5. Customer overpayment
+6. Deposit before invoicing
+7. Invoice void
+8. Credit memo
+9. Refund
+10. Payment reversal
+11. Bad debt write-off
+12. Hourly invoice
+13. Fixed-fee invoice
+14. Milestone invoice
+15. Reimbursable expense
+16. Overdue invoice aging
+17. Opening balance migration
+18. Manual CPA adjustment
+19. Duplicate command retry
+20. Closed-period posting rejection
+
+Each scenario should verify:
+
+- Domain state
+- Ledger entries
+- Balances
+- Obligations
+- Audit trail
+- Idempotency
+
+---
+
+## Implementation Guidance
+
+The agent should not interpret every scenario in this document as a requirement to implement every possible feature immediately.
+
+This pass serves two purposes:
+
+1. Some items become actual v0.2 capabilities.
+2. Others prove that the domain model can support them later without redesign.
+
+Higher-priority implementation candidates include:
+
+- Partial payments
+- Multiple payment allocations
+- Invoice voids
+- Credits
+- Payment reversals
+- Opening balances
+- CPA adjustments
+
+Capabilities that may be modeled now but implemented later include:
+
+- Milestone billing
+- Reimbursable expenses
+- Retainers
+
+The objective is to prevent domain-model mistakes without allowing Summa to expand into a full QuickBooks replacement prematurely.
+
+---
+
+## Architectural Principle
+
+The system should preserve a strict separation between:
+
+- Business facts
+- Accounting consequences
+- Outstanding obligations
+- Derived status
+- Audit provenance
+
+Financial history should be append-oriented and explicit.
+
+Important financial state transitions should occur through domain commands and validated state transitions rather than direct record editing.
+
+---
+
+## Next Requirements Pass
+
+The next requirements pass should focus on operational and production concerns, including:
+
+- Backup and recovery
+- Data integrity
+- API contracts
+- Authentication
+- Authorization
+- Deployment
+- Observability
+- Database migrations
+- Versioning
+- Concurrency
+- Transaction boundaries
+- Failure recovery
+- Partial-operation rollback
+- Import/export safety
+- Disaster recovery
+
+These requirements should be established before Summa is trusted with live financial records.

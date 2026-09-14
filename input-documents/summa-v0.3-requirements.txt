@@ -1,0 +1,800 @@
+# Summa v0.3 Requirements
+
+## Operational Safety and Production Readiness
+
+The goal of this pass is:
+
+> Can we trust Summa with real financial data when software, infrastructure, integrations, or agents fail?
+
+---
+
+## 1. Transaction Boundaries
+
+Any business operation that affects multiple records must be atomic.
+
+For example, IssueInvoice may create:
+
+- Invoice state change
+- Receivable obligation
+- Journal entry
+- Audit event
+
+Either all of those succeed, or none of them do.
+
+The system must never leave half-completed financial operations.
+
+---
+
+## 2. Failure Recovery
+
+If a process fails mid-operation:
+
+Request received
+↓
+Validation passed
+↓
+Database write begins
+↓
+Failure
+
+Summa must recover to a valid previous state.
+
+Requirements:
+
+- No partial journal entries.
+- No issued invoice without accounting entry.
+- No payment allocation without corresponding ledger effect.
+- No duplicate retry side effects.
+
+---
+
+## 3. Concurrency
+
+Two processes may attempt to change the same financial object simultaneously.
+
+Examples:
+
+- Two agents allocate the same payment.
+- Two users issue the same invoice.
+- Payment arrives while invoice is being voided.
+
+Requirements:
+
+- Detect conflicting writes.
+- Reject or serialize incompatible transitions.
+- Prevent double allocation.
+- Prevent double posting.
+
+Use optimistic concurrency with explicit versioning on important aggregates.
+
+Example:
+
+InvoiceVersion = 12
+
+A command based on version 11 cannot silently overwrite version 12.
+
+---
+
+## 4. Database Invariants
+
+Critical accounting invariants should not exist only in application code.
+
+Where practical, enforce them at multiple layers.
+
+Examples:
+
+- Unique invoice number
+- Unique idempotency key
+- Valid foreign keys
+- Non-null accounting dates
+- Positive monetary amounts
+- Unique journal posting reference
+
+The database should help protect against invalid states if application code fails.
+
+---
+
+## 5. Persistence Strategy
+
+The system shall define clearly which data is authoritative.
+
+Authoritative:
+
+- Journal entries
+- Invoices
+- Payments
+- Allocations
+- Obligations
+- Audit history
+
+Derived:
+
+- Balances
+- Aging buckets
+- Invoice paid status
+- Dashboards
+- Report totals
+
+Derived data must be reproducible from authoritative records.
+
+---
+
+## 6. Backup Requirements
+
+Summa shall support regular automated backups.
+
+At minimum:
+
+- Database backup
+- Configuration backup
+- Document/template backup
+- Encrypted storage
+- Backup retention policy
+
+Backups must not be considered valid merely because the backup job completed.
+
+They must be restorable.
+
+---
+
+## 7. Restore Testing
+
+The system shall support periodic restore verification.
+
+A backup strategy without restore testing is not sufficient.
+
+The restore process should verify:
+
+- Database opens
+- Schema is valid
+- Ledger balances
+- Audit trail exists
+- Invoices remain linked
+- Payments remain allocated
+
+---
+
+## 8. Recovery Objectives
+
+Define explicit recovery targets.
+
+For an internal small-business system, an initial target might be:
+
+RPO: <= 24 hours
+RTO: <= several hours
+
+These values can become stricter later.
+
+The important requirement is that they be deliberate, not accidental.
+
+---
+
+## 9. Schema Migrations
+
+Database migrations must be:
+
+- Versioned
+- Repeatable
+- Reviewed
+- Ordered
+- Auditable
+
+Requirements:
+
+- Application knows expected schema version.
+- Startup fails safely if incompatible.
+- Migration failure must not leave an unknown schema state.
+- Destructive migrations require explicit handling.
+
+---
+
+## 10. Migration of Financial Data
+
+Financial migrations require stronger rules than normal application migrations.
+
+Any migration affecting:
+
+- Journal entries
+- Amounts
+- Dates
+- Accounts
+- Invoices
+- Payments
+- Allocations
+
+must include reconciliation checks before and after.
+
+Example:
+
+Trial balance before = Trial balance after
+
+unless the migration explicitly intends an accounting correction.
+
+---
+
+## 11. API Contracts
+
+All external operations should have explicit request and response contracts.
+
+Prefer:
+
+- IssueInvoiceCommand
+- RecordPaymentCommand
+- AllocatePaymentCommand
+
+over loosely structured JSON objects.
+
+Contracts should be versioned.
+
+Breaking API changes must not silently affect agents or integrations.
+
+---
+
+## 12. Authentication
+
+All non-public Summa operations require authentication.
+
+The system must know:
+
+Who initiated this?
+
+Possible actors:
+
+- Human user
+- Service
+- Agent
+- Integration
+- Scheduled process
+
+Anonymous financial mutation must not be allowed.
+
+---
+
+## 13. Authorization
+
+Authorization should be capability-based.
+
+Examples:
+
+- CanCreateInvoice
+- CanIssueInvoice
+- CanRecordPayment
+- CanPostAdjustment
+- CanClosePeriod
+- CanReversePayment
+
+Avoid authorization based merely on UI access.
+
+The backend must enforce capabilities.
+
+---
+
+## 14. Agent Identity
+
+AI agents should have explicit identities.
+
+Example:
+
+ActorType = Agent
+ActorId = ros-agent-01
+Model = GPT-x
+ExecutionId = ...
+
+Agent actions should never appear as though a human performed them.
+
+---
+
+## 15. Human Approval Boundaries
+
+Some operations should require human approval even if an agent can prepare them.
+
+Candidates:
+
+- IssueInvoice
+- WriteOffReceivable
+- PostManualAdjustment
+- ClosePeriod
+- RefundCustomer
+
+Whether each requires approval can later be configurable.
+
+The architecture should support approval gates from the beginning.
+
+---
+
+## 16. Observability
+
+Summa should expose operational telemetry.
+
+At minimum:
+
+- Application errors
+- Failed commands
+- Rejected transitions
+- Database errors
+- Integration failures
+- Retry counts
+- Duplicate command detection
+- Migration failures
+
+Financial correctness errors should be distinguishable from technical errors.
+
+---
+
+## 17. Structured Logging
+
+Logs should contain structured fields such as:
+
+- CorrelationId
+- Command
+- Actor
+- EntityId
+- SourceSystem
+- Outcome
+- Timestamp
+
+Do not log sensitive information unnecessarily.
+
+---
+
+## 18. Correlation IDs
+
+Every externally initiated workflow should receive a correlation ID.
+
+Example:
+
+Time Entry
+↓
+Invoice proposal
+↓
+Invoice issuance
+↓
+Ledger posting
+↓
+Email event
+
+All resulting operations should be traceable under the same correlation ID.
+
+---
+
+## 19. Monitoring Invariant Violations
+
+The system should continuously detect impossible conditions.
+
+Examples:
+
+- Unbalanced posted journal
+- Paid invoice with outstanding balance
+- Allocation > payment amount
+- Allocation > invoice balance
+- Issued invoice without ledger entry
+- Negative receivable balance
+
+These should be treated as serious integrity failures, not ordinary warnings.
+
+---
+
+## 20. Reconciliation Jobs
+
+Summa should include periodic integrity checks.
+
+Examples:
+
+- Journal debits = journal credits
+- AR control account = invoice receivables
+- Payments allocated <= payments received
+- Invoice balances reconcile to AR
+
+Accounting software needs independent verification of its own projections.
+
+---
+
+## 21. Audit Immutability
+
+Audit records should be append-only from the application perspective.
+
+Requirements:
+
+- Audit records cannot be modified through normal APIs.
+- Corrections generate new audit events.
+- Actor identity must be retained.
+- Timestamp must be retained.
+- Source must be retained.
+
+---
+
+## 22. Sensitive Data
+
+Summa should minimize storage of sensitive information.
+
+Avoid storing unless required:
+
+- Full bank account numbers
+- Card details
+- Unnecessary personal information
+- Authentication secrets
+
+Do not turn Summa into a PCI problem if payment processing is not required.
+
+---
+
+## 23. Secrets Management
+
+Secrets must not be stored in:
+
+- Source code
+- Configuration committed to Git
+- Database rows intended for normal application data
+- Logs
+
+Use environment or platform secret management.
+
+---
+
+## 24. Encryption
+
+Requirements:
+
+- Encrypted transport
+- Encrypted backups
+- Encrypted storage where supported
+
+Financial exports should be handled as sensitive files.
+
+---
+
+## 25. Import Safety
+
+Imports must never directly mutate authoritative records without validation.
+
+Flow:
+
+Import
+↓
+Parse
+↓
+Validate
+↓
+Preview
+↓
+Accept
+↓
+Apply
+
+Imports should produce a summary of:
+
+- Accepted
+- Rejected
+- Duplicates
+- Warnings
+
+---
+
+## 26. Export Reproducibility
+
+Exports should identify:
+
+- GeneratedAt
+- AccountingPeriod
+- DataVersion
+- Filters
+- SchemaVersion
+
+A CPA should be able to know what dataset an export represents.
+
+---
+
+## 27. Report Consistency
+
+Financial reports generated from the same cutoff and ledger state must agree.
+
+Example:
+
+Balance Sheet AR
+=
+AR subsidiary balance
+=
+Receivable projection
+
+If they differ, the system should detect it.
+
+---
+
+## 28. Deterministic Calculations
+
+Given the same authoritative financial records, Summa should produce the same result.
+
+Avoid dependencies on:
+
+- Current locale defaults
+- Floating point arithmetic
+- Unordered processing
+- Ambiguous date conversion
+
+---
+
+## 29. Timezone Handling
+
+Store timestamps unambiguously.
+
+Financial accounting dates should remain business dates, not accidentally shift because of UTC conversion.
+
+Distinguish:
+
+- Instant
+- AccountingDate
+- BusinessDate
+
+---
+
+## 30. Document Versioning
+
+Issued invoices must retain the exact document content that was issued.
+
+If branding or templates change later, historical invoices should not visually change.
+
+Store either:
+
+- Rendered invoice snapshot
+
+or sufficient immutable template/version information to reproduce it exactly.
+
+Preferred approach:
+
+Retain the rendered snapshot.
+
+---
+
+## 31. External Email Failure
+
+Sending an invoice and issuing an invoice are separate operations.
+
+Example:
+
+Invoice successfully issued
+Email fails
+
+This must not roll back the financial transaction.
+
+Instead:
+
+Invoice = Issued
+Delivery = Failed
+
+Then allow retrying delivery safely.
+
+---
+
+## 32. Integration Outage Handling
+
+External systems may be unavailable.
+
+Examples:
+
+- GitHub
+- Email
+- Payment processor
+- Time Entry
+- Bank API
+
+Summa must not corrupt internal state because an integration is unavailable.
+
+Use explicit integration state such as:
+
+- Pending
+- Succeeded
+- Failed
+- Retryable
+- PermanentFailure
+
+---
+
+## 33. Idempotent Integrations
+
+Webhook and integration messages may be delivered more than once.
+
+The same external event must not create duplicate financial effects.
+
+Persist external event IDs where possible.
+
+---
+
+## 34. Deletion Policy
+
+Financial records should generally not be physically deleted.
+
+Use states such as:
+
+- Cancelled
+- Voided
+- Inactive
+- Reversed
+
+Physical deletion should be limited to safe draft or administrative data where financial history is unaffected.
+
+---
+
+## 35. Data Retention
+
+Define which records must be retained long-term.
+
+At minimum:
+
+- Journal entries
+- Invoices
+- Payments
+- Audit logs
+- Supporting references
+- Accounting exports
+
+Retention should consider tax and business record requirements later.
+
+---
+
+## 36. Health Checks
+
+Summa should expose system health separately from accounting health.
+
+System health:
+
+- Database available
+- Storage available
+- Dependencies available
+
+Accounting health:
+
+- Ledger balances
+- No orphan invoices
+- No invalid allocations
+- No broken references
+
+Both matter.
+
+---
+
+## 37. Safe Startup
+
+On startup, Summa should verify:
+
+- Supported database schema
+- Required configuration
+- Critical dependencies
+- Ledger integrity checks where appropriate
+
+If the system cannot safely operate, it should fail clearly rather than start in an unknown condition.
+
+---
+
+## 38. Deployment Safety
+
+Deployment must not interrupt a financial operation halfway through.
+
+Requirements:
+
+- Graceful shutdown
+- Complete in-flight transaction or roll it back
+- Version compatibility between app and database
+- Safe migration ordering
+
+---
+
+## 39. Rollback Strategy
+
+Application deployments should be reversible when possible.
+
+Database changes should be designed so that rollback is understood before deployment.
+
+For financial migrations, "just restore the database" should not be the only strategy.
+
+---
+
+## 40. Production Data Separation
+
+Development and test systems must never casually use production financial data.
+
+Requirements:
+
+- Separate environments
+- Separate credentials
+- Separate databases
+- Clear environment indicators
+
+---
+
+## 41. Test Data
+
+Automated tests should use synthetic financial data.
+
+If production-like scenarios are needed, use anonymized or generated data.
+
+---
+
+## 42. Property and Invariant Tests
+
+Examples:
+
+For every posted entry:
+debits = credits
+
+For every invoice:
+paid + outstanding + credits/writeoffs = adjusted invoice amount
+
+For every payment:
+allocated <= received
+
+These should be tested broadly, not only with handcrafted examples.
+
+---
+
+## 43. Failure Injection Testing
+
+Test failures intentionally.
+
+Examples:
+
+- Database unavailable after invoice validation
+- Email unavailable after invoice issuance
+- Retry same payment event 10 times
+- Two allocations race simultaneously
+- Application crashes during posting
+
+The system should remain financially correct.
+
+---
+
+## 44. Recovery Drill
+
+Before trusting Summa with real books, perform at least one full exercise:
+
+Backup production-like database
+↓
+Destroy test environment
+↓
+Restore from backup
+↓
+Start application
+↓
+Run integrity checks
+↓
+Generate financial reports
+
+If this has never been tested, disaster recovery is theoretical.
+
+---
+
+# Release Gate for Real Financial Use
+
+Summa should not be used as the authoritative production ledger until all of these are demonstrated:
+
+- Atomic financial transactions
+- Idempotent commands
+- Concurrency protection
+- Backup
+- Successful restore
+- Schema migration process
+- Authentication
+- Authorization
+- Audit trail
+- Ledger reconciliation
+- Integrity checks
+- Failure recovery
+- Export capability
+
+This is the threshold where Summa becomes software that can be trusted with the company's books.
+
+---
+
+# Next Requirements Pass
+
+The next requirements pass should focus on v0.4 UX and operational workflow, including:
+
+- Dashboard
+- Creating an invoice
+- Reviewing time
+- Outstanding receivables
+- Overdue follow-up
+- Recording payments
+- Month-end review
+- CPA handoff
+
+The purpose of v0.4 is to make sure Summa is not only correct, but practical and pleasant enough to use every day.

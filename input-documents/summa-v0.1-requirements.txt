@@ -1,0 +1,815 @@
+# Summa v0.1 Requirements
+
+## Purpose
+
+Summa v0.1 is intended to provide a narrow, usable financial operating core for Echelon Foundry without attempting to replicate QuickBooks.
+
+The initial goal is:
+
+> Allow Echelon Foundry to maintain a correct double-entry ledger, create and issue invoices, track what clients owe, record payments, and produce the core reports needed to understand the business.
+
+The first version should remain deliberately constrained. The objective is to prove that a tightly integrated ledger, invoicing, receivables, and payment-recording system can replace the portion of QuickBooks that Echelon actually needs right now.
+
+---
+
+## 1. General Ledger
+
+The ledger is the accounting source of truth.
+
+### 1.1 Accounts
+
+The system shall maintain a chart of accounts.
+
+Each account shall have:
+
+- Unique ID
+- Account number or code
+- Name
+- Account type
+- Active/inactive status
+
+Supported account types shall initially be:
+
+- Asset
+- Liability
+- Equity
+- Revenue
+- Expense
+
+The system shall understand each account type's normal debit/credit balance.
+
+### 1.2 Journal Entries
+
+The system shall support journal entries containing two or more journal lines.
+
+Each journal line shall contain:
+
+- Account
+- Debit or credit amount
+- Optional memo
+- Optional dimensions/reference information
+
+Rules:
+
+- Total debits must equal total credits before an entry may be posted.
+- Debit and credit values must use fixed decimal currency representation, never floating-point numbers.
+- A journal line may not simultaneously contain both a debit and a credit.
+- Negative debit/credit values shall not be permitted.
+
+### 1.3 Journal Entry States
+
+```text
+Draft
+  ↓
+Balanced
+  ↓
+Posted
+  ↓
+Reversed
+```
+
+Requirements:
+
+- Draft entries may be edited.
+- Posted entries shall be immutable.
+- Posted entries shall not be deleted.
+- Corrections to posted entries shall be made through reversal or correcting entries.
+- Every posted entry shall have an immutable unique identifier.
+
+---
+
+## 2. Accounting Periods
+
+Requirements:
+
+- Transactions shall have an effective accounting date.
+- The system shall support accounting periods.
+- Periods may be:
+  - Open
+  - Closed
+  - Locked
+- New entries may only be posted into an open period.
+- Closing or locking a period shall not modify existing entries.
+- Reopening a period should require an explicit privileged operation.
+
+For v0.1, monthly periods are sufficient.
+
+---
+
+## 3. Customers
+
+The system shall maintain customer/client records.
+
+Minimum data:
+
+```text
+Customer
+  Id
+  Name
+  BillingName
+  BillingAddress
+  Email
+  DefaultPaymentTerms
+  Active
+```
+
+Customer management should remain narrowly focused on billing and financial operations.
+
+CRM functionality is out of scope.
+
+---
+
+## 4. Invoices
+
+The system shall support creation of customer invoices.
+
+An invoice shall contain:
+
+```text
+Invoice
+  Id
+  InvoiceNumber
+  Customer
+  IssueDate
+  DueDate
+  Status
+  Currency
+  LineItems
+  Subtotal
+  Adjustments
+  Total
+  AmountPaid
+  AmountOutstanding
+```
+
+An invoice line shall contain:
+
+```text
+InvoiceLine
+  Description
+  Quantity
+  UnitPrice
+  Amount
+  RevenueAccount
+  OptionalProject
+  OptionalWorkItem
+```
+
+### 4.1 Invoice States
+
+Primary lifecycle:
+
+```text
+Draft
+  ↓
+Issued
+  ↓
+PartiallyPaid
+  ↓
+Paid
+```
+
+Payment timing classification should remain orthogonal:
+
+```text
+Current
+Overdue
+```
+
+`Overdue` should not replace `Issued`.
+
+An invoice may conceptually be both issued and overdue.
+
+---
+
+## 5. Invoice Numbering
+
+Requirements:
+
+- Invoice numbers shall be unique.
+- Invoice numbering shall be deterministic and sequential unless manually overridden.
+- Once an invoice is issued, its invoice number shall not change.
+- Draft invoices may receive a temporary internal ID before being issued.
+
+Example:
+
+```text
+EF-2026-0001
+```
+
+---
+
+## 6. Issuing an Invoice
+
+Issuing an invoice shall be an explicit business transition.
+
+Requirements:
+
+- A draft invoice must contain at least one line.
+- The customer must exist and be active.
+- The invoice total must be greater than zero.
+- A valid revenue account must exist for each invoice line.
+- The due date shall be calculated from payment terms unless explicitly provided.
+- Issuing an invoice shall create and post the corresponding accounting entry.
+
+Example:
+
+```text
+Invoice: $6,050
+
+Debit   Accounts Receivable   $6,050
+Credit  Consulting Revenue    $6,050
+```
+
+This should occur as one logical operation.
+
+### 6.1 Invariant
+
+> An issued invoice cannot exist without its corresponding posted journal entry.
+
+Retrying the operation must not accidentally create duplicate invoices, obligations, or journal entries.
+
+Idempotency is required from the beginning.
+
+---
+
+## 7. Invoice Output
+
+Summa shall produce a presentable customer invoice.
+
+Initial output requirements:
+
+- HTML output
+- Printable to PDF
+- Company name and contact information
+- Customer billing information
+- Invoice number
+- Issue date
+- Due date
+- Payment terms
+- Line-item descriptions
+- Quantity/rate where applicable
+- Total due
+- Payment instructions
+
+A custom PDF rendering engine is out of scope for v0.1.
+
+The initial approach should use clean HTML and CSS that prints well to PDF.
+
+---
+
+## 8. Sending Invoices
+
+For the initial version:
+
+- The system shall track whether an invoice has been issued.
+- The system shall record when it was sent.
+- The system shall record the recipient email address.
+- The system may initially allow manual sending outside Summa.
+
+Suggested metadata:
+
+```text
+IssuedAt
+SentAt
+SentTo
+```
+
+Direct Gmail or email integration should be deferred until the core billing flow is stable.
+
+---
+
+## 9. Payment Terms and Due Dates
+
+Supported initial terms:
+
+```text
+Due on receipt
+Net 7
+Net 15
+Net 30
+Net 45
+Net 60
+Custom date
+```
+
+Requirements:
+
+- The system shall automatically derive a due date based on the selected terms.
+- The system shall calculate, rather than store:
+  - DaysUntilDue
+  - DaysPastDue
+
+---
+
+## 10. Receivables / Obligations
+
+Receivables should be a first-class concept rather than merely a presentation of invoices.
+
+When an invoice is issued:
+
+```text
+Invoice
+   ↓
+Receivable Obligation
+```
+
+Minimum model:
+
+```text
+Obligation
+  Id
+  Source
+  Party
+  OriginalAmount
+  OutstandingAmount
+  DueDate
+  Status
+```
+
+States:
+
+```text
+Open
+PartiallySettled
+Settled
+Cancelled
+```
+
+Derived classifications:
+
+```text
+Current
+DueSoon
+Overdue
+```
+
+The obligation model should be designed so it can later support payables without requiring a redesign.
+
+---
+
+## 11. Payments
+
+Summa shall record customer payments.
+
+Minimum data:
+
+```text
+Payment
+  Id
+  Customer
+  DateReceived
+  Amount
+  Method
+  Reference
+  Memo
+```
+
+Initial payment methods:
+
+```text
+ACH
+Check
+Wire
+CreditCard
+Cash
+Other
+```
+
+Payment processing itself is not required for v0.1.
+
+The system only needs to record that a payment occurred.
+
+---
+
+## 12. Payment Allocation
+
+Payments and invoices shall not have a simple one-to-one relationship.
+
+A payment may cover:
+
+```text
+One invoice
+Multiple invoices
+Part of an invoice
+```
+
+A single invoice may also receive multiple payments.
+
+Model:
+
+```text
+PaymentAllocation
+  PaymentId
+  InvoiceId
+  Amount
+```
+
+Requirements:
+
+- Allocations may not exceed the unallocated payment balance.
+- Allocations may not exceed the invoice outstanding balance.
+- Multiple allocations may exist for one payment.
+- Multiple payments may apply to one invoice.
+
+---
+
+## 13. Accounting for Payments
+
+When a payment is recorded and allocated, the system shall create the appropriate journal entry.
+
+Example:
+
+```text
+Debit   Cash / Bank Account
+Credit  Accounts Receivable
+```
+
+The posting amount should correspond to the payment allocation.
+
+An invoice becomes `Paid` only when:
+
+```text
+OutstandingAmount = 0
+```
+
+The invoice status should be a consequence of financial facts, not a manually editable value.
+
+### 13.1 General Principle
+
+> Important financial states should be consequences of facts, not editable fields.
+
+---
+
+## 14. Accounts Receivable Aging
+
+Summa shall provide an AR aging view.
+
+Initial aging buckets:
+
+```text
+Current
+1-30 days
+31-60 days
+61-90 days
+90+ days
+```
+
+The report should show at least:
+
+| Customer | Current | 1-30 | 31-60 | 61-90 | 90+ | Total |
+|---|---:|---:|---:|---:|---:|---:|
+
+The report should allow drill-down to the underlying invoices.
+
+---
+
+## 15. Core Financial Reports
+
+For v0.1, Summa shall support the following reports.
+
+### 15.1 Trial Balance
+
+```text
+Account
+Debit Balance
+Credit Balance
+```
+
+Required invariant:
+
+```text
+Total Debits = Total Credits
+```
+
+### 15.2 General Ledger
+
+For each account:
+
+```text
+Date
+Entry
+Description
+Debit
+Credit
+Running Balance
+```
+
+### 15.3 Income Statement
+
+For a selected date range:
+
+```text
+Revenue
+- Expenses
+= Net Income
+```
+
+### 15.4 Balance Sheet
+
+As of a selected date:
+
+```text
+Assets
+= Liabilities + Equity
+```
+
+Cash flow reporting may be deferred until the accounting model is more mature.
+
+---
+
+## 16. Dimensions
+
+Dimensions should be supported from the beginning, even if the initial UI exposes them minimally.
+
+A journal line may optionally reference:
+
+```text
+Client
+Project
+Engagement
+WorkItem
+Product
+```
+
+These dimensions should not be modeled as separate ledger accounts.
+
+Example:
+
+```text
+Consulting Revenue
+  Client = ABC
+  Engagement = Architecture Assessment
+```
+
+Avoid structures such as:
+
+```text
+Consulting Revenue - ABC - Architecture Assessment
+```
+
+Dimensions will become valuable when Summa integrates with ROS and Time Entry.
+
+---
+
+## 17. Time Entry Integration Boundary
+
+The integration boundary with Time Entry should be defined now, even if not implemented in v0.1.
+
+Proposed future flow:
+
+```text
+Approved Billable Time
+        ↓
+Invoice Proposal
+        ↓
+Human Review
+        ↓
+Invoice
+```
+
+A time entry should carry enough context that an invoice line can trace back to the work that generated it.
+
+Approved time should not automatically produce a customer invoice.
+
+The system should generate an invoice proposal for human review.
+
+---
+
+## 18. Audit Trail
+
+Every material operation shall record:
+
+```text
+Who
+What
+When
+Source
+CorrelationId
+```
+
+At minimum, audit the following actions:
+
+- Journal entry created
+- Journal entry posted
+- Journal entry reversed
+- Invoice created
+- Invoice changed
+- Invoice issued
+- Invoice sent
+- Payment recorded
+- Payment allocated
+- Accounting period closed
+- Accounting period reopened
+
+Audit records shall not be editable.
+
+---
+
+## 19. Idempotency
+
+Idempotency is a core technical requirement.
+
+Operations such as:
+
+```text
+IssueInvoice
+RecordPayment
+PostJournalEntry
+ImportTime
+```
+
+must tolerate retries safely.
+
+For example, if an agent or API retries:
+
+```text
+IssueInvoice(INV-001)
+```
+
+five times, there should still be:
+
+```text
+1 invoice
+1 AR obligation
+1 journal entry
+```
+
+and not five of each.
+
+This is especially important for future agent, workflow, and GitHub integrations.
+
+---
+
+## 20. Data Export and Escape Hatch
+
+Summa shall always support exporting core business and accounting data.
+
+At minimum:
+
+```text
+Chart of Accounts
+Journal Entries
+General Ledger
+Trial Balance
+Invoices
+Customers
+Payments
+AR Aging
+```
+
+Initial export format:
+
+- CSV
+
+Future format:
+
+- JSON
+
+The purpose of this requirement is to avoid lock-in.
+
+If Summa is abandoned or replaced, the business must be able to migrate its records into another accounting system without reconstructing its financial history manually.
+
+---
+
+# Explicitly Out of Scope for v0.1
+
+The following capabilities should not be built in the first version:
+
+- Payroll
+- Employee expense reimbursement
+- Inventory
+- Purchase orders
+- Full accounts payable
+- Credit-card processing
+- ACH processing
+- Bank feeds
+- Automatic bank reconciliation
+- Sales tax calculation
+- Tax preparation
+- 1099 preparation
+- W-2 preparation
+- Multi-company consolidation
+- Multi-currency accounting
+- Budgeting
+- Forecasting
+- Depreciation automation
+- Fixed-asset management
+- Recurring invoices
+- Automatic collection emails
+- Mobile application
+- Complex role-based permissions
+
+These capabilities may be considered later if actual business needs justify them.
+
+---
+
+# First Vertical Slice
+
+Before implementing all of v0.1, the first SDE vertical slice should prove the following end-to-end workflow:
+
+```text
+Create client
+    ↓
+Enter one consulting invoice
+    ↓
+Issue invoice
+    ↓
+Generate printable invoice
+    ↓
+Automatically post AR / Revenue
+    ↓
+See invoice as outstanding
+    ↓
+Record payment
+    ↓
+Automatically post Cash / AR
+    ↓
+Invoice shows Paid
+    ↓
+Trial balance balances
+    ↓
+P&L and balance sheet reflect it
+```
+
+If this workflow works correctly, Summa is already capable of supporting a real consulting billing cycle.
+
+---
+
+# Design Principles
+
+## Ledger Is the Financial Source of Truth
+
+The ledger records completed financial events.
+
+Balances should be derived from posted journal entries rather than treated as independently editable values.
+
+## Obligations Represent Unfinished Business
+
+The obligation system tracks what still needs to happen financially.
+
+Examples include:
+
+- Customer payments that are due
+- Future payables
+- Other financial deadlines
+
+## Posted Records Are Immutable
+
+Posted journal entries and issued financial facts should not be silently altered.
+
+Corrections should be explicit and auditable.
+
+## Financial States Are Derived
+
+Whenever possible, important states such as `Paid`, `Overdue`, and balances should be derived from underlying financial facts rather than manually entered.
+
+## Integration Through Business Events
+
+Other systems should integrate with Summa through explicit business operations and events.
+
+Examples:
+
+```text
+Approved Billable Time
+Invoice Issued
+Payment Received
+Journal Entry Posted
+```
+
+## Scope Discipline
+
+Summa should not attempt to recreate QuickBooks.
+
+The target is a narrowly integrated financial operating system that supports Echelon Foundry's actual needs while remaining simple enough to understand, verify, and maintain.
+
+---
+
+# Open Questions for the Next Requirements Pass
+
+The next requirements round should challenge the current model using real-world scenarios, including:
+
+- Partial payments
+- One payment covering multiple invoices
+- Retainers
+- Customer deposits
+- Credit memos
+- Refunds
+- Voided invoices
+- Invoice corrections
+- Write-offs
+- Bad debt
+- Reimbursable client expenses
+- Hourly billing
+- Fixed-price billing
+- Milestone billing
+- Discounts
+- Overpayments
+- Customer credits
+- Year-end CPA adjustments
+- Opening balances
+- Closing entries
+- Customer disputes
+- Bounced or reversed payments
+
+The purpose of the next round is not to expand scope indiscriminately, but to determine whether the core domain model remains sound when exposed to normal accounting edge cases.

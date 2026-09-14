@@ -1,0 +1,874 @@
+# Summa v0.4 Requirements
+
+## Daily Operations and UX
+
+The purpose of this pass is to make Summa efficient enough that it is not only correct, but practical and pleasant enough to use every day.
+
+The guiding question is:
+
+> Can a user run the normal billing, receivables, payment, reporting, and close cycle without needing to think about how Summa itself works?
+
+---
+
+## 1. Home Dashboard
+
+The dashboard should answer the most important financial and operational questions without requiring navigation through accounting screens.
+
+At minimum, show:
+
+- Cash
+- Outstanding AR
+- Overdue AR
+- Invoices due soon
+- Revenue this month
+- Expenses this month
+- Net income this month
+- Unallocated payments
+- Items requiring attention
+
+The dashboard should also surface actionable items such as:
+
+- Invoices overdue
+- Invoice drafts awaiting review
+- Payments needing allocation
+- Accounting periods ready to close
+- Failed invoice deliveries
+- Failed integrations
+
+The dashboard should emphasize work requiring attention, not merely charts.
+
+---
+
+## 2. Global Create Action
+
+There should be one obvious way to start common operations.
+
+At minimum:
+
+- New Invoice
+- Record Payment
+- New Customer
+- Journal Entry
+- Credit Memo
+
+The user should not have to navigate deeply through menus to begin a common action.
+
+---
+
+## 3. Customer Workflow
+
+The customer page should show the complete financial relationship with the customer.
+
+Example:
+
+ABC Corporation
+
+Outstanding: $12,500
+Overdue:      $5,000
+
+Sections:
+
+- Invoices
+- Payments
+- Credits
+- Activity
+- Projects
+- Engagements
+
+From the customer page, the user should be able to:
+
+- Create an invoice
+- Record a payment
+- View AR aging
+- View transaction history
+- See the current outstanding balance
+- See related projects and engagements
+
+---
+
+## 4. Invoice Creation
+
+Invoice creation should be fast and straightforward.
+
+Flow:
+
+Select customer
+↓
+Add lines
+↓
+Set terms
+↓
+Review
+↓
+Issue
+
+Defaults should come from:
+
+- Customer
+- Engagement
+- System settings
+
+The user should not manually construct accounting entries during normal invoice creation.
+
+---
+
+## 5. Smart Invoice Defaults
+
+When selecting a customer, Summa should automatically propose:
+
+- Billing address
+- Email
+- Payment terms
+- Default revenue account
+- Engagement/project
+- Billing rate where applicable
+
+The objective is to minimize repetitive input while keeping the final invoice review explicit.
+
+---
+
+## 6. Invoice Preview
+
+Before issuing an invoice, the user should be able to preview exactly what the customer will receive.
+
+The preview should include:
+
+- Customer
+- Line descriptions
+- Dates
+- Amounts
+- Payment terms
+- Payment instructions
+- Totals
+
+The user should be able to verify the invoice before committing the financial transaction.
+
+---
+
+## 7. Invoice Proposal Workflow
+
+For integrated systems such as Time Entry:
+
+Approved Work
+↓
+Invoice Proposal
+↓
+Review
+↓
+Edit
+↓
+Issue
+
+The invoice proposal should explain where each line came from.
+
+Example:
+
+Architecture Assessment
+22.5 hours @ $275/hour
+
+Sources:
+- TE-421
+- TE-422
+- TE-430
+
+The user should be able to trace invoice lines back to originating work.
+
+---
+
+## 8. Invoice History
+
+Every invoice should have an activity timeline.
+
+Example:
+
+Sep 1   Draft created
+Sep 2   Rate changed
+Sep 2   Invoice issued
+Sep 2   Sent to client
+Sep 29  Payment $5,000 recorded
+Oct 3   Payment $2,500 recorded
+
+The timeline should combine business events and relevant audit events into a user-readable history.
+
+---
+
+## 9. Receivables Workspace
+
+There should be a dedicated accounts receivable view.
+
+Primary columns:
+
+| Customer | Invoice | Issued | Due | Outstanding | Age | Status |
+|---|---|---|---|---:|---:|---|
+
+Filters should include:
+
+- Current
+- Due soon
+- Overdue
+- 1-30 days
+- 31-60 days
+- 61-90 days
+- 90+ days
+- Customer
+- Project
+
+---
+
+## 10. Attention-First Receivables
+
+The default receivables view should prioritize:
+
+- Overdue invoices
+- Invoices due this week
+- Large outstanding balances
+- Unusual payment delays
+
+The default experience should help the user decide what requires action, not simply sort by invoice number.
+
+---
+
+## 11. Payment Recording
+
+Payment recording should be concise.
+
+Flow:
+
+Select customer
+↓
+Enter amount/date/method
+↓
+Match invoices
+↓
+Review
+↓
+Record
+
+The system should suggest invoice allocation automatically where possible but require confirmation before committing.
+
+---
+
+## 12. Automatic Payment Matching
+
+If a customer owes:
+
+INV-001   $5,000
+INV-002   $2,500
+
+and a $5,000 payment arrives, Summa should suggest:
+
+Apply $5,000 to INV-001
+
+If multiple interpretations are plausible, the system should not guess silently.
+
+---
+
+## 13. Unallocated Payments Inbox
+
+Payments that cannot be confidently matched should appear in a dedicated queue.
+
+Example:
+
+$7,200 from ABC Corporation
+Received Sep 14
+No exact invoice match
+
+Available actions:
+
+- Allocate
+- Leave unapplied
+- Create customer credit
+- Investigate
+
+---
+
+## 14. Overdue Follow-Up
+
+Each overdue invoice should support an operational follow-up workflow.
+
+Track:
+
+- Last contacted
+- Contact method
+- Next follow-up
+- Notes
+- Promise-to-pay date
+
+This is operational AR management and should remain distinct from accounting state.
+
+---
+
+## 15. Follow-Up Status
+
+Suggested operational follow-up states:
+
+- No action yet
+- Reminder sent
+- Customer contacted
+- Payment promised
+- Disputed
+- Escalated
+- Resolved
+
+These states should remain separate from invoice financial state.
+
+---
+
+## 16. Payment Promises
+
+If a customer states that payment will occur on a future date, Summa should record:
+
+- PromisedPaymentDate
+- Amount
+- Note
+
+If the promised date passes without sufficient payment, the obligation should return to the attention queue.
+
+---
+
+## 17. Invoice Disputes
+
+An invoice may be financially outstanding while operationally disputed.
+
+Track:
+
+- Disputed status
+- Dispute reason
+- Disputed amount
+- Opened date
+- Notes
+
+The ledger should not change merely because an invoice is disputed.
+
+---
+
+## 18. Search
+
+Global search should find:
+
+- Customer
+- Invoice number
+- Payment reference
+- Amount
+- Project
+- Journal entry
+- Memo
+
+Search should be fast enough to serve as a primary navigation method.
+
+---
+
+## 19. Command Palette
+
+Consider a command palette for high-frequency operations.
+
+Examples:
+
+- Create invoice
+- Record payment
+- Open ABC Corp
+- Find INV-2026-0038
+- Show overdue invoices
+- Run trial balance
+
+This can provide a faster operational path than large navigation trees.
+
+---
+
+## 20. Ledger Workspace
+
+The ledger UI should support filtering by:
+
+- Account
+- Date range
+- Entry type
+- Source
+- Project
+- Customer
+
+Users should be able to drill from:
+
+Financial Report
+↓
+Account
+↓
+Journal Entry
+↓
+Source Invoice or Payment
+
+---
+
+## 21. Explain the Accounting
+
+For automatically generated journal entries, Summa should provide a human-readable explanation.
+
+Example:
+
+Why was this posted?
+
+Invoice INV-1023 was issued for $6,050.
+
+Debit Accounts Receivable $6,050
+because the customer now owes the business.
+
+Credit Consulting Revenue $6,050
+because consulting revenue was recognized.
+
+Accounting explanations should be available on demand without cluttering normal workflows.
+
+---
+
+## 22. Source Traceability
+
+Every generated journal entry should provide a route back to its origin.
+
+Example:
+
+Journal Entry JE-219
+Source: Invoice INV-1023
+Customer: ABC
+Project: Architecture Assessment
+
+The originating invoice should also link to its generated journal entry.
+
+---
+
+## 23. Financial Report Navigation
+
+Reports should support drill-down rather than behave only as static output.
+
+Example:
+
+Income Statement
+↓
+Consulting Revenue
+↓
+Journal Lines
+↓
+Invoice
+↓
+Customer
+
+---
+
+## 24. Date Range Shortcuts
+
+Common date ranges should be consistent across reports.
+
+At minimum:
+
+- This month
+- Last month
+- This quarter
+- Last quarter
+- Year to date
+- Last year
+- Custom
+
+---
+
+## 25. Period Close Workspace
+
+Closing a month should use an explicit checklist.
+
+Example:
+
+September 2026 Close
+
+✓ All invoices posted
+✓ Payments allocated
+✓ Trial balance balanced
+✓ AR reconciled
+✓ No draft journal entries
+○ Bank reconciliation
+○ CPA adjustment review
+
+Then:
+
+Close Period
+
+---
+
+## 26. Period Readiness
+
+Summa should indicate whether a period is ready to close.
+
+Potential blockers include:
+
+- Unposted journal entries
+- Unallocated payments
+- Failed integrations
+- Accounting invariant errors
+- Unresolved imports
+
+The user should not be presented with an unqualified Close button when blockers exist.
+
+---
+
+## 27. CPA Workspace
+
+Provide an accountant-oriented view.
+
+At minimum:
+
+- Trial balance
+- General ledger
+- Income statement
+- Balance sheet
+- AR aging
+- Journal adjustments
+- Supporting invoice references
+
+CPA access should not require understanding the rest of Summa's operational interface.
+
+---
+
+## 28. CPA Export Package
+
+Eventually provide one action:
+
+Generate CPA Package
+
+Example output:
+
+2026-Q3/
+    trial-balance.csv
+    general-ledger.csv
+    income-statement.csv
+    balance-sheet.csv
+    ar-aging.csv
+    adjusting-entries.csv
+    metadata.json
+
+---
+
+## 29. Saved Report Views
+
+Support useful reusable report views such as:
+
+- Revenue by client
+- Revenue by project
+- Expenses by project
+- Profitability by engagement
+- Outstanding AR by customer
+
+A full business intelligence platform is not required.
+
+---
+
+## 30. Project Profitability
+
+Once Summa connects to Time Entry and ROS, support management reporting such as:
+
+Revenue
+- Human labor cost
+- AI cost
+- Infrastructure
+- External expenses
+= Engagement contribution
+
+This is a management report rather than a formal accounting statement, but it may be one of Summa's highest-value capabilities.
+
+---
+
+## 31. Unified Work Queue
+
+Summa should provide one operational queue for items needing attention.
+
+Example:
+
+Needs Attention
+
+- Invoice INV-1008 overdue 32 days
+- Payment $4,250 unallocated
+- Invoice proposal ready for ABC
+- September period ready for review
+- Email delivery failed for INV-1011
+
+This should build directly on the obligation model.
+
+---
+
+## 32. Notification Philosophy
+
+Do not build notification spam.
+
+Notifications should be generated only when:
+
+- Action is required
+- A deadline is approaching
+- A financial operation failed
+- A meaningful condition changed
+
+The dashboard and work queue should remain the primary operational source.
+
+---
+
+## 33. Avoid Unnecessary Accounting Jargon
+
+Normal workflows should use business language.
+
+Prefer:
+
+- Issue Invoice
+- Record Payment
+- Customer Balance
+
+Do not require ordinary users to think in terms of:
+
+- Debit
+- Credit
+- Control account
+- Journal posting
+
+Accounting terminology should remain available in ledger and audit contexts.
+
+---
+
+## 34. Accounting Detail on Demand
+
+Use progressive disclosure.
+
+Example:
+
+Invoice issued successfully
+
+with an optional action:
+
+View Accounting Entry
+
+Do not surface accounting internals during every ordinary workflow.
+
+---
+
+## 35. Keyboard Usability
+
+Core operations should be efficient by keyboard.
+
+Priorities include:
+
+- Search
+- Create invoice
+- Add invoice line
+- Record payment
+- Navigate tables
+- Submit/review
+
+---
+
+## 36. Responsive UI
+
+Desktop is primary, but common workflows should remain usable on mobile.
+
+Mobile priorities:
+
+- View dashboard
+- Find invoice
+- Check customer balance
+- Record payment
+- Review AR
+
+Full bookkeeping workflows do not need to be phone-optimized initially.
+
+---
+
+## 37. Accessibility
+
+Accessibility should be foundational.
+
+Requirements:
+
+- Semantic HTML
+- Keyboard navigation
+- Appropriate focus management
+- Labels for inputs
+- Sufficient contrast
+- No color-only state indication
+- Screen-reader-compatible financial tables
+
+---
+
+## 38. Confirmation Behavior
+
+Routine reversible actions should not constantly require confirmation.
+
+High-impact actions should.
+
+Candidates:
+
+- Issue invoice
+- Void invoice
+- Refund
+- Write off
+- Close period
+- Reverse payment
+
+Confirmation should explain the consequence of the action.
+
+---
+
+## 39. Draft Persistence
+
+Long-form operations such as invoice creation should not lose work because of:
+
+- Browser refresh
+- Navigation
+- Temporary network loss
+- Session interruption
+
+Drafts should be persisted safely.
+
+---
+
+## 40. Error Messages
+
+Errors should explain:
+
+- What failed
+- Why it failed
+- What remains unchanged
+- What the user can do next
+
+Example:
+
+Payment was not recorded because the invoice balance changed while you were reviewing it. No financial records were modified. Reload the invoice and try again.
+
+Avoid exposing technical status codes as the only user-facing explanation.
+
+---
+
+## 41. Domain-State-Driven UI
+
+The UI should render available actions based on domain capabilities.
+
+Example:
+
+Draft Invoice:
+- Edit
+- Issue
+- Cancel
+
+Issued Invoice:
+- Record Payment
+- Create Credit
+- Void
+
+Paid Invoice:
+- View
+- Refund
+
+Do not render invalid actions and then rely on errors to reject them.
+
+---
+
+## 42. Agent Actions in the UI
+
+When an agent prepares something, make that visible.
+
+Example:
+
+Invoice proposal generated by ROS agent
+Based on 14 approved time entries
+
+The user should be able to inspect and approve the proposal.
+
+---
+
+## 43. Agent Explanation
+
+Agent-generated proposals should include concise rationale.
+
+Example:
+
+Suggested invoice amount: $6,187.50
+
+22.5 consulting hours × $275
+No reimbursable expenses
+Net 30 terms from customer defaults
+
+---
+
+## 44. Human Override
+
+The user may modify an agent proposal before committing it.
+
+The final issued transaction should preserve provenance such as:
+
+- Proposed by agent
+- Modified by human
+- Issued by human
+
+---
+
+## 45. No Autonomous Financial Surprises
+
+Agents should not silently:
+
+- Issue invoices
+- Refund clients
+- Write off balances
+- Close periods
+- Post unusual adjustments
+
+unless an explicit future policy authorizes those actions.
+
+Preparation and recommendation may be highly automated.
+
+Financial commitment should remain controlled.
+
+---
+
+# v0.4 Success Test
+
+The system should prove this complete operational cycle:
+
+Open Summa
+↓
+See billable work ready
+↓
+Review invoice proposal
+↓
+Issue invoice
+↓
+Send invoice
+↓
+Dashboard shows receivable
+↓
+Invoice becomes overdue
+↓
+Follow up with customer
+↓
+Record partial payment
+↓
+Record final payment
+↓
+Invoice becomes paid
+↓
+Month-end close
+↓
+Generate CPA package
+
+Success criterion:
+
+> The user can run the entire cycle without needing to think about how Summa itself works.
+
+---
+
+# Next Requirements Pass
+
+The next requirements pass should focus on Summa v0.5 integration requirements.
+
+Likely areas include:
+
+- ROS integration
+- Time Entry integration
+- GitHub/project information
+- Email
+- Bank imports
+- Payment processors
+- External event contracts
+- Integration idempotency
+- Integration failure handling
+- Integration ownership boundaries
+
+The goal of v0.5 should be to connect Summa to the wider operating system without turning it into a tightly coupled dependency hub.

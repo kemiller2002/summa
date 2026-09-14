@@ -1,0 +1,1052 @@
+# Summa Requirement Set 0
+
+## Foundational Platform, Repository, Authentication, Storage, and Execution Requirements
+
+This requirement set is foundational and precedes all other Summa requirements.
+
+All later requirements, designs, implementation decisions, agent actions, tests, migrations, and integrations must comply with this document.
+
+If any later requirement conflicts with Requirement Set 0, Requirement Set 0 takes precedence unless this document is explicitly revised.
+
+---
+
+# 0.1 Mandatory Engineering Process
+
+Summa must be implemented in strict accordance with:
+
+- ROS
+- SDE
+- The approved TypeScript WASM kernel architecture
+
+These are mandatory implementation constraints, not optional guidance.
+
+## 0.1.1 No Deviation
+
+The implementation agent must follow ROS and SDE absolutely and without deviation.
+
+The implementation agent must explicitly use the approved WASM kernel architecture where required by the established application architecture.
+
+The agent must not:
+
+- Bypass ROS
+- Bypass SDE
+- Substitute an alternate development methodology
+- Ignore required ROS work-item or execution rules
+- Ignore SDE state, transition, evidence, verification, or architectural rules
+- Replace the approved WASM kernel with an unrelated client architecture
+- Introduce an alternate frontend state-management architecture that conflicts with the WASM kernel
+- Quietly reinterpret these requirements to avoid compliance
+- Continue implementation while knowingly out of compliance
+
+## 0.1.2 Stop Condition
+
+If the agent determines that it cannot comply with ROS, SDE, or the WASM-kernel requirements, it must stop implementation.
+
+It must not improvise a substitute.
+
+It must identify the blocking conflict and wait until the architecture, requirements, environment, or implementation is corrected.
+
+Implementation may resume only after the conflict has been resolved.
+
+## 0.1.3 F# Application Direction
+
+Summa should follow the established Echelon Foundry application direction:
+
+- F# should be used for application logic wherever practical.
+- Domain state and transitions should be modeled explicitly.
+- Illegal states should be made unrepresentable where practical.
+- External effects should be explicit.
+- Capabilities should expose legal actions.
+- Obligations should expose unresolved work.
+- Agents should request legal transitions rather than mutate state directly.
+
+The approved WASM kernel shall be used for browser-side application state and logic according to the established architecture.
+
+HTML and CSS remain responsible for browser-native presentation.
+
+JavaScript or TypeScript browser code should remain limited to the approved WASM-kernel integration, browser event dispatch, and necessary browser interop.
+
+---
+
+# 0.2 GitHub Is the Authoritative Data Store
+
+Summa shall use GitHub repository storage as the authoritative persistence layer for business and financial records.
+
+Summa must not assume a traditional relational database is the authoritative source of truth.
+
+A local database, in-memory store, cache, search index, projection store, or runtime index may be used for performance, but it must remain rebuildable from authoritative GitHub data.
+
+GitHub remains authoritative.
+
+---
+
+# 0.3 GitHub Authentication
+
+Authentication shall use a GitHub token.
+
+A valid GitHub token establishes GitHub identity and permits access to repository resources according to GitHub permissions.
+
+Authentication and Summa authorization are separate concerns.
+
+A valid GitHub token does not automatically grant all Summa financial capabilities.
+
+---
+
+# 0.4 Token Handling
+
+GitHub tokens must be treated as secrets.
+
+Tokens must not be stored in:
+
+- Repository files
+- Summa financial records
+- Application logs
+- Generated exports
+- Audit records
+- Source code
+- Plain-text configuration committed to Git
+
+Use secure runtime or platform-provided secret/session storage where necessary.
+
+Summa should avoid long-term token persistence where practical.
+
+---
+
+# 0.5 Multi-Application Repository Requirement
+
+Summa must not assume that it is the only application in a repository.
+
+The repository may contain:
+
+- Summa
+- Time Entry
+- ROS-related data or applications
+- Other Echelon applications
+- Future applications
+
+Summa must operate within an explicitly defined application boundary.
+
+It must not assume ownership of the repository root.
+
+---
+
+# 0.6 Application Boundary
+
+Summa shall have a defined base path within a repository.
+
+Conceptually:
+
+Repository
+  BasePath
+  ApplicationPath
+
+Example:
+
+repo/
+  apps/
+    summa/
+      ...
+
+The exact repository root structure may evolve, but Summa must always operate within a configurable application boundary.
+
+Repository paths must not be hard-coded unnecessarily.
+
+---
+
+# 0.7 Application Manifest
+
+Summa shall have an application manifest at or near its application root.
+
+The manifest should identify at minimum:
+
+- Application name
+- Application identifier
+- Application storage version
+- Schema version
+- Organizations path
+- Supported application version
+- Relevant storage configuration
+
+Example concept:
+
+apps/summa/app.json
+
+The application should use the manifest rather than infer its structure by blindly scanning arbitrary repository folders.
+
+---
+
+# 0.8 Organization Isolation
+
+Different organizations must use different folders.
+
+Each organization must have an explicit storage boundary.
+
+Conceptual example:
+
+apps/
+  summa/
+    orgs/
+      echelon-foundry/
+      another-org/
+
+Organization data must not be intermixed in the same authoritative files.
+
+---
+
+# 0.9 Organization Storage Location
+
+Summa must support the concept that different organizations may exist:
+
+- In different folders within the same repository
+- In different repositories
+
+The storage location should therefore be represented conceptually as:
+
+StorageLocation
+  Repository
+  BasePath
+  OrganizationPath
+
+Summa must not assume that all organizations permanently reside in one repository.
+
+---
+
+# 0.10 Organization Identity
+
+Organization identity must not depend solely on a human-readable name or folder name.
+
+Each organization should have:
+
+- Immutable OrganizationId
+- Human-readable slug
+- Display name
+
+Example:
+
+OrganizationId = immutable internal ID
+Slug = echelon-foundry
+DisplayName = Echelon Foundry
+
+The folder may use the slug.
+
+Internal references should use the immutable organization identifier.
+
+Renaming the organization should not require changing its conceptual identity.
+
+---
+
+# 0.11 Organization Manifest
+
+Each organization shall have an organization manifest.
+
+Conceptual example:
+
+apps/summa/orgs/echelon-foundry/organization.json
+
+The organization manifest should contain at minimum:
+
+- OrganizationId
+- Slug
+- DisplayName
+- SchemaVersion
+- StorageVersion
+- CreatedAt
+- DefaultCurrency
+- Fiscal configuration
+- Invoice configuration
+- Relevant accounting defaults
+- Relevant application settings
+
+The organization manifest is the canonical entry point for organization-level configuration.
+
+---
+
+# 0.12 One Financial Object or Event Per File
+
+Authoritative financial data should use many small files rather than large monolithic files.
+
+Do not use one giant:
+
+ledger.json
+invoices.json
+payments.json
+
+as the primary authoritative model.
+
+Prefer one file per authoritative financial object or event.
+
+Examples:
+
+ledger/
+  2026/
+    JE-000001.json
+    JE-000002.json
+
+invoices/
+  2026/
+    INV-2026-0001.json
+
+payments/
+  2026/
+    PAY-000001.json
+
+This requirement exists to improve:
+
+- Git diffs
+- Auditability
+- Concurrency
+- Recovery
+- Agent context size
+- Record-level history
+- Append-oriented design
+- Merge behavior
+
+---
+
+# 0.13 Authoritative Data Format
+
+Structured authoritative Summa data should use JSON unless a later requirement explicitly justifies another structured format.
+
+Expected roles:
+
+- JSON: authoritative structured financial and business data
+- HTML: rendered invoice/document representation where appropriate
+- CSV: generated exports
+- Other formats: only when specifically required
+
+Markdown must not be used as the authoritative financial storage format.
+
+---
+
+# 0.14 Authoritative Versus Derived Data
+
+The architecture must explicitly distinguish authoritative records from derived projections.
+
+Authoritative examples:
+
+- Journal entries
+- Invoices
+- Payments
+- Payment allocations
+- Obligations
+- Customer credits
+- Audit events
+- Organization configuration
+- Chart of accounts
+- Accounting periods
+
+Derived examples:
+
+- Trial balance
+- Account balances
+- AR aging
+- Dashboard totals
+- Reporting projections
+- Search indexes
+- Cached summaries
+
+Derived data must be reproducible from authoritative GitHub records.
+
+---
+
+# 0.15 Rebuildable Runtime Index
+
+Summa may maintain a local or runtime index/cache for performance.
+
+Examples:
+
+- Search index
+- Reporting projection
+- Current account balances
+- AR projection
+- Customer lookup index
+
+Requirements:
+
+- The index must not become authoritative.
+- The index must be rebuildable from GitHub.
+- Index corruption must not corrupt authoritative records.
+- The application must be able to detect or recover from stale projections.
+
+---
+
+# 0.16 Financial Command to Git Commit Boundary
+
+Whenever practical, one completed financial domain operation should map to one Git commit.
+
+Example:
+
+IssueInvoice
+
+may create:
+
+- Issued invoice record
+- Receivable obligation
+- Journal entry
+- Audit event
+
+These related changes should be committed together as one logical Git commit.
+
+Example commit message:
+
+summa: issue invoice INV-2026-0042
+
+The operation is not considered complete until the authoritative Git commit exists successfully.
+
+---
+
+# 0.17 Git Commit Is Not a Substitute for Domain Atomicity
+
+Git history provides a useful transaction-like audit boundary, but application design must still preserve domain atomicity.
+
+The system must prepare and validate the complete intended change before treating the operation as successful.
+
+A partially prepared operation that never creates the final commit must not be treated as a completed financial event.
+
+---
+
+# 0.18 Normal Business Transactions and Branching
+
+Normal day-to-day financial operations should commit directly to the designated Summa data branch through controlled application commands.
+
+Examples:
+
+- Issue invoice
+- Record payment
+- Allocate payment
+- Apply credit
+- Post approved journal entry
+
+These should not require a pull request for each routine business transaction.
+
+---
+
+# 0.19 Structural Changes and Pull Requests
+
+Structural changes should use normal engineering review workflows such as branches and pull requests.
+
+Examples:
+
+- Schema changes
+- Storage-format changes
+- Migration logic
+- Application architecture changes
+- Shared configuration model changes
+- Data-contract changes
+
+Financial data operations and software/schema changes are different categories and should not be conflated.
+
+---
+
+# 0.20 Optimistic Concurrency Through Git State
+
+Summa shall use optimistic concurrency based on Git repository state.
+
+Commands should be evaluated against an expected repository state, such as an expected commit SHA.
+
+Conceptually:
+
+ExpectedCommitSha = abc123
+
+If actual repository state differs:
+
+Expected: abc123
+Actual:   def456
+
+Summa must not blindly overwrite the newer state.
+
+It must:
+
+- Detect the conflict
+- Reload/re-evaluate as appropriate
+- Re-run domain validation
+- Reject incompatible transitions
+- Prevent duplicate or overwritten financial effects
+
+---
+
+# 0.21 No Silent Rebase of Financial Meaning
+
+If repository HEAD changes between command preparation and execution, Summa must not assume that the command is still financially valid.
+
+The command must be revalidated against the new authoritative state.
+
+For example:
+
+- An invoice may have been paid
+- A payment may already have been allocated
+- A period may have been closed
+- An invoice may have been voided
+
+Repository-level conflict resolution must never bypass domain-level conflict resolution.
+
+---
+
+# 0.22 Summa Authorization
+
+Summa shall maintain its own authorization model in addition to GitHub repository permissions.
+
+Examples of capabilities:
+
+- CreateInvoice
+- IssueInvoice
+- RecordPayment
+- AllocatePayment
+- CreateCreditMemo
+- PostJournalEntry
+- ReverseJournalEntry
+- ClosePeriod
+- ReopenPeriod
+- ManageOrganization
+- ManageUsers
+- ManageSettings
+
+Authorization should be capability-based rather than dependent on hard-coded role checks.
+
+---
+
+# 0.23 Human, Agent, and Service Identity
+
+Summa must distinguish principal types.
+
+At minimum:
+
+Principal
+  Human
+  Agent
+  Service
+
+Every financial command should preserve actor identity.
+
+Where relevant, record:
+
+- Actor type
+- Actor ID
+- GitHub identity
+- Agent identity
+- Execution ID
+- Source system
+- Correlation ID
+
+Agent actions must never be recorded as though a human performed them.
+
+---
+
+# 0.24 Cross-Application Ownership
+
+The repository may contain multiple applications with related concepts.
+
+Do not create a premature universal shared domain model.
+
+Ownership should remain explicit.
+
+Examples:
+
+- Time Entry owns time entries
+- Summa owns invoices and accounting records
+- ROS owns work execution/work-item concerns
+
+Applications may reference records owned by other applications using stable identifiers.
+
+They should not silently assume ownership of those records.
+
+---
+
+# 0.25 Cross-Application References
+
+Cross-application references should use stable references rather than copying entire foreign objects.
+
+Example:
+
+InvoiceLineSource
+  SourceApplication = time-entry
+  SourceId = TE-18372
+
+Possible shared reference values may include:
+
+- OrganizationId
+- ClientId
+- ProjectId
+- EngagementId
+- WorkItemId
+- TimeEntryId
+
+Cross-application references should preserve traceability without tightly coupling object ownership.
+
+---
+
+# 0.26 Shared Concepts Must Not Imply Shared Storage Ownership
+
+Concepts such as:
+
+- Organization
+- Client
+- Project
+- User
+
+may be referenced across applications.
+
+This does not automatically mean those concepts should be stored in one universal shared file or module.
+
+Shared storage should only be introduced through an explicit later architectural decision.
+
+---
+
+# 0.27 Draft Versus Posted Mutation Rules
+
+General rule:
+
+Draft records may be mutable.
+
+Posted, issued, settled, or otherwise authoritative financial records should be immutable.
+
+Examples:
+
+Draft invoice:
+- May be edited.
+
+Issued invoice:
+- Must not be silently rewritten.
+
+Posted journal entry:
+- Must not be silently rewritten.
+
+Audit event:
+- Must not be rewritten.
+
+Corrections should create explicit new records or compensating events.
+
+Git history is additional evidence, not a substitute for proper domain history.
+
+---
+
+# 0.28 Deletion Policy
+
+Financial records should generally not be physically deleted through normal Summa operations.
+
+Prefer states or compensating records such as:
+
+- Cancelled
+- Voided
+- Reversed
+- Inactive
+
+Physical deletion should be limited to records that are safe to remove, such as certain drafts or rebuildable caches, where financial history is unaffected.
+
+---
+
+# 0.29 Repository Manual Modification
+
+Summa must assume that repository contents may be manually edited outside the application.
+
+Manual edits must not automatically be trusted.
+
+On detecting externally modified financial data, Summa must validate:
+
+- File schema
+- Record identity
+- Referential integrity
+- Accounting invariants
+- Cross-record consistency
+- Relevant hashes or integrity data
+- Organization boundaries
+- Storage-version compatibility
+
+Externally modified records that violate requirements must be rejected or flagged as integrity failures.
+
+---
+
+# 0.30 Repository Tamper Detection
+
+Git provenance provides useful history, but Summa should provide application-level integrity validation.
+
+At minimum:
+
+- Posted financial records must be validated.
+- Cross-record accounting invariants must be checked.
+- Unexpected modification of immutable records must be detectable.
+- Reconciliation must detect inconsistent financial history.
+
+A future tamper-evident hash chain may be added.
+
+The architecture should not prevent this.
+
+---
+
+# 0.31 Schema Versioning
+
+Every Summa organization must declare its storage/schema version.
+
+The application must determine whether the current software version can safely read and write that schema.
+
+The application must not silently rewrite older financial data into a new structure without an explicit migration process.
+
+---
+
+# 0.32 Storage Migration Safety
+
+Financial storage migrations must:
+
+- Be explicit
+- Be versioned
+- Preserve auditability
+- Validate before and after
+- Preserve financial meaning
+- Preserve accounting invariants
+- Preserve record identity or explicit lineage
+- Avoid silent destructive transformation
+
+Schema migration should follow ROS and SDE requirements.
+
+---
+
+# 0.33 Repository and Organization Discovery
+
+Summa should locate its own application and organization boundaries through explicit configuration and manifests.
+
+It must not rely on uncontrolled recursive scanning of arbitrary repository content.
+
+Discovery should be deterministic.
+
+---
+
+# 0.34 Repository Scale Assumption
+
+The initial design may optimize for small and medium business scale rather than massive multi-tenant SaaS scale.
+
+However, storage structures should avoid obvious scale traps.
+
+Do not assume:
+
+- Only one organization will ever exist
+- Only one year of data will exist
+- Only a few invoices will exist
+- Repository root belongs to Summa
+
+---
+
+# 0.35 Artifact Storage
+
+Binary and document artifacts will not use the Summa GitHub repository as their primary storage location.
+
+Examples may include:
+
+- PDFs
+- Scanned receipts
+- Images
+- Contracts
+- Large supporting documents
+- Other binary artifacts
+
+Artifact storage will be defined separately later.
+
+---
+
+# 0.36 Artifact References
+
+Summa must support linking to externally stored documents or artifacts using URLs or equivalent stable references.
+
+The detailed artifact-storage design is intentionally deferred.
+
+Financial records should be able to preserve an artifact reference without embedding the artifact itself.
+
+Conceptual example:
+
+ArtifactReference
+  Id
+  Url
+  Type
+  Description
+  Source
+  CreatedAt
+
+Do not tightly couple Summa's domain model to one future artifact-storage provider.
+
+---
+
+# 0.37 Generated Invoice Representation
+
+Small generated invoice representations such as HTML may be stored where appropriate if consistent with repository strategy.
+
+However, large binary document storage should remain outside the authoritative Summa repository.
+
+Historical issued invoice content must remain reproducible or preserved according to later document-versioning requirements.
+
+---
+
+# 0.38 Environment Isolation
+
+Summa must support separate environments.
+
+At minimum:
+
+- Local
+- Test
+- Staging
+- Production
+
+Each environment must have separate:
+
+- Repository or repository branch/configuration as appropriate
+- Credentials
+- Secrets
+- Runtime indexes
+- Artifact-storage configuration
+- Application configuration
+
+Production financial records must not be casually mixed with test or staging data.
+
+---
+
+# 0.39 Staging
+
+Staging must be sufficiently production-like to test:
+
+- GitHub persistence
+- Authentication
+- Authorization
+- Financial commands
+- Repository concurrency
+- Schema migrations
+- Invoice creation
+- Payments
+- Reporting
+- Agent/API integrations
+- Backup/export/rebuild behavior
+
+Staging should use synthetic financial data.
+
+---
+
+# 0.40 Environment Visibility
+
+Non-production environments must be visually obvious in the application.
+
+Example:
+
+SUMMA
+STAGING
+
+The user should not be able to easily mistake staging data for production financial data.
+
+---
+
+# 0.41 Configuration Versus Code
+
+Business configuration must not require a software deployment.
+
+Examples of configuration:
+
+- Company information
+- Invoice numbering
+- Payment terms
+- Fiscal-year settings
+- Default accounts
+- Payment instructions
+- Organization settings
+- Storage paths
+
+Accounting invariants, domain rules, and legal state transitions belong in code/domain logic.
+
+---
+
+# 0.42 Application Configuration Must Be Scoped
+
+Configuration must be scoped appropriately.
+
+Possible scopes:
+
+- Application
+- Environment
+- Organization
+- User/principal
+
+Summa must not assume that all configuration is global.
+
+---
+
+# 0.43 Repository Safety
+
+Summa must not modify files outside its authorized application and organization boundaries.
+
+All writes must resolve through validated configured paths.
+
+Path traversal or accidental repository-root modification must be prevented.
+
+---
+
+# 0.44 Deterministic Storage Paths
+
+Authoritative records should have deterministic storage paths where practical.
+
+Examples:
+
+invoices/2026/INV-2026-0001.json
+ledger/2026/JE-000001.json
+
+A record's canonical location should not vary arbitrarily between executions.
+
+---
+
+# 0.45 Stable Record Identity
+
+File path and financial record identity are related but not identical.
+
+Records must contain stable internal identifiers.
+
+Renaming or relocating a file through an explicit migration must not accidentally create a new financial identity.
+
+---
+
+# 0.46 Git History Is Supporting Evidence, Not the Domain Model
+
+Summa must not rely on Git commit history alone to determine financial state.
+
+Financial state must be represented explicitly in authoritative domain records.
+
+Git provides:
+
+- Provenance
+- Diff history
+- Commit boundaries
+- Recovery support
+- Additional audit evidence
+
+The Summa domain model remains responsible for:
+
+- Accounting state
+- Legal transitions
+- Reversals
+- Voids
+- Settlement
+- Obligations
+- Audit semantics
+
+---
+
+# 0.47 Integrity Before Availability
+
+If Summa cannot prove that repository state is valid enough to execute a financial command safely, it must reject the command rather than guess.
+
+Financial correctness takes precedence over convenience.
+
+---
+
+# 0.48 Agent Repository Behavior
+
+Agents interacting with Summa must use Summa's domain commands and ROS/SDE-approved workflows.
+
+Agents must not directly edit authoritative financial JSON files as a substitute for executing legal domain transitions.
+
+Direct repository modification by an implementation or operational agent is prohibited unless the specific operation is an approved migration, recovery, or maintenance workflow.
+
+---
+
+# 0.49 Agent Context and File Scope
+
+Agents should read only the repository context necessary for the current task whenever practical.
+
+The storage design should support narrow deterministic navigation.
+
+This requirement supports:
+
+- Reduced context surface
+- Lower agent cost
+- Better locality
+- Lower accidental mutation risk
+- Easier SDE verification
+
+---
+
+# 0.50 Requirement Precedence
+
+Requirement Set 0 establishes the foundational constraints for all subsequent Summa requirements.
+
+The implementation agent must evaluate Requirement Sets 1 and later through these constraints.
+
+If a later requirement appears to require violating:
+
+- ROS
+- SDE
+- WASM-kernel architecture
+- GitHub authoritative storage
+- Organization isolation
+- Application repository boundaries
+- Financial integrity
+- Explicit domain transitions
+
+the agent must stop and report the conflict rather than choosing its own compromise.
+
+---
+
+# Initial Conceptual Repository Layout
+
+This layout is illustrative and may be refined through SDE and implementation work.
+
+repo/
+  apps/
+    summa/
+      app.json
+      orgs/
+        echelon-foundry/
+          organization.json
+          config/
+          accounts/
+          periods/
+          customers/
+          invoices/
+            2026/
+          payments/
+            2026/
+          allocations/
+            2026/
+          obligations/
+            2026/
+          credits/
+            2026/
+          ledger/
+            2026/
+          audit/
+            2026/
+
+    time-entry/
+      ...
+
+    other-app/
+      ...
+
+Artifact binaries and large supporting documents are intentionally not included in this repository layout.
+
+They will live in external artifact storage and be referenced by URL or another stable external reference.
+
+---
+
+# Foundational Success Criteria
+
+Requirement Set 0 is satisfied when Summa can demonstrate that:
+
+1. The implementation follows ROS without deviation.
+2. The implementation follows SDE without deviation.
+3. The approved WASM kernel is explicitly used according to architecture.
+4. GitHub is the authoritative persistence layer.
+5. GitHub token authentication works without exposing tokens.
+6. Summa operates inside a defined multi-app repository boundary.
+7. Organizations are isolated by configurable repository/folder boundaries.
+8. Organization identity is stable and independent of display name.
+9. Financial objects are stored as small authoritative records.
+10. Derived indexes can be rebuilt from GitHub.
+11. Financial domain operations map cleanly to controlled Git commits.
+12. Optimistic concurrency prevents blind overwrites.
+13. Summa authorization remains separate from GitHub authentication.
+14. Humans, agents, and services have explicit identities.
+15. Cross-application references preserve ownership boundaries.
+16. Posted financial history cannot be silently rewritten.
+17. Manual repository modifications are detected and validated.
+18. Schema/storage versions are explicit.
+19. Artifact binaries remain outside the Summa repository.
+20. External artifacts can later be linked through stable URLs.
+21. Staging and production are isolated.
+22. Summa cannot write outside its authorized repository paths.
+23. Agents cannot bypass domain transitions by editing financial files directly.
+24. Any conflict with these foundational constraints causes implementation to stop until corrected.
+
