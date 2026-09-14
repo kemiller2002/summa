@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+
+import { main } from "./tools/ros_hub_cli.mjs";
+
+process.exitCode = main(process.argv.slice(2));

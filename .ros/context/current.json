@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "1.0.0",
+  "protocolVersion": "1.0.0",
+  "repository": "summa",
+  "actor": "ros-bootstrap",
+  "startedAt": "2026-09-14T07:34:52.559Z",
+  "updatedAt": "2026-09-14T07:40:46.406Z",
+  "baselineDirtyPaths": [],
+  "workItems": [
+    {
+      "id": "ROS-INSTALL-2-0-1-main-78-1",
+      "type": "mechanical",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "installation",
+          "path": ".ros/installation.json"
+        }
+      ],
+      "updatedAt": "2026-09-14T07:34:52.559Z",
+      "completedAt": "2026-09-14T07:34:52.559Z"
+    },
+    {
+      "id": "WI-0001",
+      "type": "mechanical",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [],
+      "updatedAt": "2026-09-14T07:39:47.015Z",
+      "telemetryExecutionIds": [
+        "EXE-20260914T073936754Z-8a6e1a29"
+      ],
+      "completedAt": "2026-09-14T07:39:47.015Z"
+    },
+    {
+      "id": "WI-0002",
+      "type": "mechanical",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [],
+      "updatedAt": "2026-09-14T07:40:46.406Z",
+      "telemetryExecutionIds": [
+        "EXE-20260914T074046319Z-84697e52"
+      ],
+      "completedAt": "2026-09-14T07:40:46.406Z"
+    }
+  ]
+}

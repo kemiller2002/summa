@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ROS Project Administration Hub</title>
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<header>
+  <h1>Project Administration Hub</h1>
+  <p class="muted">Creates work in other ROS repositories by running their own <code>./ros</code> -- it never edits a repository's files directly.</p>
+</header>
+
+<main>
+  <section id="repos" aria-label="Registered repositories">
+    <h2>Registered repositories</h2>
+    <form id="register-form">
+      <input id="register-path" type="text" placeholder="/absolute/path/to/repo" required />
+      <input id="register-name" type="text" placeholder="display name (optional)" />
+      <button type="submit" class="primary">Register</button>
+    </form>
+    <p id="repos-error" role="alert" hidden></p>
+    <table id="repos-table">
+      <thead>
+        <tr><th>ID</th><th>Name</th><th>Path</th><th></th></tr>
+      </thead>
+      <tbody id="repos-table-body"></tbody>
+    </table>
+  </section>
+
+  <section id="create" aria-label="Create work item in a repository">
+    <h2>Create work item</h2>
+    <form id="create-form">
+      <select id="create-repo" required></select>
+      <input id="create-title" type="text" placeholder="Describe the work" required />
+      <input id="create-tags" type="text" placeholder="tags, comma, separated" />
+      <select id="create-priority">
+        <option value="medium" selected>medium</option>
+        <option value="high">high</option>
+        <option value="low">low</option>
+      </select>
+      <textarea id="create-description" placeholder="Optional longer description"></textarea>
+      <div id="create-files" class="file-rows"></div>
+      <button id="create-add-file" type="button">+ file</button>
+      <button type="submit" class="primary">Create</button>
+    </form>
+    <p id="create-error" role="alert" hidden></p>
+  </section>
+
+  <section id="filters" aria-label="Filter aggregated work">
+    <h2>Filter</h2>
+    <label>
+      Repo
+      <select id="filter-repo"><option value="">all</option></select>
+    </label>
+    <label>
+      Tag
+      <input id="filter-tag" type="text" placeholder="e.g. wasm" />
+    </label>
+    <label>
+      Status
+      <select id="filter-status">
+        <option value="">any</option>
+        <option value="captured">captured</option>
+        <option value="ready">ready</option>
+        <option value="blocked">blocked</option>
+        <option value="active">active</option>
+        <option value="complete">complete</option>
+        <option value="abandoned">abandoned</option>
+      </select>
+    </label>
+    <button id="filter-clear" type="button">Clear</button>
+  </section>
+
+  <section id="queue" aria-label="Aggregated work across repositories">
+    <h2>Aggregated queue</h2>
+    <p id="error" role="alert" hidden></p>
+    <table id="work-table">
+      <thead>
+        <tr>
+          <th>Repo</th>
+          <th>ID</th>
+          <th>Work</th>
+          <th>Status</th>
+          <th>Tags</th>
+          <th>Priority</th>
+        </tr>
+      </thead>
+      <tbody id="work-table-body"></tbody>
+    </table>
+  </section>
+</main>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
