@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@echelon-foundry/typescript-wasm-kernel": "^0.4.1"
+  }
+}
