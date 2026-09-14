@@ -1,1 +1,31 @@
-[]
+[
+  {
+    "created": "2026-09-14",
+    "id": "DF-SUMMA-ROSCLI-2026-0001",
+    "owners": [
+      "repository-governance"
+    ],
+    "path": "research/decisions/DF-SUMMA-ROSCLI-2026-0001--ci-uses-node-ros-cli-instead-of-fsharp-launcher.md",
+    "related_documents": [
+      "AGENTS.md",
+      "docs/work-protocol.md",
+      ".github/workflows/ros-validation.yml",
+      "ros.json",
+      "input-documents/summa-requirement-set-0.txt"
+    ],
+    "review_cycle": "on-resolution",
+    "status": "draft",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "governance",
+      "deviation",
+      "ci",
+      "ros",
+      "tooling"
+    ],
+    "title": "CI runs tools/ros_cli.mjs instead of the canonical ./ros F# launcher",
+    "updated": "2026-09-14",
+    "version": "1.0.0"
+  }
+]
