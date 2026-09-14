@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 3,
+  "nextSeq": 4,
   "items": [
     {
       "id": "WI-0001",
@@ -31,6 +31,25 @@
       "attachments": [],
       "createdAt": "2026-09-14T07:40:46.183Z",
       "updatedAt": "2026-09-14T07:40:46.251Z",
+      "createdBy": "unknown",
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0003",
+      "title": "Record and resolve CI deviation: ./ros F# launcher unusable, CI runs Node ros_cli.mjs",
+      "description": "AGENTS.md (GV-START-001 v1.3.0, section 'F# CLI') states Node is no longer a CLI anywhere in this project or what it scaffolds, and that tools/ros_cli.mjs is no longer characterized or scaffolded as a CLI rollback path. .github/workflows/ros-validation.yml currently invokes 'node tools/ros_cli.mjs' for both steps, contradicting that contract. The change was forced: ros.json pins rosVersion 2.0.1-main.78.1, and the ./ros launcher 404s obtaining that tag's release assets (checksums.txt and ros-fs-linux-x64 are both absent upstream, while v2.0.1 publishes them), so ./ros cannot execute and the scaffolded workflow failed on every run. Requirement Set 0 sections 0.1 and 0.1.1 make ROS adherence mandatory and forbid deviation, so this is recorded rather than left silent. Consequences: CI no longer exercises the canonical binary, so F#/Node behavioural divergence is invisible; ros-bootstrap verify reports one managed-file drift finding on the workflow while the patch stands. Migration: publish release assets for v2.0.1-main.78.1 upstream in kemiller2002/repository-operating-system, verify ./ros runs, revert the workflow to ./ros, confirm ros-bootstrap verify is clean, then supersede or withdraw the decision record. Full analysis, evidence, alternatives considered, and verification results are in research/decisions/DF-SUMMA-ROSCLI-2026-0001--ci-uses-node-ros-cli-instead-of-fsharp-launcher.md. Note: this work item was itself created through the Node CLI because ./ros is unavailable.",
+      "tags": [
+        "governance",
+        "deviation",
+        "ci",
+        "ros"
+      ],
+      "priority": "high",
+      "status": "ready",
+      "attachments": [],
+      "createdAt": "2026-09-14T08:12:07.621Z",
+      "updatedAt": "2026-09-14T08:12:20.982Z",
       "createdBy": "unknown",
       "source": "manual",
       "sourceReference": null

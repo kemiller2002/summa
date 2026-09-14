@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "ros-bootstrap",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-09-14T07:40:46.406Z",
+  "updatedAt": "2026-09-14T08:12:28.071Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -44,6 +44,23 @@
         "EXE-20260914T074046319Z-84697e52"
       ],
       "completedAt": "2026-09-14T07:40:46.406Z"
+    },
+    {
+      "id": "WI-0003",
+      "type": "mechanical",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "research/decisions/DF-SUMMA-ROSCLI-2026-0001--ci-uses-node-ros-cli-instead-of-fsharp-launcher.md"
+        }
+      ],
+      "updatedAt": "2026-09-14T08:12:28.071Z",
+      "telemetryExecutionIds": [
+        "EXE-20260914T081221065Z-2939fd47"
+      ],
+      "completedAt": "2026-09-14T08:12:28.071Z"
     }
   ]
 }
