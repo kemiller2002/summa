@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "agent:chatgpt",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-09-21T19:28:13Z",
+  "updatedAt": "2026-09-21T19:31:39Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -73,6 +73,18 @@
         "EXE-20260921T192745119Z-e026d80f"
       ],
       "completedAt": "2026-09-21T19:28:13Z"
+    },
+    {
+      "id": "SUMMA-SDE-UPGRADE-2026-09-21",
+      "type": "mechanical",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [],
+      "updatedAt": "2026-09-21T19:31:39Z",
+      "telemetryExecutionIds": [
+        "EXE-20260921T193132941Z-9e7df51f"
+      ],
+      "completedAt": "2026-09-21T19:31:39Z"
     }
   ]
 }
