@@ -53,6 +53,24 @@
       "createdBy": "unknown",
       "source": "manual",
       "sourceReference": null
+    },
+    {
+      "id": "ECHELON-UPGRADE-2026-09-21",
+      "title": "Modernize Summa Echelon engineering capabilities",
+      "description": null,
+      "tags": [
+        "tooling",
+        "ordo",
+        "limen"
+      ],
+      "priority": "high",
+      "status": "complete",
+      "attachments": [],
+      "createdAt": "2026-09-21T19:27:10Z",
+      "updatedAt": "2026-09-21T19:28:13Z",
+      "createdBy": "agent:chatgpt",
+      "source": "agent-discovery",
+      "sourceReference": "public-repository-upgrade-2026-09-21"
     }
   ]
 }

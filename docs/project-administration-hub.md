@@ -7,7 +7,7 @@ path, lets you create a work item in any of them, and shows a combined view
 of what's outstanding across all of them.
 
 This lives in a separate, installable ROS profile
-(`ros-bootstrap init --profile project-administration`) — not inside a
+(`ros init --profile project-administration`) — not inside a
 plain ROS repository — for the same reason described in
 [`DF-ROS-2026-A008`](../research/decisions/DF-ROS-2026-A008--repository-local-work-backlog.md):
 a single repository's work protocol must stay independently usable, and

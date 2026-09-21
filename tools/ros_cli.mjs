@@ -95,7 +95,12 @@ const PRIORITIES = new Set(["high", "medium", "low"]);
 // delegates to the existing `begin` transition), its live state in
 // `.ros/context/current.json` always wins over the backlog's own `status` --
 // see effectiveStatus(). This keeps exactly one authoritative record per ID.
-const BACKLOG_STATUS_VALUES = new Set(["captured", "ready", "blocked", "abandoned"]);
+// "complete" is the one status this triage lifecycle itself never transitions
+// to (only ready/block/abandon do) -- it is written only when a promoted
+// item finishes live (EV-ROS-2026-A052), kept here so validation recognizes
+// it as legitimate rather than reporting a schema violation on the exact
+// record the F# CLI (this repository's own ./ros) now correctly writes.
+const BACKLOG_STATUS_VALUES = new Set(["captured", "ready", "blocked", "abandoned", "complete"]);
 const BACKLOG_TRANSITIONS = {
   captured: new Set(["ready", "abandon"]),
   ready: new Set(["block", "start", "abandon"]),

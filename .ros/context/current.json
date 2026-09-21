@@ -2,9 +2,9 @@
   "schemaVersion": "1.0.0",
   "protocolVersion": "1.0.0",
   "repository": "summa",
-  "actor": "ros-bootstrap",
+  "actor": "agent:chatgpt",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-09-14T08:12:28.071Z",
+  "updatedAt": "2026-09-21T19:28:13Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -61,6 +61,18 @@
         "EXE-20260914T081221065Z-2939fd47"
       ],
       "completedAt": "2026-09-14T08:12:28.071Z"
+    },
+    {
+      "id": "ECHELON-UPGRADE-2026-09-21",
+      "type": "mechanical",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [],
+      "updatedAt": "2026-09-21T19:28:13Z",
+      "telemetryExecutionIds": [
+        "EXE-20260921T192745119Z-e026d80f"
+      ],
+      "completedAt": "2026-09-21T19:28:13Z"
     }
   ]
 }
