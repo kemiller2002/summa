@@ -1,0 +1,91 @@
+name: Temporary SDE legacy reconciliation
+
+on:
+  push:
+    branches:
+      - "chore/echelon-capabilities-2026-09-21"
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: "chore/echelon-capabilities-2026-09-21"
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Fetch SDE and ROS sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/kemiller2002/state-directed-engineering.git "$RUNNER_TEMP/sde-source"
+          git clone --depth 1 https://github.com/kemiller2002/repository-operating-system.git "$RUNNER_TEMP/ros-source"
+          (cd "$RUNNER_TEMP/sde-source/distribution" && npm run build:payload)
+
+      - name: Start attributed correction work
+        shell: bash
+        env:
+          ROS_ACTOR: agent:chatgpt
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          export ROS_BASE_REF=origin/main
+          ros_project="$RUNNER_TEMP/ros-source/src/Ros.Cli/Ros.Cli.fsproj"
+          work_id="SUMMA-SDE-UPGRADE-2026-09-21"
+          dotnet run --project "$ros_project" -c Release -- --root "$GITHUB_WORKSPACE" work capture \
+            --title "Upgrade legacy unmanifested SDE installation to 1.3.0" \
+            --occurred-at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            --id "$work_id" --priority high --tag tooling --tag sde \
+            --actor agent:chatgpt --source agent-discovery \
+            --source-reference "summa-capability-reconciliation"
+          dotnet run --project "$ros_project" -c Release -- --root "$GITHUB_WORKSPACE" work backlog-transition \
+            --id "$work_id" --action ready --occurred-at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          sleep 1
+          dotnet run --project "$ros_project" -c Release -- --root "$GITHUB_WORKSPACE" work start \
+            --id "$work_id" --occurred-at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            --type mechanical --actor agent:chatgpt
+
+      - name: Upgrade legacy SDE to 1.3.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDE_PAYLOAD_DIR="$RUNNER_TEMP/sde-source/distribution/dist" \
+            dotnet run --project "$RUNNER_TEMP/sde-source/src/Sde.Cli/Sde.Cli.fsproj" -c Release -- upgrade
+          SDE_PAYLOAD_DIR="$RUNNER_TEMP/sde-source/distribution/dist" \
+            dotnet run --project "$RUNNER_TEMP/sde-source/src/Sde.Cli/Sde.Cli.fsproj" -c Release -- verify
+
+      - name: Complete correction work and validate
+        shell: bash
+        env:
+          ROS_ACTOR: agent:chatgpt
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          export ROS_BASE_REF=origin/main
+          ros_project="$RUNNER_TEMP/ros-source/src/Ros.Cli/Ros.Cli.fsproj"
+          dotnet run --project "$ros_project" -c Release -- --root "$GITHUB_WORKSPACE" work complete \
+            --id "SUMMA-SDE-UPGRADE-2026-09-21" \
+            --occurred-at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" --actor agent:chatgpt
+          dotnet run --project "$ros_project" -c Release -- --root "$GITHUB_WORKSPACE" registry build
+          dotnet run --project "$ros_project" -c Release -- --root "$GITHUB_WORKSPACE" validate
+
+      - name: Commit corrected SDE state
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Echelon Upgrade Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git reset ".github/workflows/sde-legacy-reconcile.yml"
+          git commit -m "chore: upgrade legacy SDE installation to 1.3.0"
+          git push origin HEAD:"chore/echelon-capabilities-2026-09-21"
