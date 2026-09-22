@@ -88,6 +88,22 @@
       "createdBy": "agent:chatgpt",
       "source": "agent-discovery",
       "sourceReference": "summa-capability-reconciliation"
+    },
+    {
+      "id": "GH-4",
+      "title": "Prepare Summa implementation baseline",
+      "description": null,
+      "tags": [
+        "readiness,bootstrap"
+      ],
+      "priority": "high",
+      "status": "ready",
+      "attachments": [],
+      "createdAt": "2026-09-22T22:12:05.400Z",
+      "updatedAt": "2026-09-22T22:12:05.000Z",
+      "createdBy": "agent:chatgpt",
+      "source": "github-issue",
+      "sourceReference": "https://github.com/kemiller2002/summa/issues/4"
     }
   ]
 }
