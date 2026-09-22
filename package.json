@@ -1,5 +1,13 @@
 {
   "dependencies": {
-    "@echelon-foundry/typescript-wasm-kernel": "0.6.1"
+    "@echelon-foundry/design-system": "https://github.com/kemiller2002/echelon-design-system/releases/download/v0.1.0/echelon-foundry-design-system-0.1.0.tgz",
+    "@echelon-foundry/typescript-wasm-kernel": "0.6.2"
+  },
+  "name": "echelon-summa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
   }
 }
