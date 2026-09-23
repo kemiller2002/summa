@@ -2246,3 +2246,15 @@ Before implementation begins, the implementation agent shall explicitly verify t
 - Which failure-injection tests prove the design is safe?
 
 No implementation should treat these questions as optional design notes. They are part of the invoice-generation acceptance boundary.
+
+---
+
+## Shared application foundations for invoice generation
+
+Folio is the required document-intent and print component system for every customer-facing or internal printable/PDF invoice surface. Invoice rendering MUST consume the pinned `@echelon-foundry/print-components` release and MUST use existing Folio primitives for document structure, headers, footers, page numbers, tables, notes, callouts, page breaks/keeps, and other shipped print primitives before introducing local equivalents.
+
+The interactive invoice editor, preview controls, dialogs, validation presentation, and responsive screen UI MUST use pinned Forma. A preview may visually represent Folio output, but Forma remains responsible for application controls and Folio remains responsible for printable document intent.
+
+Unexpected operational failures during customer lookup, upstream work retrieval, persistence, renderer/export, file generation, delivery integration, or other external boundaries MUST use Aegis. Expected accounting/domain outcomes and validation refusals remain typed Summa/Ordo outcomes rather than Aegis faults.
+
+These requirements inherit the full contract in `input-documents/summa-shared-application-foundation-requirements.txt` and are mandatory for invoice-generation completion.
