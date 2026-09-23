@@ -872,3 +872,11 @@ Likely areas include:
 - Integration ownership boundaries
 
 The goal of v0.5 should be to connect Summa to the wider operating system without turning it into a tightly coupled dependency hub.
+
+---
+
+## Shared Echelon application foundations
+
+`input-documents/summa-shared-application-foundation-requirements.txt` is normative across the entire Summa requirement corpus, including earlier requirement versions and the invoice-generation requirements.
+
+In particular, Aegis is required for unexpected operational failures at application boundaries, Forma is required for interactive UI, and Folio is required for invoices, statements, financial reports, printable/exportable summaries, and other paper/PDF document surfaces. Existing shared capabilities MUST be used rather than recreated locally unless an explicit exception is recorded.
