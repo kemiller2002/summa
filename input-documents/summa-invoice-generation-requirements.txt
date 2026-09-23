@@ -1,0 +1,2248 @@
+# Summa Comprehensive Invoice Generation Requirements
+
+Version: 1.0
+Status: Proposed requirements baseline
+Work item: GitHub Issue #5
+Date: 2026-09-23
+
+## 1. Purpose
+
+This specification defines the complete requirements for generating, reviewing, issuing, rendering, delivering, correcting, tracking, and auditing customer invoices in Summa.
+
+It extends and must be interpreted together with:
+
+- Summa Requirement Set 0
+- Summa v0.1 Requirements
+- Summa v0.2 Requirements
+- Summa v0.3 Requirements
+- Summa v0.4 Requirements
+
+Requirement Set 0 remains foundational and takes precedence unless explicitly revised.
+
+This specification is intentionally broader than the first implementation slice. Requirements marked as model-preservation or future-facing exist so that the core domain is not designed into a corner even when a capability is deferred.
+
+The target outcome is:
+
+> Summa can turn authoritative billable facts into a correct, reviewable, immutable customer invoice; render the exact customer document; post the corresponding accounting consequences; preserve provenance; prevent duplicate billing; and support the full correction, collection, and audit lifecycle without rewriting financial history.
+
+---
+
+# 2. Architectural Ownership
+
+## INV-ARCH-001 Summa owns invoice financial state
+
+Summa is authoritative for:
+
+- Invoice identity
+- Invoice numbering
+- Invoice issuance state
+- Invoice monetary facts
+- Invoice line items
+- Payment terms
+- Due dates
+- Receivable obligations
+- Accounting consequences
+- Credits
+- Write-offs
+- Settlement state
+- Invoice correction history
+- Invoice audit history
+- Invoice artifact metadata
+
+No external system may directly mutate these records.
+
+## INV-ARCH-002 Chrona owns time-entry state
+
+Chrona remains authoritative for time entry, approval, billability, and source time-entry identity.
+
+Summa may consume approved billable time but must not become authoritative for the original time entries.
+
+## INV-ARCH-003 Source applications retain source ownership
+
+Expenses, milestones, projects, engagements, sales records, or other source facts remain owned by their originating applications.
+
+Summa stores stable source references and immutable billing snapshots rather than taking ownership of the originating record.
+
+## INV-ARCH-004 Ordo governs legal state transitions
+
+Invoice behavior must follow Ordo principles:
+
+- Explicit domain state
+- Explicit legal transitions
+- Illegal states made unrepresentable where practical
+- Capabilities exposing legal actions
+- Obligations exposing unresolved work
+- Explicit effects
+- Version checks
+- Evidence and provenance
+- No direct mutation around domain transitions
+
+## INV-ARCH-005 Praxis governs engineering execution
+
+Praxis, including the repository's existing ROS execution and governance contracts, remains the required engineering execution mechanism.
+
+Existing repository paths and tooling that still use ROS naming are not to be bypassed because the product name is Praxis.
+
+## INV-ARCH-006 Limen owns browser/application interaction boundaries
+
+Limen shall provide the approved browser boundary for Summa interactive behavior.
+
+Application and financial rules must not be reimplemented in ad hoc browser JavaScript.
+
+## INV-ARCH-007 Forma owns reusable interactive UI presentation
+
+Forma should provide reusable semantic, accessible, responsive UI components used by the invoice editor, preview controls, tables, dialogs, flyouts, fields, and status presentation.
+
+Summa domain rules must not be embedded inside Forma components.
+
+## INV-ARCH-008 Folio owns invoice print presentation
+
+Folio is the Echelon Foundry print component system and shall be the preferred presentation layer for printable invoice documents and deterministic PDF output.
+
+Summa owns invoice semantics and data. Folio owns print composition and presentation.
+
+## INV-ARCH-009 GitHub remains authoritative persistence
+
+Invoice records, domain state, audit records, configuration records, and artifact metadata shall follow Requirement Set 0 and use GitHub repository storage as the authoritative application persistence layer.
+
+Caches, projections, indexes, local browser storage, and generated search data must be rebuildable.
+
+## INV-ARCH-010 Large binary artifacts remain outside authoritative GitHub data
+
+PDF files and other large binary artifacts should remain in external artifact storage and be referenced from Summa by stable URL, content hash, media type, size, version, and creation metadata.
+
+---
+
+# 3. Core Invoice Aggregate
+
+## INV-DATA-001 Stable internal identity
+
+Every invoice shall have a stable immutable internal identifier independent of its customer-facing invoice number.
+
+Drafts may exist before a customer-facing invoice number is assigned.
+
+## INV-DATA-002 Customer-facing invoice number
+
+An issued invoice shall have exactly one customer-facing invoice number.
+
+The number shall become immutable upon successful issuance.
+
+## INV-DATA-003 Required invoice fields
+
+An invoice record shall support at least:
+
+- Internal invoice ID
+- Invoice number when assigned
+- Organization/legal entity ID
+- Customer ID
+- Billing contact reference
+- Billing name snapshot
+- Billing address snapshot
+- Issue date
+- Accounting date
+- Due date
+- Payment terms
+- Currency
+- Invoice lines
+- Subtotal
+- Explicit discounts
+- Explicit taxes when applicable
+- Explicit credits or deposits applied
+- Total
+- Amount paid
+- Amount credited
+- Amount written off
+- Amount outstanding
+- Customer purchase-order/reference number
+- Project reference where applicable
+- Engagement reference where applicable
+- Service period where applicable
+- Customer-visible notes
+- Internal notes kept separate from customer-visible notes
+- Payment instruction reference
+- Template/render profile
+- Domain version
+- Schema version
+- Provenance
+- Audit references
+
+## INV-DATA-004 Customer snapshot
+
+At issuance, customer-facing billing information used on the invoice must be snapshotted.
+
+Later changes to the customer record must not alter the historical issued invoice.
+
+## INV-DATA-005 Organization snapshot
+
+At issuance, the invoicing organization's customer-visible legal name, remit address, contact information, and other required display fields must be snapshotted or reproducibly versioned.
+
+## INV-DATA-006 Internal and customer-visible notes are separate
+
+Internal notes must never appear on a customer invoice unless explicitly promoted to a customer-visible field.
+
+## INV-DATA-007 Invoice line identity
+
+Every invoice line shall have a stable line identifier.
+
+This is required for traceability, crediting, correction, reconciliation, and source provenance.
+
+## INV-DATA-008 Invoice line fields
+
+Each invoice line shall support:
+
+- Line ID
+- Description
+- Optional detailed description
+- Quantity
+- Unit of measure
+- Unit price/rate
+- Extended amount
+- Explicit discount if applicable
+- Tax classification if applicable
+- Revenue account
+- Customer/project/engagement dimensions
+- Service date or service period where applicable
+- Source type
+- Source references
+- Display order
+- Billing category
+- Optional customer-visible code
+- Provenance metadata
+
+## INV-DATA-009 Money uses fixed precision
+
+All monetary values shall use decimal or fixed-precision representations.
+
+Float and double shall not be used for money.
+
+## INV-DATA-010 Currency is explicit
+
+Every invoice shall have an explicit currency.
+
+All lines on one invoice shall use the same invoice currency unless a future explicit multi-currency design states otherwise.
+
+## INV-DATA-011 Rounding is deterministic
+
+Summa shall define and version a deterministic rounding policy for:
+
+- Unit calculations
+- Quantity multiplied by rate
+- Percentage discounts
+- Tax calculations when supported
+- Invoice totals
+- Credit allocations
+
+The invoice snapshot shall preserve the rounding policy/version used.
+
+## INV-DATA-012 Totals are calculated by the domain
+
+The browser or agent may display provisional totals, but authoritative invoice totals must be recalculated by Summa domain logic before issuance.
+
+Client-supplied totals shall never be trusted as authoritative.
+
+## INV-DATA-013 Service period
+
+Invoices should support a service period independent of issue date.
+
+Example:
+
+Services performed: September 1-15, 2026
+Invoice issued: September 18, 2026
+
+## INV-DATA-014 Purchase-order and client references
+
+Summa shall support optional customer-required references such as:
+
+- PO number
+- Contract number
+- Engagement number
+- Vendor reference
+- Cost center
+- Matter number
+
+These should be modeled as explicit fields or typed references, not hidden inside notes.
+
+---
+
+# 4. Invoice State Model
+
+## INV-STATE-001 Separate independent state dimensions
+
+Summa shall not collapse all invoice concerns into one status field.
+
+At minimum, model these concerns separately:
+
+1. Preparation/issuance state
+2. Settlement state
+3. Due timing classification
+4. Delivery state
+5. Dispute state
+6. Collection/follow-up state
+
+## INV-STATE-002 Preparation/issuance state
+
+A recommended preparation lifecycle is:
+
+- Proposed
+- Draft
+- ReadyForReview
+- Issued
+- Voided
+
+The exact implementation may refine these names through Ordo, but must preserve the distinctions.
+
+## INV-STATE-003 Settlement state is derived
+
+Settlement should be derived from authoritative financial facts.
+
+At minimum:
+
+- Unpaid
+- PartiallyPaid
+- Paid
+
+Paid shall not be a manually editable flag.
+
+## INV-STATE-004 Due timing is derived
+
+Timing classifications such as:
+
+- Current
+- DueSoon
+- Overdue
+
+shall be derived from current date, due date, and outstanding balance.
+
+## INV-STATE-005 Delivery state is independent
+
+Delivery shall have a separate state such as:
+
+- NotPrepared
+- Ready
+- Pending
+- Sent
+- Delivered when confirmed by a provider
+- Failed
+- Bounced
+- ManuallySent
+
+Delivery failure must not reverse invoice issuance.
+
+## INV-STATE-006 Dispute state is independent
+
+An invoice may be financially outstanding and simultaneously disputed.
+
+Dispute state shall not rewrite the invoice or ledger.
+
+## INV-STATE-007 Collection state is independent
+
+Collection/follow-up state shall remain operational and distinct from financial state.
+
+## INV-STATE-008 Capabilities derive from state
+
+Available actions shall be exposed as domain capabilities.
+
+Examples:
+
+Draft:
+- Edit
+- Delete if safe
+- SubmitForReview
+- Cancel
+
+ReadyForReview:
+- ReturnToDraft
+- Approve
+- Issue
+
+Issued:
+- Deliver
+- RecordPayment
+- ApplyCredit
+- CreateCreditMemo
+- Dispute
+- Void when legal
+- WriteOff when authorized
+
+Paid:
+- View
+- Credit
+- Refund when applicable
+
+The exact capability set must be mechanically validated against legal transitions.
+
+---
+
+# 5. Invoice Creation Sources
+
+## INV-SOURCE-001 Manual invoices
+
+Users shall be able to create an invoice manually without source time entries.
+
+## INV-SOURCE-002 Chrona time
+
+Summa shall be able to create invoice proposals from approved billable Chrona time.
+
+## INV-SOURCE-003 Fixed-fee work
+
+Summa shall support fixed-fee invoice lines that are not determined by time worked.
+
+## INV-SOURCE-004 Milestone billing
+
+Summa shall support invoice proposals based on contract or engagement milestones.
+
+Milestone completion and invoice issuance remain separate actions.
+
+## INV-SOURCE-005 Reimbursable expenses
+
+Approved billable expenses may be proposed for invoicing while preserving the originating expense as a separate business/accounting fact.
+
+## INV-SOURCE-006 Deposits and retainers
+
+Summa shall support applying customer deposits or retainers to invoices without treating the original receipt as revenue.
+
+## INV-SOURCE-007 Mixed-source invoices
+
+One invoice may contain multiple valid source types, such as:
+
+- Billable time
+- Fixed fee
+- Reimbursable expense
+- Approved adjustment
+
+Each line must preserve independent provenance.
+
+## INV-SOURCE-008 Source snapshots
+
+At issuance, Summa shall snapshot the billing facts actually used, including descriptions, quantities, rates, and source references.
+
+Later source-system edits must not silently change an issued invoice.
+
+---
+
+# 6. Chrona Integration and Double-Billing Protection
+
+## INV-CHR-001 Eligibility
+
+Only Chrona time that is:
+
+- Approved
+- Billable
+- Associated with the target customer/engagement
+- Not already invoiced
+- Not reserved by an incompatible active invoice proposal
+
+may be selected for an invoice proposal.
+
+## INV-CHR-002 Stable source references
+
+Every imported time entry must retain its Chrona identity and source version or equivalent concurrency reference.
+
+## INV-CHR-003 No double billing
+
+A Chrona time entry may not contribute billable value to more than one active issued invoice.
+
+## INV-CHR-004 Proposal reservation
+
+When time is included in a live invoice proposal, Summa should support a reservation/claim mechanism that prevents concurrent proposals from unknowingly billing the same time.
+
+## INV-CHR-005 Reservation release
+
+Cancelling or abandoning a proposal must release its source reservations safely.
+
+## INV-CHR-006 Issuance finalizes source consumption
+
+Successful invoice issuance shall finalize the source linkage so the same billable work cannot later be invoiced again without an explicit correction workflow.
+
+## INV-CHR-007 Failed issuance does not consume time
+
+If invoice issuance fails atomically, source time must remain eligible or return to its prior valid reservation state.
+
+## INV-CHR-008 Source changes during review
+
+If a Chrona source entry changes after proposal creation but before invoice issuance, Summa must detect the source-version mismatch and require review.
+
+It must not silently issue from stale assumptions.
+
+## INV-CHR-009 Grouping rules
+
+Summa shall support deterministic grouping of time into invoice lines by configurable dimensions such as:
+
+- Project
+- Engagement
+- Person/role
+- Work category
+- Rate
+- Service date range
+
+The grouping policy used shall be visible and reproducible.
+
+## INV-CHR-010 Underlying entry traceability
+
+A grouped line must still retain links to all contributing Chrona entries.
+
+## INV-CHR-011 Partial billing of source work
+
+If Summa later supports partially billing one source entry, the unbilled quantity and billed quantity must be explicit and reconcile exactly.
+
+Do not implement partial source consumption through hidden arithmetic.
+
+## INV-CHR-012 Post-invoice time correction
+
+Corrections to Chrona entries after invoicing shall not rewrite the issued invoice.
+
+They shall create an explicit billing review obligation if the change may require a credit, supplemental invoice, or no action.
+
+---
+
+# 7. Rate and Pricing Resolution
+
+## INV-RATE-001 Explicit rate provenance
+
+Every non-zero rate used on an invoice line shall record where the rate came from.
+
+Examples:
+
+- Invoice override
+- Engagement agreement
+- Project agreement
+- Customer default
+- Role rate
+- Person rate
+- System default
+
+## INV-RATE-002 Deterministic precedence
+
+Rate resolution precedence shall be explicit and deterministic.
+
+The implementation must not choose among multiple applicable rates arbitrarily.
+
+## INV-RATE-003 Rate snapshot
+
+The resolved rate used for an issued invoice shall be snapshotted.
+
+Future rate changes must not alter historical invoices.
+
+## INV-RATE-004 Human override
+
+Authorized users may override a proposed rate before issuance.
+
+The override must record:
+
+- Previous rate
+- New rate
+- Actor
+- Timestamp
+- Reason when required
+- Source/provenance
+
+## INV-RATE-005 Missing rate blocks readiness
+
+If a required rate cannot be resolved, the invoice proposal shall not become ReadyForReview or Issued until the ambiguity is resolved.
+
+Agents must not invent a rate.
+
+## INV-RATE-006 Zero-priced lines
+
+Zero-priced informational lines may be allowed only when explicitly supported by policy.
+
+They must not be mistaken for missing pricing.
+
+---
+
+# 8. Discounts, Adjustments, Taxes, Credits, and Deposits
+
+## INV-ADJ-001 Discounts are explicit
+
+Support at least:
+
+- Line fixed-amount discount
+- Line percentage discount
+- Invoice fixed-amount discount
+- Invoice percentage discount
+
+A discount must not be represented by silently changing a unit rate when the business fact is a discount.
+
+## INV-ADJ-002 Discount reason
+
+Material discounts should support a reason and authorization provenance.
+
+## INV-ADJ-003 Adjustments are typed
+
+Invoice adjustments must be typed rather than stored as arbitrary signed numbers.
+
+Examples:
+
+- Discount
+- Surcharge
+- Credit applied
+- Deposit applied
+- Retainer applied
+- Tax
+
+## INV-ADJ-004 No hidden negative line hacks
+
+Credits and corrections should not be modeled as arbitrary negative invoice lines when a proper credit-memo or adjustment concept exists.
+
+## INV-ADJ-005 Tax capability is explicit
+
+Sales/VAT/GST tax calculation may remain deferred for the first production slice, consistent with earlier Summa scope decisions.
+
+However, the model shall leave room for:
+
+- Taxable and non-taxable lines
+- Tax category/code
+- Customer tax-exempt status
+- Jurisdiction
+- Tax rate source
+- Tax amount
+- Tax-inclusive or tax-exclusive pricing
+- Tax evidence/reference
+
+Summa must not infer tax obligations from incomplete data.
+
+## INV-ADJ-006 Deposit application
+
+Applying a deposit or retainer to an invoice shall be an explicit financial operation with its own accounting consequence and provenance.
+
+## INV-ADJ-007 Customer credits
+
+Available customer credits may be proposed for application but require explicit review under configured policy.
+
+---
+
+# 9. Payment Terms and Due Dates
+
+## INV-TERM-001 Supported terms
+
+Support at least:
+
+- Due on receipt
+- Net 7
+- Net 15
+- Net 30
+- Net 45
+- Net 60
+- Explicit custom due date
+
+## INV-TERM-002 Terms precedence
+
+Use deterministic precedence:
+
+1. Invoice-specific terms
+2. Engagement/project terms
+3. Customer default terms
+4. Organization default terms
+
+## INV-TERM-003 Snapshot terms
+
+The terms used to derive an issued invoice due date shall be retained with the invoice.
+
+## INV-TERM-004 Due-date calculation is deterministic
+
+Due-date calculation shall be explicit and tested.
+
+Calendar-date behavior must not depend on browser locale or timezone.
+
+## INV-TERM-005 Business-day rules are explicit
+
+If future terms support business days, weekends, or holidays, that behavior must be explicit and versioned.
+
+It must not be inferred implicitly.
+
+---
+
+# 10. Invoice Numbering
+
+## INV-NUM-001 Separate ID and number
+
+Internal invoice IDs and customer-visible invoice numbers are separate concepts.
+
+## INV-NUM-002 Number assigned at issuance
+
+A final invoice number should normally be assigned as part of the successful issuance transition, not merely when a draft is created.
+
+## INV-NUM-003 Uniqueness
+
+Invoice numbers must be unique within their configured numbering scope.
+
+## INV-NUM-004 Numbering scope
+
+Configuration shall be able to define whether a sequence is scoped by:
+
+- Legal entity
+- Organization
+- Fiscal/calendar year
+- Numbering series
+
+## INV-NUM-005 Numbering format
+
+Number format shall be configurable.
+
+Example:
+
+EF-2026-0001
+
+## INV-NUM-006 Atomic allocation
+
+Number allocation must be concurrency-safe and atomic with issuance.
+
+Two simultaneous issuance attempts must not receive the same number.
+
+## INV-NUM-007 Never reuse issued numbers
+
+Once assigned to a successfully issued invoice, an invoice number shall never be reused, including after voiding.
+
+## INV-NUM-008 Gap handling
+
+Uniqueness, auditability, and non-reuse are more important than artificial gaplessness.
+
+Any numbering policy requiring gapless sequences must be explicitly configured and proven safe.
+
+## INV-NUM-009 Manual override
+
+If manual invoice-number override is permitted before issuance, it must require appropriate capability and collision validation.
+
+After issuance it is immutable.
+
+---
+
+# 11. Draft and Proposal Workflow
+
+## INV-DRAFT-001 Proposal is not an invoice commitment
+
+An invoice proposal may be generated by Summa, Chrona integration, or an agent without creating a receivable or ledger entry.
+
+## INV-DRAFT-002 Drafts are editable
+
+Drafts may change:
+
+- Customer
+- Lines
+- Quantity
+- Rate
+- Description
+- Terms
+- Dates
+- Dimensions
+- Notes
+- Delivery recipients
+- Template choice
+
+subject to domain validation.
+
+## INV-DRAFT-003 Draft persistence
+
+Draft work shall survive:
+
+- Browser refresh
+- Navigation
+- Temporary connection loss
+- Session interruption
+
+Authoritative persisted draft state must ultimately follow GitHub storage requirements.
+
+## INV-DRAFT-004 Optimistic concurrency
+
+Draft updates must use explicit versioning.
+
+A stale draft must not overwrite newer work silently.
+
+## INV-DRAFT-005 Conflict resolution
+
+When concurrent draft edits conflict, Summa shall surface the conflict and preserve both versions or require explicit reconciliation.
+
+## INV-DRAFT-006 Readiness assessment
+
+Before an invoice can become ReadyForReview, Summa shall evaluate completeness.
+
+Potential blockers include:
+
+- Missing customer
+- Inactive customer
+- Missing invoice lines
+- Unresolved rate
+- Invalid revenue account
+- Invalid currency
+- Missing required PO/reference
+- Invalid or missing payment terms
+- Invalid due date
+- Source-version conflict
+- Source already invoiced
+- Missing authorization
+- Closed accounting period
+- Invalid totals
+- Missing legal invoice fields
+- Rendering failure when rendering is required for readiness
+
+## INV-DRAFT-007 Readiness explains blockers
+
+Readiness failures must identify what is missing and what action will resolve it.
+
+---
+
+# 12. Review and Approval
+
+## INV-REV-001 Exact customer preview
+
+Before issuance, the user shall be able to preview the customer-facing invoice based on the same semantic invoice snapshot and print template that will be used for issuance.
+
+## INV-REV-002 Review exposes provenance
+
+Review shall show where invoice lines came from.
+
+For example:
+
+Architecture Assessment
+22.5 hours at $275/hour
+
+Sources:
+- Chrona TE-421
+- Chrona TE-422
+- Chrona TE-430
+
+## INV-REV-003 Review exposes assumptions
+
+Any non-trivial assumption made by an agent or integration shall be visible before issuance.
+
+## INV-REV-004 Review exposes changes
+
+If the proposal was modified after generation, the review should make material human or agent changes discoverable.
+
+## INV-REV-005 Human approval boundary
+
+By default, invoice issuance remains a human-approved financial commitment.
+
+Agents may prepare invoices but may not issue them silently.
+
+A future explicit policy may authorize narrower automated issuance, but such policy must itself be represented as a capability/authority rule.
+
+## INV-REV-006 Approval is version-specific
+
+Approval applies to a specific invoice version.
+
+Any material change after approval invalidates the prior approval and requires re-review.
+
+## INV-REV-007 Approval provenance
+
+Record:
+
+- Who approved
+- When
+- Approved version
+- Correlation/execution ID
+- Any required reason or policy reference
+
+---
+
+# 13. Issuance
+
+## INV-ISS-001 Issuance is an explicit command
+
+Invoice issuance shall occur only through an explicit legal domain transition such as IssueInvoice.
+
+## INV-ISS-002 Atomic business outcome
+
+Successful issuance shall atomically establish the authoritative business facts required for a valid issued invoice, including:
+
+- Final immutable invoice snapshot
+- Final invoice number
+- Receivable obligation
+- Required posted journal entry
+- Audit event
+- Source-consumption/finalization links
+- Render metadata/snapshot required to preserve the exact customer document
+
+If atomicity across external artifact storage is not technically possible, the financial commit must preserve sufficient immutable data to reproduce the exact issued document and create an explicit artifact-finalization obligation.
+
+## INV-ISS-003 No issued invoice without accounting
+
+An issued invoice cannot exist without its corresponding valid accounting consequence.
+
+## INV-ISS-004 No accounting without issued invoice
+
+The normal IssueInvoice operation must not leave an AR/revenue posting whose corresponding invoice issuance failed.
+
+## INV-ISS-005 Idempotent issuance
+
+Retrying the same issuance command shall return or resolve to the same invoice issuance result rather than creating duplicates.
+
+## INV-ISS-006 Closed-period protection
+
+An invoice may not post into a closed or locked accounting period without a legal privileged correction/reopen workflow.
+
+## INV-ISS-007 Positive invoice requirement
+
+A normal invoice must have a positive amount due before application of existing credits/deposits.
+
+Negative customer corrections should use credit-memo or other explicit correction concepts.
+
+## INV-ISS-008 At least one substantive line
+
+An invoice must contain at least one valid substantive line unless a future explicit document type allows otherwise.
+
+## INV-ISS-009 Customer must be billable
+
+The customer must exist and be in a state that permits billing.
+
+## INV-ISS-010 Revenue account validity
+
+Every revenue-bearing line must resolve to a valid account or accounting rule before issuance.
+
+## INV-ISS-011 Source consistency
+
+All source references required for billing must still be valid at the expected version at issuance time.
+
+## INV-ISS-012 Totals revalidated
+
+Summa shall recalculate and validate all invoice totals immediately before commit.
+
+## INV-ISS-013 Issue timestamp and business date are distinct
+
+Record exact issuance timestamp separately from issue date and accounting date.
+
+---
+
+# 14. Accounting Consequences
+
+## INV-ACC-001 Accrual accounting remains authoritative
+
+For normal service invoices, issuance creates the accrual accounting consequence.
+
+Typical example:
+
+Debit Accounts Receivable
+Credit Revenue
+
+## INV-ACC-002 Journal entries preserve invoice linkage
+
+The generated journal entry shall reference the invoice ID and invoice number.
+
+The invoice shall reference the generated journal entry.
+
+## INV-ACC-003 Line-level accounting traceability
+
+Where multiple revenue accounts or dimensions are used, invoice-line accounting must remain traceable to the responsible journal lines.
+
+## INV-ACC-004 Credits and deposits post separately
+
+Applying deposits, credits, write-offs, or refunds must create their own explicit accounting events rather than mutating the original issuance posting.
+
+## INV-ACC-005 Reconciliation
+
+At all times, invoice receivable projections must reconcile with the appropriate AR control balance within the defined accounting scope.
+
+## INV-ACC-006 Accounting explanation
+
+The UI should be able to explain generated accounting entries in business language on demand.
+
+---
+
+# 15. Document Rendering and Folio
+
+## INV-DOC-001 Canonical semantic invoice document
+
+Summa shall create a canonical customer-facing invoice document model from the immutable invoice snapshot.
+
+## INV-DOC-002 Folio presentation
+
+The print/PDF representation shall use Folio components and print primitives wherever they can satisfy the requirement.
+
+## INV-DOC-003 Summa does not become a print-layout engine
+
+Pagination, print styling, repeated headers/footers, and page composition belong to Folio and browser/rendering infrastructure rather than Summa domain logic.
+
+## INV-DOC-004 Required customer-visible content
+
+The rendered invoice shall support at least:
+
+- Issuer legal/display name
+- Issuer contact/remit information
+- Customer billing name/address
+- Invoice number
+- Issue date
+- Due date
+- Payment terms
+- PO/reference fields
+- Project/engagement description where appropriate
+- Service period
+- Line descriptions
+- Quantity/unit
+- Rate
+- Line amount
+- Discounts
+- Taxes when applicable
+- Credits/deposits applied
+- Subtotal
+- Total
+- Amount due
+- Payment/remittance instructions
+- Customer-visible notes
+- Page numbering when multiple pages require it
+
+## INV-DOC-005 Professional multipage behavior
+
+Long invoices must render professionally across pages.
+
+Requirements include:
+
+- No clipped content
+- Repeating table headers where supported
+- Sensible row fragmentation behavior
+- Totals kept together where practical
+- Footer/header behavior appropriate for multipage invoices
+- No overlapping page content
+- Printable margins
+- Correct landscape/portrait behavior if a future template requires it
+
+## INV-DOC-006 Exact issued-document preservation
+
+Historical issued invoices must not visually change when:
+
+- Customer data changes
+- Company branding changes
+- CSS changes
+- Folio changes
+- Template defaults change
+
+Preserve an immutable render snapshot or enough immutable versioned material to reproduce the exact issued representation.
+
+## INV-DOC-007 Template identity
+
+Every issued invoice shall record:
+
+- Template identifier
+- Template version
+- Render profile/capability tier where relevant
+- Renderer version where deterministic PDF output depends on it
+
+## INV-DOC-008 Artifact checksum
+
+Generated invoice artifacts should record a cryptographic content hash so later retrieval can detect unexpected alteration.
+
+## INV-DOC-009 Artifact metadata
+
+Store at least:
+
+- Invoice ID
+- Artifact type
+- Media type
+- Stable URL/reference
+- Content hash
+- Size
+- Created timestamp
+- Renderer/template version
+- Generation status
+
+## INV-DOC-010 HTML
+
+Summa shall support clean semantic HTML invoice output.
+
+## INV-DOC-011 PDF
+
+Summa shall support PDF generation suitable for customer delivery and archival.
+
+## INV-DOC-012 Machine-readable invoice JSON
+
+Summa shall support a versioned machine-readable invoice JSON representation for integrations, audit, and future electronic invoicing adapters.
+
+## INV-DOC-013 Binary artifacts outside GitHub financial paths
+
+PDF binaries shall not be embedded into ordinary authoritative financial JSON records.
+
+## INV-DOC-014 Render failure before issuance
+
+If the configured issuance policy requires a verified customer document before financial commitment, render validation failure shall block issuance.
+
+## INV-DOC-015 Render failure after issuance
+
+If a binary PDF finalization step occurs after the financial transaction and fails, the invoice remains issued, delivery is blocked or marked failed, and an artifact-generation obligation is created.
+
+No duplicate invoice may be generated by retrying artifact creation.
+
+---
+
+# 16. Invoice Document Accessibility
+
+## INV-A11Y-001 Semantic structure
+
+Invoice HTML shall use semantic document and table structure.
+
+## INV-A11Y-002 Text remains text
+
+Invoices must not be rendered as image-only documents.
+
+Customer-visible text should remain selectable/searchable in HTML and PDF where the renderer supports it.
+
+## INV-A11Y-003 Contrast
+
+Invoice templates shall meet applicable contrast requirements.
+
+## INV-A11Y-004 No color-only meaning
+
+Financial state or emphasis must not depend solely on color.
+
+## INV-A11Y-005 Reading order
+
+The invoice structure shall preserve logical reading order for assistive technology.
+
+## INV-A11Y-006 Scalable layout
+
+Invoice HTML preview shall remain usable with text zoom and browser zoom.
+
+## INV-A11Y-007 Accessible tables
+
+Line-item tables shall expose useful row/column relationships to screen readers.
+
+## INV-A11Y-008 PDF accessibility validation
+
+Where the selected PDF renderer supports tagged accessible output, automated or manual validation should be included.
+
+If a renderer cannot preserve required accessibility semantics, that limitation must be explicit rather than hidden.
+
+---
+
+# 17. Invoice Editor UI
+
+## INV-UI-001 Fast primary flow
+
+The primary creation flow should remain:
+
+Select customer
+-> select/import billable sources
+-> edit lines
+-> set terms/references
+-> review
+-> issue
+
+## INV-UI-002 Smart defaults
+
+Defaults should come from authoritative customer, engagement, project, and organization configuration.
+
+## INV-UI-003 Defaults are proposals
+
+Defaults must remain visible and reviewable.
+
+They must not silently override explicit invoice facts.
+
+## INV-UI-004 Inline totals
+
+The editor should update provisional totals immediately as lines change while clearly relying on domain validation for authoritative totals.
+
+## INV-UI-005 Line editing
+
+Users shall be able to:
+
+- Add line
+- Remove safe draft line
+- Reorder lines
+- Edit description
+- Edit quantity
+- Edit rate when authorized
+- Apply explicit discount
+- Change dimensions
+- Inspect source provenance
+
+## INV-UI-006 Source-linked lines are distinguishable
+
+The UI should distinguish manually entered lines from source-derived lines.
+
+## INV-UI-007 Source detail drill-down
+
+A user should be able to inspect the originating Chrona entries or other source references without leaving the invoice workflow unnecessarily.
+
+## INV-UI-008 Preview toggle
+
+The user should be able to move quickly between editor and exact customer preview.
+
+## INV-UI-009 Keyboard operation
+
+Invoice creation and review must be efficient by keyboard.
+
+## INV-UI-010 Mobile review
+
+Mobile support shall prioritize:
+
+- Review proposal
+- Inspect source lines
+- Preview invoice
+- Approve/return
+- Issue when authorized
+- Resend
+- View payment/collection state
+
+Complex line editing may remain desktop-first initially but must not be inaccessible on mobile.
+
+## INV-UI-011 Unsaved/conflicting changes
+
+The UI must clearly indicate save, sync, conflict, and stale-version conditions.
+
+## INV-UI-012 Domain-driven actions
+
+The UI shall render actions from domain capabilities, not maintain an independent hand-coded validity matrix.
+
+---
+
+# 18. Delivery and Email
+
+## INV-DEL-001 Issuance and delivery are separate
+
+Issuing an invoice is a financial operation.
+
+Sending an invoice is a communication operation.
+
+A sending failure shall not roll back issuance.
+
+## INV-DEL-002 Recipient model
+
+An invoice delivery may contain:
+
+- Primary recipient
+- Additional To recipients
+- CC recipients
+- Reply-to identity
+- Delivery channel
+
+Recipient addresses used for an issued delivery should be retained as a delivery snapshot.
+
+## INV-DEL-003 Email content versioning
+
+The subject/body template version used for a send shall be traceable.
+
+## INV-DEL-004 Attachment or link policy
+
+Summa shall support configurable delivery policies such as:
+
+- PDF attachment
+- Secure/stable invoice link
+- Both
+
+## INV-DEL-005 Manual send
+
+If the invoice is sent outside Summa, an authorized user may record a manual delivery event without pretending the system sent it.
+
+## INV-DEL-006 Resend
+
+Resending an invoice must create a new delivery attempt against the same issued invoice.
+
+It must not create a new invoice or new accounting entry.
+
+## INV-DEL-007 Delivery attempt history
+
+Record each attempt with:
+
+- Attempt ID
+- Invoice ID
+- Timestamp
+- Actor/process
+- Recipient snapshot
+- Provider/channel
+- Outcome
+- Provider message/reference ID when available
+- Failure classification
+- Retry relationship
+
+## INV-DEL-008 Bounce/failure handling
+
+Failed or bounced delivery creates an operational obligation and appears in the attention queue.
+
+## INV-DEL-009 Safe retries
+
+Delivery retries shall be idempotent at the application level where provider behavior permits.
+
+## INV-DEL-010 No false delivery claims
+
+Summa must distinguish:
+
+- Queued
+- Sent to provider
+- Provider accepted
+- Delivered when provider confirms delivery
+
+Do not label an invoice Delivered merely because an API call succeeded.
+
+---
+
+# 19. Payment Instructions
+
+## INV-PAYINST-001 Configurable payment instructions
+
+Invoices shall support organization/customer-specific payment instruction profiles.
+
+## INV-PAYINST-002 Secrets stay out of ordinary financial records
+
+Sensitive banking credentials or secrets must not be stored directly in invoice JSON, logs, or source-controlled configuration merely to render an invoice.
+
+## INV-PAYINST-003 Historical fidelity
+
+The customer-facing issued document must preserve the exact remittance instructions actually shown, either through the immutable artifact snapshot or a secure versioned reference.
+
+## INV-PAYINST-004 Payment methods displayed
+
+The invoice may display supported payment methods such as ACH, check, wire, card-link, or other configured methods without requiring Summa itself to process the payment.
+
+---
+
+# 20. Corrections, Credits, Voids, and Revisions
+
+## INV-COR-001 Draft correction
+
+Draft invoices may be edited normally.
+
+## INV-COR-002 Issued invoice immutability
+
+Material fields on an issued invoice shall not be edited in place.
+
+## INV-COR-003 Correction choices are explicit
+
+Post-issue correction shall use an explicit legal mechanism such as:
+
+- Credit memo
+- Supplemental/correcting invoice
+- Void and reissue
+- Write-off
+- Refund
+- Payment reversal/reallocation
+
+## INV-COR-004 Original remains visible
+
+The original issued invoice must remain available in history after any correction.
+
+## INV-COR-005 Related-document graph
+
+Corrections shall preserve relationships such as:
+
+- CreditsInvoice
+- ReplacesInvoice
+- CorrectsInvoice
+- VoidOf
+- ReissueOf
+- RefundOf
+
+## INV-COR-006 Void restrictions
+
+An invoice with allocated payments, applied credits, or later dependent activity must not be blindly voided.
+
+The domain shall require dependent activity to be legally resolved or use a correcting workflow.
+
+## INV-COR-007 Void accounting
+
+Voiding an issued invoice creates compensating accounting consequences rather than deleting the original posting.
+
+## INV-COR-008 Credit memo
+
+Credit memos shall have their own identity, lifecycle, accounting, application history, and document representation.
+
+## INV-COR-009 Partial credit
+
+A credit may apply to selected invoice lines or amounts.
+
+Traceability should identify what was credited.
+
+## INV-COR-010 Reissue
+
+A reissued invoice shall receive a legal identity/number according to the configured numbering policy and retain an explicit relationship to the original.
+
+## INV-COR-011 Historical artifact retention
+
+Voiding or crediting an invoice must not delete its previously issued document artifacts.
+
+---
+
+# 21. Settlement and Payment Interaction
+
+## INV-SET-001 Outstanding amount is derived
+
+AmountOutstanding shall be derived from authoritative invoice amount, payments, credits, deposits, refunds/reversals, and write-offs according to the accounting model.
+
+## INV-SET-002 Partial payments
+
+An invoice may receive multiple partial payments.
+
+## INV-SET-003 One payment across invoices
+
+A payment may be allocated across multiple invoices.
+
+## INV-SET-004 Overpayments
+
+Overpayment shall remain unapplied cash/customer credit according to accounting policy and must not become revenue automatically.
+
+## INV-SET-005 Payment reversal
+
+A reversed payment must reopen the appropriate invoice balance and receivable obligation.
+
+## INV-SET-006 Settlement history
+
+The invoice shall expose a complete settlement timeline.
+
+## INV-SET-007 Paid is factual
+
+An invoice becomes Paid only when the derived outstanding amount equals zero under the defined accounting rules.
+
+---
+
+# 22. Recurring Invoice Templates
+
+These requirements are model-preservation/future-facing and do not override the earlier decision to defer recurring invoices from the first slice.
+
+## INV-REC-001 Recurring definition is a template, not an invoice
+
+A recurring billing schedule shall create invoice proposals or drafts, not silently create issued financial commitments unless a later explicit automation policy authorizes it.
+
+## INV-REC-002 Recurring template fields
+
+A recurring template may define:
+
+- Customer
+- Schedule
+- Lines
+- Pricing rules
+- Terms
+- Delivery defaults
+- Start/end conditions
+- Next generation date
+
+## INV-REC-003 Template changes do not rewrite prior invoices
+
+Editing the recurring template affects future proposals only.
+
+## INV-REC-004 Duplicate schedule protection
+
+Retries or scheduler restarts must not generate duplicate invoice proposals for the same scheduled occurrence.
+
+---
+
+# 23. Multi-Currency Model Preservation
+
+The initial production scope may remain single-currency, consistent with earlier requirements.
+
+## INV-FX-001 Currency stays explicit from day one
+
+Do not remove the Currency field simply because only USD is initially supported.
+
+## INV-FX-002 Mixed-currency invoice prohibited initially
+
+An invoice shall not contain lines in multiple currencies in the initial scope.
+
+## INV-FX-003 Future conversion must preserve rates
+
+If foreign-currency invoicing is later introduced, exchange-rate source, rate, timestamp/date, functional-currency amounts, and realized/unrealized effects must be explicit and auditable.
+
+No implicit browser or live-market conversion is permitted.
+
+---
+
+# 24. International and Legal Field Flexibility
+
+## INV-INTL-001 Configurable legal fields
+
+Invoice templates and organization/customer configuration should allow jurisdiction-specific fields without requiring arbitrary schema hacks.
+
+Examples may include:
+
+- Tax registration number
+- VAT ID
+- Business registration number
+- Customer tax ID
+- Statutory invoice wording
+
+## INV-INTL-002 Locale affects presentation, not financial facts
+
+Locale may control formatting of dates/numbers/addresses in the customer document, but authoritative amounts and business dates remain locale-independent values.
+
+## INV-INTL-003 No invented compliance
+
+Summa must not claim that an invoice satisfies a jurisdiction's tax/e-invoicing law merely because required-looking fields are present.
+
+Compliance must be explicitly implemented and verified for that jurisdiction.
+
+---
+
+# 25. Agent-Assisted Invoice Generation
+
+## INV-AGENT-001 Natural-language proposal creation
+
+An authorized agent interface may accept requests such as:
+
+"Invoice Acme for all approved architecture work from September 1 through September 15 at the contracted rate and include approved reimbursable expenses."
+
+The result shall be a proposal, not an unreviewed financial commitment by default.
+
+## INV-AGENT-002 Agent uses domain commands
+
+Agents shall use Summa domain capabilities and legal transitions.
+
+They may not edit invoice JSON directly as a substitute.
+
+## INV-AGENT-003 No invented facts
+
+Agents must not invent:
+
+- Customer
+- Rate
+- Terms
+- PO number
+- Tax treatment
+- Source work
+- Payment instructions
+- Revenue account
+
+Missing required facts become explicit blockers/questions.
+
+## INV-AGENT-004 Explanation
+
+Agent proposals shall explain concisely:
+
+- What sources were selected
+- What sources were excluded and why when material
+- How hours/quantities were grouped
+- How rates were resolved
+- What terms were used
+- What assumptions remain
+
+## INV-AGENT-005 Human modifications retained
+
+When a human changes an agent-generated proposal, preserve provenance for the proposal and the material changes.
+
+## INV-AGENT-006 Agent identity
+
+Record agent identity, execution ID, model/provider metadata when available, and correlation ID according to Summa/Praxis telemetry rules.
+
+## INV-AGENT-007 No autonomous financial surprise
+
+Without an explicit authorization policy, agents shall not silently:
+
+- Issue invoice
+- Void invoice
+- Apply credit
+- Write off balance
+- Refund money
+- Reverse payment
+- Change customer terms
+- Change a contracted rate
+
+## INV-AGENT-008 Unknown effects block unsafe action
+
+If Summa cannot establish the effects or required authority of a proposed agent action, it must not execute the financial transition.
+
+---
+
+# 26. Audit and Provenance
+
+## INV-AUD-001 Material events
+
+Audit at least:
+
+- Proposal generated
+- Draft created
+- Source imported
+- Source reserved
+- Source released
+- Line added
+- Line removed
+- Material line changed
+- Rate overridden
+- Terms changed
+- Customer/reference changed
+- Submitted for review
+- Approved
+- Returned for correction
+- Issued
+- Artifact generated
+- Delivery attempted
+- Delivery failed
+- Delivery succeeded/confirmed
+- Payment applied
+- Credit applied
+- Deposit applied
+- Dispute opened/closed
+- Follow-up recorded
+- Invoice voided
+- Credit memo created/applied
+- Write-off
+- Refund
+- Payment reversal
+
+## INV-AUD-002 Audit event fields
+
+Material audit events should include:
+
+- Actor
+- Actor type
+- Timestamp
+- Entity ID
+- Entity version
+- Command/action
+- Outcome
+- Source system
+- Correlation ID
+- Execution ID where relevant
+- Before/after references or changed-field summary where appropriate
+- Reason when required
+
+## INV-AUD-003 Append-only behavior
+
+Audit history shall not be edited through normal application operations.
+
+## INV-AUD-004 Provenance survives grouping
+
+Grouping multiple source records into one invoice line must not destroy underlying source provenance.
+
+## INV-AUD-005 Artifact provenance
+
+The invoice record shall link to the artifact metadata and the artifact metadata shall link back to the exact invoice version.
+
+---
+
+# 27. Concurrency and Idempotency
+
+## INV-CON-001 Invoice aggregate version
+
+Important invoice operations shall require an expected aggregate version.
+
+## INV-CON-002 Stale issue rejected
+
+Issuing based on a stale invoice version must fail safely.
+
+## INV-CON-003 Concurrent issue protection
+
+Two users/agents must not successfully issue the same draft twice.
+
+## INV-CON-004 Number race protection
+
+Concurrent number assignment must not create duplicate customer invoice numbers.
+
+## INV-CON-005 Source race protection
+
+Concurrent invoice proposals/issuance must not bill the same Chrona work twice.
+
+## INV-CON-006 Idempotency key
+
+Externally triggered invoice creation/issuance operations shall support idempotency keys.
+
+## INV-CON-007 Existing-result behavior
+
+A duplicate request with the same idempotency identity should return the existing semantic result where safe instead of creating a second invoice.
+
+## INV-CON-008 Conflicting duplicate request
+
+If the same idempotency key is reused with materially different input, reject it as a conflict rather than guessing intent.
+
+---
+
+# 28. Failure Handling
+
+## INV-FAIL-001 No partial financial operations
+
+A failure may not leave:
+
+- Issued invoice without journal entry
+- Journal entry without issued invoice
+- Source time consumed without invoice
+- Duplicate source consumption
+- Half-applied credit
+- Half-generated numbering state
+
+## INV-FAIL-002 Clear errors
+
+Invoice errors shall explain:
+
+- What failed
+- Why it failed when known
+- What remains unchanged
+- Whether retry is safe
+- What the user should do next
+
+## INV-FAIL-003 Integration failure is explicit
+
+Failures in Chrona, email, artifact storage, or other integrations shall be represented as explicit integration state and obligations.
+
+## INV-FAIL-004 Retry classification
+
+Failures should distinguish:
+
+- Retryable
+- Permanent/validation failure
+- Authorization failure
+- Concurrency conflict
+- External dependency unavailable
+- Integrity violation
+
+## INV-FAIL-005 Financial integrity wins over convenience
+
+If Summa cannot establish valid state, it must reject the financial command rather than guess.
+
+---
+
+# 29. Search, Reporting, and Operational Views
+
+## INV-OPS-001 Search
+
+Invoices shall be searchable by at least:
+
+- Invoice number
+- Customer
+- Amount
+- Date
+- Project
+- Engagement
+- PO/reference
+- Source ID
+- Delivery recipient
+
+## INV-OPS-002 Receivables view
+
+Issued invoices with outstanding balances shall appear in receivables projections.
+
+## INV-OPS-003 Aging uses outstanding amount
+
+Aging reports shall use remaining outstanding amount, not original invoice total.
+
+## INV-OPS-004 Invoice timeline
+
+Every invoice shall present a human-readable activity timeline combining relevant domain, accounting, delivery, payment, and follow-up events.
+
+## INV-OPS-005 Drill-down
+
+Users should be able to navigate:
+
+Invoice
+-> journal entry
+-> journal lines
+
+and:
+
+Invoice
+-> source lines
+-> Chrona/source records
+
+and:
+
+Invoice
+-> payments/credits
+-> allocation details
+
+## INV-OPS-006 Attention queue
+
+Invoice-related obligations shall feed the unified Summa attention queue.
+
+Examples:
+
+- Proposal ready
+- Approval required
+- Source conflict
+- Missing PO
+- Artifact generation failed
+- Delivery failed
+- Invoice overdue
+- Payment promise missed
+- Dispute unresolved
+
+---
+
+# 30. Security and Privacy
+
+## INV-SEC-001 Capability-based authorization
+
+At minimum distinguish capabilities such as:
+
+- CreateInvoiceProposal
+- CreateDraftInvoice
+- EditDraftInvoice
+- OverrideRate
+- ApproveInvoice
+- IssueInvoice
+- DeliverInvoice
+- ResendInvoice
+- VoidInvoice
+- CreateCreditMemo
+- ApplyCredit
+- WriteOffReceivable
+- RefundCustomer
+- ViewSensitivePaymentInstructions
+
+## INV-SEC-002 Authentication is not authorization
+
+A valid GitHub token does not automatically grant financial authority.
+
+## INV-SEC-003 Least sensitive data
+
+Store only customer and financial information required for billing/accounting operations.
+
+## INV-SEC-004 Secret exclusion
+
+Do not store:
+
+- GitHub tokens
+- Provider secrets
+- Full card data
+- Authentication secrets
+
+inside invoice records, audit logs, or rendered debugging output.
+
+## INV-SEC-005 Logging
+
+Logs must not expose sensitive payment instructions, authentication tokens, or unnecessary customer data.
+
+## INV-SEC-006 Artifact access
+
+Invoice artifact storage shall support access appropriate to financial documents and must not assume that a publicly guessable URL is sufficient protection.
+
+---
+
+# 31. Schema and Integration Contracts
+
+## INV-CONTRACT-001 Versioned invoice schema
+
+The authoritative invoice record shall have an explicit schema version.
+
+## INV-CONTRACT-002 Versioned commands
+
+External invoice commands shall have explicit versioned request/response contracts.
+
+## INV-CONTRACT-003 Domain operations over generic CRUD
+
+Prefer operations such as:
+
+- GenerateInvoiceProposal
+- CreateDraftInvoice
+- RefreshInvoiceProposal
+- SubmitInvoiceForReview
+- ApproveInvoice
+- IssueInvoice
+- GenerateInvoiceArtifact
+- DeliverInvoice
+- VoidInvoice
+- CreateCreditMemo
+- ApplyCreditMemo
+
+over generic arbitrary record patching.
+
+## INV-CONTRACT-004 Integration events
+
+Summa may publish explicit business events such as:
+
+- InvoiceProposed
+- InvoiceApproved
+- InvoiceIssued
+- InvoiceArtifactReady
+- InvoiceDeliveryFailed
+- InvoiceDelivered
+- InvoicePartiallyPaid
+- InvoicePaid
+- InvoiceVoided
+- CreditMemoIssued
+
+Events must be idempotent and versioned.
+
+## INV-CONTRACT-005 Ownership boundaries
+
+Integration contracts shall carry stable references and snapshots without allowing one application to reach into another application's internal authoritative storage and mutate it.
+
+---
+
+# 32. Export and Portability
+
+## INV-EXP-001 Invoice export
+
+Summa shall be able to export invoice data in:
+
+- CSV where tabular export is meaningful
+- Versioned JSON
+- HTML
+- PDF
+
+## INV-EXP-002 Export metadata
+
+Exports should identify:
+
+- GeneratedAt
+- Invoice ID
+- Invoice number
+- Invoice version
+- Schema version
+- Artifact/template version
+- Relevant filters for multi-invoice exports
+
+## INV-EXP-003 No lock-in
+
+A business must be able to reconstruct invoice history and migrate it to another accounting system without reverse-engineering proprietary binary state.
+
+---
+
+# 33. Performance and Usability
+
+## INV-PERF-001 Typical draft load
+
+Typical invoice drafts and previews should load quickly enough to support interactive daily billing work.
+
+## INV-PERF-002 Large invoice support
+
+Summa shall define and test a practical large-invoice scenario containing many lines/source records.
+
+The implementation must not assume every invoice has only a handful of lines.
+
+## INV-PERF-003 Incremental source loading
+
+Large source sets may use pagination/projections, but selecting and issuing must remain based on authoritative source identities and versions.
+
+## INV-PERF-004 Search/indexes are rebuildable
+
+Performance indexes may accelerate customer/source/invoice search but cannot become independent financial truth.
+
+---
+
+# 34. Required Validation and Test Scenarios
+
+Before comprehensive invoice generation is considered production-ready, automated and/or controlled scenario tests must cover at least the following.
+
+## Basic creation
+
+1. Manual fixed-fee invoice
+2. Hourly invoice from approved Chrona time
+3. Mixed hourly plus fixed-fee invoice
+4. Reimbursable expense invoice
+5. Milestone invoice proposal
+6. Invoice with customer PO
+7. Invoice with custom due date
+8. Invoice with percentage discount
+9. Invoice with fixed discount
+
+## Chrona provenance
+
+10. Multiple time entries grouped into one line
+11. Time entries split across lines by rate
+12. Source time changed after proposal
+13. Source time becomes non-billable before issuance
+14. Same time selected concurrently by two proposals
+15. Proposal cancelled and source reservation released
+16. Issuance retry does not invoice time twice
+17. Post-invoice source correction creates review obligation
+
+## Pricing
+
+18. Customer default rate
+19. Engagement-specific rate overrides customer default
+20. Authorized invoice rate override
+21. Missing rate blocks issuance
+22. Rate change after proposal causes explicit review
+
+## Numbering
+
+23. Sequential number assignment
+24. Two simultaneous issuances do not collide
+25. Retry returns same issued invoice
+26. Voided invoice number is never reused
+27. Manual override collision rejected
+
+## Accounting
+
+28. Invoice creates correct AR/revenue posting
+29. Multiple revenue accounts
+30. Closed-period issuance rejected
+31. Ledger and receivable reconcile
+32. Invoice source dimensions appear correctly in journal lines
+
+## Documents
+
+33. One-page invoice
+34. Multi-page invoice
+35. Very long description
+36. Many line items
+37. Large monetary values
+38. Folio print output has no clipping/overlap
+39. Historical invoice is unchanged after template update
+40. Historical invoice is unchanged after customer-address update
+41. PDF artifact hash verifies
+42. HTML remains semantic and readable without styling
+
+## Delivery
+
+43. Successful email/provider send
+44. Email failure after issuance
+45. Safe resend
+46. Manual external send recorded
+47. Bounce creates obligation
+48. Resend does not create a second invoice
+
+## Payments and corrections
+
+49. Full payment
+50. Partial payment
+51. Multiple payments
+52. One payment across multiple invoices
+53. Customer overpayment
+54. Deposit applied
+55. Credit memo
+56. Partial credit
+57. Payment reversal
+58. Write-off
+59. Refund
+60. Void unpaid invoice
+61. Attempted void with dependent payment requires resolution
+62. Void and reissue preserves relationship/history
+
+## Concurrency and failure injection
+
+63. Two users edit same draft
+64. Stale approval rejected
+65. Stale issuance rejected
+66. Process fails after validation but before commit
+67. Artifact storage unavailable
+68. Chrona unavailable
+69. GitHub write conflict
+70. Duplicate IssueInvoice delivered repeatedly
+71. Duplicate external event with same ID
+72. Same idempotency key with conflicting payload rejected
+
+## Security and authorization
+
+73. Unauthorized user cannot override rate
+74. Unauthorized user cannot issue
+75. Agent cannot directly bypass domain transition
+76. Agent missing required fact is blocked
+77. Secrets never appear in logs/artifacts unintentionally
+
+## Accessibility and responsive behavior
+
+78. Keyboard-only invoice creation/review
+79. Screen-reader line-item table
+80. Zoomed preview
+81. Mobile proposal review
+82. No color-only status
+83. PDF accessibility behavior validated for selected renderer capability
+
+Each scenario must verify all applicable dimensions:
+
+- Domain state
+- Capabilities
+- Obligations
+- Authoritative persisted state
+- Ledger consequences
+- Receivable consequences
+- Source provenance
+- Audit trail
+- Idempotency
+- Concurrency version
+- Customer document
+- Integration state
+
+---
+
+# 35. First Invoice Vertical Slice
+
+The first implementation slice should prove this exact end-to-end path:
+
+1. Select an existing customer.
+2. Query eligible approved Chrona billable time.
+3. Select a date range and engagement.
+4. Generate an invoice proposal.
+5. Group source time deterministically.
+6. Show source provenance for each line.
+7. Resolve and display rates.
+8. Allow authorized human edits.
+9. Set terms and due date.
+10. Preview the exact customer invoice through Folio.
+11. Approve the current invoice version.
+12. Issue the invoice.
+13. Allocate a unique invoice number atomically.
+14. Persist the immutable issued invoice snapshot.
+15. Create the receivable obligation.
+16. Post the AR/revenue journal entry.
+17. Finalize source-consumption references so time cannot be billed twice.
+18. Generate HTML/PDF artifact metadata.
+19. Attempt delivery.
+20. Show delivery outcome separately from issuance.
+21. Show the invoice in AR.
+22. Record a partial payment.
+23. Show derived outstanding balance and PartiallyPaid settlement state.
+24. Record the remaining payment.
+25. Show Paid settlement state.
+26. Verify trial balance and AR reconciliation.
+27. Preserve the exact original issued artifact and complete timeline.
+
+The slice is not complete merely because a PDF appears.
+
+It is complete only when the financial, source, document, audit, concurrency, and recovery behavior all agree.
+
+---
+
+# 36. Production Release Gate for Invoice Generation
+
+Invoice generation shall not be treated as production-ready until the implementation demonstrates:
+
+- Explicit Ordo state/capability model
+- Praxis/ROS work and verification compliance
+- GitHub authoritative persistence
+- Optimistic concurrency
+- Idempotent invoice issuance
+- Collision-safe invoice numbering
+- Chrona double-billing protection
+- Immutable issued invoice snapshot
+- Correct ledger posting
+- Receivable creation
+- Reconciliation
+- Exact customer preview
+- Folio-based print/PDF output
+- Historical document preservation
+- Delivery-state separation
+- Credit/void correction path
+- Audit provenance
+- Authorization boundaries
+- Agent approval boundaries
+- Accessibility checks
+- Required failure-injection scenarios
+- Export/escape-hatch support
+- No known invariant violations
+
+---
+
+# 37. Non-Goals for the First Invoice Slice
+
+The first slice does not need to become a full commercial billing platform.
+
+The following may remain deferred unless another accepted Summa requirement promotes them:
+
+- Payment processing
+- Card data storage
+- Full tax engine
+- Jurisdiction-specific e-invoicing compliance
+- Multi-currency accounting
+- Recurring automatic issuance
+- Complex subscription billing
+- Usage metering
+- Dunning automation
+- Customer self-service portal
+- Inventory billing
+- Purchase orders as an AP/procurement system
+- Full CRM capability
+
+The domain model must not prevent later integration of these capabilities.
+
+---
+
+# 38. Final Invariants
+
+The implementation must make the following statements mechanically true or mechanically verifiable:
+
+1. An issued invoice has exactly one immutable customer-facing invoice number.
+2. An issued invoice has a corresponding valid accounting consequence.
+3. Issuing the same invoice command repeatedly cannot create duplicate financial effects.
+4. One unit of Chrona billable work cannot be billed twice without an explicit correcting workflow.
+5. Issued customer-visible invoice facts cannot change silently.
+6. Customer, organization, rate, terms, and source facts used at issuance are preserved as snapshots or equivalent immutable versioned references.
+7. Payments, credits, deposits, write-offs, and refunds do not rewrite the original invoice.
+8. Paid and overdue are consequences of financial/date facts, not manually editable flags.
+9. Delivery failure does not undo financial issuance.
+10. A resend does not create a second invoice.
+11. A rendering/template change cannot alter historical issued invoices.
+12. An agent cannot bypass the same financial rules applied to a human.
+13. No unresolved required fact is silently guessed.
+14. Concurrent operations cannot allocate the same invoice number, source work, payment, or financial effect twice.
+15. Every material invoice transition has provenance.
+16. The ledger, receivable projection, invoice balance, and settlement history reconcile.
+17. A failure at any point leaves Summa in a known valid state or creates an explicit recovery obligation.
+18. The complete invoice history can be exported without proprietary lock-in.
+19. The customer-facing document can be traced to the exact invoice version that produced it.
+20. Financial correctness takes precedence over convenience.
+
+---
+
+# 39. Cross-Repository Follow-Up Requirements
+
+The following requirements belong primarily in their owning repositories but are dependencies of this Summa capability:
+
+## Folio
+
+Folio should provide or validate invoice-capable print primitives for:
+
+- Invoice document shell
+- Issuer/customer address blocks
+- Metadata/key-value block
+- Multipage line-item table
+- Money-aligned numeric columns
+- Totals block
+- Payment instructions
+- Notes
+- Repeated page header/footer where renderer capability allows
+- Page X of Y where renderer capability allows
+- Deterministic PDF generation profile
+- Accessibility-friendly semantic structure
+
+Summa must not implement private duplicate print components if Folio can own them generically.
+
+## Forma
+
+Forma should provide reusable interactive components needed by:
+
+- Customer selection
+- Date-range selection
+- Line editing
+- Money/rate input
+- Quantity input
+- Discount input
+- Selects
+- Tables
+- Status badges
+- Review panels
+- Modal/flyout workflows
+- Approval actions
+- Mobile-responsive invoice review
+
+Summa must keep financial domain behavior outside the reusable components.
+
+## Chrona
+
+Chrona integration must expose enough information to determine:
+
+- Approval
+- Billability
+- Customer/project/engagement
+- Service date
+- Quantity/time
+- Description
+- Rate/rate-key where owned by Chrona
+- Source identity
+- Source version
+- Invoicing/reservation state or integration acknowledgement
+
+## Praxis
+
+Praxis should be able to represent and validate the cross-repository work required to implement this vertical slice without making Summa authoritative for another repository's work state.
+
+---
+
+# 40. Requirement Review Checklist
+
+Before implementation begins, the implementation agent shall explicitly verify that the design answers all of the following:
+
+- What is the invoice aggregate?
+- Which states are stored versus derived?
+- How are capabilities calculated?
+- How is invoice numbering made concurrency-safe?
+- How is Chrona work reserved and finalized?
+- How are rates resolved and snapshotted?
+- How are drafts persisted?
+- What exact operation constitutes issuance?
+- How is issuance made idempotent?
+- How are GitHub multi-record changes committed safely?
+- What immutable data is retained for exact document reproduction?
+- How does Folio render the invoice?
+- Where are PDF binaries stored?
+- How are artifact hashes recorded?
+- What happens if artifact generation fails?
+- What happens if delivery fails?
+- What happens if Chrona changes during review?
+- What happens if two agents invoice the same work?
+- What happens if two humans issue at the same time?
+- What happens when an issued invoice is wrong?
+- How are payments, credits, deposits, write-offs, and refunds represented?
+- How does AR reconcile to the ledger?
+- How does the UI get legal actions from domain capabilities?
+- What may an agent do without human approval?
+- How are secrets kept out of GitHub financial records and logs?
+- How are customer documents made accessible?
+- How is the entire invoice history exported?
+- Which failure-injection tests prove the design is safe?
+
+No implementation should treat these questions as optional design notes. They are part of the invoice-generation acceptance boundary.
