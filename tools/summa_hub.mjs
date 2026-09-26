@@ -22,7 +22,7 @@ import { fileURLToPath } from "node:url";
 
 import { listRepos, main as rosHubMain } from "./ros_hub_cli.mjs";
 import {
-  dispatchRecord, legacyActorArguments, resolveHubActor, resolveRequester, spokeEnvironment
+  dispatchRecord, legacyActorArguments, parseJsonText, resolveHubActor, resolveRequester, spokeEnvironment
 } from "../lib/hub-identity.mjs";
 
 export const dispatchLogPath = (root) => path.join(root, ".ros", "hub", "dispatches.jsonl");
@@ -112,10 +112,14 @@ function option(args, name) {
   return args[index + 1];
 }
 
+// Identity JSON arrives as text: classified as text (contract 1.2 rule 1), so a
+// repeated member name or an unpaired surrogate is refused, never resolved.
 function jsonOption(args, name) {
   const value = option(args, name);
   if (value === undefined) return undefined;
-  try { return JSON.parse(value); } catch { throw new Error(`${name} must be a JSON object`); }
+  const parsed = parseJsonText(value, name);
+  if (!parsed.ok) throw new Error(parsed.error);
+  return parsed.value;
 }
 
 function values(args, names) {

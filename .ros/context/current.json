@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "agent:chatgpt",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-09-26T09:01:28.000Z",
+  "updatedAt": "2026-09-26T20:45:23.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -154,6 +154,31 @@
         "EXE-20260926T085503319Z-1bc9aa20"
       ],
       "completedAt": "2026-09-26T09:01:28.000Z"
+    },
+    {
+      "id": "FEAT-ECHELON-PROVENANCE-R12",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "lib/billing-record-provenance.mjs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/billing-record-provenance.test.mjs"
+        },
+        {
+          "type": "requirements",
+          "path": "docs/requirements/SUMMA-PROVENANCE.md"
+        }
+      ],
+      "updatedAt": "2026-09-26T20:45:23.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20260926T094830438Z-fe136d62"
+      ],
+      "completedAt": "2026-09-26T20:45:23.000Z"
     }
   ]
 }

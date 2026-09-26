@@ -2,7 +2,7 @@
 id: INV-PROV
 title: Summa Agent Provenance, Billing Traceability, and Hub Identity Requirements
 status: required
-version: 1.1.0
+version: 1.2.0
 owners:
   - summa
 created: 2026-09-26
@@ -43,6 +43,16 @@ provenance:
         model: unknown
         runtime: claude-code
       reason: "Contract revision 1.1: create semantics, full identity-environment scrub, library-only writes"
+    EXE-20260926T094830438Z-fe136d62:
+      operations: [modified]
+      at: 2026-09-26T20:45:16.000Z
+      actor:
+        kind: agent
+        id: anthropic/claude-code
+        provider: anthropic
+        model: unknown
+        runtime: claude-code
+      reason: "Contract revision 1.2: checked lineage, per-code-point key escaping, text classification, one identity source"
 ---
 
 # Summa Agent Provenance, Billing Traceability, and Hub Identity Requirements
@@ -60,7 +70,7 @@ though a human performed them"), and the invoice requirements `INV-ARCH-005`
 
 Praxis is authoritative for identity and provenance. Summa adopts, and does
 not restate or redefine, the Praxis contract at commit
-`c2657efb4d54f11d0fd0617cc1bcd5b8418601d5` of `kemiller2002/praxis` (contract revision 1.1):
+`b0037183389c8b9392919f58521b9487d1b4d5c6` of `kemiller2002/praxis` (contract revision 1.2):
 `docs/agent-provenance.md`, `DF-ROS-2026-A036`, `DF-ROS-2026-A037`, and
 `RQ-ROS-2026-A001` through `RQ-ROS-2026-A019`. Where this document and the
 Praxis contract appear to differ, the Praxis contract wins.
@@ -167,6 +177,45 @@ Summa's own validation follows revision 1.1: calendar-valid timestamps
 ordered at millisecond precision; JSON `null` is never absence; keys derived
 from operation ids use the reference's injective escaping.
 
+### INV-PROV-012 Contract revision 1.2
+
+Summa MUST follow Praxis contract revision 1.2 (`docs/agent-provenance.md`,
+"Contract revision 1.2"):
+
+1. **Lineage is checked.** `deriveBillingRecord` adds every lineage reference
+   taken from the sources (each supported source block's `derivedFrom`, the
+   source `ref`, and its `workItemId`) through the vendored `addLineage`, which
+   returns `{ ok, block }`. A refusal (credential, blank or non-string
+   reference, unpaired surrogate, or a result that would not classify as
+   supported) rejects the request; nothing is stored and lineage is never
+   dropped silently.
+2. **Key segments** (review finding 6). `EXT-summa.<id>` and `EXT-op.<id>` keys
+   in billing records and hub dispatch records use the vendored
+   `escapeKeySegment` (per Unicode code point; `.`, `_` and characters outside
+   the BMP are escaped injectively). The local escapers are removed. An
+   operation id that is empty or holds an unpaired surrogate cannot form a key
+   and rejects the request. Keys already stored are never rewritten.
+3. **Text.** JSON received as text is classified as text with the vendored
+   `classifyText` scanner before parsing: a billing record
+   (`receiveBillingRecordText`) and identity JSON (`--actor-json`,
+   `--hub-actor-json`, a string `actorJson` field) with a repeated member name
+   or an unpaired surrogate are rejected. An `actorJson` sent as a JSON object
+   is parsed by the tool-owned body parser before Summa sees it; see the scope
+   note.
+4. **ASCII whitespace.** "Blank" and trimming use tab, LF, VT, FF, CR and space
+   only, including for the legacy `--actor` string and the `ROS_*` variables.
+5. **One identity source** (`RQ-ROS-2026-A016` 1.2.0). `resolveRequester`
+   takes the requester wholly from one source: a declared actor or legacy
+   `--actor` replaces the environment completely and does not inherit
+   `ROS_EXECUTION_ID`; the environment's `ROS_EXECUTION_ID` is honoured only
+   with an identity declared in that environment. An execution declared
+   without an actor is rejected rather than silently dropped.
+6. **Null.** A stored `"provenance": null` is malformed, not absent:
+   `appendBillingContribution` refuses it instead of starting an empty block.
+7. **Timestamps.** Summa reads no timestamp from a request other than the
+   contribution times, which the vendored library validates with the strict
+   `parseTimestamp`.
+
 ### INV-PROV-009 Conformance
 
 The Praxis reference library, schemas, and conformance fixtures are vendored
@@ -191,11 +240,26 @@ left unchanged (`RQ-ROS-2026-A003`, `RQ-ROS-2026-A007`).
 | INV-PROV-006 | `resolveRequester`, `spokeEnvironment` (reference `identityEnvironment`) | HTTP request with no declaration is unknown …; requester's identity is passed … replacing the hub's; create with nothing declared (regression: no hub provider/runtime/session); scrub list is the reference identity-environment list; environment execution id without identity is not inherited |
 | INV-PROV-007 | `legacyActorArguments` | legacy --actor string is forwarded verbatim …; summa-hub create (CLI path) |
 | INV-PROV-008 | `receiveBillingRecord` | malformed provenance is rejected …; unsupported provenance major is carried verbatim … |
-| INV-PROV-009 | `vendor/praxis-provenance/` + `SOURCE.json` | `tests/vendored-praxis-provenance.test.mjs` |
+| INV-PROV-009 | `vendor/praxis-provenance/` + `SOURCE.json` | `tests/vendored-praxis-provenance.test.mjs` (SHA-256, 70 conformance cases, text, envelope-key and lineage cases, echelon chain) |
 | INV-PROV-010 | `.github/workflows/readiness-work.yml` | workflow review (declares `ROS_ACTOR_KIND=automation`, no agent actor) |
-| INV-PROV-011 | `appendBillingContribution`, `deriveBillingRecord`, `dispatchRecord` (reference `appendContribution`), null checks, key escaping | regression: Bearer reason / back-dated / late created / unknown extension / creator credential refused; contract 1.1: null, calendar, escaping; 56 vendored cases |
+| INV-PROV-011 | `appendBillingContribution`, `deriveBillingRecord`, `dispatchRecord` (reference `appendContribution`), null checks, key escaping | regression: Bearer reason / back-dated / late created / unknown extension / creator credential refused; contract 1.1: null, calendar, escaping (escaping revised by INV-PROV-012) |
+| INV-PROV-012 | `deriveBillingRecord` (`addLineage` result), `escapeKeySegment` in `deriveBillingRecord`/`dispatchRecord`, `receiveBillingRecordText` and `parseJsonText` (`classifyText`), ASCII trimming, `resolveRequester`, `appendBillingContribution` null handling | `billing-record-provenance.test.mjs` and `hub-identity.test.mjs`: contract 1.2 finding 6 / rule 1 / 2 / 3 / 5 / 6 |
 
 Run: `npm test`.
+
+## Revision history
+
+- **1.2.0** (2026-09-26, FEAT-ECHELON-PROVENANCE-R12): Praxis contract revision
+  1.2 (`b0037183`). Added INV-PROV-012 (checked lineage from sources; the
+  vendored per-code-point key escaping replaces the local escapers in
+  `hub-identity.mjs` and `billing-record-provenance.mjs`, review finding 6;
+  text classification of billing records and identity JSON; ASCII whitespace;
+  one identity source, now also refusing an execution without an actor;
+  stored null is malformed). INV-PROV-009 now covers the 70 cases and the
+  three new fixtures.
+- **1.1.0** (2026-09-26, FEAT-ECHELON-PROVENANCE-R11): contract revision 1.1;
+  INV-PROV-011 added.
+- **1.0.0** (2026-09-26, FEAT-ECHELON-PROVENANCE): initial requirements.
 
 ## Scope note: tool-owned hub files
 
@@ -206,3 +270,7 @@ Summa-owned `summa-hub` CLI and `tools/summa_hub_server.mjs`, which delegate
 every other operation to the tool-owned hub. `ros-hub` and
 `tools/ros_hub_server.mjs` keep their previous behaviour until the upstream
 ROS hub adopts the same rule (DF-SUMMA-PROV-2026-0001, follow-up).
+The tool-owned `tools/http_body.mjs` parses JSON request bodies with
+`JSON.parse`, so a repeated member name inside an `actorJson` sent as an
+object (rather than as a string) is resolved before Summa can classify it
+(INV-PROV-012 item 3); fixing that needs the upstream body parser.

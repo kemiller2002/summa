@@ -1,8 +1,9 @@
-// billing.record provenance (INV-PROV-001..004, INV-PROV-008).
+// billing.record provenance (INV-PROV-001..004, INV-PROV-008, INV-PROV-012).
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
-  receiveBillingRecord, deriveBillingRecord, sourceFromChronaEntry, appendBillingContribution,
+  receiveBillingRecord, receiveBillingRecordText, deriveBillingRecord, sourceFromChronaEntry, appendBillingContribution,
   originatingExecutions, provenanceStatus, SUMMA_ACTOR,
 } from "../lib/billing-record-provenance.mjs";
 import { classify, originator, modifiers, preservationViolations, withRole } from "../vendor/praxis-provenance/lib/provenance-interchange.mjs";
@@ -198,4 +199,81 @@ test("contract 1.1: null is never absence; calendar-invalid times are refused; k
   assert.deepEqual(Object.keys(spaced.record.provenance.contributions), ["EXT-summa.bill_201"]);
   const agentOp = deriveBillingRecord({ billingRecordId: "BR-4", sources: [], creator: { actor: OTHER }, operationId: "op_1", at: t(12) });
   assert.deepEqual(Object.keys(agentOp.record.provenance.contributions), ["EXT-op.op_5f1"]);
+});
+
+// ---- contract revision 1.2 (INV-PROV-012) -----------------------------------
+
+const TOKEN = "ghp_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
+test("contract 1.2 rule 3: lineage taken from the sources is checked; a refusal rejects the record", () => {
+  // A surrogate in a source ref is refused by addLineage: nothing is returned to store.
+  const lone = derive([{ ...sourceFromChronaEntry(chronaEntry()), ref: "chrona:entry/\ud800" }]);
+  assert.equal(lone.ok, false);
+  assert.equal(lone.record, undefined);
+  assert.match(lone.error, /^derivedFrom: .*unpaired UTF-16 surrogate/);
+  // A credential in a work item reference never reaches derivedFrom.
+  const leak = derive([{ ...sourceFromChronaEntry(chronaEntry()), workItemId: TOKEN }]);
+  assert.equal(leak.ok, false);
+  assert.match(leak.error, /credential/);
+  // A blank work item is refused, never dropped silently.
+  const blank = derive([{ ...sourceFromChronaEntry(chronaEntry()), workItemId: " \t" }]);
+  assert.equal(blank.ok, false);
+  assert.match(blank.error, /^derivedFrom: /);
+  // Duplicates across sources are dropped, first occurrence kept.
+  const { record } = derive([sourceFromChronaEntry(chronaEntry()), sourceFromChronaEntry(chronaEntry({ entryId: "ACT-2" }))]);
+  assert.deepEqual(record.provenance.derivedFrom, ["vigila:item/IT-4", "praxis:observation/OBS-1", "chrona:entry/ACT-1", "praxis:FEAT-ECHELON-PROVENANCE", "chrona:entry/ACT-2"]);
+});
+
+test("contract 1.2 finding 6: billing keys use the vendored per-code-point escaping", () => {
+  const keyOf = (operationId, creator) => Object.keys(deriveBillingRecord({ billingRecordId: "BR-9", sources: [], creator, operationId, at: t(12) }).record.provenance.contributions)[0];
+  assert.equal(keyOf("bill-\u{1F600}"), "EXT-summa.bill-_f0_9f_98_80");
+  assert.notEqual(keyOf("bill-\u{1F600}"), keyOf("bill-\u{1F601}"));
+  assert.equal(keyOf("bill.1"), "EXT-summa.bill_2e1");
+  assert.equal(keyOf("op.1", { actor: OTHER }), "EXT-op.op_2e1");
+  for (const operationId of ["", "bill-\udc00"]) {
+    const result = deriveBillingRecord({ billingRecordId: "BR-9", sources: [], operationId, at: t(12) });
+    assert.equal(result.ok, false);
+    assert.match(result.error, /cannot form a contribution key/);
+  }
+});
+
+test("contract 1.2 rule 1: a billing record received as JSON text is classified as text", () => {
+  const { record } = derive([sourceFromChronaEntry(chronaEntry())]);
+  const received = receiveBillingRecordText(JSON.stringify(record));
+  assert.ok(received.ok, JSON.stringify(received.errors));
+  assert.deepEqual(received.record, record);
+  // A duplicated contribution key inside a source block, which JSON.parse would resolve silently.
+  const text = JSON.stringify(record).replace('"EXT-chrona.op-2":', `"${EXE1}":{"operations":["modified"],"at":"${t(9)}","actor":{"kind":"human","id":"mallory"}},"EXT-chrona.op-2":`);
+  const duplicated = receiveBillingRecordText(text);
+  assert.equal(duplicated.ok, false);
+  assert.equal(duplicated.errors[0].code, "malformed-text");
+  assert.match(duplicated.errors[0].message, /^sources\[0\]\.provenance\.contributions\.EXE-.*: member name repeated/);
+  const surrogate = receiveBillingRecordText(JSON.stringify(record).replace('"BR-1"', '"BR-\\ud800"'));
+  assert.equal(surrogate.errors[0].code, "malformed-text");
+  assert.equal(receiveBillingRecordText("{").errors[0].code, "malformed-text");
+  assert.equal(receiveBillingRecordText(JSON.stringify({ ...record, note: TOKEN })).errors[0].code, "credential");
+  // Every text fixture as the record's own provenance member.
+  const fixture = JSON.parse(readFileSync(new URL("../vendor/praxis-provenance/fixtures/text-cases.json", import.meta.url), "utf8"));
+  for (const item of fixture.cases) {
+    const { provenance, ...rest } = record;
+    const embedded = JSON.stringify(rest).replace(/}$/, `,"provenance":${item.text}}`);
+    let valid = true;
+    try { JSON.parse(embedded); } catch { valid = false; }
+    const result = receiveBillingRecordText(embedded);
+    assert.equal(result.ok, valid && item.expect !== "malformed", `${item.name}: ${JSON.stringify(result.errors)}`);
+  }
+});
+
+test("contract 1.2 rule 6: a stored null provenance is malformed, never read as absent", () => {
+  const { record } = derive([sourceFromChronaEntry(chronaEntry())]);
+  const result = appendBillingContribution({ ...record, provenance: null }, "CTB-20260927-00000001", { operations: ["approved"], at: t(13), actor: HUMAN });
+  assert.equal(result.ok, false);
+  assert.equal(result.record, undefined);
+  assert.equal(provenanceStatus(null), "malformed");
+});
+
+test("contract 1.2 rule 2: only ASCII whitespace is blank", () => {
+  const { record } = derive([sourceFromChronaEntry(chronaEntry())]);
+  assert.equal(receiveBillingRecord({ ...record, billingRecordId: "\u0085" }).ok, true, "U+0085 is content");
+  assert.equal(receiveBillingRecord({ ...record, billingRecordId: " \t\r\n" }).errors[0].code, "invalid-billing-record");
 });

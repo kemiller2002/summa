@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 import { createServer as createRosHubServer } from "./ros_hub_server.mjs";
 import { parseRequestBody } from "./http_body.mjs";
 import { createWorkWithIdentity } from "./summa_hub.mjs";
-import { resolveHubActor } from "../lib/hub-identity.mjs";
+import { parseJsonText, resolveHubActor } from "../lib/hub-identity.mjs";
 
 const CREATE_WORK = /^\/api\/repos\/([^/]+)\/work$/;
 
@@ -28,10 +28,14 @@ function sendJson(res, status, value) {
   res.end(body);
 }
 
+// A string field is JSON text and is classified as text (contract 1.2 rule 1).
+// An object field was already parsed by the tool-owned body parser.
 function jsonField(value, name) {
   if (value === undefined || value === "") return undefined;
   if (typeof value === "object") return value;
-  try { return JSON.parse(value); } catch { throw new Error(`${name} must be a JSON object`); }
+  const parsed = parseJsonText(value, name);
+  if (!parsed.ok) throw new Error(parsed.error);
+  return parsed.value;
 }
 
 function withTempFiles(files, fn) {
@@ -92,7 +96,11 @@ function parseArgs(argv) {
     if (argv[i] === "--port") options.port = Number(argv[++i]);
     else if (argv[i] === "--host") options.host = argv[++i];
     else if (argv[i] === "--root") options.root = path.resolve(argv[++i]);
-    else if (argv[i] === "--hub-actor-json") options.hubActor = JSON.parse(argv[++i]);
+    else if (argv[i] === "--hub-actor-json") {
+      const parsed = parseJsonText(argv[++i], "--hub-actor-json");
+      if (!parsed.ok) throw new Error(parsed.error);
+      options.hubActor = parsed.value;
+    }
   }
   return options;
 }

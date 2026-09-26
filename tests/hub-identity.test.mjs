@@ -6,9 +6,9 @@ import os from "node:os";
 import path from "node:path";
 import {
   HUB_ACTOR, IDENTITY_VARIABLES, resolveRequester, resolveHubActor, spokeEnvironment, legacyActorArguments,
-  dispatchRecord, actorFromLegacyString, actorFromEnvironment,
+  dispatchRecord, actorFromLegacyString, actorFromEnvironment, parseJsonText,
 } from "../lib/hub-identity.mjs";
-import { classify, originator, withRole } from "../vendor/praxis-provenance/lib/provenance-interchange.mjs";
+import { classify, keyFromEnvelopeV1, originator, withRole } from "../vendor/praxis-provenance/lib/provenance-interchange.mjs";
 import { registerRepo } from "../tools/ros_hub_cli.mjs";
 import { createWorkWithIdentity, dispatchLogPath, main } from "../tools/summa_hub.mjs";
 
@@ -252,4 +252,95 @@ test("contract 1.1: dispatch keys derived from operation ids are escaped injecti
   const { requester } = resolveRequester({ declared: {} });
   const { record } = dispatchRecord({ operationId: "hub 1", at: AT, repoId: "chrona", command: "add", hubActor: HUB_ACTOR, requester });
   assert.deepEqual(Object.keys(record.provenance.contributions), ["EXT-op.hub_201", "EXT-summa.hub_201"]);
+});
+
+// ---- contract revision 1.2 (INV-PROV-012) -----------------------------------
+
+test("contract 1.2 finding 6: dispatch keys use the vendored per-code-point escaping; astral ids never collide", () => {
+  const { requester } = resolveRequester({ declared: {} });
+  const keys = (operationId) => Object.keys(dispatchRecord({ operationId, at: AT, repoId: "chrona", command: "add", hubActor: HUB_ACTOR, requester }).record.provenance.contributions);
+  assert.deepEqual(keys("hub-\u{1F600}"), ["EXT-op.hub-_f0_9f_98_80", "EXT-summa.hub-_f0_9f_98_80"]);
+  assert.notDeepEqual(keys("hub-\u{1F600}"), keys("hub-\u{1F601}"));
+  assert.deepEqual(keys("a.b"), ["EXT-op.a_2eb", "EXT-summa.a_2eb"], "'.' is escaped");
+  const fixture = JSON.parse(fs.readFileSync(new URL("../vendor/praxis-provenance/fixtures/envelope-key-cases.json", import.meta.url), "utf8"));
+  for (const item of fixture.cases) {
+    const envelope = item.envelopeText !== undefined ? JSON.parse(item.envelopeText) : item.envelope;
+    if (envelope.actor?.runId?.state === "known") continue;
+    const result = dispatchRecord({ operationId: envelope.operationId, at: AT, repoId: "chrona", command: "add", hubActor: HUB_ACTOR, requester });
+    if (item.error) {
+      assert.equal(result.ok, false, item.name);
+      assert.match(result.error, /cannot form a contribution key/);
+    } else {
+      assert.deepEqual(Object.keys(result.record.provenance.contributions), [item.key, item.key.replace(/^EXT-op\./, "EXT-summa.")], item.name);
+      assert.equal(item.key, keyFromEnvelopeV1(envelope));
+    }
+  }
+});
+
+test("contract 1.2 rule 5: a declaration replaces the environment wholly and never inherits ROS_EXECUTION_ID", () => {
+  const invokingEnv = { ROS_ACTOR_KIND: "agent", ROS_ACTOR: "anthropic/claude-code", ROS_TELEMETRY_PROVIDER: "anthropic", ROS_TELEMETRY_RUNTIME: "claude-code", ROS_EXECUTION_ID: EXE };
+  const kindOnly = resolveRequester({ declared: { actor: { kind: "human", id: "kevin" } }, invokingEnv });
+  assert.deepEqual(kindOnly.requester, { actor: HUMAN, source: "declared" }, "no execution, no provider/runtime from the environment");
+  const partial = resolveRequester({ declared: { actor: { kind: "agent", id: "kevin" } }, invokingEnv });
+  assert.deepEqual(partial.requester.actor, { kind: "agent", id: "kevin", provider: "unknown", model: "unknown", runtime: "unknown" });
+  assert.equal(partial.requester.execution, undefined);
+  const legacy = resolveRequester({ declared: { legacyActor: "kevin" }, invokingEnv });
+  assert.equal(legacy.requester.actor.provider, "unknown");
+  assert.equal(legacy.requester.execution, undefined);
+  const withExecution = resolveRequester({ declared: { actor: HUMAN, execution: "EXE-20260926T090000000Z-b2b2b2b2" }, invokingEnv });
+  assert.equal(withExecution.requester.execution, "EXE-20260926T090000000Z-b2b2b2b2", "an execution declared with the actor is kept");
+  const orphan = resolveRequester({ declared: { execution: EXE }, invokingEnv });
+  assert.equal(orphan.ok, false, "an execution without a declared actor is refused, never silently dropped or mixed with the environment");
+  assert.match(orphan.error, /without a requester actor/);
+});
+
+test("contract 1.2 rule 2: only ASCII whitespace is trimmed from identity declarations", () => {
+  assert.equal(actorFromLegacyString("\u0085kevin").id, "\u0085kevin");
+  assert.equal(actorFromLegacyString(" \t human:kevin \n").id, "kevin");
+  assert.equal(actorFromEnvironment({ ROS_ACTOR_KIND: "human", ROS_ACTOR: "\ufeff" }).id, "\ufeff", "U+FEFF is content");
+  assert.equal(actorFromEnvironment({ ROS_ACTOR: " \t " }), undefined);
+  const { requester } = resolveRequester({ declared: {}, invokingEnv: { ROS_ACTOR_KIND: "human", ROS_ACTOR: "kevin", ROS_EXECUTION_ID: " \t " } });
+  assert.equal(requester.execution, undefined);
+});
+
+test("contract 1.2 rule 1: identity JSON text is classified as text", () => {
+  assert.deepEqual(parseJsonText(JSON.stringify(AGENT), "--actor-json"), { ok: true, value: AGENT });
+  const duplicate = parseJsonText('{"kind":"human","id":"kevin","kind":"agent"}', "--actor-json");
+  assert.equal(duplicate.ok, false);
+  assert.match(duplicate.error, /--actor-json is malformed: kind: member name repeated/);
+  assert.match(parseJsonText('{"kind":"human","id":"k\\ud800"}', "actorJson").error, /unpaired UTF-16 surrogate/);
+  assert.match(parseJsonText("{", "--actor-json").error, /must be a JSON object/);
+  assert.equal(parseJsonText('{"a":{"id":1},"b":{"id":2}}', "x").ok, true, "the same name in different objects is not a duplicate");
+});
+
+test("contract 1.2 rule 1: summa-hub create refuses --actor-json with a repeated member name", () => {
+  const { hubRoot } = setup();
+  const errors = [];
+  const original = console.error;
+  console.error = (text) => errors.push(text);
+  try {
+    assert.equal(main(["--root", hubRoot, "create", "spoke", "Dup", "--actor-json", '{"kind":"human","id":"kevin","id":"mallory"}'], { PATH: process.env.PATH }), 1);
+  } finally {
+    console.error = original;
+  }
+  assert.match(errors.join("\n"), /member name repeated/);
+  assert.equal(fs.existsSync(dispatchLogPath(hubRoot)), false, "nothing is dispatched or recorded");
+});
+
+test("contract 1.2 rule 1: the hub server refuses an actorJson text field with a repeated member name", async () => {
+  const { createServer } = await import("../tools/summa_hub_server.mjs");
+  const { hubRoot, dispatches } = setup();
+  const server = createServer(hubRoot, { hubEnv: HUB_ENV });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/repos/spoke/work`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Dup", actorJson: '{"kind":"human","id":"kevin","kind":"agent"}' }),
+    });
+    assert.equal(response.status, 400);
+    assert.match((await response.json()).error, /member name repeated/);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+  assert.throws(() => dispatches());
 });
