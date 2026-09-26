@@ -1,5 +1,11 @@
 {
+  "scripts": {
+    "test": "node --test contracts/test/*.test.mjs"
+  },
   "dependencies": {
     "@echelon-foundry/typescript-wasm-kernel": "0.6.1"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0"
   }
 }

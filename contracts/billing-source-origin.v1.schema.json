@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kemiller2002/summa/contracts/billing-source-origin.v1.schema.json",
+  "title": "Summa billing source origin (v1)",
+  "description": "Receiver-owned contract (SUMMA-PROVENANCE-REQUIREMENTS INV-PROV-001..008) for the origin provenance Summa keeps on each imported billing source entry (for example a Chrona time entry snapshot). Origin entries are carried verbatim from the source system; Summa validates only the fields it stores. Actor and provenance record shapes are owned by Praxis (RQ-ROS-2026-A001, A002, A013..A015) and are never resolved against Praxis. Self-reported provenance: not authentication, authorization, approval, or evidence (INV-PROV-006). Unknown fields are preserved.",
+  "type": "object",
+  "required": ["contract", "version", "sourceApplication", "sourceId", "sourceVersion", "origin"],
+  "properties": {
+    "contract": { "const": "summa.billing-source-origin" },
+    "version": { "type": "string", "pattern": "^1\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
+    "sourceApplication": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "sourceId": { "type": "string", "pattern": "^\\S+$" },
+    "sourceVersion": { "description": "Source version or concurrency reference (INV-CHR-002).", "type": "string", "minLength": 1 },
+    "origin": {
+      "description": "The literal \"unknown\" when the source supplied no origin (never inferred), else the source's origin lineage verbatim.",
+      "oneOf": [
+        { "const": "unknown" },
+        {
+          "type": "object",
+          "required": ["lineage"],
+          "properties": {
+            "lineage": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/lineageEntry" } }
+          },
+          "additionalProperties": true
+        }
+      ]
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "lineageEntry": {
+      "type": "object",
+      "required": ["from", "origin"],
+      "properties": {
+        "from": { "description": "Source-system observation/activity the origin belongs to.", "type": "string", "pattern": "^\\S+$" },
+        "origin": { "$ref": "#/$defs/executionOrigin" }
+      },
+      "additionalProperties": true
+    },
+    "executionOrigin": {
+      "type": "object",
+      "required": ["originActor"],
+      "properties": {
+        "originActor": { "$ref": "#/$defs/actor" },
+        "originExecution": {
+          "description": "Opaque, namespaced reference stored as supplied (INV-PROV-002).",
+          "type": "string",
+          "pattern": "^(EXE|CTB)-[A-Za-z0-9._-]+$"
+        },
+        "provenance": { "description": "Praxis provenance interchange record, carried verbatim.", "type": "object" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "type": "object",
+            "required": ["originActor"],
+            "properties": { "originActor": { "type": "object", "required": ["kind"], "properties": { "kind": { "const": "agent" } } } }
+          },
+          "then": {
+            "type": "object",
+            "required": ["originExecution"],
+            "properties": { "originExecution": { "type": "string", "pattern": "^EXE-" } }
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "actor": {
+      "description": "Praxis actor shape (RQ-ROS-2026-A001).",
+      "type": "object",
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "type": "string", "pattern": "^(agent|human|automation|unknown|x-[a-z0-9][a-z0-9-]*)$" },
+        "id": { "type": "string", "minLength": 1 },
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "runtime": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "type": "object", "required": ["kind"], "properties": { "kind": { "const": "agent" } } },
+          "then": { "type": "object", "required": ["provider", "model", "runtime"] }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "invoiceLineSources": {
+      "description": "INV-PROV-004: the billing source origins of one grouped invoice line, one per source, verbatim.",
+      "type": "array",
+      "items": { "$ref": "#" }
+    }
+  }
+}

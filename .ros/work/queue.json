@@ -104,6 +104,22 @@
       "createdBy": "agent:chatgpt",
       "source": "github-issue",
       "sourceReference": "https://github.com/kemiller2002/summa/issues/4"
+    },
+    {
+      "id": "WI-0004",
+      "title": "Preserve agent-origin provenance on billable work imported from Chrona",
+      "description": null,
+      "tags": [
+        "provenance,requirements,integration"
+      ],
+      "priority": "high",
+      "status": "complete",
+      "attachments": [],
+      "createdAt": "2026-09-26T21:04:55.429Z",
+      "updatedAt": "2026-09-26T21:06:54.000Z",
+      "createdBy": "unknown",
+      "source": "user-request",
+      "sourceReference": null
     }
   ]
 }

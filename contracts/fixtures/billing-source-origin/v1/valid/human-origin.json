@@ -1,0 +1,24 @@
+{
+  "contract": "summa.billing-source-origin",
+  "version": "1.0.0",
+  "sourceApplication": "chrona",
+  "sourceId": "ACT-104",
+  "sourceVersion": "rev-3",
+  "origin": {
+    "lineage": [
+      {
+        "from": "OBS-003",
+        "origin": {
+          "contract": "chrona.time-observation-origin",
+          "version": "1.0.0",
+          "sourceSystem": "praxis",
+          "originActor": {
+            "kind": "human",
+            "id": "kevin"
+          },
+          "originExecution": "CTB-20260926-5f2e19aa"
+        }
+      }
+    ]
+  }
+}
