@@ -21,6 +21,21 @@
             "created"
           ],
           "reason": "Decision adopting Praxis provenance for billing and hub identity"
+        },
+        "EXE-20260926T085503319Z-1bc9aa20": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-09-26T09:00:48.676Z",
+          "last": "2026-09-26T09:01:13.484Z",
+          "operations": [
+            "modified"
+          ],
+          "reason": "Contract revision 1.1: create semantics, full identity-environment scrub, library-only writes"
         }
       }
     },

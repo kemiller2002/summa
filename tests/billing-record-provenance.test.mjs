@@ -29,11 +29,11 @@ const chronaEntry = (overrides = {}) => ({
   provenance: {
     schema: "praxis.provenance/1",
     contributions: {
-      [EXE1]: { operations: ["created"], at: t(9), actor: AGENT, reason: "time.record: TimeObservation received" },
+      [EXE1]: { operations: ["created", "measured"], at: t(9), actor: AGENT, reason: "time.record: TimeObservation recorded" },
       "EXT-chrona.op-2": { operations: ["transformed"], at: t(9), actor: { kind: "automation", id: "echelon/chrona", provider: "echelon", model: "unknown", runtime: "chrona" } },
       "CTB-20260926-5f2e19aa": { operations: ["approved"], at: t(10), actor: HUMAN },
     },
-    derivedFrom: ["chrona:observation/OBS-1", "chrona:candidate/OBS-1"],
+    derivedFrom: ["vigila:item/IT-4", "praxis:observation/OBS-1"],
   },
   ...overrides,
 });
@@ -50,6 +50,8 @@ test("a billing record derived from an agent time entry keeps the originating ex
   assert.deepEqual(originatingExecutions(record), [EXE1]);
   assert.ok(record.provenance.derivedFrom.includes("chrona:entry/ACT-1"));
   assert.ok(record.provenance.derivedFrom.includes("praxis:FEAT-ECHELON-PROVENANCE"));
+  assert.deepEqual(record.provenance.derivedFrom, ["vigila:item/IT-4", "praxis:observation/OBS-1", "chrona:entry/ACT-1", "praxis:FEAT-ECHELON-PROVENANCE"], "the source's lineage, then the source and work item");
+  assert.deepEqual(Object.keys(record.provenance.contributions), ["EXT-summa.bill-1"], "billing.record is a create: the source's contributors are not authors of the billing record");
   assert.equal(classify(record.provenance).verdict, "supported");
   assert.deepEqual(originator(record.provenance).actor, SUMMA_ACTOR, "Summa generated the record; the agent is lineage, not its author");
   assert.equal(originator(record.provenance).key, "EXT-summa.bill-1");
@@ -145,4 +147,55 @@ test("billing validity never depends on who the actor is", () => {
     const source = sourceFromChronaEntry(chronaEntry({ actor, execution: actor.kind === "human" ? undefined : EXE1, provenance: undefined }));
     assert.equal(receiveBillingRecord(derive([source]).record).billable, true, actor.kind);
   }
+});
+
+test("source blocks are kept verbatim and never appended to", () => {
+  const entry = chronaEntry();
+  const { record } = derive([sourceFromChronaEntry(entry)]);
+  const approved = appendBillingContribution(record, "CTB-20260927-5f2e19aa", { operations: ["approved"], at: t(13), actor: HUMAN });
+  assert.deepEqual(approved.record.sources[0].provenance, entry.provenance);
+  assert.deepEqual(receiveBillingRecord(approved.record).record.sources[0].provenance, entry.provenance);
+});
+
+test("regression: a Bearer credential in a contribution reason is refused and nothing is stored", () => {
+  const { record } = derive([sourceFromChronaEntry(chronaEntry())]);
+  const before = JSON.stringify(record);
+  const result = appendBillingContribution(record, "CTB-20260927-5f2e19aa", { operations: ["approved"], at: t(13), actor: HUMAN, reason: "Bearer abcdefghijklmnopqrstuvwxyz0123456789" });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /credential/);
+  assert.equal(result.record, undefined);
+  assert.equal(JSON.stringify(record), before);
+});
+
+test("regression: a contribution dated before the record's creation is refused", () => {
+  const { record } = derive([sourceFromChronaEntry(chronaEntry())]);
+  const result = appendBillingContribution(record, "CTB-20260926-5f2e19aa", { operations: ["approved"], at: t(11), actor: HUMAN });
+  assert.equal(result.ok, false);
+  assert.equal(result.record, undefined);
+});
+
+test("regression: a late created and an unknown actor extending a known entry are refused", () => {
+  const { record } = derive([sourceFromChronaEntry(chronaEntry())], { actor: OTHER, execution: EXE_BILLER });
+  assert.equal(appendBillingContribution(record, "CTB-20260927-5f2e19aa", { operations: ["created"], at: t(13), actor: HUMAN }).ok, false);
+  const unknown = { kind: "agent", id: "unknown", provider: "unknown", model: "unknown", runtime: "unknown" };
+  assert.equal(appendBillingContribution(record, EXE_BILLER, { operations: ["modified"], at: t(13), actor: unknown }).ok, false);
+});
+
+test("regression: a credential in the declared creator is refused", () => {
+  const result = derive([sourceFromChronaEntry(chronaEntry())], { actor: { kind: "human", id: "ghp_abcdefghijklmnopqrstuvwxyz0123456789" } });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /credential/);
+});
+
+test("contract 1.1: null is never absence; calendar-invalid times are refused; keys are escaped injectively", () => {
+  const { record } = derive([sourceFromChronaEntry(chronaEntry())]);
+  assert.equal(receiveBillingRecord({ ...record, provenance: null }).errors[0].code, "malformed-provenance");
+  assert.equal(receiveBillingRecord({ ...record, sources: [{ ...record.sources[0], provenance: null }] }).errors[0].code, "malformed-provenance");
+  assert.equal(receiveBillingRecord({ ...record, sources: [{ ...record.sources[0], workItemId: null }] }).errors[0].code, "invalid-billing-record");
+  assert.equal(receiveBillingRecord({ ...record, sources: [{ ...record.sources[0], performer: null }] }).errors[0].code, "invalid-billing-record");
+  assert.equal(deriveBillingRecord({ billingRecordId: "BR-2", sources: [], operationId: "b-1", at: "2026-02-30T00:00:00.000Z" }).ok, false);
+  const spaced = deriveBillingRecord({ billingRecordId: "BR-3", sources: [], operationId: "bill 1", at: t(12) });
+  assert.deepEqual(Object.keys(spaced.record.provenance.contributions), ["EXT-summa.bill_201"]);
+  const agentOp = deriveBillingRecord({ billingRecordId: "BR-4", sources: [], creator: { actor: OTHER }, operationId: "op_1", at: t(12) });
+  assert.deepEqual(Object.keys(agentOp.record.provenance.contributions), ["EXT-op.op_5f1"]);
 });

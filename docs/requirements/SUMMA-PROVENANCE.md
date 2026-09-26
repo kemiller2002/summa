@@ -2,7 +2,7 @@
 id: INV-PROV
 title: Summa Agent Provenance, Billing Traceability, and Hub Identity Requirements
 status: required
-version: 1.0.0
+version: 1.1.0
 owners:
   - summa
 created: 2026-09-26
@@ -32,6 +32,17 @@ provenance:
         model: unknown
         runtime: claude-code
       reason: "Summa provenance, billing traceability, and hub identity requirements"
+    EXE-20260926T085503319Z-1bc9aa20:
+      operations: [modified]
+      at: 2026-09-26T09:00:48.112Z
+      last: 2026-09-26T09:01:12.876Z
+      actor:
+        kind: agent
+        id: anthropic/claude-code
+        provider: anthropic
+        model: unknown
+        runtime: claude-code
+      reason: "Contract revision 1.1: create semantics, full identity-environment scrub, library-only writes"
 ---
 
 # Summa Agent Provenance, Billing Traceability, and Hub Identity Requirements
@@ -49,7 +60,7 @@ though a human performed them"), and the invoice requirements `INV-ARCH-005`
 
 Praxis is authoritative for identity and provenance. Summa adopts, and does
 not restate or redefine, the Praxis contract at commit
-`a42c44e8ae0e6e16fdd513141460b700e5fa6648` of `kemiller2002/praxis`:
+`c2657efb4d54f11d0fd0617cc1bcd5b8418601d5` of `kemiller2002/praxis` (contract revision 1.1):
 `docs/agent-provenance.md`, `DF-ROS-2026-A036`, `DF-ROS-2026-A037`, and
 `RQ-ROS-2026-A001` through `RQ-ROS-2026-A019`. Where this document and the
 Praxis contract appear to differ, the Praxis contract wins.
@@ -73,10 +84,14 @@ sufficient to trace the source (`RQ-ROS-2026-A008`, `RQ-ROS-2026-A009`):
 - each source (for example a Chrona time entry, `chrona:entry/<id>`) keeps its
   performer actor and execution (`EXE-...`/`EXT-...`) and its own
   `praxis.provenance/1` block, carried verbatim;
-- the billing record's own `provenance` block records who created it, keyed
-  by execution, with `derivedFrom` lineage to the Chrona entries and Praxis
-  work items it was derived from. Lineage is not authorship: the agent that
-  performed the work is not recorded as the billing record's author;
+- `billing.record` is a create (Praxis `docs/echelon-provenance-architecture.md`,
+  "Creating a record versus relaying one"): the billing record gets its own
+  `provenance` block recording who created it, keyed by execution, with
+  `derivedFrom` = each supported source block's `derivedFrom` plus the Chrona
+  entries and Praxis work items it was derived from. Source blocks are stored
+  verbatim in `sources[]` and are never appended to. Lineage is not
+  authorship: the agent that performed the work is not recorded as the
+  billing record's author;
 - grouping several sources into one record or line never removes a source or
   its provenance (`INV-AUD-004`, `INV-CHR-010`); two executions of the same
   agent remain distinct.
@@ -116,10 +131,17 @@ The requester MUST be taken only from an explicit declaration
 (`RQ-ROS-2026-A016`): a structured actor and execution, the legacy `--actor`
 string, or, for a command-line invocation only, the invoking process's
 `ROS_ACTOR_KIND`/`ROS_ACTOR`/`ROS_TELEMETRY_*`/`ROS_EXECUTION_ID`. The HTTP
-server's own environment is never the requester's. The hub MUST pass the
-requester to a spoke explicitly through those variables, removing any
-identity variables it inherited, so the hub's identity is never forwarded as
-if it were the requester's. An undeclared requester is passed as `unknown`.
+server's own environment is never the requester's, and an environment
+`ROS_EXECUTION_ID` is ignored unless the process also declares an identity.
+Before launching a spoke the hub MUST remove every identity variable in the
+Praxis `identity-environment.json` list (`IDENTITY_ENVIRONMENT_VARIABLES`:
+`ROS_*`, all `ROS_TELEMETRY_*` including session/run/conversation/version
+keys, `CLAUDE_CODE_SESSION_ID`, `CODEX_SESSION_ID`, `CODEX_THREAD_ID`,
+`GEMINI_SESSION_ID`, `COPILOT_SESSION_ID`, `GITHUB_ACTIONS`, `GITHUB_RUN_ID`,
+`OLLAMA_HOST`) and then set only the requester's declared values, so the hub's
+identity, session, runtime, or CI run is never forwarded as if it were the
+requester's. An undeclared requester is set explicitly to
+`ROS_ACTOR_KIND=unknown` and `ROS_ACTOR=unknown`.
 
 ### INV-PROV-007 Older spokes keep working
 
@@ -134,6 +156,16 @@ At Summa's boundary a `praxis.provenance/1` block is classified per
 carried verbatim and never appended to; `malformed` blocks, and
 credential-like values anywhere in the record (`RQ-ROS-2026-A017`), reject
 the record with a structured error.
+
+### INV-PROV-011 Contract revision 1.1 writes and validation
+
+Every write to a provenance block MUST use only the reference library's
+result; it refuses credentials, contributions dated before the creation, a
+late `created`, re-attribution, and an unknown actor extending a known
+entry, and the refusal is returned to the caller with nothing stored.
+Summa's own validation follows revision 1.1: calendar-valid timestamps
+ordered at millisecond precision; JSON `null` is never absence; keys derived
+from operation ids use the reference's injective escaping.
 
 ### INV-PROV-009 Conformance
 
@@ -152,15 +184,16 @@ left unchanged (`RQ-ROS-2026-A003`, `RQ-ROS-2026-A007`).
 | Requirement | Implementation | Tests |
 |---|---|---|
 | INV-PROV-001 | `schemas/billing-record-provenance.schema.json` (refs vendored Praxis actor/interchange schemas); `lib/billing-record-provenance.mjs` | `tests/vendored-praxis-provenance.test.mjs` (schema references); `tests/billing-record-provenance.test.mjs` |
-| INV-PROV-002 | `sourceFromChronaEntry`, `deriveBillingRecord`, `originatingExecutions` | billing record derived from an agent time entry keeps the originating execution; grouping several executions keeps each one distinct; round trip |
+| INV-PROV-002 | `sourceFromChronaEntry`, `deriveBillingRecord`, `originatingExecutions` | billing record derived from an agent time entry keeps the originating execution; grouping several executions keeps each one distinct; round trip; source blocks are kept verbatim and never appended to |
 | INV-PROV-003 | `receiveBillingRecord` (`billable` independent of provenance) | missing Praxis provenance: still valid and billable; billing validity never depends on who the actor is |
 | INV-PROV-004 | `deriveBillingRecord`, `appendBillingContribution` | agent actions are never recorded as human …; agent creator without a known execution …; human correction … |
 | INV-PROV-005 | `lib/hub-identity.mjs` (`resolveHubActor`, `dispatchRecord`); `tools/summa_hub.mjs`; `tools/summa_hub_server.mjs` | `tests/hub-identity.test.mjs`: dispatch record keeps the hub actor and the requester apart; create (HTTP path); summa hub server |
-| INV-PROV-006 | `resolveRequester`, `spokeEnvironment` | HTTP request with no declaration is unknown …; requester's identity is passed … replacing the hub's; create with nothing declared … |
+| INV-PROV-006 | `resolveRequester`, `spokeEnvironment` (reference `identityEnvironment`) | HTTP request with no declaration is unknown …; requester's identity is passed … replacing the hub's; create with nothing declared (regression: no hub provider/runtime/session); scrub list is the reference identity-environment list; environment execution id without identity is not inherited |
 | INV-PROV-007 | `legacyActorArguments` | legacy --actor string is forwarded verbatim …; summa-hub create (CLI path) |
 | INV-PROV-008 | `receiveBillingRecord` | malformed provenance is rejected …; unsupported provenance major is carried verbatim … |
 | INV-PROV-009 | `vendor/praxis-provenance/` + `SOURCE.json` | `tests/vendored-praxis-provenance.test.mjs` |
 | INV-PROV-010 | `.github/workflows/readiness-work.yml` | workflow review (declares `ROS_ACTOR_KIND=automation`, no agent actor) |
+| INV-PROV-011 | `appendBillingContribution`, `deriveBillingRecord`, `dispatchRecord` (reference `appendContribution`), null checks, key escaping | regression: Bearer reason / back-dated / late created / unknown extension / creator credential refused; contract 1.1: null, calendar, escaping; 56 vendored cases |
 
 Run: `npm test`.
 

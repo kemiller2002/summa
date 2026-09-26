@@ -16,12 +16,18 @@ const AGENT = { kind: "agent", id: "openai/codex", provider: "openai", model: "g
 const HUMAN = { kind: "human", id: "kevin" };
 const EXE = "EXE-20260926T080000000Z-a1a1a1a1";
 const AT = "2026-09-26T08:00:00.000Z";
-// The environment of a hub process that is itself running inside some agent session.
+// The environment of a hub process that is itself running inside an agent
+// session on a CI runner: every identity variable Praxis reads is set.
 const HUB_ENV = {
   PATH: process.env.PATH, HOME: "/home/hub",
-  ROS_ACTOR_KIND: "automation", ROS_ACTOR: "echelon/summa-hub", ROS_TELEMETRY_PROVIDER: "hub-provider",
-  ROS_TELEMETRY_MODEL: "hub-model", ROS_TELEMETRY_RUNTIME: "hub-runtime", ROS_EXECUTION_ID: "EXE-hub-own-run",
+  ROS_ACTOR_KIND: "agent", ROS_ACTOR: "anthropic/claude-code", ROS_TELEMETRY_PROVIDER: "anthropic",
+  ROS_TELEMETRY_MODEL: "hub-model", ROS_TELEMETRY_MODEL_VERSION: "1", ROS_TELEMETRY_RUNTIME: "claude-code",
+  ROS_TELEMETRY_RUNTIME_VERSION: "2", ROS_TELEMETRY_SESSION_ID: "hub-session-1", ROS_TELEMETRY_CONVERSATION_ID: "hub-conv",
+  ROS_TELEMETRY_RUN_ID: "hub-run", ROS_EXECUTION_ID: "EXE-hub-own-run",
+  CLAUDE_CODE_SESSION_ID: "hub-session-1", CODEX_SESSION_ID: "c", CODEX_THREAD_ID: "t", GEMINI_SESSION_ID: "g",
+  COPILOT_SESSION_ID: "p", GITHUB_ACTIONS: "true", GITHUB_RUN_ID: "999", OLLAMA_HOST: "127.0.0.1:11434",
 };
+const identityOnly = (env) => Object.fromEntries(Object.entries(env).filter(([name]) => IDENTITY_VARIABLES.includes(name)));
 
 test("a structured requester is taken verbatim, with its execution", () => {
   const { requester } = resolveRequester({ declared: { actor: AGENT, execution: EXE } });
@@ -33,11 +39,7 @@ test("an HTTP request with no declaration is unknown: the server's own environme
   assert.equal(requester.actor.kind, "unknown");
   assert.equal(requester.source, "unknown");
   const env = spokeEnvironment(HUB_ENV, requester);
-  assert.equal(env.ROS_ACTOR_KIND, "unknown");
-  assert.equal(env.ROS_ACTOR, "unknown");
-  for (const name of ["ROS_TELEMETRY_PROVIDER", "ROS_TELEMETRY_MODEL", "ROS_TELEMETRY_RUNTIME", "ROS_EXECUTION_ID"]) {
-    assert.equal(env[name], undefined, `${name} of the hub leaked to the spoke`);
-  }
+  assert.deepEqual(identityOnly(env), { ROS_ACTOR_KIND: "unknown", ROS_ACTOR: "unknown" }, "nothing of the hub's identity, session, runtime, CI run, or model server leaks");
   assert.equal(env.HOME, "/home/hub", "unrelated variables are kept");
   assert.deepEqual(legacyActorArguments(requester, undefined), []);
 });
@@ -52,6 +54,7 @@ test("a command-line invocation's declared identity is the requester", () => {
 test("the requester's identity is passed to the spoke explicitly, replacing the hub's", () => {
   const { requester } = resolveRequester({ declared: { actor: AGENT, execution: EXE } });
   const env = spokeEnvironment(HUB_ENV, requester);
+  assert.deepEqual(Object.keys(identityOnly(env)).sort(), ["ROS_ACTOR", "ROS_ACTOR_KIND", "ROS_EXECUTION_ID", "ROS_TELEMETRY_MODEL", "ROS_TELEMETRY_PROVIDER", "ROS_TELEMETRY_RUNTIME"]);
   assert.equal(env.ROS_ACTOR_KIND, "agent");
   assert.equal(env.ROS_ACTOR, "openai/codex");
   assert.equal(env.ROS_TELEMETRY_PROVIDER, "openai");
@@ -122,7 +125,7 @@ test("the pure functions never mutate their inputs", () => {
   const declared = Object.freeze({ actor: Object.freeze({ ...AGENT }), execution: EXE });
   const { requester } = resolveRequester({ declared });
   spokeEnvironment(env, requester);
-  assert.equal(env.ROS_ACTOR, "echelon/summa-hub");
+  assert.equal(env.ROS_ACTOR, "anthropic/claude-code");
 });
 
 // ---- effectful create against a fake spoke ---------------------------------
@@ -158,7 +161,7 @@ test("create (HTTP path): the spoke receives the requester, the hub records itse
   const item = createWorkWithIdentity(hubRoot, "spoke", { title: "Bill September", requesterActor: AGENT, requesterExecution: EXE },
     { hubEnv: HUB_ENV, operationId: "hub-9", now: new Date(AT) });
   const [call] = calls();
-  assert.deepEqual(call.env, {
+  assert.deepEqual(Object.fromEntries(Object.entries(call.env).filter(([, value]) => value !== null)), {
     ROS_ACTOR_KIND: "agent", ROS_ACTOR: "openai/codex", ROS_TELEMETRY_PROVIDER: "openai",
     ROS_TELEMETRY_MODEL: "gpt-5-codex", ROS_TELEMETRY_RUNTIME: "codex", ROS_EXECUTION_ID: EXE,
   });
@@ -174,8 +177,8 @@ test("create with nothing declared: the hub's own identity is not forwarded", ()
   const { hubRoot, calls, dispatches } = setup();
   createWorkWithIdentity(hubRoot, "spoke", { title: "Anonymous" }, { hubEnv: HUB_ENV, operationId: "hub-10", now: new Date(AT) });
   const [call] = calls();
-  assert.equal(call.env.ROS_ACTOR, "unknown");
-  assert.equal(call.env.ROS_EXECUTION_ID, null);
+  assert.deepEqual(Object.fromEntries(Object.entries(call.env).filter(([, value]) => value !== null)), { ROS_ACTOR_KIND: "unknown", ROS_ACTOR: "unknown" },
+    "regression: the hub operator's provider/runtime/session never reach an unknown requester's spoke");
   assert.ok(!call.args.includes("--actor"));
   assert.equal(dispatches()[0].requester.source, "unknown");
 });
@@ -229,4 +232,24 @@ test("summa hub server: the request body declares the requester; other routes ar
     await new Promise((resolve) => server.close(resolve));
   }
   assert.throws(() => createServer(hubRoot, { hubActor: AGENT }), /must be human or automation/);
+});
+
+test("contract 1.1: the scrub list is the reference identity-environment list", async () => {
+  const { IDENTITY_ENVIRONMENT_VARIABLES } = await import("../vendor/praxis-provenance/lib/provenance-interchange.mjs");
+  const fixture = JSON.parse(fs.readFileSync(new URL("../vendor/praxis-provenance/fixtures/identity-environment.json", import.meta.url), "utf8"));
+  assert.deepEqual([...IDENTITY_VARIABLES].sort(), [...fixture.variables].sort());
+  assert.equal(IDENTITY_VARIABLES, IDENTITY_ENVIRONMENT_VARIABLES);
+  for (const name of fixture.variables) assert.ok(name in HUB_ENV, `test environment covers ${name}`);
+});
+
+test("contract 1.1: an environment execution id without a declared identity is not inherited", () => {
+  const { requester } = resolveRequester({ declared: {}, invokingEnv: { ROS_EXECUTION_ID: EXE } });
+  assert.equal(requester.actor.kind, "unknown");
+  assert.equal(requester.execution, undefined);
+});
+
+test("contract 1.1: dispatch keys derived from operation ids are escaped injectively", () => {
+  const { requester } = resolveRequester({ declared: {} });
+  const { record } = dispatchRecord({ operationId: "hub 1", at: AT, repoId: "chrona", command: "add", hubActor: HUB_ACTOR, requester });
+  assert.deepEqual(Object.keys(record.provenance.contributions), ["EXT-op.hub_201", "EXT-summa.hub_201"]);
 });

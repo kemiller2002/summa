@@ -31,6 +31,17 @@ provenance:
         model: unknown
         runtime: claude-code
       reason: "Decision adopting Praxis provenance for billing and hub identity"
+    EXE-20260926T085503319Z-1bc9aa20:
+      operations: [modified]
+      at: 2026-09-26T09:00:48.676Z
+      last: 2026-09-26T09:01:13.484Z
+      actor:
+        kind: agent
+        id: anthropic/claude-code
+        provider: anthropic
+        model: unknown
+        runtime: claude-code
+      reason: "Contract revision 1.1: create semantics, full identity-environment scrub, library-only writes"
 ---
 
 # DF-SUMMA-PROV-2026-0001 — Praxis provenance for billing records; hub identity separate from the requester
@@ -39,7 +50,7 @@ provenance:
 - **Status:** draft (implemented on branch `claude/echelon-provenance-upgrade-51kzr2`; awaiting owner acceptance)
 - **Decision type:** adoption of an upstream contract; additive implementation
 - **Requirements:** INV-PROV-001 .. INV-PROV-010 (`docs/requirements/SUMMA-PROVENANCE.md`)
-- **Upstream:** Praxis `DF-ROS-2026-A036`, `DF-ROS-2026-A037`, `RQ-ROS-2026-A001..A019` at commit `a42c44e8ae0e6e16fdd513141460b700e5fa6648`
+- **Upstream:** Praxis `DF-ROS-2026-A036`, `DF-ROS-2026-A037`, `RQ-ROS-2026-A001..A019` at commit `c2657efb4d54f11d0fd0617cc1bcd5b8418601d5` (contract revision 1.1)
 
 ## Context
 
@@ -68,7 +79,8 @@ Two gaps existed:
    `praxis.provenance/1` blocks. The Praxis reference library, schemas, and
    fixtures are vendored unchanged (`vendor/praxis-provenance/`, hashes in
    `SOURCE.json`); there is no runtime dependency on Praxis.
-2. **Billing records** (`summa.billing-record/1`,
+2. **Billing records are created, not relayed.** Each gets its own block;
+   each source block is stored verbatim and never appended to. **Billing records** (`summa.billing-record/1`,
    `schemas/billing-record-provenance.schema.json`) carry each source's
    performer, execution, and provenance verbatim, plus their own block
    (creator keyed by execution; `derivedFrom` to Chrona entries and Praxis work
@@ -79,7 +91,10 @@ Two gaps existed:
 4. **Hub identity.** The hub resolves the requester only from explicit
    declarations and passes it to spokes through `ROS_ACTOR_KIND`, `ROS_ACTOR`,
    `ROS_TELEMETRY_PROVIDER/MODEL/RUNTIME`, and `ROS_EXECUTION_ID` after removing
-   the inherited values, plus the legacy `--actor` for older spokes. It
+   every inherited identity variable in the Praxis identity-environment list
+   (reference `identityEnvironment`; contract revision 1.1), plus the legacy
+   `--actor` for older spokes. An undeclared requester is set explicitly to
+   `unknown`. It
    records its own actor (automation `echelon/summa-hub`, or a human operator
    declared with `--hub-actor-json`) separately in `.ros/hub/dispatches.jsonl`.
 5. **Where the hub change lives.** `tools/ros_hub_cli.mjs`,
