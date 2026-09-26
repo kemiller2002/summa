@@ -1,0 +1,26 @@
+{
+  "contract": "summa.billing-source-origin",
+  "version": "1.0.0",
+  "sourceApplication": "chrona",
+  "sourceId": "ACT-200",
+  "sourceVersion": "rev-3",
+  "origin": {
+    "lineage": [
+      {
+        "from": "OBS-001",
+        "origin": {
+          "contract": "chrona.time-observation-origin",
+          "version": "1.0.0",
+          "sourceSystem": "praxis",
+          "originActor": {
+            "kind": "agent",
+            "id": "openai/codex",
+            "provider": "openai",
+            "model": "unknown",
+            "runtime": "codex"
+          }
+        }
+      }
+    ]
+  }
+}

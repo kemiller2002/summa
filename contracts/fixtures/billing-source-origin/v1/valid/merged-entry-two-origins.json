@@ -1,0 +1,43 @@
+{
+  "contract": "summa.billing-source-origin",
+  "version": "1.0.0",
+  "sourceApplication": "chrona",
+  "sourceId": "ACT-102",
+  "sourceVersion": "rev-3",
+  "origin": {
+    "lineage": [
+      {
+        "from": "OBS-001",
+        "origin": {
+          "contract": "chrona.time-observation-origin",
+          "version": "1.0.0",
+          "sourceSystem": "praxis",
+          "originActor": {
+            "kind": "agent",
+            "id": "anthropic/claude-code",
+            "provider": "anthropic",
+            "model": "unknown",
+            "runtime": "claude-code"
+          },
+          "originExecution": "EXE-20260926T100000000Z-c3c3c3c3"
+        }
+      },
+      {
+        "from": "OBS-002",
+        "origin": {
+          "contract": "chrona.time-observation-origin",
+          "version": "1.0.0",
+          "sourceSystem": "praxis",
+          "originActor": {
+            "kind": "agent",
+            "id": "openai/codex",
+            "provider": "openai",
+            "model": "unknown",
+            "runtime": "codex"
+          },
+          "originExecution": "EXE-20260926T140000000Z-e5e5e5e5"
+        }
+      }
+    ]
+  }
+}

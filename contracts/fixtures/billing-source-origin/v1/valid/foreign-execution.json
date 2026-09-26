@@ -1,0 +1,27 @@
+{
+  "contract": "summa.billing-source-origin",
+  "version": "1.0.0",
+  "sourceApplication": "chrona",
+  "sourceId": "ACT-105",
+  "sourceVersion": "rev-3",
+  "origin": {
+    "lineage": [
+      {
+        "from": "OBS-004",
+        "origin": {
+          "contract": "chrona.time-observation-origin",
+          "version": "1.0.0",
+          "sourceSystem": "vigila",
+          "originActor": {
+            "kind": "automation",
+            "id": "echelon/vigila",
+            "provider": "echelon",
+            "model": "unknown",
+            "runtime": "vigila"
+          },
+          "originExecution": "EXE-vigila.run-7"
+        }
+      }
+    ]
+  }
+}

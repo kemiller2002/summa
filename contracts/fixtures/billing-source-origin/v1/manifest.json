@@ -1,0 +1,103 @@
+{
+  "contract": "summa.billing-source-origin",
+  "version": "1.0.0",
+  "description": "Fixtures for the receiver-owned billing source origin contract (INV-PROV-001..008).",
+  "cases": [
+    {
+      "file": "valid/agent-origin.json",
+      "expect": "valid",
+      "why": "Chrona entry from one agent execution; origin carried verbatim"
+    },
+    {
+      "file": "valid/agent-origin-with-provenance.json",
+      "expect": "valid",
+      "why": "Praxis provenance record carried verbatim and consistent with the origin"
+    },
+    {
+      "file": "valid/merged-entry-two-origins.json",
+      "expect": "valid",
+      "why": "a merged Chrona entry keeps each source origin; no merged author"
+    },
+    {
+      "file": "valid/unknown-origin.json",
+      "expect": "valid",
+      "why": "no origin supplied: recorded as unknown, never inferred"
+    },
+    {
+      "file": "valid/human-origin.json",
+      "expect": "valid",
+      "why": "human outside any run, CTB- key"
+    },
+    {
+      "file": "valid/foreign-execution.json",
+      "expect": "valid",
+      "why": "EXE-<system>.<run> is stored as an opaque reference"
+    },
+    {
+      "file": "valid/minor-version-unknown-fields.json",
+      "expect": "valid",
+      "why": "a newer minor is accepted; unknown fields are preserved"
+    },
+    {
+      "file": "valid/unsupported-provenance-carried.json",
+      "expect": "valid",
+      "why": "an unsupported major provenance record is carried, not interpreted"
+    },
+    {
+      "file": "invalid/agent-without-execution.json",
+      "expect": "invalid",
+      "why": "an agent origin must name its EXE- execution"
+    },
+    {
+      "file": "invalid/agent-with-contribution-key.json",
+      "expect": "invalid",
+      "why": "agent contributions are keyed EXE-"
+    },
+    {
+      "file": "invalid/agent-missing-runtime.json",
+      "expect": "invalid",
+      "why": "an agent states provider, model, runtime"
+    },
+    {
+      "file": "invalid/missing-origin.json",
+      "expect": "invalid",
+      "why": "absence must be explicit: origin is required, 'unknown' when unknown"
+    },
+    {
+      "file": "invalid/empty-lineage.json",
+      "expect": "invalid",
+      "why": "a recorded origin has at least one entry; otherwise it is 'unknown'"
+    },
+    {
+      "file": "invalid/guessed-origin-string.json",
+      "expect": "invalid",
+      "why": "only the literal 'unknown' stands in for an origin"
+    },
+    {
+      "file": "invalid/credential-in-actor.json",
+      "expect": "invalid",
+      "why": "identity never carries a credential"
+    },
+    {
+      "file": "invalid/actor-contradicts-provenance.json",
+      "expect": "invalid",
+      "why": "forged or confused origin: the carried record attributes the execution to another actor"
+    },
+    {
+      "file": "invalid/malformed-provenance.json",
+      "expect": "invalid",
+      "why": "malformed provenance is a finding, not silently dropped"
+    },
+    {
+      "file": "invalid/duplicated-lineage.json",
+      "expect": "invalid",
+      "why": "an origin appears once per source"
+    },
+    {
+      "file": "invalid/unsupported-major.json",
+      "expect": "invalid",
+      "why": "unsupported major of Summa's own contract"
+    }
+  ],
+  "grouping": "grouping/cases.json"
+}
