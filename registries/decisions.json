@@ -1,5 +1,54 @@
 [
   {
+    "created": "2026-09-26",
+    "id": "DF-SUMMA-PROV-2026-0001",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-PROV-2026-0001--praxis-provenance-for-billing-and-hub-identity.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20260926T081758520Z-5b5cb32d": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-09-26T08:25:53.411Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Decision adopting Praxis provenance for billing and hub identity"
+        }
+      }
+    },
+    "related_documents": [
+      "docs/requirements/SUMMA-PROVENANCE.md",
+      "input-documents/summa-requirement-set-0.txt",
+      "input-documents/summa-invoice-generation-requirements.txt",
+      "lib/billing-record-provenance.mjs",
+      "lib/hub-identity.mjs",
+      "tools/summa_hub.mjs",
+      "tools/summa_hub_server.mjs"
+    ],
+    "review_cycle": "on-resolution",
+    "status": "draft",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "provenance",
+      "identity",
+      "billing",
+      "hub",
+      "decision"
+    ],
+    "title": "Adopt Praxis provenance for billing records and separate the hub's identity from the requester's",
+    "updated": "2026-09-26",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-09-14",
     "id": "DF-SUMMA-ROSCLI-2026-0001",
     "owners": [

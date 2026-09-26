@@ -1,0 +1,7 @@
+#!/usr/bin/env node
+// Summa-owned hub launcher: ros-hub plus explicit identity propagation on
+// `create` (DF-SUMMA-PROV-2026-0001). See tools/summa_hub.mjs.
+
+import { main } from "./tools/summa_hub.mjs";
+
+process.exitCode = main(process.argv.slice(2));

@@ -47,6 +47,20 @@ Or from the command line:
 ./ros-hub work
 ```
 
+### Identity (who asked, and who carried it)
+
+Use `./summa-hub` (same commands as `./ros-hub`) and `npm run hub`
+(`tools/summa_hub_server.mjs`) to create work in another repository with
+identity propagation: the requester (`--actor-json '{"kind":"agent",...}'`
+plus `--execution EXE-...`, the legacy `--actor`, or the invoking shell's
+`ROS_ACTOR_KIND`/`ROS_ACTOR`/`ROS_TELEMETRY_*`/`ROS_EXECUTION_ID`) is passed to
+the spoke explicitly, and the hub records its own actor (`echelon/summa-hub`,
+or a human operator declared with `--hub-actor-json`) separately in
+`.ros/hub/dispatches.jsonl`. See
+[`docs/requirements/SUMMA-PROVENANCE.md`](docs/requirements/SUMMA-PROVENANCE.md)
+and `DF-SUMMA-PROV-2026-0001`. The tool-owned `./ros-hub` keeps its previous
+behaviour.
+
 ## Local operating commands (for this repository's own work)
 
 ```bash

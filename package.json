@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "hub": "node tools/summa_hub_server.mjs"
+  },
   "dependencies": {
     "@echelon-foundry/typescript-wasm-kernel": "0.6.1"
   }

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kemiller2002/summa/schemas/billing-record-provenance.schema.json",
+  "title": "Summa billing.record provenance fragment (summa.billing-record/1)",
+  "description": "The provenance-bearing portion of a Summa billing record (docs/requirements/SUMMA-PROVENANCE.md INV-PROV-001..004, DF-SUMMA-PROV-2026-0001). Identity is the Praxis actor and provenance is the Praxis praxis.provenance/1 block (schemas vendored unchanged under vendor/praxis-provenance/); Summa defines no second identity model. Provenance is optional everywhere: a billing record without it is valid and billable, and its provenance reads as unknown. A source's block is carried verbatim, including a block of another major version. This schema is the structural floor; lib/billing-record-provenance.mjs enforces the rules JSON Schema cannot express (credential tripwire, contribution-history invariants). Identity is self-reported provenance, not authentication or authorization (RQ-ROS-2026-A019).",
+  "type": "object",
+  "required": ["schemaVersion", "billingRecordId", "sources"],
+  "properties": {
+    "schemaVersion": { "const": "summa.billing-record/1" },
+    "billingRecordId": { "type": "string", "minLength": 1 },
+    "sources": {
+      "description": "Every billable source that contributed to this record. Grouping never removes a source or its provenance (INV-AUD-004, INV-CHR-010).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ref"],
+        "properties": {
+          "kind": { "type": "string", "minLength": 1, "description": "e.g. chrona-time-entry, manual, fixed-fee, expense." },
+          "ref": { "type": "string", "minLength": 1, "description": "Namespaced reference, e.g. chrona:entry/ACT-1." },
+          "workItemId": { "type": "string", "minLength": 1 },
+          "performer": {
+            "type": "object",
+            "required": ["actor"],
+            "properties": {
+              "actor": { "$ref": "https://github.com/kemiller2002/praxis/schemas/provenance-actor.schema.json" },
+              "execution": { "type": "string", "pattern": "^(EXE-[A-Za-z0-9._-]+|EXT-[a-z][a-z0-9-]*\\.[A-Za-z0-9._-]+)$" }
+            },
+            "additionalProperties": true
+          },
+          "provenance": { "$ref": "#/$defs/carriedProvenance" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "provenance": { "$ref": "#/$defs/carriedProvenance" }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "carriedProvenance": {
+      "description": "A Praxis praxis.provenance/1 block. A block tagged with another major version is outside this floor and is carried verbatim.",
+      "type": "object",
+      "if": { "anyOf": [ { "not": { "required": ["schema"] } }, { "required": ["schema"], "properties": { "schema": { "const": "praxis.provenance/1" } } } ] },
+      "then": { "$ref": "https://github.com/kemiller2002/praxis/schemas/provenance-interchange.schema.json" }
+    }
+  }
+}
