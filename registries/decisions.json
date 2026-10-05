@@ -15,8 +15,10 @@
       ".github/workflows/echelon-foundations.yml"
     ],
     "review_cycle": "on-trigger",
-    "status": "accepted",
-    "superseded_by": [],
+    "status": "superseded",
+    "superseded_by": [
+      "DF-SUMMA-FND-2026-0002"
+    ],
     "supersedes": [],
     "tags": [
       "governance",
@@ -27,6 +29,45 @@
       "applicability"
     ],
     "title": "Aegis, Forma and Folio are declared not yet applicable until Summa's product foundation exists",
+    "updated": "2026-10-05",
+    "version": "1.0.1"
+  },
+  {
+    "created": "2026-10-05",
+    "id": "DF-SUMMA-FND-2026-0002",
+    "owners": [
+      "repository-governance"
+    ],
+    "path": "research/decisions/DF-SUMMA-FND-2026-0002--build-summa-on-the-full-echelon-foundation-stack.md",
+    "related_documents": [
+      ".echelon/foundations.json",
+      "aegis-boundaries.json",
+      "limen.config.json",
+      "package.json",
+      "Directory.Packages.props",
+      "docs/requirements/ECHELON-SHARED-APPLICATION-FOUNDATIONS.md",
+      "docs/web-interface.md",
+      "docs/project-administration-hub.md",
+      ".github/workflows/build.yml",
+      ".github/workflows/echelon-foundations.yml",
+      "research/decisions/DF-SUMMA-FND-2026-0001--aegis-forma-folio-not-yet-applicable.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [
+      "DF-SUMMA-FND-2026-0001"
+    ],
+    "tags": [
+      "governance",
+      "foundations",
+      "aegis",
+      "forma",
+      "folio",
+      "limen",
+      "architecture"
+    ],
+    "title": "Summa is built the same way as the other Echelon applications, on Limen, Forma, Aegis and Folio",
     "updated": "2026-10-05",
     "version": "1.0.0"
   },

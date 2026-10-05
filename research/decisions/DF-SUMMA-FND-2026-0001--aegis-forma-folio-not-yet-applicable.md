@@ -1,15 +1,16 @@
 ---
 id: DF-SUMMA-FND-2026-0001
 title: Aegis, Forma and Folio are declared not yet applicable until Summa's product foundation exists
-status: accepted
-version: 1.0.0
+status: superseded
+version: 1.0.1
 created: 2026-10-05
 updated: 2026-10-05
 owners:
   - repository-governance
 review_cycle: on-trigger
 supersedes: []
-superseded_by: []
+superseded_by:
+  - DF-SUMMA-FND-2026-0002
 related_documents:
   - .echelon/foundations.json
   - docs/requirements/ECHELON-SHARED-APPLICATION-FOUNDATIONS.md
@@ -23,7 +24,7 @@ tags: [governance, foundations, aegis, forma, folio, applicability]
 # DF-SUMMA-FND-2026-0001 — Aegis, Forma and Folio are not yet applicable
 
 - **Date:** 2026-10-05
-- **Status:** accepted
+- **Status:** superseded by [`DF-SUMMA-FND-2026-0002`](DF-SUMMA-FND-2026-0002--build-summa-on-the-full-echelon-foundation-stack.md) (2026-10-05). The owner chose the alternative below, for all three capabilities: "we want all apps built the same way." Kept for history; it no longer governs.
 - **Decision type:** applicability declaration (temporary, with restoration triggers)
 - **Work item:** `FOUNDATIONS-APPLICABILITY`
 

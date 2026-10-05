@@ -22,18 +22,11 @@ import {
   unregisterRepo
 } from "./ros_hub_cli.mjs";
 import { parseRequestBody as parseBody } from "./http_body.mjs";
+import { REPOSITORY_ROOT, staticHandler } from "./web_static.mjs";
 
-const WEB_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "web-hub");
+const serveStatic = staticHandler(path.join(REPOSITORY_ROOT, "web-hub"));
 const MAX_BODY_BYTES = 1_000_000;
 const MAX_UPLOAD_BYTES = 25_000_000;
-
-const CONTENT_TYPES = {
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".map": "application/json; charset=utf-8"
-};
 
 function parseRequestBody(req) {
   return parseBody(req, { maxJsonBytes: MAX_BODY_BYTES, maxUploadBytes: MAX_UPLOAD_BYTES });
@@ -127,20 +120,6 @@ async function handleApi(req, res, root, url) {
   } catch (error) {
     sendJson(res, 400, { error: error.message });
   }
-}
-
-function serveStatic(req, res, url) {
-  const relative = url.pathname === "/" ? "/index.html" : url.pathname;
-  const resolved = path.resolve(WEB_ROOT, `.${relative}`);
-  if (!resolved.startsWith(WEB_ROOT + path.sep) && resolved !== WEB_ROOT) {
-    res.writeHead(403); res.end("forbidden"); return;
-  }
-  fs.readFile(resolved, (error, content) => {
-    if (error) { res.writeHead(404); res.end("not found"); return; }
-    const type = CONTENT_TYPES[path.extname(resolved)] ?? "application/octet-stream";
-    res.writeHead(200, { "Content-Type": type });
-    res.end(content);
-  });
 }
 
 export function createServer(root) {

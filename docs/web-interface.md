@@ -11,8 +11,10 @@ kernel.
 npm run web
 ```
 
-This builds `web/app.ts` and starts the server on `http://127.0.0.1:4310`,
-serving the repository at the current working directory.
+This publishes the F# engine to WebAssembly (`npm run build:wasm`, into
+`build/wasm/`) and starts the server on `http://127.0.0.1:4310`, serving the
+repository at the current working directory. Run `npm ci` once first: the page
+loads Limen, Forma and Folio from `node_modules/`.
 
 Options:
 
@@ -28,8 +30,9 @@ request. Only pass `--host 0.0.0.0` (or otherwise expose it beyond your own
 machine) if you've put your own authentication or network boundary in front
 of it.
 
-After editing `web/app.ts`, either re-run `npm run web` (which rebuilds
-first) or `npm run build:web` on its own, then reload the page.
+After editing the engine (`src/Summa.Web.Engine`, `src/Summa.Web.Application`),
+re-run `npm run web` or `npm run build:wasm`, then reload the page. Markup and
+CSS edits (`web/`, `web-kernel/`) need only a reload.
 
 ## Architecture
 
@@ -37,8 +40,12 @@ This follows the same layering discipline as the rest of ROS's work
 protocol: one place owns meaning, everything else is a thin adapter over it.
 
 ```
-browser (HTML + TypeScript)
-        | fetch (command)
+browser: web/index.html (Forma markup, Limen data-* bindings, Folio print surface)
+        | Limen BrowserKernel (web-kernel/limen-wasm.js)
+        v
+src/Summa.Wasm ([JSExport] shim) -> src/Summa.Web.Application (Limen protocol, Aegis boundary)
+        -> src/Summa.Web.Engine (pure F#: state, transitions, requests, view)
+        | Http / transfer effects, performed by the kernel
         v
 tools/ros_server.mjs (HTTP adapter -- no domain logic)
         | direct function call
@@ -46,34 +53,37 @@ tools/ros_server.mjs (HTTP adapter -- no domain logic)
 tools/ros_cli.mjs (the kernel -- owns every legality/state rule)
 ```
 
-- **`tools/ros_cli.mjs`** is unchanged in behavior. The functions the server
-  calls (`captureWork`, `backlogTransition`, `startWork`, `transition`,
-  `blockWork`, `showWork`, `mergedWorkView`, `statusView`, `updateWork`,
-  `attachFile`, `attachmentFilePath`, `validate`) are the exact same
-  functions `ros`'s CLI commands call -- the server does not duplicate any
-  transition, evidence, or validation rule. A request that would fail on
-  the CLI fails the same way over HTTP, with the same message.
-- **`tools/ros_server.mjs`** is a dependency-free `node:http` server. It
-  parses JSON (and, for file uploads, standard browser-generated
-  `multipart/form-data` via a small hand-written parser -- no upload
-  library), matches a small route table, calls one kernel function per
-  route, and serializes the result. It makes no decisions about what's
-  legal. A file's associated name comes from the browser `File`'s name at
-  upload time (or an override the UI sends alongside it); on-disk storage
-  names are generated separately so two attachments can share a display
-  name without colliding.
-- **`web/app.ts`** is a framework-free, purely functional TypeScript client:
-  a single `state` value, one `setState` that re-renders, and pure functions
-  from `state` to DOM. There is no two-way data binding -- typing in a
-  filter box never mutates `state` directly, it triggers a fetch whose
-  result replaces `state` wholesale. Modal interactions (block/abandon
-  reason, start type, completion evidence) use the browser's native
-  `<dialog>` + `<form method="dialog">`, which close themselves and report
-  which button was pressed without any custom modal JavaScript.
-- Client-side "validation" doesn't exist as a separate layer: the UI shows
-  whatever error message the server (i.e. the kernel) returns, rather than
-  re-implementing rules like "block requires a reason" or "completion
-  requires implementation and tests" in JavaScript.
+The page is built the same way as the other Echelon applications
+([`DF-SUMMA-FND-2026-0002`](../research/decisions/DF-SUMMA-FND-2026-0002--build-summa-on-the-full-echelon-foundation-stack.md)):
+
+- **`tools/ros_cli.mjs`** owns legality. The server routes call exactly the
+  functions the CLI calls, so a request that would fail on the CLI fails the
+  same way over HTTP, with the same message.
+- **`tools/ros_server.mjs`** is a dependency-free `node:http` server: a route
+  table over those functions, plus static files through
+  `tools/web_static.mjs`, which serves the page at `/` and the pinned
+  foundation packages, the shared kernel module and the published engine at
+  their repository-relative paths (and nothing else).
+- **`src/Summa.Web.Engine`** (Limen engine, pure F#) owns the page: one state
+  value, `update : Msg -> Page -> Page * Effect list`, and `view`, the named
+  values the HTML binds. It describes requests as data; it never performs them.
+- **`src/Summa.Web.Application`** speaks Limen's protocol (JSON in; view,
+  effects and the handshake out), decodes the server's bodies, and runs every
+  message inside **Aegis** (`EchelonFoundry.Aegis.Core`). A body that breaks the
+  agreed shape is an operational fault shown through Forma's fault component;
+  a server refusal is an ordinary error message. See `aegis-boundaries.json`.
+- **`web-kernel/limen-wasm.js`** starts Limen's `BrowserKernel` over the
+  WebAssembly runtime, with the `limen.files` and `limen.transfer` packs so
+  picked files upload as multipart by opaque id. It also registers **Folio**'s
+  print elements.
+- **`web/index.html`** is markup only: **Forma** patterns (fields, alerts,
+  data grid, status lozenge, dialogs, file upload, fault) inside inert `<ef-*>`
+  wrappers, styled by the installed `@echelon-foundry/design-system`. State cues
+  are `data-*` attributes plus CSS (Limen refuses `data-bind-style`). Modal
+  interactions are native `<dialog>`s opened with `command="show-modal"` and
+  closed by `<form method="dialog">`; the engine only learns what was typed
+  and which button confirmed. Printing shows Folio's `<ef-print-document>`
+  projection of the same rows.
 
 ## API reference
 
@@ -111,16 +121,12 @@ Errors are `4xx` with `{"error": "..."}`; the message is whatever
 
 ## Tests
 
-`tests/ros-server.test.mjs` drives the HTTP API directly (no browser), and
-asserts the same lifecycle rules the CLI tests assert: the `ready` gate
-before `start`, evidence requirements on `complete`, terminal `abandon`, and
-`block` correctly dispatching to the backlog or the in-flight item depending
-on where the ID currently lives. It also drives real multipart uploads
-(Node's native `FormData`/`File`), covering multiple files in one request, a
-custom name overriding the original filename, two attachments sharing a
-display name staying byte-distinct, and byte-for-byte download. There's no
-automated browser test for `web/app.ts` itself; it was verified manually
-end-to-end (capture with a description and an attached file, filter,
-start, block/complete with evidence, editing an item, and attaching further
-files through the dialog -- including the native dialogs) against a scratch
-repository.
+- `dotnet test Summa.sln`: the engine's decisions (carried over from the
+  TypeScript engine tests it replaced), the page state machines, the Limen
+  protocol and Aegis boundary (with a collector sink, proving faults are
+  captured and refusals are not), foundation conformance, and the agreement
+  between `index.html`'s bindings and the engine's view and events.
+- `npm run test:browser` (Playwright): both pages against the real Node
+  servers and throwaway repositories: capture with attachments, the full
+  lifecycle through the dialogs, filters, refusals, an Aegis fault, the Folio
+  print surface, and reflow at 320 CSS px.

@@ -20,15 +20,11 @@ An implementation MAY mark a capability not applicable only when it is genuinely
 outside that feature's boundary. The reason MUST be explicit and reviewable.
 Silence is not an exception.
 
-**Current repository state (2026-10-05).** Summa has no .NET/F# host, no
-browser surface other than the copied ROS administration UI that QDI-071 says
-to replace rather than grow, and no financial document output, so
-`.echelon/foundations.json` declares Aegis, Forma and Folio `required: false`.
-The reason, the evidence and the trigger that restores each capability to
-`required: true` are recorded in
-[`DF-SUMMA-FND-2026-0001`](../../research/decisions/DF-SUMMA-FND-2026-0001--aegis-forma-folio-not-yet-applicable.md).
-This does not relax any requirement below for the code that first owns the
-boundary.
+**Current repository state (2026-10-05).** Aegis, Forma and Folio are
+`required: true` in `.echelon/foundations.json` and consumed by both web
+surfaces, the same way the other Echelon applications consume them
+([`DF-SUMMA-FND-2026-0002`](../../research/decisions/DF-SUMMA-FND-2026-0002--build-summa-on-the-full-echelon-foundation-stack.md),
+which supersedes `DF-SUMMA-FND-2026-0001`).
 
 ## 2. Required dependency baselines
 
@@ -38,13 +34,12 @@ tracking a moving repository branch are not valid application baselines.
 - **Aegis:** `EchelonFoundry.Aegis.Core` **1.0.0** is the current .NET
   application baseline. Integration-specific Aegis packages MUST use a
   compatible pinned version when the matching integration exists.
-- **Forma:** `@echelon-foundry/design-system` **0.2.0** is the current
-  application baseline. Until npm is the selected canonical source, consume the
-  immutable v0.2.0 release artifact rather than copying CSS or tracking `main`.
-- **Folio:** `@echelon-foundry/print-components` **0.3.0** is the current
-  source baseline. Until a canonical v0.3.0 package/release artifact exists,
-  pin the immutable Folio commit `2b101b6d840a670abb959148fff8e1477c059eda` rather than tracking
-  `main`. Once published, pin the exact canonical package version.
+- **Forma:** `@echelon-foundry/design-system` **0.3.0** (the `echelon-current`
+  registry selection) is the current application baseline, consumed as the
+  immutable `v0.3.0` release artifact rather than copied CSS or `main`.
+- **Folio:** `@echelon-foundry/print-components` **0.3.0** (the
+  `echelon-current` registry selection) is the current baseline, consumed as
+  the immutable `v0.3.0` release artifact.
 
 A dependency upgrade is an explicit application change and MUST include
 verification evidence.

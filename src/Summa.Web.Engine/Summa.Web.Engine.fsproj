@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Limen engine: the authority side of the browser boundary for both
+       Summa web pages. Pure F#: state, transitions, request descriptions and
+       view projection. No browser, network, clock or file-system access, and
+       no package dependencies beyond FSharp.Core. -->
+
+  <ItemGroup>
+    <Compile Include="Common.fs" />
+    <Compile Include="Backlog.fs" />
+    <Compile Include="BacklogPage.fs" />
+    <Compile Include="Hub.fs" />
+    <Compile Include="HubPage.fs" />
+  </ItemGroup>
+
+</Project>

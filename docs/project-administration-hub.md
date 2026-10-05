@@ -87,7 +87,11 @@ npm run hub
 Serves `http://127.0.0.1:4320` — a register form, a repo list (with
 unregister), a create-work-item form (with tag/priority/description/file
 inputs, same as the per-repo web UI), a filter bar, and the aggregated
-table. **No authentication, localhost by default** — this server can create
+table. The page is built like the per-repo web UI (see `web-interface.md`):
+`web-hub/index.html` is Forma markup with Limen bindings, driven by the F#
+engine (`src/Summa.Web.Engine/HubPage.fs`) over WebAssembly, with Aegis at its
+boundary and a Folio print projection of the aggregated queue. Unregistering
+asks for confirmation in a native dialog. **No authentication, localhost by default** — this server can create
 work items and run commands in every registered repository, which is a
 larger blast radius than the single-repo web interface. Do not bind it to
 a non-loopback host without your own authentication in front of it.
