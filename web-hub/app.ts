@@ -1,57 +1,41 @@
-// Purely functional, framework-free client for the project-administration
-// hub. Same discipline as web/app.ts: one state value, one setState that
-// re-renders, pure (state) -> DOM functions, no two-way binding. The hub
-// itself decides nothing about work-item legality -- every create/list
-// request is a thin pass-through to a spoke repository's own `./ros`, run
-// by the server. Errors shown here are exactly what that repository's CLI
-// said.
+// Browser kernel for the project-administration hub page: the only code here
+// that touches the DOM or the network. The page's state, transitions, request
+// shapes and input decisions live in the engine (./engine/hub.ts) as pure
+// functions; this file performs the requests the engine describes, reads raw
+// input out of the DOM, and renders state (Limen's kernel side; see
+// limen.config.json). Same discipline as web/app.ts: one state value, one
+// dispatch that re-renders, no two-way binding.
 
-type RepoEntry = {
-  id: string;
-  name: string;
-  path: string;
-  registeredAt: string;
-};
-
-type AggregatedRow = {
-  repoId: string;
-  repoName: string;
-  id?: string;
-  title?: string;
-  status?: string;
-  tags?: string[];
-  priority?: string | null;
-  error?: string;
-};
-
-type Filter = {
-  repo: string;
-  tag: string;
-  status: string;
-};
-
-type State = {
-  readonly repos: readonly RepoEntry[];
-  readonly rows: readonly AggregatedRow[];
-  readonly filter: Filter;
-  readonly reposError: string | null;
-  readonly createError: string | null;
-  readonly listError: string | null;
-};
-
-const initialState: State = Object.freeze({
-  repos: [],
-  rows: [],
-  filter: { repo: "", tag: "", status: "" },
-  reposError: null,
-  createError: null,
-  listError: null
-});
+import {
+  createFailed,
+  createInput,
+  created,
+  filtersCleared,
+  initialState,
+  registered,
+  registerInput,
+  repoFilterChanged,
+  reposFailed,
+  reposLoaded,
+  requests,
+  responseError,
+  retainedSelection,
+  statusFilterChanged,
+  tagFilterChanged,
+  unregisterConfirmation,
+  uploadName,
+  workFailed,
+  workLoaded,
+  type AggregatedRow,
+  type RepoEntry,
+  type Request,
+  type State
+} from "./engine/hub.js";
 
 let state: State = initialState;
 
-function setState(patch: Partial<State>): void {
-  state = { ...state, ...patch };
+function dispatch(transition: (current: State) => State): void {
+  state = transition(state);
   render(state);
 }
 
@@ -59,64 +43,28 @@ function setState(patch: Partial<State>): void {
 // Effects
 // ---------------------------------------------------------------------------
 
-async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const isForm = init?.body instanceof FormData;
-  const response = await fetch(path, {
-    ...init,
-    headers: isForm ? (init?.headers ?? {}) : { "Content-Type": "application/json", ...(init?.headers ?? {}) }
+type FileUpload = { blob: File; name: string };
+
+async function perform<T>(request: Request, files: readonly FileUpload[] = []): Promise<T> {
+  let form: FormData | undefined;
+  if (request.formFields) {
+    form = new FormData();
+    for (const [key, value] of request.formFields) form.append(key, value);
+    for (const file of files) form.append("file", file.blob, file.name);
+  }
+  const body = form ?? (request.json === undefined ? undefined : JSON.stringify(request.json));
+  const response = await fetch(request.path, {
+    method: request.method,
+    ...(body === undefined ? {} : { body }),
+    headers: form ? {} : { "Content-Type": "application/json" }
   });
-  const body: unknown = await response.json();
-  if (!response.ok) {
-    const message = typeof body === "object" && body && "error" in body ? String((body as { error: unknown }).error) : `request failed (${response.status})`;
-    throw new Error(message);
-  }
-  return body as T;
+  const parsed: unknown = await response.json();
+  if (!response.ok) throw new Error(responseError(response.status, parsed));
+  return parsed as T;
 }
-
-function buildWorkQuery(filter: Filter): string {
-  const params = new URLSearchParams();
-  if (filter.repo) params.set("repo", filter.repo);
-  if (filter.tag.trim()) {
-    for (const tag of filter.tag.split(",").map((value) => value.trim()).filter(Boolean)) params.append("tag", tag);
-  }
-  if (filter.status) params.set("status", filter.status);
-  const query = params.toString();
-  return query ? `?${query}` : "";
-}
-
-type CreateInput = {
-  title: string;
-  tags: string[];
-  priority: string;
-  description: string;
-  files: { blob: File; name: string }[];
-};
-
-const api = {
-  repos: (): Promise<RepoEntry[]> => apiRequest("/api/repos"),
-  register: (repoPath: string, name: string): Promise<RepoEntry> =>
-    apiRequest("/api/repos", { method: "POST", body: JSON.stringify({ path: repoPath, name: name || undefined }) }),
-  unregister: (id: string): Promise<RepoEntry> => apiRequest(`/api/repos/${encodeURIComponent(id)}`, { method: "DELETE" }),
-  work: (filter: Filter): Promise<AggregatedRow[]> => apiRequest(`/api/work${buildWorkQuery(filter)}`),
-  createWork: (repoId: string, input: CreateInput): Promise<AggregatedRow> => {
-    if (!input.files.length) {
-      return apiRequest(`/api/repos/${encodeURIComponent(repoId)}/work`, {
-        method: "POST",
-        body: JSON.stringify({ title: input.title, tags: input.tags, priority: input.priority, description: input.description })
-      });
-    }
-    const form = new FormData();
-    form.append("title", input.title);
-    form.append("tags", input.tags.join(","));
-    form.append("priority", input.priority);
-    form.append("description", input.description);
-    for (const file of input.files) form.append("file", file.blob, file.name);
-    return apiRequest(`/api/repos/${encodeURIComponent(repoId)}/work`, { method: "POST", body: form });
-  }
-};
 
 // ---------------------------------------------------------------------------
-// Pure rendering
+// Rendering
 // ---------------------------------------------------------------------------
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -166,17 +114,17 @@ function renderRepoOptions(repos: readonly RepoEntry[]): void {
   const createSelect = document.getElementById("create-repo");
   const filterSelect = document.getElementById("filter-repo");
   if (createSelect instanceof HTMLSelectElement) {
-    const current = createSelect.value;
+    const kept = retainedSelection(repos, createSelect.value);
     createSelect.replaceChildren(...repos.map((repo) => el("option", { value: repo.id }, [repo.name])));
-    if (repos.some((repo) => repo.id === current)) createSelect.value = current;
+    if (kept !== null) createSelect.value = kept;
   }
   if (filterSelect instanceof HTMLSelectElement) {
-    const current = filterSelect.value;
+    const kept = retainedSelection(repos, filterSelect.value);
     filterSelect.replaceChildren(
       el("option", { value: "" }, ["all"]),
       ...repos.map((repo) => el("option", { value: repo.id }, [repo.name]))
     );
-    filterSelect.value = repos.some((repo) => repo.id === current) ? current : "";
+    filterSelect.value = kept ?? "";
   }
 }
 
@@ -216,6 +164,10 @@ function render(current: State): void {
 // File-row helpers (identical pattern to web/app.ts)
 // ---------------------------------------------------------------------------
 
+function textOf(node: Element | null): string {
+  return node instanceof HTMLInputElement ? node.value : "";
+}
+
 function addFileRow(container: HTMLElement): void {
   container.append(el("div", { class: "file-row" }, [
     el("input", { type: "file", "data-role": "file-input" }),
@@ -228,21 +180,15 @@ function resetFileRows(container: HTMLElement): void {
   addFileRow(container);
 }
 
-function fileRowsFrom(container: HTMLElement): { blob: File; name: string }[] {
-  const files: { blob: File; name: string }[] = [];
+function fileRowsFrom(container: HTMLElement): FileUpload[] {
+  const files: FileUpload[] = [];
   for (const row of Array.from(container.children)) {
     const fileInput = row.querySelector('[data-role="file-input"]');
-    const nameInput = row.querySelector('[data-role="file-name"]');
     const blob = fileInput instanceof HTMLInputElement ? fileInput.files?.[0] : undefined;
     if (!blob) continue;
-    const name = nameInput instanceof HTMLInputElement ? nameInput.value.trim() : "";
-    files.push({ blob, name: name || blob.name });
+    files.push({ blob, name: uploadName(textOf(row.querySelector('[data-role="file-name"]')), blob.name) });
   }
   return files;
-}
-
-function parseTags(raw: string): string[] {
-  return raw.split(",").map((tag) => tag.trim()).filter(Boolean);
 }
 
 // ---------------------------------------------------------------------------
@@ -251,30 +197,30 @@ function parseTags(raw: string): string[] {
 
 async function refreshRepos(): Promise<void> {
   try {
-    const repos = await api.repos();
-    setState({ repos, reposError: null });
+    const repos = await perform<RepoEntry[]>(requests.repos());
+    dispatch((current) => reposLoaded(current, repos));
   } catch (error) {
-    setState({ reposError: (error as Error).message });
+    dispatch((current) => reposFailed(current, (error as Error).message));
   }
 }
 
 async function refreshWork(): Promise<void> {
   try {
-    const rows = await api.work(state.filter);
-    setState({ rows, listError: null });
+    const rows = await perform<AggregatedRow[]>(requests.work(state.filter));
+    dispatch((current) => workLoaded(current, rows));
   } catch (error) {
-    setState({ listError: (error as Error).message });
+    dispatch((current) => workFailed(current, (error as Error).message));
   }
 }
 
 async function runUnregister(repo: RepoEntry): Promise<void> {
-  if (!window.confirm(`Unregister ${repo.name} (${repo.path})? This only removes it from the hub -- the repository itself is unaffected.`)) return;
+  if (!window.confirm(unregisterConfirmation(repo))) return;
   try {
-    await api.unregister(repo.id);
+    await perform(requests.unregister(repo.id));
     await refreshRepos();
     await refreshWork();
   } catch (error) {
-    setState({ reposError: (error as Error).message });
+    dispatch((current) => reposFailed(current, (error as Error).message));
   }
 }
 
@@ -286,18 +232,17 @@ function wireRegisterForm(): void {
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const repoPath = pathInput instanceof HTMLInputElement ? pathInput.value.trim() : "";
-    const name = nameInput instanceof HTMLInputElement ? nameInput.value.trim() : "";
-    if (!repoPath) return;
+    const input = registerInput({ path: textOf(pathInput), name: textOf(nameInput) });
+    if (!input) return;
     void (async () => {
       try {
-        await api.register(repoPath, name);
-        setState({ reposError: null });
+        await perform(requests.register(input.path, input.name));
+        dispatch(registered);
         form.reset();
         await refreshRepos();
         await refreshWork();
       } catch (error) {
-        setState({ reposError: (error as Error).message });
+        dispatch((current) => reposFailed(current, (error as Error).message));
       }
     })();
   });
@@ -320,23 +265,25 @@ function wireCreateForm(): void {
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const repoId = repoSelect instanceof HTMLSelectElement ? repoSelect.value : "";
-    const title = titleInput instanceof HTMLInputElement ? titleInput.value.trim() : "";
-    const tags = parseTags(tagsInput instanceof HTMLInputElement ? tagsInput.value : "");
-    const priority = priorityInput instanceof HTMLSelectElement ? priorityInput.value : "medium";
-    const description = descriptionInput instanceof HTMLTextAreaElement ? descriptionInput.value.trim() : "";
+    const input = createInput({
+      repoId: repoSelect instanceof HTMLSelectElement ? repoSelect.value : "",
+      title: textOf(titleInput),
+      tags: textOf(tagsInput),
+      priority: priorityInput instanceof HTMLSelectElement ? priorityInput.value : "medium",
+      description: descriptionInput instanceof HTMLTextAreaElement ? descriptionInput.value : ""
+    });
     const files = fileRowsFrom(filesContainer);
-    if (!repoId || !title) return;
+    if (!input) return;
 
     void (async () => {
       try {
-        await api.createWork(repoId, { title, tags, priority, description, files });
-        setState({ createError: null });
+        await perform(requests.createWork(input, files.length > 0), files);
+        dispatch(created);
         form.reset();
         resetFileRows(filesContainer);
         await refreshWork();
       } catch (error) {
-        setState({ createError: (error as Error).message });
+        dispatch((current) => createFailed(current, (error as Error).message));
       }
     })();
   });
@@ -350,19 +297,19 @@ function wireFilters(): void {
 
   repoSelect?.addEventListener("change", () => {
     const value = repoSelect instanceof HTMLSelectElement ? repoSelect.value : "";
-    setState({ filter: { ...state.filter, repo: value } });
+    dispatch((current) => repoFilterChanged(current, value));
     void refreshWork();
   });
 
   tagInput?.addEventListener("input", () => {
-    const value = tagInput instanceof HTMLInputElement ? tagInput.value : "";
-    setState({ filter: { ...state.filter, tag: value } });
+    const value = textOf(tagInput);
+    dispatch((current) => tagFilterChanged(current, value));
     void refreshWork();
   });
 
   statusSelect?.addEventListener("change", () => {
     const value = statusSelect instanceof HTMLSelectElement ? statusSelect.value : "";
-    setState({ filter: { ...state.filter, status: value } });
+    dispatch((current) => statusFilterChanged(current, value));
     void refreshWork();
   });
 
@@ -370,7 +317,7 @@ function wireFilters(): void {
     if (repoSelect instanceof HTMLSelectElement) repoSelect.value = "";
     if (tagInput instanceof HTMLInputElement) tagInput.value = "";
     if (statusSelect instanceof HTMLSelectElement) statusSelect.value = "";
-    setState({ filter: { repo: "", tag: "", status: "" } });
+    dispatch(filtersCleared);
     void refreshWork();
   });
 }

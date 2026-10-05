@@ -1,67 +1,49 @@
-// Purely functional, framework-free client for the ROS work backlog API.
+// Browser kernel for the work-backlog page: the only code here that touches
+// the DOM or the network. Everything the page decides -- its state and
+// transitions, which requests to make, which actions a row offers, what the
+// detail panel shows, how typed input becomes a submission -- lives in the
+// engine (./engine/backlog.ts) as pure functions. This file performs the
+// requests the engine describes, reads raw input out of the DOM, and renders
+// what the engine projects (Limen's kernel side; see limen.config.json).
 //
-// The flow is always: DOM event -> command (fetch) -> server (the kernel,
-// via ros_cli.mjs) -> updated data -> render(state) -> DOM. The DOM is a
-// projection of `state`; nothing here writes to `state` except `setState`,
-// and nothing writes to the DOM except `render` and the dialog helpers.
-// There is no two-way binding: typing in the filter inputs never mutates
-// `state` directly, it triggers a command that re-fetches and re-renders.
-//
-// Validation (is this transition legal? is a reason required?) lives only
-// on the server, which itself only calls into ros_cli.mjs -- this file does
-// not duplicate any of those rules; it surfaces whatever the server says.
+// The flow is always: DOM event -> engine request -> fetch -> server ->
+// engine transition -> render(state) -> DOM. Nothing writes to `state` except
+// `dispatch`, and nothing writes to the DOM except `render` and the dialog
+// helpers. Validation of work-item transitions lives only on the server,
+// which itself only calls into ros_cli.mjs.
 
-type LiveWorkItem = {
-  state: string;
-  semanticState: string;
-  allowedActions: string[];
-};
-
-type Attachment = {
-  id: string;
-  name: string;
-  size: number;
-  contentType: string | null;
-  uploadedAt: string;
-};
-
-type WorkRow = {
-  id: string;
-  title: string;
-  description: string | null;
-  tags: string[];
-  priority: "high" | "medium" | "low" | null;
-  status: string;
-  blockedReason?: string;
-  backlogActions: string[];
-  attachments: Attachment[];
-  liveWorkItem: LiveWorkItem | null;
-  detail?: string | null;
-};
-
-type Filter = {
-  tag: string;
-  status: string;
-};
-
-type State = {
-  readonly rows: readonly WorkRow[];
-  readonly filter: Filter;
-  readonly selectedId: string | null;
-  readonly error: string | null;
-};
-
-const initialState: State = Object.freeze({
-  rows: [],
-  filter: { tag: "", status: "" },
-  selectedId: null,
-  error: null
-});
+import {
+  addInput,
+  completionInput,
+  detailView,
+  filtersCleared,
+  initialState,
+  repositoryLabel,
+  requestFailed,
+  requests,
+  responseError,
+  rowActions,
+  rowsLoaded,
+  rowToggled,
+  statusFilterChanged,
+  tagFilterChanged,
+  updateDefaults,
+  updateInput,
+  uploadName,
+  type AttachmentView,
+  type CompletionInput,
+  type RepositoryStatus,
+  type Request,
+  type RowActionKind,
+  type State,
+  type UpdateInput,
+  type WorkRow
+} from "./engine/backlog.js";
 
 let state: State = initialState;
 
-function setState(patch: Partial<State>): void {
-  state = { ...state, ...patch };
+function dispatch(transition: (current: State) => State): void {
+  state = transition(state);
   render(state);
 }
 
@@ -69,67 +51,28 @@ function setState(patch: Partial<State>): void {
 // Effects: the only functions in this file that talk to the network.
 // ---------------------------------------------------------------------------
 
-async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const isForm = init?.body instanceof FormData;
-  const response = await fetch(path, {
-    ...init,
-    headers: isForm ? (init?.headers ?? {}) : { "Content-Type": "application/json", ...(init?.headers ?? {}) }
-  });
-  const body: unknown = await response.json();
-  if (!response.ok) {
-    const message = typeof body === "object" && body && "error" in body ? String((body as { error: unknown }).error) : `request failed (${response.status})`;
-    throw new Error(message);
-  }
-  return body as T;
-}
-
-function buildQuery(filter: Filter): string {
-  const params = new URLSearchParams();
-  if (filter.tag.trim()) {
-    for (const tag of filter.tag.split(",").map((value) => value.trim()).filter(Boolean)) {
-      params.append("tag", tag);
-    }
-  }
-  if (filter.status) params.set("status", filter.status);
-  const query = params.toString();
-  return query ? `?${query}` : "";
-}
-
-type RepositoryStatus = { repository: string; protocolVersion: string; validation: string };
-type UpdateInput = { title: string; description: string; tags: string[]; priority: string };
 type FileUpload = { blob: File; name: string };
 
-const api = {
-  list: (filter: Filter): Promise<WorkRow[]> => apiRequest(`/api/work${buildQuery(filter)}`),
-  status: (): Promise<RepositoryStatus> => apiRequest("/api/status"),
-  add: (input: { title: string; tags: string[]; priority: string; description: string }): Promise<WorkRow> =>
-    apiRequest("/api/work", { method: "POST", body: JSON.stringify(input) }),
-  update: (id: string, input: UpdateInput): Promise<WorkRow> =>
-    apiRequest(`/api/work/${encodeURIComponent(id)}/update`, { method: "POST", body: JSON.stringify(input) }),
-  uploadAttachments: (id: string, files: readonly FileUpload[]): Promise<WorkRow> => {
-    const form = new FormData();
-    for (const file of files) form.append("file", file.blob, file.name);
-    return apiRequest(`/api/work/${encodeURIComponent(id)}/attachments`, { method: "POST", body: form });
-  },
-  ready: (id: string): Promise<WorkRow> => apiRequest(`/api/work/${encodeURIComponent(id)}/ready`, { method: "POST" }),
-  block: (id: string, reason: string): Promise<WorkRow> =>
-    apiRequest(`/api/work/${encodeURIComponent(id)}/block`, { method: "POST", body: JSON.stringify({ reason }) }),
-  abandon: (id: string, reason: string): Promise<WorkRow> =>
-    apiRequest(`/api/work/${encodeURIComponent(id)}/abandon`, { method: "POST", body: JSON.stringify({ reason }) }),
-  start: (id: string, type: string): Promise<WorkRow> =>
-    apiRequest(`/api/work/${encodeURIComponent(id)}/start`, { method: "POST", body: JSON.stringify({ type }) }),
-  resume: (id: string): Promise<WorkRow> => apiRequest(`/api/work/${encodeURIComponent(id)}/resume`, { method: "POST" }),
-  complete: (id: string, evidence: { type: string; path: string }[], conclusion: string | null): Promise<WorkRow> =>
-    apiRequest(`/api/work/${encodeURIComponent(id)}/complete`, {
-      method: "POST",
-      body: JSON.stringify({ evidence, conclusion })
-    })
-};
+async function perform<T>(request: Request, form?: FormData): Promise<T> {
+  const body = form ?? (request.json === undefined ? undefined : JSON.stringify(request.json));
+  const response = await fetch(request.path, {
+    method: request.method,
+    ...(body === undefined ? {} : { body }),
+    headers: form ? {} : { "Content-Type": "application/json" }
+  });
+  const parsed: unknown = await response.json();
+  if (!response.ok) throw new Error(responseError(response.status, parsed));
+  return parsed as T;
+}
+
+function uploadAttachments(id: string, files: readonly FileUpload[]): Promise<WorkRow> {
+  const form = new FormData();
+  for (const file of files) form.append("file", file.blob, file.name);
+  return perform(requests.uploadAttachments(id), form);
+}
 
 // ---------------------------------------------------------------------------
-// Pure rendering: (data) -> DOM nodes. None of these functions perform
-// network effects or read mutable module state directly -- everything they
-// need arrives as a parameter.
+// Rendering: (projection) -> DOM nodes.
 // ---------------------------------------------------------------------------
 
 function el<K extends keyof HTMLElementTagNameMap>(
@@ -151,36 +94,25 @@ function statusPill(status: string): HTMLElement {
   return el("span", { class: `status-pill status-${status}` }, [status]);
 }
 
-type RowAction = { label: string; run: () => void };
-
-function actionsForRow(row: WorkRow): RowAction[] {
-  const actions: RowAction[] = [{ label: "Show", run: () => selectRow(row.id) }];
-
-  if (row.liveWorkItem) {
-    for (const action of row.liveWorkItem.allowedActions) {
-      if (action === "block") actions.push({ label: "Block", run: () => void runBlock(row.id) });
-      if (action === "resume") actions.push({ label: "Resume", run: () => void runResume(row.id) });
-      if (action === "complete") actions.push({ label: "Complete", run: () => void runComplete(row.id) });
-    }
-  } else {
-    for (const action of row.backlogActions) {
-      if (action === "ready") actions.push({ label: "Mark ready", run: () => void runReady(row.id) });
-      if (action === "block") actions.push({ label: "Block", run: () => void runBlock(row.id) });
-      if (action === "start") actions.push({ label: "Start", run: () => void runStart(row.id) });
-      if (action === "abandon") actions.push({ label: "Abandon", run: () => void runAbandon(row.id) });
-    }
+function actionHandler(kind: RowActionKind, row: WorkRow): () => void {
+  switch (kind) {
+    case "show": return () => dispatch((current) => rowToggled(current, row.id));
+    case "ready": return () => void runRequest(requests.ready(row.id));
+    case "resume": return () => void runRequest(requests.resume(row.id));
+    case "block": return () => void runBlock(row.id);
+    case "abandon": return () => void runAbandon(row.id);
+    case "start": return () => void runStart(row.id);
+    case "complete": return () => void runComplete(row.id);
+    case "edit": return () => void runUpdate(row);
+    case "attach": return () => void runAttach(row.id);
   }
-
-  actions.push({ label: "Edit", run: () => void runUpdate(row) });
-  actions.push({ label: "Attach", run: () => void runAttach(row.id) });
-  return actions;
 }
 
 function renderRow(row: WorkRow): HTMLTableRowElement {
   const actionsCell = el("td", { class: "row-actions" });
-  for (const action of actionsForRow(row)) {
+  for (const action of rowActions(row)) {
     const button = el("button", { type: "button" }, [action.label]);
-    button.addEventListener("click", action.run);
+    button.addEventListener("click", actionHandler(action.kind, row));
     actionsCell.append(button);
   }
   return el("tr", { "data-id": row.id }, [
@@ -207,50 +139,37 @@ function renderError(message: string | null): void {
   node.textContent = message;
 }
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function renderAttachments(id: string, attachments: readonly Attachment[]): HTMLElement {
+function renderAttachments(attachments: readonly AttachmentView[]): HTMLElement {
   if (!attachments.length) return el("p", { class: "muted" }, ["No attachments."]);
   return el("ul", { class: "attachment-list" }, attachments.map((attachment) =>
-    el("li", {}, [
-      el("a", { href: `/api/work/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachment.id)}`, download: "" }, [attachment.name]),
-      ` (${formatSize(attachment.size)})`
-    ])
+    el("li", {}, [el("a", { href: attachment.href, download: "" }, [attachment.name]), attachment.sizeLabel])
   ));
 }
 
-function renderDetail(rows: readonly WorkRow[], selectedId: string | null): void {
+function renderDetail(current: State): void {
   const section = document.getElementById("detail");
   const summary = document.getElementById("detail-summary");
   const body = document.getElementById("detail-body");
   if (!section || !summary || !body) return;
-  const row = selectedId ? rows.find((candidate) => candidate.id === selectedId) ?? null : null;
-  if (!row) { section.hidden = true; summary.replaceChildren(); body.textContent = ""; return; }
+  const view = detailView(current);
+  if (!view) { section.hidden = true; summary.replaceChildren(); body.textContent = ""; return; }
 
   section.hidden = false;
-  summary.replaceChildren(
-    el("p", {}, [row.description || "No description."]),
-    renderAttachments(row.id, row.attachments)
-  );
-  const raw = JSON.stringify(row, null, 2);
-  body.textContent = row.detail ? `${raw}\n\n${row.detail}` : raw;
+  summary.replaceChildren(el("p", {}, [view.description]), renderAttachments(view.attachments));
+  body.textContent = view.raw;
 }
 
 function render(current: State): void {
   renderTable(current.rows);
   renderError(current.error);
-  renderDetail(current.rows, current.selectedId);
+  renderDetail(current);
 }
 
 // ---------------------------------------------------------------------------
 // Dialog helpers: native <dialog> + <form method="dialog"> already closes
-// itself and sets `returnValue` to the clicked button's `value` attribute --
-// no JS is needed for that part. These functions only open the dialog,
-// reset its fields, and read back whatever the user entered once it closes.
+// itself and sets `returnValue` to the clicked button's `value` attribute.
+// These functions only open the dialog, reset its fields, and read back the
+// raw values the user entered; the engine turns them into a submission.
 // ---------------------------------------------------------------------------
 
 function dialogEl(id: string): HTMLDialogElement {
@@ -263,6 +182,10 @@ function waitForClose(dialog: HTMLDialogElement): Promise<string> {
   return new Promise((resolve) => {
     dialog.addEventListener("close", () => resolve(dialog.returnValue), { once: true });
   });
+}
+
+function textOf(node: Element | null): string {
+  return node instanceof HTMLInputElement ? node.value : "";
 }
 
 async function promptReason(title: string): Promise<string | null> {
@@ -293,8 +216,6 @@ function addEvidenceRow(container: HTMLElement): void {
   ]));
 }
 
-type CompletionInput = { evidence: { type: string; path: string }[]; conclusion: string | null };
-
 async function promptCompletion(): Promise<CompletionInput | null> {
   const dialog = dialogEl("complete-dialog");
   const rows = document.getElementById("complete-evidence-rows");
@@ -314,16 +235,11 @@ async function promptCompletion(): Promise<CompletionInput | null> {
   addButton?.removeEventListener("click", onAdd);
   if (result !== "confirm") return null;
 
-  const evidence: { type: string; path: string }[] = [];
-  for (const row of Array.from(rows.children)) {
-    const typeInput = row.querySelector('[data-role="evidence-type"]');
-    const pathInput = row.querySelector('[data-role="evidence-path"]');
-    const type = typeInput instanceof HTMLInputElement ? typeInput.value.trim() : "";
-    const evidencePath = pathInput instanceof HTMLInputElement ? pathInput.value.trim() : "";
-    if (type && evidencePath) evidence.push({ type, path: evidencePath });
-  }
-  const conclusion = conclusionInput instanceof HTMLInputElement ? conclusionInput.value.trim() : "";
-  return { evidence, conclusion: conclusion || null };
+  const entered = Array.from(rows.children).map((row) => ({
+    type: textOf(row.querySelector('[data-role="evidence-type"]')),
+    path: textOf(row.querySelector('[data-role="evidence-path"]'))
+  }));
+  return completionInput(entered, textOf(conclusionInput));
 }
 
 // A file's associated `name` is independent of what was actually selected on
@@ -345,11 +261,9 @@ function fileRowsFrom(container: HTMLElement): FileUpload[] {
   const files: FileUpload[] = [];
   for (const row of Array.from(container.children)) {
     const fileInput = row.querySelector('[data-role="file-input"]');
-    const nameInput = row.querySelector('[data-role="file-name"]');
     const blob = fileInput instanceof HTMLInputElement ? fileInput.files?.[0] : undefined;
     if (!blob) continue;
-    const name = nameInput instanceof HTMLInputElement ? nameInput.value.trim() : "";
-    files.push({ blob, name: name || blob.name });
+    files.push({ blob, name: uploadName(textOf(row.querySelector('[data-role="file-name"]')), blob.name) });
   }
   return files;
 }
@@ -360,20 +274,21 @@ async function promptUpdate(row: WorkRow): Promise<UpdateInput | null> {
   const descriptionInput = document.getElementById("update-dialog-description");
   const tagsInput = document.getElementById("update-dialog-tags");
   const priorityInput = document.getElementById("update-dialog-priority");
-  if (titleInput instanceof HTMLInputElement) titleInput.value = row.title;
-  if (descriptionInput instanceof HTMLTextAreaElement) descriptionInput.value = row.description ?? "";
-  if (tagsInput instanceof HTMLInputElement) tagsInput.value = row.tags.join(", ");
-  if (priorityInput instanceof HTMLSelectElement) priorityInput.value = row.priority ?? "medium";
+  const defaults = updateDefaults(row);
+  if (titleInput instanceof HTMLInputElement) titleInput.value = defaults.title;
+  if (descriptionInput instanceof HTMLTextAreaElement) descriptionInput.value = defaults.description;
+  if (tagsInput instanceof HTMLInputElement) tagsInput.value = defaults.tags;
+  if (priorityInput instanceof HTMLSelectElement) priorityInput.value = defaults.priority;
 
   dialog.showModal();
   const result = await waitForClose(dialog);
   if (result !== "confirm") return null;
-  return {
-    title: titleInput instanceof HTMLInputElement ? titleInput.value.trim() : row.title,
-    description: descriptionInput instanceof HTMLTextAreaElement ? descriptionInput.value.trim() : "",
-    tags: parseTags(tagsInput instanceof HTMLInputElement ? tagsInput.value : ""),
+  return updateInput({
+    title: titleInput instanceof HTMLInputElement ? titleInput.value : null,
+    description: descriptionInput instanceof HTMLTextAreaElement ? descriptionInput.value : "",
+    tags: textOf(tagsInput),
     priority: priorityInput instanceof HTMLSelectElement ? priorityInput.value : "medium"
-  };
+  }, row);
 }
 
 async function promptAttachments(): Promise<FileUpload[] | null> {
@@ -393,16 +308,16 @@ async function promptAttachments(): Promise<FileUpload[] | null> {
 }
 
 // ---------------------------------------------------------------------------
-// Commands: the only functions allowed to call setState, and only ever
-// after an effect (a fetch) has resolved or failed.
+// Commands: perform an engine request, then feed the outcome back through an
+// engine transition.
 // ---------------------------------------------------------------------------
 
 async function refresh(): Promise<void> {
   try {
-    const rows = await api.list(state.filter);
-    setState({ rows, error: null });
+    const rows = await perform<WorkRow[]>(requests.list(state.filter));
+    dispatch((current) => rowsLoaded(current, rows));
   } catch (error) {
-    setState({ error: (error as Error).message });
+    dispatch((current) => requestFailed(current, (error as Error).message));
   }
 }
 
@@ -411,60 +326,48 @@ async function runWithRefresh(action: () => Promise<unknown>): Promise<void> {
     await action();
     await refresh();
   } catch (error) {
-    setState({ error: (error as Error).message });
+    dispatch((current) => requestFailed(current, (error as Error).message));
   }
 }
 
-function selectRow(id: string): void {
-  setState({ selectedId: state.selectedId === id ? null : id });
-}
-
-function runReady(id: string): Promise<void> {
-  return runWithRefresh(() => api.ready(id));
-}
-
-function runResume(id: string): Promise<void> {
-  return runWithRefresh(() => api.resume(id));
+function runRequest(request: Request): Promise<void> {
+  return runWithRefresh(() => perform(request));
 }
 
 async function runBlock(id: string): Promise<void> {
   const reason = await promptReason("Reason for blocking");
   if (reason === null) return;
-  await runWithRefresh(() => api.block(id, reason));
+  await runRequest(requests.block(id, reason));
 }
 
 async function runAbandon(id: string): Promise<void> {
   const reason = await promptReason("Reason for abandoning");
   if (reason === null) return;
-  await runWithRefresh(() => api.abandon(id, reason));
+  await runRequest(requests.abandon(id, reason));
 }
 
 async function runStart(id: string): Promise<void> {
   const type = await promptStartType();
   if (type === null) return;
-  await runWithRefresh(() => api.start(id, type));
+  await runRequest(requests.start(id, type));
 }
 
 async function runComplete(id: string): Promise<void> {
   const input = await promptCompletion();
   if (input === null) return;
-  await runWithRefresh(() => api.complete(id, input.evidence, input.conclusion));
+  await runRequest(requests.complete(id, input));
 }
 
 async function runUpdate(row: WorkRow): Promise<void> {
   const input = await promptUpdate(row);
   if (input === null) return;
-  await runWithRefresh(() => api.update(row.id, input));
+  await runRequest(requests.update(row.id, input));
 }
 
 async function runAttach(id: string): Promise<void> {
   const files = await promptAttachments();
   if (files === null || !files.length) return;
-  await runWithRefresh(() => api.uploadAttachments(id, files));
-}
-
-function parseTags(raw: string): string[] {
-  return raw.split(",").map((tag) => tag.trim()).filter(Boolean);
+  await runWithRefresh(() => uploadAttachments(id, files));
 }
 
 function wireAddForm(): void {
@@ -483,16 +386,18 @@ function wireAddForm(): void {
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const title = titleInput instanceof HTMLInputElement ? titleInput.value.trim() : "";
-    const description = descriptionInput instanceof HTMLTextAreaElement ? descriptionInput.value.trim() : "";
-    const tags = parseTags(tagsInput instanceof HTMLInputElement ? tagsInput.value : "");
-    const priority = priorityInput instanceof HTMLSelectElement ? priorityInput.value : "medium";
+    const input = addInput({
+      title: textOf(titleInput),
+      description: descriptionInput instanceof HTMLTextAreaElement ? descriptionInput.value : "",
+      tags: textOf(tagsInput),
+      priority: priorityInput instanceof HTMLSelectElement ? priorityInput.value : "medium"
+    });
     const files = fileRowsFrom(filesContainer);
-    if (!title) return;
+    if (!input) return;
 
     void runWithRefresh(async () => {
-      const created = await api.add({ title, tags, priority, description });
-      if (files.length) await api.uploadAttachments(created.id, files);
+      const created = await perform<WorkRow>(requests.add(input));
+      if (files.length) await uploadAttachments(created.id, files);
     }).then(() => {
       form.reset();
       resetFileRows(filesContainer);
@@ -506,21 +411,21 @@ function wireFilters(): void {
   const clearButton = document.getElementById("filter-clear");
 
   tagInput?.addEventListener("input", () => {
-    const value = tagInput instanceof HTMLInputElement ? tagInput.value : "";
-    setState({ filter: { ...state.filter, tag: value } });
+    const value = textOf(tagInput);
+    dispatch((current) => tagFilterChanged(current, value));
     void refresh();
   });
 
   statusSelect?.addEventListener("change", () => {
     const value = statusSelect instanceof HTMLSelectElement ? statusSelect.value : "";
-    setState({ filter: { ...state.filter, status: value } });
+    dispatch((current) => statusFilterChanged(current, value));
     void refresh();
   });
 
   clearButton?.addEventListener("click", () => {
     if (tagInput instanceof HTMLInputElement) tagInput.value = "";
     if (statusSelect instanceof HTMLSelectElement) statusSelect.value = "";
-    setState({ filter: { tag: "", status: "" } });
+    dispatch(filtersCleared);
     void refresh();
   });
 }
@@ -529,8 +434,7 @@ async function showRepositoryLabel(): Promise<void> {
   const node = document.getElementById("repository-label");
   if (!node) return;
   try {
-    const status = await api.status();
-    node.textContent = `${status.repository} · protocol ${status.protocolVersion} · validation ${status.validation}`;
+    node.textContent = repositoryLabel(await perform<RepositoryStatus>(requests.status()));
   } catch {
     node.textContent = "";
   }

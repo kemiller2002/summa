@@ -1,8 +1,13 @@
 {
   "configurationVersion": 1,
   "boundary": {
-    "notApplicable": {
-      "rationale": "Summa has no Limen engine or WASM code. Its only browser code is the local administration clients web/app.ts and web-hub/app.ts, which render data from the ROS hub server (tools/ros_hub_server.mjs) and own no application rules. Revisit when the proposed invoice requirements (INV-ARCH-006) introduce an engine behind Limen."
-    }
+    "engine": [
+      "web/engine",
+      "web-hub/engine"
+    ],
+    "kernel": [
+      "web/app.ts",
+      "web-hub/app.ts"
+    ]
   }
 }
