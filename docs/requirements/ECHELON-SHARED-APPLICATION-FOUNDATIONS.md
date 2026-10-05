@@ -20,6 +20,16 @@ An implementation MAY mark a capability not applicable only when it is genuinely
 outside that feature's boundary. The reason MUST be explicit and reviewable.
 Silence is not an exception.
 
+**Current repository state (2026-10-05).** Summa has no .NET/F# host, no
+browser surface other than the copied ROS administration UI that QDI-071 says
+to replace rather than grow, and no financial document output, so
+`.echelon/foundations.json` declares Aegis, Forma and Folio `required: false`.
+The reason, the evidence and the trigger that restores each capability to
+`required: true` are recorded in
+[`DF-SUMMA-FND-2026-0001`](../../research/decisions/DF-SUMMA-FND-2026-0001--aegis-forma-folio-not-yet-applicable.md).
+This does not relax any requirement below for the code that first owns the
+boundary.
+
 ## 2. Required dependency baselines
 
 Application dependencies MUST be reproducible and pinned. Floating versions and
