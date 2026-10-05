@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "tool": "limen",
-  "package": "@echelon-foundry/typescript-wasm-kernel",
-  "installedVersion": "0.6.1",
+  "package": "@echelon-foundry/limen",
+  "installedVersion": "0.7.0",
   "configurationVersion": 1,
   "managedArtifacts": [
     {
       "path": ".github/workflows/limen-verify.yml",
       "ownership": "tool-owned",
       "disposition": "installed",
-      "sha256": "431a9121670becfcb8f3f7afab55393deaa2b8c5d3ad00513a039241e4d1dfa4"
+      "sha256": "be23b1a435f92f9198b4f8c6925ef2908e7d413b3a1069afa043ef174cbfb09b"
     },
     {
       "path": "limen.config.json",
