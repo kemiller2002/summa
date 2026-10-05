@@ -2,12 +2,14 @@
   "configurationVersion": 1,
   "boundary": {
     "engine": [
-      "web/engine",
-      "web-hub/engine"
+      "src/Summa.Web.Engine",
+      "src/Summa.Web.Application"
     ],
     "kernel": [
-      "web/app.ts",
-      "web-hub/app.ts"
+      "src/Summa.Wasm",
+      "web",
+      "web-hub",
+      "web-kernel"
     ]
   }
 }

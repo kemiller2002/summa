@@ -1,5 +1,23 @@
 {
+  "name": "summa",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:wasm": "dotnet publish src/Summa.Wasm/Summa.Wasm.csproj -c Release -o build/wasm",
+    "build": "dotnet build Summa.sln -c Release && npm run build:wasm",
+    "check:limen": "limen verify --strict",
+    "test:dotnet": "dotnet test Summa.sln -c Release",
+    "test:browser": "npm run build:wasm && playwright test",
+    "test": "npm run check:limen && npm run test:dotnet && npm run test:browser",
+    "web": "npm run build:wasm && node tools/ros_server.mjs",
+    "hub": "npm run build:wasm && node tools/ros_hub_server.mjs"
+  },
   "dependencies": {
-    "@echelon-foundry/limen": "0.7.0"
+    "@echelon-foundry/design-system": "https://github.com/kemiller2002/forma/releases/download/v0.3.0/echelon-foundry-design-system-0.3.0.tgz",
+    "@echelon-foundry/limen": "0.7.0",
+    "@echelon-foundry/print-components": "https://github.com/kemiller2002/folio/releases/download/v0.3.0/echelon-foundry-print-components-0.3.0.tgz"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
   }
 }

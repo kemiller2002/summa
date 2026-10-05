@@ -1,0 +1,67 @@
+{
+  "$comment": "Summa operational failure boundaries. Expected outcomes (a server refusal, a request with no answer, an unknown outcome) remain typed application replies shown as ordinary errors and are not Aegis faults. See src/Summa.Web.Application/Boundary.fs.",
+  "schema": "aegis/boundaries/v1",
+  "application": "Summa",
+  "boundaries": [
+    {
+      "name": "Limen engine message dispatch (work backlog and hub pages)",
+      "kind": "ui-interop",
+      "owner": "Summa.Web.Application",
+      "codes": [
+        "SUMMA.BOUNDARY.MESSAGE_INVALID",
+        "SUMMA.BOUNDARY.UNEXPECTED"
+      ],
+      "guarded": true,
+      "$comment": "Every kernel message is parsed and dispatched inside Aegis.capture (BacklogWire.handle, HubWire.handle). A message that is not the Limen shape the engine relies on is MESSAGE_INVALID. Programming defects (for example an event name index.html sends that the engine does not know) keep Aegis fail-loud semantics and surface as a Limen bridge error."
+    },
+    {
+      "name": "Summa server response decoding",
+      "kind": "serialization",
+      "owner": "Summa.Web.Application",
+      "codes": [
+        "SUMMA.BOUNDARY.RESPONSE_INVALID"
+      ],
+      "guarded": true,
+      "$comment": "A 2xx reply from tools/ros_server.mjs or tools/ros_hub_server.mjs whose body is not the agreed shape (or would not decode) is externally sourced data the engine cannot trust; it is captured and presented through Forma's fault component, and the page keeps its previous state."
+    },
+    {
+      "name": "Limen files and transfer packs",
+      "kind": "browser-capability",
+      "owner": "Summa.Web.Application",
+      "codes": [
+        "SUMMA.BOUNDARY.CAPABILITY_UNAVAILABLE"
+      ],
+      "guarded": true,
+      "$comment": "An upload or file release the kernel did not execute (not negotiated, rejected, invalid request, unknown file) is a capability fault. Upload refusals and unknown outcomes reported by the server remain typed replies."
+    },
+    {
+      "name": "Browser HTTP and file effects",
+      "kind": "browser-capability",
+      "owner": "Limen BrowserKernel",
+      "codes": [],
+      "guarded": false,
+      "$comment": "Execution occurs browser-side (fetch, XMLHttpRequest, file pickers). Observed outcomes cross the Limen protocol as explicit typed outcomes; this declaration does not pretend the .NET Aegis runtime guards JavaScript."
+    },
+    {
+      "name": "Node work-protocol servers",
+      "kind": "external-service",
+      "owner": "tools/ros_server.mjs, tools/ros_hub_server.mjs",
+      "codes": [],
+      "guarded": false,
+      "$comment": "The copied Node-era ROS servers (QDI-071) answer HTTP with JSON errors; they are outside the .NET tier and are not Aegis-guarded. Their refusals reach the engine as typed replies."
+    }
+  ],
+  "persistence": {
+    "sinks": [
+      {
+        "name": "stderr",
+        "kind": "console",
+        "level": "optional",
+        "durable": false
+      }
+    ],
+    "requiredDurableStorage": false,
+    "fallbackBehaviour": "Aegis sink failures are contained by the configured fallback; Summa does not treat diagnostic persistence as business success.",
+    "retentionPolicy": "No durable Aegis sink is configured; in the browser the standard-error sink writes to the console."
+  }
+}

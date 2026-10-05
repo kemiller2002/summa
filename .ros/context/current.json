@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "agent:chatgpt",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-05T18:10:01.000Z",
+  "updatedAt": "2026-10-05T23:23:08.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -229,6 +229,153 @@
         "EXE-20261005T180910033Z-e7d07028"
       ],
       "completedAt": "2026-10-05T18:10:01.000Z"
+    },
+    {
+      "id": "WI-0004",
+      "type": "feature",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Application/Boundary.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "web/index.html"
+        },
+        {
+          "type": "implementation",
+          "path": "web-hub/index.html"
+        },
+        {
+          "type": "implementation",
+          "path": ".echelon/foundations.json"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/FoundationsConformanceTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/BoundaryTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/backlog.spec.js"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/hub.spec.js"
+        },
+        {
+          "type": "decision",
+          "path": "research/decisions/DF-SUMMA-FND-2026-0002--build-summa-on-the-full-echelon-foundation-stack.md"
+        }
+      ],
+      "updatedAt": "2026-10-05T23:23:08.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261005T225100722Z-a70eaf44"
+      ],
+      "completedAt": "2026-10-05T23:23:08.000Z"
+    },
+    {
+      "id": "WI-0005",
+      "type": "feature",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Application/Boundary.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "web/index.html"
+        },
+        {
+          "type": "implementation",
+          "path": "web-hub/index.html"
+        },
+        {
+          "type": "implementation",
+          "path": ".echelon/foundations.json"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/FoundationsConformanceTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/BoundaryTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/backlog.spec.js"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/hub.spec.js"
+        },
+        {
+          "type": "decision",
+          "path": "research/decisions/DF-SUMMA-FND-2026-0002--build-summa-on-the-full-echelon-foundation-stack.md"
+        }
+      ],
+      "updatedAt": "2026-10-05T23:23:08.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261005T225100802Z-95528d72"
+      ],
+      "completedAt": "2026-10-05T23:23:08.000Z"
+    },
+    {
+      "id": "WI-0006",
+      "type": "feature",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Application/Boundary.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "web/index.html"
+        },
+        {
+          "type": "implementation",
+          "path": "web-hub/index.html"
+        },
+        {
+          "type": "implementation",
+          "path": ".echelon/foundations.json"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/FoundationsConformanceTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/BoundaryTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/backlog.spec.js"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/hub.spec.js"
+        },
+        {
+          "type": "decision",
+          "path": "research/decisions/DF-SUMMA-FND-2026-0002--build-summa-on-the-full-echelon-foundation-stack.md"
+        }
+      ],
+      "updatedAt": "2026-10-05T23:23:08.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261005T225100868Z-9517a008"
+      ],
+      "completedAt": "2026-10-05T23:23:08.000Z"
     }
   ]
 }

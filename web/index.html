@@ -3,172 +3,377 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ROS Work Backlog</title>
+<title>Summa · Work backlog</title>
+<link rel="icon" href="data:," />
 <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-<header>
-  <h1>Work Backlog</h1>
-  <p id="repository-label" class="muted"></p>
-</header>
+<!-- Structure and presentation only. Every value below is projected by the F#
+     engine (src/Summa.Web.Engine) through Limen's data-* bindings, and every
+     control sends a named event back to it. Forma owns presentation (its CSS
+     and the inert <ef-*> authoring wrappers around native HTML); Folio owns
+     the print surface. Neither decides anything: the server owns legality. -->
+<main class="app ef-stack">
+  <header class="ef-record-header page-header">
+    <div class="ef-record-header__main">
+      <div class="ef-record-header__title">
+        <div><span class="ef-record-header__type">Summa</span><h1>Work backlog</h1></div>
+      </div>
+      <p id="repository-label" data-text="repositoryLabel"></p>
+    </div>
+  </header>
 
-<main>
-  <section id="capture" aria-label="Capture new work">
-    <h2>Capture</h2>
-    <form id="add-form">
-      <input id="add-title" name="title" type="text" placeholder="Describe the work" required />
-      <input id="add-tags" name="tags" type="text" placeholder="tags, comma, separated" />
-      <select id="add-priority" name="priority">
-        <option value="medium" selected>medium</option>
-        <option value="high">high</option>
-        <option value="low">low</option>
-      </select>
-      <textarea id="add-description" placeholder="Optional longer description"></textarea>
-      <div id="add-files" class="file-rows"></div>
-      <button id="add-add-file" type="button">+ file</button>
-      <button type="submit" class="primary">Add</button>
+  <!-- Unexpected operational failure (Aegis) is its own presentation. Expected
+       refusals from the server are ordinary errors in the queue below. -->
+  <template data-if="hasOperationalFault">
+    <ef-fault-inline class="ef-component-tag">
+      <div class="ef-fault ef-fault--inline operational-fault" id="operational-fault"
+           data-ef-intent="inline" data-ef-severity="error" role="alert"
+           aria-labelledby="operational-fault-title">
+        <div class="ef-fault__marker" aria-hidden="true">!</div>
+        <div class="ef-fault__body">
+          <p class="ef-fault__severity">Operational error</p>
+          <p class="ef-fault__title" id="operational-fault-title"><strong data-text="operationalFaultTitle"></strong></p>
+          <p class="ef-fault__message" data-text="operationalFaultMessage"></p>
+          <p class="ef-fault-reference">Reference <code data-text="operationalFaultReference"></code></p>
+        </div>
+      </div>
+    </ef-fault-inline>
+  </template>
+
+  <section id="capture" class="ef-surface ef-stack" aria-labelledby="capture-title">
+    <h2 id="capture-title">Capture</h2>
+    <form id="add-form" class="ef-stack" data-event="addSubmitted">
+      <div class="ef-field">
+        <label class="ef-field__label" for="add-title">Title</label>
+        <input id="add-title" type="text" placeholder="Describe the work" required
+               data-event="addTitleChanged" data-on="input" data-bind-value="addTitle" />
+      </div>
+      <div class="form-row">
+        <div class="ef-field">
+          <label class="ef-field__label" for="add-tags">Tags</label>
+          <input id="add-tags" type="text" placeholder="tags, comma, separated" aria-describedby="add-tags-note"
+                 data-event="addTagsChanged" data-on="input" data-bind-value="addTags" />
+          <p id="add-tags-note" class="ef-field__description">Separate tags with commas.</p>
+        </div>
+        <div class="ef-field">
+          <label class="ef-field__label" for="add-priority">Priority</label>
+          <select id="add-priority" data-event="addPriorityChanged" data-bind-value="addPriority">
+            <option value="medium">medium</option>
+            <option value="high">high</option>
+            <option value="low">low</option>
+          </select>
+        </div>
+      </div>
+      <div class="ef-field">
+        <label class="ef-field__label" for="add-description">Description</label>
+        <textarea id="add-description" placeholder="Optional longer description"
+                  data-event="addDescriptionChanged" data-on="input" data-bind-value="addDescription"></textarea>
+      </div>
+      <fieldset class="ef-file-upload file-rows">
+        <legend>Attachments</legend>
+        <ul class="ef-file-upload__queue" id="add-files">
+          <template data-each="addFiles" data-key="key">
+            <li class="file-row" data-bind-data-files-key="key">
+              <label class="ef-field__label">File <input type="file" data-files-input="add-file" /></label>
+              <label class="ef-field__label">Name <input type="text" placeholder="name (optional)"
+                     data-event="addFileNameChanged" data-on="input" data-bind-value="name" /></label>
+            </li>
+          </template>
+        </ul>
+        <button id="add-add-file" type="button" data-event="addFileRowAdded">+ file</button>
+      </fieldset>
+      <div class="ef-cluster"><button id="add-submit" type="submit">Add</button></div>
     </form>
   </section>
 
-  <section id="filters" aria-label="Filter work">
-    <h2>Filter</h2>
-    <label>
-      Tag
-      <input id="filter-tag" type="text" placeholder="e.g. wasm" />
-    </label>
-    <label>
-      Status
-      <select id="filter-status">
-        <option value="">any</option>
-        <option value="captured">captured</option>
-        <option value="ready">ready</option>
-        <option value="blocked">blocked</option>
-        <option value="active">active</option>
-        <option value="complete">complete</option>
-        <option value="abandoned">abandoned</option>
-      </select>
-    </label>
-    <button id="filter-clear" type="button">Clear</button>
+  <section id="filters" class="ef-surface ef-stack" aria-labelledby="filters-title">
+    <h2 id="filters-title">Filter</h2>
+    <div class="form-row">
+      <div class="ef-field">
+        <label class="ef-field__label" for="filter-tag">Tag</label>
+        <input id="filter-tag" type="text" placeholder="e.g. wasm"
+               data-event="tagFilterChanged" data-on="input" data-bind-value="filterTag" />
+      </div>
+      <div class="ef-field">
+        <label class="ef-field__label" for="filter-status">Status</label>
+        <select id="filter-status" data-event="statusFilterChanged" data-bind-value="filterStatus">
+          <option value="">any</option>
+          <option value="captured">captured</option>
+          <option value="ready">ready</option>
+          <option value="blocked">blocked</option>
+          <option value="active">active</option>
+          <option value="complete">complete</option>
+          <option value="abandoned">abandoned</option>
+        </select>
+      </div>
+    </div>
+    <div class="ef-cluster"><button id="filter-clear" type="button" data-event="filtersCleared">Clear</button></div>
   </section>
 
-  <section id="queue" aria-label="Work queue">
-    <h2>Queue</h2>
-    <p id="error" role="alert" hidden></p>
-    <table id="work-table">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Work</th>
-          <th>Status</th>
-          <th>Tags</th>
-          <th>Priority</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="work-table-body"></tbody>
-    </table>
+  <section id="queue" class="ef-stack" aria-labelledby="queue-title">
+    <header class="queue-header ef-cluster">
+      <h2 id="queue-title">Queue</h2>
+      <span class="ef-status-lozenge" id="row-count" role="status" data-text="rowCount"></span>
+    </header>
+
+    <template data-if="hasError">
+      <ef-alert class="ef-component-tag">
+        <aside class="ef-alert" role="alert" data-tone="attention">
+          <div class="ef-alert__icon" aria-hidden="true">!</div>
+          <p id="error" data-text="error"></p>
+        </aside>
+      </ef-alert>
+    </template>
+
+    <ef-data-grid class="ef-component-tag">
+      <div class="ef-data-grid" role="region" tabindex="0" aria-labelledby="queue-title">
+        <table id="work-table">
+          <caption class="ef-visually-hidden">Work items</caption>
+          <thead>
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">Work</th>
+              <th scope="col">Status</th>
+              <th scope="col">Tags</th>
+              <th scope="col">Priority</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="work-table-body">
+            <template data-each="rows" data-key="id">
+              <tr data-bind-data-id="id" data-bind-data-selected="selected">
+                <td data-label="ID" data-text="id"></td>
+                <td data-label="Work" data-text="title"></td>
+                <td data-label="Status"><span class="ef-status-lozenge" data-bind-data-state="statusTone" data-text="status"></span></td>
+                <td data-label="Tags" data-text="tags"></td>
+                <td data-label="Priority" data-text="priority"></td>
+                <td data-label="Actions">
+                  <!-- Seven slots, in the order the engine ranks the row's
+                       actions. A slot that opens a dialog names it through
+                       the native command/commandfor invoker. -->
+                  <div class="row-actions ef-cluster">
+                    <button type="button" data-event="rowAction0" data-text="a0Label" data-bind-hidden="a0Hidden" data-bind-commandfor="a0Dialog" data-bind-command="a0Command" data-bind-aria-pressed="a0Pressed"></button>
+                    <button type="button" data-event="rowAction1" data-text="a1Label" data-bind-hidden="a1Hidden" data-bind-commandfor="a1Dialog" data-bind-command="a1Command"></button>
+                    <button type="button" data-event="rowAction2" data-text="a2Label" data-bind-hidden="a2Hidden" data-bind-commandfor="a2Dialog" data-bind-command="a2Command"></button>
+                    <button type="button" data-event="rowAction3" data-text="a3Label" data-bind-hidden="a3Hidden" data-bind-commandfor="a3Dialog" data-bind-command="a3Command"></button>
+                    <button type="button" data-event="rowAction4" data-text="a4Label" data-bind-hidden="a4Hidden" data-bind-commandfor="a4Dialog" data-bind-command="a4Command"></button>
+                    <button type="button" data-event="rowAction5" data-text="a5Label" data-bind-hidden="a5Hidden" data-bind-commandfor="a5Dialog" data-bind-command="a5Command"></button>
+                    <button type="button" data-event="rowAction6" data-text="a6Label" data-bind-hidden="a6Hidden" data-bind-commandfor="a6Dialog" data-bind-command="a6Command"></button>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </ef-data-grid>
+
+    <template data-if="isEmpty">
+      <ef-empty-state class="ef-component-tag">
+        <section class="ef-empty-state" aria-labelledby="empty-title">
+          <div class="ef-empty-state__symbol" aria-hidden="true">□</div>
+          <h3 id="empty-title">No work items</h3>
+          <p>Nothing matches these filters. Capture work above, or clear the filters.</p>
+        </section>
+      </ef-empty-state>
+    </template>
   </section>
 
-  <section id="detail" aria-label="Selected item detail" hidden>
-    <h2>Detail</h2>
-    <div id="detail-summary"></div>
-    <details>
-      <summary>Raw record</summary>
-      <pre id="detail-body"></pre>
-    </details>
-  </section>
+  <template data-if="hasDetail">
+    <section id="detail" class="ef-surface ef-stack" aria-labelledby="detail-title">
+      <h2 id="detail-title" data-text="detailTitle"></h2>
+      <p id="detail-description" data-text="detailDescription"></p>
+      <template data-if="hasAttachments">
+        <ul class="attachment-list">
+          <template data-each="detailAttachments" data-key="key">
+            <li><a download data-bind-href="href" data-text="name"></a><span data-text="sizeLabel"></span></li>
+          </template>
+        </ul>
+      </template>
+      <template data-if="noAttachments">
+        <p class="muted">No attachments.</p>
+      </template>
+      <details class="ef-disclosure">
+        <summary>Raw record</summary>
+        <div class="ef-disclosure__content"><pre id="detail-body" data-text="detailRaw"></pre></div>
+      </details>
+    </section>
+  </template>
+
+  <!-- Folio's print surface: the same projected rows, as a document. It adds
+       document intent only and recomputes nothing. Hidden on screen. -->
+  <ef-print-document class="print-surface">
+    <ef-print-header>
+      <header>
+        <p>Summa</p>
+        <h1>Work backlog</h1>
+        <p data-text="repositoryLabel"></p>
+      </header>
+    </ef-print-header>
+    <ef-print-section>
+      <section>
+        <h2>Work items</h2>
+        <ef-print-table>
+          <table>
+            <thead>
+              <tr><th scope="col">ID</th><th scope="col">Work</th><th scope="col">Status</th><th scope="col">Tags</th><th scope="col">Priority</th></tr>
+            </thead>
+            <tbody>
+              <template data-each="rows" data-key="id">
+                <tr>
+                  <td data-text="id"></td>
+                  <td data-text="title"></td>
+                  <td data-text="status"></td>
+                  <td data-text="tags"></td>
+                  <td data-text="priority"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </ef-print-table>
+      </section>
+    </ef-print-section>
+    <ef-print-footer>
+      <footer>
+        <span>Summa work backlog · <span data-text="rowCount"></span></span>
+        <ef-print-page-number></ef-print-page-number>
+      </footer>
+    </ef-print-footer>
+  </ef-print-document>
 </main>
 
-<dialog id="reason-dialog">
+<!-- Native dialogs: the browser owns opening (command="show-modal" on the row
+     action), focus, Escape and closing (form method="dialog"). The engine
+     only learns what was typed and which button confirmed. -->
+<dialog class="ef-dialog" id="reason-dialog" aria-labelledby="reason-dialog-title">
   <form method="dialog">
-    <h2 id="reason-dialog-title">Reason</h2>
-    <textarea id="reason-dialog-input" placeholder="Why?"></textarea>
-    <menu>
-      <button value="cancel">Cancel</button>
-      <button id="reason-dialog-confirm" value="confirm">Confirm</button>
-    </menu>
+    <div class="ef-dialog__body ef-stack">
+      <h2 id="reason-dialog-title" data-text="reasonTitle"></h2>
+      <div class="ef-field">
+        <label class="ef-field__label" for="reason-dialog-input">Reason</label>
+        <textarea id="reason-dialog-input" placeholder="Why?"
+                  data-event="reasonChanged" data-on="input" data-bind-value="reason"></textarea>
+      </div>
+    </div>
+    <div class="ef-dialog__actions">
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button id="reason-dialog-confirm" value="confirm" data-event="reasonConfirmed">Confirm</button>
+    </div>
   </form>
 </dialog>
 
-<dialog id="start-dialog">
+<dialog class="ef-dialog" id="start-dialog" aria-labelledby="start-dialog-title">
   <form method="dialog">
-    <h2>Start work</h2>
-    <label>
-      Type
-      <select id="start-dialog-type">
-        <option value="feature">feature</option>
-        <option value="bug">bug</option>
-        <option value="research">research</option>
-        <option value="mechanical">mechanical</option>
-        <option value="maintenance">maintenance</option>
-        <option value="infrastructure">infrastructure</option>
-      </select>
-    </label>
-    <menu>
-      <button value="cancel">Cancel</button>
-      <button id="start-dialog-confirm" value="confirm">Start</button>
-    </menu>
+    <div class="ef-dialog__body ef-stack">
+      <h2 id="start-dialog-title">Start work</h2>
+      <div class="ef-field">
+        <label class="ef-field__label" for="start-dialog-type">Type</label>
+        <select id="start-dialog-type" data-event="startTypeChanged" data-bind-value="startType">
+          <option value="feature">feature</option>
+          <option value="bug">bug</option>
+          <option value="research">research</option>
+          <option value="mechanical">mechanical</option>
+          <option value="maintenance">maintenance</option>
+          <option value="infrastructure">infrastructure</option>
+        </select>
+      </div>
+    </div>
+    <div class="ef-dialog__actions">
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button id="start-dialog-confirm" value="confirm" data-event="startConfirmed">Start</button>
+    </div>
   </form>
 </dialog>
 
-<dialog id="complete-dialog">
+<dialog class="ef-dialog" id="complete-dialog" aria-labelledby="complete-dialog-title">
   <form method="dialog">
-    <h2>Complete work</h2>
-    <div id="complete-evidence-rows"></div>
-    <button id="complete-add-row" type="button">+ evidence</button>
-    <label>
-      Conclusion (research only)
-      <input id="complete-conclusion" type="text" placeholder="e.g. inconclusive" />
-    </label>
-    <menu>
-      <button value="cancel">Cancel</button>
-      <button id="complete-dialog-confirm" value="confirm">Complete</button>
-    </menu>
+    <div class="ef-dialog__body ef-stack">
+      <h2 id="complete-dialog-title">Complete work</h2>
+      <fieldset class="evidence-rows">
+        <legend>Evidence</legend>
+        <div id="complete-evidence-rows" class="ef-stack">
+          <template data-each="evidenceRows" data-key="key">
+            <div class="evidence-row form-row">
+              <label class="ef-field__label">Type <input placeholder="type (e.g. implementation)"
+                     data-event="evidenceTypeChanged" data-on="input" data-bind-value="type" /></label>
+              <label class="ef-field__label">Path <input placeholder="path"
+                     data-event="evidencePathChanged" data-on="input" data-bind-value="path" /></label>
+            </div>
+          </template>
+        </div>
+        <button id="complete-add-row" type="button" data-event="evidenceRowAdded">+ evidence</button>
+      </fieldset>
+      <div class="ef-field">
+        <label class="ef-field__label" for="complete-conclusion">Conclusion (research only)</label>
+        <input id="complete-conclusion" type="text" placeholder="e.g. inconclusive"
+               data-event="conclusionChanged" data-on="input" data-bind-value="conclusion" />
+      </div>
+    </div>
+    <div class="ef-dialog__actions">
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button id="complete-dialog-confirm" value="confirm" data-event="completeConfirmed">Complete</button>
+    </div>
   </form>
 </dialog>
 
-<dialog id="update-dialog">
+<dialog class="ef-dialog" id="update-dialog" aria-labelledby="update-dialog-heading">
   <form method="dialog">
-    <h2>Edit work item</h2>
-    <label>
-      Title
-      <input id="update-dialog-title" type="text" />
-    </label>
-    <label>
-      Description
-      <textarea id="update-dialog-description" placeholder="Optional longer description"></textarea>
-    </label>
-    <label>
-      Tags
-      <input id="update-dialog-tags" type="text" placeholder="tags, comma, separated" />
-    </label>
-    <label>
-      Priority
-      <select id="update-dialog-priority">
-        <option value="high">high</option>
-        <option value="medium">medium</option>
-        <option value="low">low</option>
-      </select>
-    </label>
-    <menu>
-      <button value="cancel">Cancel</button>
-      <button value="confirm">Save</button>
-    </menu>
+    <div class="ef-dialog__body ef-stack">
+      <h2 id="update-dialog-heading">Edit work item</h2>
+      <div class="ef-field">
+        <label class="ef-field__label" for="update-dialog-title">Title</label>
+        <input id="update-dialog-title" type="text"
+               data-event="updateTitleChanged" data-on="input" data-bind-value="updateTitle" />
+      </div>
+      <div class="ef-field">
+        <label class="ef-field__label" for="update-dialog-description">Description</label>
+        <textarea id="update-dialog-description" placeholder="Optional longer description"
+                  data-event="updateDescriptionChanged" data-on="input" data-bind-value="updateDescription"></textarea>
+      </div>
+      <div class="ef-field">
+        <label class="ef-field__label" for="update-dialog-tags">Tags</label>
+        <input id="update-dialog-tags" type="text" placeholder="tags, comma, separated"
+               data-event="updateTagsChanged" data-on="input" data-bind-value="updateTags" />
+      </div>
+      <div class="ef-field">
+        <label class="ef-field__label" for="update-dialog-priority">Priority</label>
+        <select id="update-dialog-priority" data-event="updatePriorityChanged" data-bind-value="updatePriority">
+          <option value="high">high</option>
+          <option value="medium">medium</option>
+          <option value="low">low</option>
+        </select>
+      </div>
+    </div>
+    <div class="ef-dialog__actions">
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button id="update-dialog-confirm" value="confirm" data-event="updateConfirmed">Save</button>
+    </div>
   </form>
 </dialog>
 
-<dialog id="attach-dialog">
+<dialog class="ef-dialog" id="attach-dialog" aria-labelledby="attach-dialog-title">
   <form method="dialog">
-    <h2>Attach files</h2>
-    <div id="attach-file-rows" class="file-rows"></div>
-    <button id="attach-add-row" type="button">+ file</button>
-    <menu>
-      <button value="cancel">Cancel</button>
-      <button value="confirm">Attach</button>
-    </menu>
+    <div class="ef-dialog__body ef-stack">
+      <h2 id="attach-dialog-title">Attach files</h2>
+      <ul id="attach-file-rows" class="ef-file-upload__queue">
+        <template data-each="attachFiles" data-key="key">
+          <li class="file-row" data-bind-data-files-key="key">
+            <label class="ef-field__label">File <input type="file" data-files-input="attach-file" /></label>
+            <label class="ef-field__label">Name <input type="text" placeholder="name (optional)"
+                   data-event="attachFileNameChanged" data-on="input" data-bind-value="name" /></label>
+          </li>
+        </template>
+      </ul>
+      <button id="attach-add-row" type="button" data-event="attachFileRowAdded">+ file</button>
+    </div>
+    <div class="ef-dialog__actions">
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button id="attach-dialog-confirm" value="confirm" data-event="attachConfirmed">Attach</button>
+    </div>
   </form>
 </dialog>
 
-<script type="module" src="./app.js"></script>
+<script type="module" src="./main.js"></script>
 </body>
 </html>

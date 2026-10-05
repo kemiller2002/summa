@@ -5,3 +5,10 @@ node_modules/
 #   npx @echelon-foundry/visual-engineering init
 .visual-engineering/
 # END echelon:visual-engineering
+
+# Build and test output
+bin/
+obj/
+build/
+test-results/
+playwright-report/

@@ -1,0 +1,93 @@
+/* Page composition shared by web/ and web-hub/. Every control, colour, focus
+   ring, field, alert, fault, dialog, table and status cue comes from Forma
+   (imported by each page's styles.css); this file only lays the page out.
+   State cues are data-* attributes set by the engine, matched here, never
+   inline styles (Limen refuses style bindings). */
+
+/* Projected `hidden` must win over any display a Forma layout gives a child. */
+[hidden] {
+  display: none !important;
+}
+
+.app {
+  max-inline-size: 72rem;
+  margin-inline: auto;
+  padding: clamp(1rem, 4vw, 2rem) 1rem 4rem;
+}
+
+.page-header h1,
+.queue-header h2 {
+  margin: 0;
+}
+
+.queue-header {
+  align-items: baseline;
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.form-row > * {
+  flex: 1 1 14rem;
+  min-inline-size: 0;
+}
+
+.file-rows,
+.evidence-rows {
+  min-inline-size: 0;
+}
+
+.file-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.row-actions {
+  gap: 0.25rem;
+}
+
+/* The open row, marked by the engine. Its Show button also carries
+   aria-pressed, so the cue is not colour alone. */
+tr[data-selected="true"] > td {
+  background: var(--ef-color-surface-secondary);
+}
+
+.attachment-list {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+
+#detail-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.muted {
+  color: var(--ef-color-text-secondary);
+}
+
+/* Folio's document is a projection of the same rows; on screen the
+   interactive surface is the presentation. */
+.print-surface {
+  display: none;
+}
+
+@media print {
+  .app {
+    max-inline-size: none;
+    padding: 0;
+  }
+
+  .app > :not(.print-surface),
+  dialog {
+    display: none !important;
+  }
+
+  .print-surface {
+    display: block;
+  }
+}

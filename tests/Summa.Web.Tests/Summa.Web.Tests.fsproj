@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- Tests read JSON through indexers that are nullable by annotation;
+         a missing value fails the assertion that reads it. -->
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Support.fs" />
+    <Compile Include="BacklogEngineTests.fs" />
+    <Compile Include="HubEngineTests.fs" />
+    <Compile Include="BacklogPageTests.fs" />
+    <Compile Include="HubPageTests.fs" />
+    <Compile Include="BoundaryTests.fs" />
+    <Compile Include="FoundationsConformanceTests.fs" />
+    <Compile Include="BindingAgreementTests.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="EchelonFoundry.Aegis.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Summa.Web.Engine/Summa.Web.Engine.fsproj" />
+    <ProjectReference Include="../../src/Summa.Web.Application/Summa.Web.Application.fsproj" />
+  </ItemGroup>
+
+</Project>

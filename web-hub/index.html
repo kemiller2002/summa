@@ -3,95 +3,310 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ROS Project Administration Hub</title>
+<title>Summa · Project administration hub</title>
+<link rel="icon" href="data:," />
 <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-<header>
-  <h1>Project Administration Hub</h1>
-  <p class="muted">Creates work in other ROS repositories by running their own <code>./ros</code> -- it never edits a repository's files directly.</p>
-</header>
+<!-- Structure and presentation only. Every value below is projected by the F#
+     engine (src/Summa.Web.Engine) through Limen's data-* bindings, and every
+     control sends a named event back to it. Forma owns presentation; Folio
+     owns the print surface. The hub decides nothing about work-item legality:
+     each spoke repository's own ./ros does, through the server. -->
+<main class="app ef-stack">
+  <header class="ef-record-header page-header">
+    <div class="ef-record-header__main">
+      <div class="ef-record-header__title">
+        <div><span class="ef-record-header__type">Summa</span><h1>Project administration hub</h1></div>
+      </div>
+      <p>Creates work in other ROS repositories by running their own <code>./ros</code>; it never edits a repository's files directly.</p>
+    </div>
+  </header>
 
-<main>
-  <section id="repos" aria-label="Registered repositories">
-    <h2>Registered repositories</h2>
-    <form id="register-form">
-      <input id="register-path" type="text" placeholder="/absolute/path/to/repo" required />
-      <input id="register-name" type="text" placeholder="display name (optional)" />
-      <button type="submit" class="primary">Register</button>
+  <template data-if="hasOperationalFault">
+    <ef-fault-inline class="ef-component-tag">
+      <div class="ef-fault ef-fault--inline operational-fault" id="operational-fault"
+           data-ef-intent="inline" data-ef-severity="error" role="alert"
+           aria-labelledby="operational-fault-title">
+        <div class="ef-fault__marker" aria-hidden="true">!</div>
+        <div class="ef-fault__body">
+          <p class="ef-fault__severity">Operational error</p>
+          <p class="ef-fault__title" id="operational-fault-title"><strong data-text="operationalFaultTitle"></strong></p>
+          <p class="ef-fault__message" data-text="operationalFaultMessage"></p>
+          <p class="ef-fault-reference">Reference <code data-text="operationalFaultReference"></code></p>
+        </div>
+      </div>
+    </ef-fault-inline>
+  </template>
+
+  <section id="repos" class="ef-surface ef-stack" aria-labelledby="repos-title">
+    <h2 id="repos-title">Registered repositories</h2>
+    <form id="register-form" class="ef-stack" data-event="registerSubmitted">
+      <div class="form-row">
+        <div class="ef-field">
+          <label class="ef-field__label" for="register-path">Repository path</label>
+          <input id="register-path" type="text" placeholder="/absolute/path/to/repo" required
+                 data-event="registerPathChanged" data-on="input" data-bind-value="registerPath" />
+        </div>
+        <div class="ef-field">
+          <label class="ef-field__label" for="register-name">Display name</label>
+          <input id="register-name" type="text" placeholder="display name (optional)"
+                 data-event="registerNameChanged" data-on="input" data-bind-value="registerName" />
+        </div>
+      </div>
+      <div class="ef-cluster"><button id="register-submit" type="submit">Register</button></div>
     </form>
-    <p id="repos-error" role="alert" hidden></p>
-    <table id="repos-table">
-      <thead>
-        <tr><th>ID</th><th>Name</th><th>Path</th><th></th></tr>
-      </thead>
-      <tbody id="repos-table-body"></tbody>
-    </table>
+
+    <template data-if="hasReposError">
+      <ef-alert class="ef-component-tag">
+        <aside class="ef-alert" role="alert" data-tone="attention">
+          <div class="ef-alert__icon" aria-hidden="true">!</div>
+          <p id="repos-error" data-text="reposError"></p>
+        </aside>
+      </ef-alert>
+    </template>
+
+    <ef-data-grid class="ef-component-tag">
+      <div class="ef-data-grid" role="region" tabindex="0" aria-labelledby="repos-title">
+        <table id="repos-table">
+          <caption class="ef-visually-hidden">Registered repositories</caption>
+          <thead>
+            <tr><th scope="col">ID</th><th scope="col">Name</th><th scope="col">Path</th><th scope="col"><span class="ef-visually-hidden">Actions</span></th></tr>
+          </thead>
+          <tbody id="repos-table-body">
+            <template data-each="repos" data-key="id">
+              <tr>
+                <td data-label="ID" data-text="id"></td>
+                <td data-label="Name" data-text="name"></td>
+                <td data-label="Path" data-text="path"></td>
+                <td data-label="Actions">
+                  <button type="button" commandfor="unregister-dialog" command="show-modal"
+                          data-event="unregisterRequested">Unregister</button>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </ef-data-grid>
+    <template data-if="noRepos">
+      <p class="muted">No repositories are registered yet.</p>
+    </template>
   </section>
 
-  <section id="create" aria-label="Create work item in a repository">
-    <h2>Create work item</h2>
-    <form id="create-form">
-      <select id="create-repo" required></select>
-      <input id="create-title" type="text" placeholder="Describe the work" required />
-      <input id="create-tags" type="text" placeholder="tags, comma, separated" />
-      <select id="create-priority">
-        <option value="medium" selected>medium</option>
-        <option value="high">high</option>
-        <option value="low">low</option>
-      </select>
-      <textarea id="create-description" placeholder="Optional longer description"></textarea>
-      <div id="create-files" class="file-rows"></div>
-      <button id="create-add-file" type="button">+ file</button>
-      <button type="submit" class="primary">Create</button>
+  <section id="create" class="ef-surface ef-stack" aria-labelledby="create-title">
+    <h2 id="create-title">Create work item</h2>
+    <form id="create-form" class="ef-stack" data-event="createSubmitted">
+      <div class="form-row">
+        <div class="ef-field">
+          <label class="ef-field__label" for="create-repo">Repository</label>
+          <select id="create-repo" required data-event="createRepoChanged">
+            <template data-each="createOptions" data-key="id">
+              <option data-bind-value="id" data-bind-selected="selected" data-text="name"></option>
+            </template>
+          </select>
+        </div>
+        <div class="ef-field">
+          <label class="ef-field__label" for="create-title-input">Title</label>
+          <input id="create-title-input" type="text" placeholder="Describe the work" required
+                 data-event="createTitleChanged" data-on="input" data-bind-value="createTitle" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="ef-field">
+          <label class="ef-field__label" for="create-tags">Tags</label>
+          <input id="create-tags" type="text" placeholder="tags, comma, separated"
+                 data-event="createTagsChanged" data-on="input" data-bind-value="createTags" />
+        </div>
+        <div class="ef-field">
+          <label class="ef-field__label" for="create-priority">Priority</label>
+          <select id="create-priority" data-event="createPriorityChanged" data-bind-value="createPriority">
+            <option value="medium">medium</option>
+            <option value="high">high</option>
+            <option value="low">low</option>
+          </select>
+        </div>
+      </div>
+      <div class="ef-field">
+        <label class="ef-field__label" for="create-description">Description</label>
+        <textarea id="create-description" placeholder="Optional longer description"
+                  data-event="createDescriptionChanged" data-on="input" data-bind-value="createDescription"></textarea>
+      </div>
+      <fieldset class="ef-file-upload file-rows">
+        <legend>Attachments</legend>
+        <ul class="ef-file-upload__queue" id="create-files">
+          <template data-each="createFiles" data-key="key">
+            <li class="file-row" data-bind-data-files-key="key">
+              <label class="ef-field__label">File <input type="file" data-files-input="create-file" /></label>
+              <label class="ef-field__label">Name <input type="text" placeholder="name (optional)"
+                     data-event="createFileNameChanged" data-on="input" data-bind-value="name" /></label>
+            </li>
+          </template>
+        </ul>
+        <button id="create-add-file" type="button" data-event="createFileRowAdded">+ file</button>
+      </fieldset>
+      <div class="ef-cluster"><button id="create-submit" type="submit">Create</button></div>
     </form>
-    <p id="create-error" role="alert" hidden></p>
+    <template data-if="hasCreateError">
+      <ef-alert class="ef-component-tag">
+        <aside class="ef-alert" role="alert" data-tone="attention">
+          <div class="ef-alert__icon" aria-hidden="true">!</div>
+          <p id="create-error" data-text="createError"></p>
+        </aside>
+      </ef-alert>
+    </template>
   </section>
 
-  <section id="filters" aria-label="Filter aggregated work">
-    <h2>Filter</h2>
-    <label>
-      Repo
-      <select id="filter-repo"><option value="">all</option></select>
-    </label>
-    <label>
-      Tag
-      <input id="filter-tag" type="text" placeholder="e.g. wasm" />
-    </label>
-    <label>
-      Status
-      <select id="filter-status">
-        <option value="">any</option>
-        <option value="captured">captured</option>
-        <option value="ready">ready</option>
-        <option value="blocked">blocked</option>
-        <option value="active">active</option>
-        <option value="complete">complete</option>
-        <option value="abandoned">abandoned</option>
-      </select>
-    </label>
-    <button id="filter-clear" type="button">Clear</button>
+  <section id="filters" class="ef-surface ef-stack" aria-labelledby="filters-title">
+    <h2 id="filters-title">Filter</h2>
+    <div class="form-row">
+      <div class="ef-field">
+        <label class="ef-field__label" for="filter-repo">Repository</label>
+        <select id="filter-repo" data-event="repoFilterChanged">
+          <option value="" data-bind-selected="filterAllRepos">all</option>
+          <template data-each="filterOptions" data-key="id">
+            <option data-bind-value="id" data-bind-selected="selected" data-text="name"></option>
+          </template>
+        </select>
+      </div>
+      <div class="ef-field">
+        <label class="ef-field__label" for="filter-tag">Tag</label>
+        <input id="filter-tag" type="text" placeholder="e.g. wasm"
+               data-event="tagFilterChanged" data-on="input" data-bind-value="filterTag" />
+      </div>
+      <div class="ef-field">
+        <label class="ef-field__label" for="filter-status">Status</label>
+        <select id="filter-status" data-event="statusFilterChanged" data-bind-value="filterStatus">
+          <option value="">any</option>
+          <option value="captured">captured</option>
+          <option value="ready">ready</option>
+          <option value="blocked">blocked</option>
+          <option value="active">active</option>
+          <option value="complete">complete</option>
+          <option value="abandoned">abandoned</option>
+        </select>
+      </div>
+    </div>
+    <div class="ef-cluster"><button id="filter-clear" type="button" data-event="filtersCleared">Clear</button></div>
   </section>
 
-  <section id="queue" aria-label="Aggregated work across repositories">
-    <h2>Aggregated queue</h2>
-    <p id="error" role="alert" hidden></p>
-    <table id="work-table">
-      <thead>
-        <tr>
-          <th>Repo</th>
-          <th>ID</th>
-          <th>Work</th>
-          <th>Status</th>
-          <th>Tags</th>
-          <th>Priority</th>
-        </tr>
-      </thead>
-      <tbody id="work-table-body"></tbody>
-    </table>
+  <section id="queue" class="ef-stack" aria-labelledby="queue-title">
+    <header class="queue-header ef-cluster">
+      <h2 id="queue-title">Aggregated queue</h2>
+      <span class="ef-status-lozenge" id="row-count" role="status" data-text="rowCount"></span>
+    </header>
+
+    <template data-if="hasListError">
+      <ef-alert class="ef-component-tag">
+        <aside class="ef-alert" role="alert" data-tone="attention">
+          <div class="ef-alert__icon" aria-hidden="true">!</div>
+          <p id="error" data-text="listError"></p>
+        </aside>
+      </ef-alert>
+    </template>
+
+    <ef-data-grid class="ef-component-tag">
+      <div class="ef-data-grid" role="region" tabindex="0" aria-labelledby="queue-title">
+        <table id="work-table">
+          <caption class="ef-visually-hidden">Work items across repositories</caption>
+          <thead>
+            <tr>
+              <th scope="col">Repo</th>
+              <th scope="col">ID</th>
+              <th scope="col">Work</th>
+              <th scope="col">Status</th>
+              <th scope="col">Tags</th>
+              <th scope="col">Priority</th>
+            </tr>
+          </thead>
+          <tbody id="work-table-body">
+            <template data-each="rows" data-key="key">
+              <tr data-bind-data-error="isError">
+                <td data-label="Repo" data-text="repoName"></td>
+                <!-- A spoke whose ./ros could not answer shows its error in
+                     place of the work columns. -->
+                <template data-if="isError">
+                  <td data-label="Error" colspan="5" class="error-cell" data-text="error"></td>
+                </template>
+                <template data-if="isWork"><td data-label="ID" data-text="id"></td></template>
+                <template data-if="isWork"><td data-label="Work" data-text="title"></td></template>
+                <template data-if="isWork">
+                  <td data-label="Status"><span class="ef-status-lozenge" data-bind-data-state="statusTone" data-bind-hidden="hasNoStatus" data-text="status"></span></td>
+                </template>
+                <template data-if="isWork"><td data-label="Tags" data-text="tags"></td></template>
+                <template data-if="isWork"><td data-label="Priority" data-text="priority"></td></template>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </ef-data-grid>
+
+    <template data-if="isEmpty">
+      <ef-empty-state class="ef-component-tag">
+        <section class="ef-empty-state" aria-labelledby="empty-title">
+          <div class="ef-empty-state__symbol" aria-hidden="true">□</div>
+          <h3 id="empty-title">No work items</h3>
+          <p>No registered repository has work matching these filters.</p>
+        </section>
+      </ef-empty-state>
+    </template>
   </section>
+
+  <!-- Folio's print surface: the same projected rows, as a document. -->
+  <ef-print-document class="print-surface">
+    <ef-print-header>
+      <header>
+        <p>Summa</p>
+        <h1>Aggregated work queue</h1>
+      </header>
+    </ef-print-header>
+    <ef-print-section>
+      <section>
+        <h2>Work items across repositories</h2>
+        <ef-print-table>
+          <table>
+            <thead>
+              <tr><th scope="col">Repo</th><th scope="col">ID</th><th scope="col">Work</th><th scope="col">Status</th><th scope="col">Tags</th><th scope="col">Priority</th></tr>
+            </thead>
+            <tbody>
+              <template data-each="rows" data-key="key">
+                <tr>
+                  <td data-text="repoName"></td>
+                  <td data-text="id"></td>
+                  <td data-text="title"></td>
+                  <td data-text="status"></td>
+                  <td data-text="tags"></td>
+                  <td data-text="priority"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </ef-print-table>
+      </section>
+    </ef-print-section>
+    <ef-print-footer>
+      <footer>
+        <span>Summa aggregated queue · <span data-text="rowCount"></span></span>
+        <ef-print-page-number></ef-print-page-number>
+      </footer>
+    </ef-print-footer>
+  </ef-print-document>
 </main>
 
-<script type="module" src="./app.js"></script>
+<dialog class="ef-dialog" id="unregister-dialog" aria-labelledby="unregister-dialog-title" aria-describedby="unregister-dialog-text">
+  <form method="dialog">
+    <div class="ef-dialog__body ef-stack">
+      <h2 id="unregister-dialog-title">Unregister repository</h2>
+      <p id="unregister-dialog-text" data-text="unregisterText"></p>
+    </div>
+    <div class="ef-dialog__actions">
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button id="unregister-dialog-confirm" value="confirm" data-event="unregisterConfirmed">Unregister</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="module" src="./main.js"></script>
 </body>
 </html>
