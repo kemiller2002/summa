@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "agent:chatgpt",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-09-22T22:12:05.000Z",
+  "updatedAt": "2026-10-05T18:10:01.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -96,6 +96,139 @@
       "telemetryExecutionIds": [
         "EXE-20260922T221205981Z-77ce0abe"
       ]
+    },
+    {
+      "id": "LIMEN-0-7-0",
+      "type": "mechanical",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "limen.config.json"
+        },
+        {
+          "type": "implementation",
+          "path": ".echelon/limen.json"
+        },
+        {
+          "type": "implementation",
+          "path": ".github/workflows/limen-verify.yml"
+        },
+        {
+          "type": "implementation",
+          "path": "package.json"
+        }
+      ],
+      "updatedAt": "2026-10-05T17:04:18Z",
+      "telemetryExecutionIds": [
+        "EXE-20261005T170357777Z-f6ebff8d"
+      ],
+      "completedAt": "2026-10-05T17:04:18Z"
+    },
+    {
+      "id": "LIMEN-0-7-0-FND",
+      "type": "mechanical",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": ".echelon/foundations.json"
+        }
+      ],
+      "updatedAt": "2026-10-05T17:14:02Z",
+      "telemetryExecutionIds": [
+        "EXE-20261005T171402308Z-56da6663"
+      ],
+      "completedAt": "2026-10-05T17:14:02Z"
+    },
+    {
+      "id": "LIMEN-0-7-0-APPLY",
+      "type": "feature",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "limen.config.json"
+        },
+        {
+          "type": "implementation",
+          "path": "web/engine/backlog.ts"
+        },
+        {
+          "type": "implementation",
+          "path": "web-hub/engine/hub.ts"
+        },
+        {
+          "type": "implementation",
+          "path": "web/app.ts"
+        },
+        {
+          "type": "implementation",
+          "path": "web-hub/app.ts"
+        },
+        {
+          "type": "tests",
+          "path": "tests/web/backlog-engine.test.ts"
+        },
+        {
+          "type": "tests",
+          "path": "tests/web/hub-engine.test.ts"
+        }
+      ],
+      "updatedAt": "2026-10-05T17:53:48Z",
+      "telemetryExecutionIds": [
+        "EXE-20261005T174639521Z-a3fa575d"
+      ],
+      "completedAt": "2026-10-05T17:53:48Z"
+    },
+    {
+      "id": "LIMEN-0-7-0-VERIFIER",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": ".github/workflows/echelon-foundations.yml"
+        },
+        {
+          "type": "tests",
+          "path": ".github/workflows/echelon-foundations.yml"
+        }
+      ],
+      "updatedAt": "2026-10-05T18:00:42.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261005T180028197Z-ec220d3b"
+      ],
+      "completedAt": "2026-10-05T18:00:42.000Z"
+    },
+    {
+      "id": "FOUNDATIONS-APPLICABILITY",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": ".echelon/foundations.json"
+        },
+        {
+          "type": "implementation",
+          "path": "research/decisions/DF-SUMMA-FND-2026-0001--aegis-forma-folio-not-yet-applicable.md"
+        },
+        {
+          "type": "tests",
+          "path": ".github/workflows/echelon-foundations.yml"
+        }
+      ],
+      "updatedAt": "2026-10-05T18:10:01.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261005T180910033Z-e7d07028"
+      ],
+      "completedAt": "2026-10-05T18:10:01.000Z"
     }
   ]
 }

@@ -1,1 +1,13 @@
-{"configurationVersion":1,"boundary":{"engine":[],"kernel":[]}}
+{
+  "configurationVersion": 1,
+  "boundary": {
+    "engine": [
+      "web/engine",
+      "web-hub/engine"
+    ],
+    "kernel": [
+      "web/app.ts",
+      "web-hub/app.ts"
+    ]
+  }
+}

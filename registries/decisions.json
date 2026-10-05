@@ -1,5 +1,36 @@
 [
   {
+    "created": "2026-10-05",
+    "id": "DF-SUMMA-FND-2026-0001",
+    "owners": [
+      "repository-governance"
+    ],
+    "path": "research/decisions/DF-SUMMA-FND-2026-0001--aegis-forma-folio-not-yet-applicable.md",
+    "related_documents": [
+      ".echelon/foundations.json",
+      "docs/requirements/ECHELON-SHARED-APPLICATION-FOUNDATIONS.md",
+      "limen.config.json",
+      "docs/web-interface.md",
+      "docs/project-administration-hub.md",
+      ".github/workflows/echelon-foundations.yml"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "governance",
+      "foundations",
+      "aegis",
+      "forma",
+      "folio",
+      "applicability"
+    ],
+    "title": "Aegis, Forma and Folio are declared not yet applicable until Summa's product foundation exists",
+    "updated": "2026-10-05",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-09-14",
     "id": "DF-SUMMA-ROSCLI-2026-0001",
     "owners": [

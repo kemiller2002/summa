@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 4,
+  "nextSeq": 7,
   "items": [
     {
       "id": "WI-0001",
@@ -104,6 +104,54 @@
       "createdBy": "agent:chatgpt",
       "source": "github-issue",
       "sourceReference": "https://github.com/kemiller2002/summa/issues/4"
+    },
+    {
+      "id": "WI-0004",
+      "title": "Restore Aegis to required: true in .echelon/foundations.json, with EchelonFoundry.Aegis.Core, real boundary usage and aegis-boundaries.json, in the change that adds the first .NET/F# host or project (DF-SUMMA-FND-2026-0001)",
+      "description": null,
+      "tags": [
+        "foundations"
+      ],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-05T18:09:48.991Z",
+      "updatedAt": "2026-10-05T18:09:48.991Z",
+      "createdBy": "unknown",
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0005",
+      "title": "Restore Forma to required: true in .echelon/foundations.json, with the pinned @echelon-foundry/design-system, in the change that adds the first browser surface that is not the copied QDI-071 scaffold, including any replacement of web/ or web-hub/ (DF-SUMMA-FND-2026-0001)",
+      "description": null,
+      "tags": [
+        "foundations"
+      ],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-05T18:09:49.566Z",
+      "updatedAt": "2026-10-05T18:09:49.566Z",
+      "createdBy": "unknown",
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0006",
+      "title": "Restore Folio to required: true in .echelon/foundations.json, with the pinned @echelon-foundry/print-components, in the change that adds the first invoice, statement, receipt, report or other document output (DF-SUMMA-FND-2026-0001)",
+      "description": null,
+      "tags": [
+        "foundations"
+      ],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-05T18:09:50.160Z",
+      "updatedAt": "2026-10-05T18:09:50.160Z",
+      "createdBy": "unknown",
+      "source": "manual",
+      "sourceReference": null
     }
   ]
 }
