@@ -2,9 +2,9 @@
   "schemaVersion": "1.0.0",
   "protocolVersion": "1.0.0",
   "repository": "summa",
-  "actor": "agent:chatgpt",
+  "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-06T09:55:26.000Z",
+  "updatedAt": "2026-10-06T12:23:54.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -413,6 +413,17 @@
         "EXE-20261006T095520185Z-5bda39a9"
       ],
       "completedAt": "2026-10-06T09:55:26.000Z"
+    },
+    {
+      "id": "WI-0008",
+      "type": "mechanical",
+      "state": "active",
+      "semanticState": "active",
+      "evidence": [],
+      "updatedAt": "2026-10-06T12:23:54.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261006T122354647Z-7ce5ff39"
+      ]
     }
   ]
 }

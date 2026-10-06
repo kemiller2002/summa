@@ -18,6 +18,9 @@ not to hold their code or evidence.
   exactly as if you'd run its `./ros` commands yourself from its own
   directory. See [`docs/project-administration-hub.md`](docs/project-administration-hub.md).
 
+How Summa's own web pages (the hub and the per-repository backlog) are built,
+styled, run and tested is in [`docs/summa-web-pages.md`](docs/summa-web-pages.md).
+
 This hub also has its own local work backlog (`./ros add`, `./ros work ...`)
 for tracking the hub's own administrative work — see
 [`docs/work-backlog-guide.md`](docs/work-backlog-guide.md).

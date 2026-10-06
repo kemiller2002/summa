@@ -1,6 +1,6 @@
 /* Page composition shared by web/ and web-hub/. Every control, colour, focus
    ring, field, alert, fault, dialog, table and status cue comes from Forma
-   (imported by each page's styles.css); this file only lays the page out.
+   (imported by each page's summa.css); this file only lays the page out.
    State cues are data-* attributes set by the engine, matched here, never
    inline styles (Limen refuses style bindings). */
 
