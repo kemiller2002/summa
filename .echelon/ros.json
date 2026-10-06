@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "tool": "ros",
   "package": "@echelon-foundry/repository-operating-system",
-  "installedVersion": "3.7.1",
+  "installedVersion": "3.7.2",
   "configurationVersion": 1,
   "profile": "project-administration",
   "managedArtifacts": [
     {
       "path": ".echelon/toolchain.json",
       "ownership": "shared",
-      "sha256": "139a49930a071facf704068180051078b8d65b6c84be3235a11fcd96bc3a63e6"
+      "sha256": "3f4b52f72fb4b263ff86e1678a5be2e6908eff1dc76581a376463ddb42592160"
     },
     {
       "path": ".editorconfig",
@@ -19,7 +19,7 @@
     {
       "path": ".gitattributes",
       "ownership": "user-owned",
-      "sha256": "489fb811f97deb0befb181e8eda6330bd155b6e1a3d7cc4b717391c31cf870f0"
+      "sha256": "faf43061bbb2a4f74fbaf596edfc350f44a09c205a801bda943ee20c09d6bc89"
     },
     {
       "path": ".github/copilot-instructions.md",
@@ -34,12 +34,12 @@
     {
       "path": ".gitignore",
       "ownership": "user-owned",
-      "sha256": "b0637048f580dbdb138bb39f6bf6f629d451dcba49cd3a682b01bf5336adf57f"
+      "sha256": "c24cd9e29c6603218820a2bb8eeb2d8b9acdffbfc34c8b6f467cacbef1d2e1a4"
     },
     {
       "path": "AGENTS.md",
       "ownership": "shared",
-      "sha256": "7c8c6fc37d632eb7bb1822dfb1cdc6121f4955c2941ba84033b1d4053ac8d708"
+      "sha256": "533038e8963c7bd0fd4ba269b52d05d07eb71a3d80bcafd4b73fa01e1530467b"
     },
     {
       "path": "BOOTSTRAP.md",
@@ -49,7 +49,7 @@
     {
       "path": "CLAUDE.md",
       "ownership": "user-owned",
-      "sha256": "5e2f284ed6fab2d6f9a4f095f8b63ba978347a49add11945efb08480dc3836e8"
+      "sha256": "4224a4c0ca52a0d42456eb7197d143dbaec271a71fb00a9a5330a887ebc28f58"
     },
     {
       "path": "GEMINI.md",
@@ -69,7 +69,7 @@
     {
       "path": "README.md",
       "ownership": "user-owned",
-      "sha256": "546db041c9921e79f0e7f3a57d7da847cfbe140c536066fc9f4910ae8457a29a"
+      "sha256": "eb74fe1feead858364b24cb4ceeb2413c9f208dba13b2a6c8a9d45ceda04c98b"
     },
     {
       "path": "context/ARCHITECTURE.md",
@@ -114,7 +114,7 @@
     {
       "path": "docs/00-governance/README.md",
       "ownership": "tool-owned",
-      "sha256": "22cecd9de4c686a6f6bfb0606a4451ff1771cb22b65f2c2f099535317390fa11"
+      "sha256": "1262ba4f4e27f246389762b00fc2aff574f1dfa08f6caab1695941f7faa48dfa"
     },
     {
       "path": "docs/agent-provenance.md",
@@ -124,7 +124,7 @@
     {
       "path": "docs/development-telemetry.md",
       "ownership": "tool-owned",
-      "sha256": "d689740b276b9f06eb352811e79c0625d5aa0b3ed61703a170366c5e79c787db"
+      "sha256": "675d54fd5a57ceb3532a7106818b163c18b1a0faf66bfdc4080cb67336df695f"
     },
     {
       "path": "docs/ordo-observation.md",
@@ -134,7 +134,7 @@
     {
       "path": "docs/project-administration-hub.md",
       "ownership": "tool-owned",
-      "sha256": "62481db8e3d1c02ff9647d2b3069b687e9c0e141cab2ff6d33f82464a3b243b8"
+      "sha256": "f22032e99ead79f8f79858cc6d7527a9242ead5a1a5d54fa5b55f43e00232f73"
     },
     {
       "path": "docs/remote-agent-contract.md",
@@ -144,7 +144,7 @@
     {
       "path": "docs/remote-protocol.md",
       "ownership": "tool-owned",
-      "sha256": "115bcdcadf466b53812883f4a0a5276ac47a9d66daada9943d07a4299aae42f4"
+      "sha256": "91835e62fe1496e907308758bebae320aca5ad5f65471c305189d7ec8b09de89"
     },
     {
       "path": "docs/web-interface.md",
@@ -159,12 +159,12 @@
     {
       "path": "docs/work-backlog-guide.md",
       "ownership": "tool-owned",
-      "sha256": "df065dba70ef0adcdf4b4c09209fddce593ef7b62fe6b8b8fb51112f2da6592f"
+      "sha256": "6a1132191f438f901e31d7b1dda14d91e59d9caaea086369d8f79c5ddc6b101b"
     },
     {
       "path": "docs/work-protocol.md",
       "ownership": "tool-owned",
-      "sha256": "8d85f304f8d93fa37cd3ae7736496ecca2bf095d9ff7cbcee95a9cc92a97a7ae"
+      "sha256": "6ed18e370033adccc3afaf9afc66fac23b8a06f6c2d4143d4db02d33af79ab17"
     },
     {
       "path": "praxis",
