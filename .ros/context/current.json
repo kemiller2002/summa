@@ -2,9 +2,9 @@
   "schemaVersion": "1.0.0",
   "protocolVersion": "1.0.0",
   "repository": "summa",
-  "actor": "agent:chatgpt",
+  "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-06T09:55:26.000Z",
+  "updatedAt": "2026-10-06T12:28:39.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -413,6 +413,63 @@
         "EXE-20261006T095520185Z-5bda39a9"
       ],
       "completedAt": "2026-10-06T09:55:26.000Z"
+    },
+    {
+      "id": "WI-0008",
+      "type": "mechanical",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": ".echelon/ros.json"
+        },
+        {
+          "type": "implementation",
+          "path": ".echelon/sde.json"
+        },
+        {
+          "type": "implementation",
+          "path": "web/summa.css"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/FoundationsConformanceTests.fs"
+        },
+        {
+          "type": "documentation",
+          "path": "docs/summa-web-pages.md"
+        },
+        {
+          "type": "documentation",
+          "path": "AGENTS.md"
+        }
+      ],
+      "updatedAt": "2026-10-06T12:28:39.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261006T122354647Z-7ce5ff39"
+      ],
+      "latestCheckpoint": {
+        "id": "b5a070bf13cc1f8f28f325b1",
+        "recordedAt": "2026-10-06T12:28:37.000Z",
+        "executionId": "EXE-20261006T122354647Z-7ce5ff39",
+        "repository": "summa",
+        "branch": "chore/praxis-3.7.1",
+        "commit": "3f3b59c7c1a0f49017b39b2bbe026e316a751a03",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "chore/praxis-3.7.1",
+        "remoteCommit": "3f3b59c7c1a0f49017b39b2bbe026e316a751a03",
+        "summary": "Forma customisations moved to Summa-owned files, upgrade applied, verified, pushed",
+        "nextAction": "complete, PR",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-06T12:28:39.000Z"
     }
   ]
 }

@@ -1,5 +1,4 @@
-#!/usr/bin/env node
-
-import { main } from "./tools/ros_hub_cli.mjs";
-
-process.exitCode = main(process.argv.slice(2));
+#!/usr/bin/env sh
+# Compatibility alias: `ros-hub` is the pre-rename name of `praxis-hub`
+# (DF-ROS-2026-A050). New instructions use ./praxis-hub.
+exec "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/praxis-hub" "$@"

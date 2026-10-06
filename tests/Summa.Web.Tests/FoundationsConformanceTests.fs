@@ -55,7 +55,7 @@ let ``the npm foundations are pinned to immutable releases and locked`` () =
 [<Fact>]
 let ``each page takes Forma and Folio from the installed packages`` () =
     for page in pages do
-        let css = readRepoFile $"{page}/styles.css"
+        let css = readRepoFile $"{page}/summa.css"
 
         let imports =
             Regex.Matches(css, "@import \"([^\"]+)\"") |> Seq.map (fun m -> m.Groups[1].Value) |> Seq.toList
@@ -74,7 +74,9 @@ let ``each page takes Forma and Folio from the installed packages`` () =
             Assert.True(File.Exists(Path.GetFullPath(Path.Combine(repositoryRoot, page, imported))), $"{page}: {imported} is not installed")
 
         let html = readRepoFile $"{page}/index.html"
-        Assert.Contains("<link rel=\"stylesheet\" href=\"./styles.css\" />", html)
+        Assert.Contains("<link rel=\"stylesheet\" href=\"./summa.css\" />", html)
+        // The styles.css beside each page is Praxis's, for its own pages.
+        Assert.DoesNotContain("styles.css", html)
         Assert.Contains("<script type=\"module\" src=\"./main.js\"></script>", html)
         Assert.Contains("from \"../web-kernel/limen-wasm.js\"", readRepoFile $"{page}/main.js")
 
@@ -113,8 +115,8 @@ let ``the pages compose Forma's components and Folio's document primitives`` () 
 [<Fact>]
 let ``nothing forks Forma or bypasses Limen's binding rules`` () =
     let sources =
-        [ "web/index.html"; "web/styles.css"; "web/main.js"
-          "web-hub/index.html"; "web-hub/styles.css"; "web-hub/main.js"
+        [ "web/index.html"; "web/summa.css"; "web/main.js"
+          "web-hub/index.html"; "web-hub/summa.css"; "web-hub/main.js"
           "web-kernel/page.css"; "web-kernel/limen-wasm.js" ]
 
     for source in sources do

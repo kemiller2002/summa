@@ -18,3 +18,4 @@
 | WI-0005 | Restore Forma to required: true in .echelon/foundations.json, with the pinned @echelon-foundry/design-system, in the change that adds the first browser surface that is not the copied QDI-071 scaffold, including any replacement of web/ or web-hub/ (DF-SUMMA-FND-2026-0001) | complete | foundations | medium |
 | WI-0006 | Restore Folio to required: true in .echelon/foundations.json, with the pinned @echelon-foundry/print-components, in the change that adds the first invoice, statement, receipt, report or other document output (DF-SUMMA-FND-2026-0001) | complete | foundations | medium |
 | WI-0007 | Upgrade to Forma 0.4.1 and Limen 0.7.1, with a submit regression test | complete | foundations | high |
+| WI-0008 | Move Summa to Praxis 3.7.1 (ROS -> Praxis rename) and Ordo 1.4.0 | complete | praxis, ordo, toolchain | medium |

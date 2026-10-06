@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+# The project-administration hub, from this hub repository's root:
+# `./praxis-hub ARGS` is `./praxis hub ARGS` (see docs/project-administration-hub.md).
+set -eu
+
+hub_root="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+exec "$hub_root/praxis" --root "$hub_root" hub "$@"
