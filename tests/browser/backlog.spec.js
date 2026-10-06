@@ -2,7 +2,7 @@
 // shim -> F# engine -> effect -> Node server -> result -> engine -> view.
 import fs from "node:fs";
 import path from "node:path";
-import { test, expect, expectConsoleError, queueRows, rowActions } from "./support.js";
+import { test, expect, expectConsoleError, holdRequests, queueRows, refuse, rowActions } from "./support.js";
 
 const action = (page, id, label) =>
   page.locator(`#work-table-body tr[data-id="${id}"] .row-actions`).getByRole("button", { name: label, exact: true });
@@ -160,6 +160,34 @@ test("editing and attaching go through their dialogs", async ({ backlog }) => {
 
   await action(page, "WI-0001", "Show").click();
   await expect(page.locator(".attachment-list li")).toHaveText(["a.txt (3 B)", "second.txt (4 B)"]);
+});
+
+// Limen 0.7.0 re-sent every control of a submitted form, buttons included, so
+// each Add first re-fired "+ file" and appended a blank attachment row
+// (limen#80, fixed in 0.7.1). The create is held in flight to see the rows
+// before the reply resets the form.
+test("a single submit of the capture form adds no file row, even after a refused create", async ({ backlog }) => {
+  const { page } = backlog;
+  const rows = page.locator("#add-files .file-row");
+  const nextCreate = await holdRequests(page, "POST", /^\/api\/work$/);
+  await expect(rows).toHaveCount(1);
+
+  expectConsoleError(page, /status of 400 \(Bad Request\)/);
+  await page.fill("#add-title", "Refused");
+  await page.click("#add-submit");
+  const refused = await nextCreate();
+  await expect(rows).toHaveCount(1);
+  await refuse(refused, "refused by the test");
+  await expect(page.locator("#error")).toContainText("refused by the test");
+  await expect(rows).toHaveCount(1);
+
+  await page.fill("#add-title", "Accepted");
+  await page.click("#add-submit");
+  const accepted = await nextCreate();
+  await expect(rows).toHaveCount(1);
+  await accepted.continue();
+  await expect.poll(() => queueRows(page)).toEqual([["WI-0001", "Accepted", "captured", "", "medium"]]);
+  await expect(rows).toHaveCount(1);
 });
 
 test("filters narrow the queue and Clear resets them", async ({ backlog }) => {

@@ -1,6 +1,6 @@
 // The project-administration hub page (web-hub/) end to end, against spoke
 // repositories with their own `./ros`.
-import { test, expect, expectConsoleError, makeSpoke } from "./support.js";
+import { test, expect, expectConsoleError, holdRequests, makeSpoke, refuse } from "./support.js";
 
 const workRows = (page) =>
   page.locator("#work-table-body tr").evaluateAll((rows) =>
@@ -67,6 +67,38 @@ test("creating with files sends them to the spoke as a multipart upload", async 
   const queue = JSON.parse(readFileSync(`${spoke}/.ros/work/queue.json`, "utf8"));
   expect(queue.items[0].attachments.map((attachment) => attachment.name)).toEqual(["renamed.txt"]);
   expect(readdirSync(`${spoke}/.ros/work/attachments`).length).toBeGreaterThan(0);
+});
+
+// Limen 0.7.0 re-sent every control of a submitted form, buttons included, so
+// each Create first re-fired "+ file" and appended a blank attachment row
+// (limen#80, fixed in 0.7.1). A refused create keeps the form, so the extra
+// rows stayed on the page. The create is held in flight to see the rows
+// before the reply.
+test("a single submit of the create form adds no file row, even after a refused create", async ({ hub }) => {
+  const { page } = hub;
+  const spoke = makeSpoke("spoke-rows");
+  await register(page, spoke);
+  await expect(page.locator("#create-repo option")).toHaveText(["spoke-rows"]);
+  const rows = page.locator("#create-files .file-row");
+  const nextCreate = await holdRequests(page, "POST", /^\/api\/repos\/[^/]+\/work$/);
+  await expect(rows).toHaveCount(1);
+
+  expectConsoleError(page, /status of 400 \(Bad Request\)/);
+  await page.fill("#create-title-input", "Kept after refusal");
+  await page.click("#create-submit");
+  const refused = await nextCreate();
+  await expect(rows).toHaveCount(1);
+  await refuse(refused, "refused by the test");
+  await expect(page.locator("#create-error")).toContainText("refused by the test");
+  await expect(rows).toHaveCount(1);
+  await expect(page.locator("#create-title-input")).toHaveValue("Kept after refusal");
+
+  await page.click("#create-submit");
+  const accepted = await nextCreate();
+  await expect(rows).toHaveCount(1);
+  await accepted.continue();
+  await expect.poll(() => workRows(page)).toEqual([["spoke-rows", "WI-0001", "Kept after refusal", "captured", "", "medium"]]);
+  await expect(rows).toHaveCount(1);
 });
 
 test("unregistering asks first, and Cancel keeps the repository", async ({ hub }) => {

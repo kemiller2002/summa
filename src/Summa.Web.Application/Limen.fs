@@ -2,7 +2,7 @@
 /// and writes it: the kernel's messages in, the engine's view, effects and
 /// handshake answer out. Mechanics only; no Summa decision is made here.
 ///
-/// See the `protocol` export of `@echelon-foundry/limen` (0.7.0) and its
+/// See the `protocol` export of `@echelon-foundry/limen` (0.7.1) and its
 /// `capabilities/files` and `capabilities/transfer` packs.
 module Summa.Web.Application.Limen
 
