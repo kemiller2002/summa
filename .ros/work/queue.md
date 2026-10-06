@@ -20,4 +20,4 @@
 | WI-0007 | Upgrade to Forma 0.4.1 and Limen 0.7.1, with a submit regression test | complete | foundations | high |
 | WI-0008 | Move Summa to Praxis 3.7.1 (ROS -> Praxis rename) and Ordo 1.4.0 | complete | praxis, ordo, toolchain | medium |
 | WI-0009 | Move summa to Ordo 1.4.1 | complete | ordo, toolchain | medium |
-| WI-0010 | Move summa to Praxis 3.7.2, Ordo 1.4.2, Visual Engineering 1.0.1 and adopt Conditor | ready |  | medium |
+| WI-0010 | Move summa to Praxis 3.7.2, Ordo 1.4.2, Visual Engineering 1.0.1 and adopt Conditor | complete |  | medium |
