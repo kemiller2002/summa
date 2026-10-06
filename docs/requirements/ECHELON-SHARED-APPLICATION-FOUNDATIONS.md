@@ -34,9 +34,9 @@ tracking a moving repository branch are not valid application baselines.
 - **Aegis:** `EchelonFoundry.Aegis.Core` **1.0.0** is the current .NET
   application baseline. Integration-specific Aegis packages MUST use a
   compatible pinned version when the matching integration exists.
-- **Forma:** `@echelon-foundry/design-system` **0.3.0** (the `echelon-current`
+- **Forma:** `@echelon-foundry/design-system` **0.4.1** (the `echelon-current`
   registry selection) is the current application baseline, consumed as the
-  immutable `v0.3.0` release artifact rather than copied CSS or `main`.
+  immutable `v0.4.1` release artifact rather than copied CSS or `main`.
 - **Folio:** `@echelon-foundry/print-components` **0.3.0** (the
   `echelon-current` registry selection) is the current baseline, consumed as
   the immutable `v0.3.0` release artifact.

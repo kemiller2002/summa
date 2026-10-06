@@ -95,6 +95,24 @@ export const test = base.extend({
 
 export { expect };
 
+// Holds each `method` request whose path matches `path` until the test answers
+// it, so a test can look at the page while that request is in flight. Returns
+// a function that resolves, in order, to the next held Playwright Route.
+export async function holdRequests(page, method, path) {
+  const held = [];
+  const waiting = [];
+  await page.route((url) => path.test(url.pathname), (route) => {
+    if (route.request().method() !== method) return route.fallback();
+    const waiter = waiting.shift();
+    return waiter ? waiter(route) : held.push(route);
+  });
+  return () => held.length > 0 ? Promise.resolve(held.shift()) : new Promise((resolve) => waiting.push(resolve));
+}
+
+// Answers a held request as the server answers a refusal.
+export const refuse = (route, error) =>
+  route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ error }) });
+
 // The rendered queue as plain rows: [id, title, status, tags, priority].
 export async function queueRows(page) {
   return page.locator("#work-table-body tr").evaluateAll((rows) =>
