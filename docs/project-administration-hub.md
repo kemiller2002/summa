@@ -9,7 +9,7 @@ of what's outstanding across all of them.
 This lives in a separate, installable Praxis profile
 (`praxis init --profile project-administration`) — not inside a
 plain Praxis repository — for the same reason described in
-[`DF-ROS-2026-A008`](../research/decisions/DF-ROS-2026-A008--repository-local-work-backlog.md):
+[`DF-ROS-2026-A008`](https://github.com/kemiller2002/praxis/blob/v3.7.2/research/decisions/DF-ROS-2026-A008--repository-local-work-backlog.md):
 a single repository's work protocol must stay independently usable, and
 cross-repository coordination is a distinct concern from repository
 execution. The README's ownership table assigns "repository registration,

@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-06T13:54:41.000Z",
+  "updatedAt": "2026-10-06T16:30:42Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -515,6 +515,52 @@
         }
       },
       "completedAt": "2026-10-06T13:54:41.000Z"
+    },
+    {
+      "id": "WI-0010",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": ".echelon/toolchain.json"
+        },
+        {
+          "type": "implementation",
+          "path": "conditor.json"
+        },
+        {
+          "type": "tests",
+          "path": ".github/workflows/praxis-validation.yml"
+        }
+      ],
+      "updatedAt": "2026-10-06T16:30:42Z",
+      "telemetryExecutionIds": [
+        "EXE-20261006T162632020Z-1dac451c"
+      ],
+      "latestCheckpoint": {
+        "id": "08c64e5bbf46d5f7576eca1d",
+        "recordedAt": "2026-10-06T16:30:10Z",
+        "executionId": "EXE-20261006T162632020Z-1dac451c",
+        "repository": "summa",
+        "branch": "chore/echelon-current-372",
+        "commit": "f6cdac5f13c3449831d882ade36ac142d9ee8395",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "chore/echelon-current-372",
+        "remoteCommit": "f6cdac5f13c3449831d882ade36ac142d9ee8395",
+        "summary": "Upgraded summa to Praxis 3.7.2 / Ordo 1.4.2 (and Visual Engineering 1.0.1 where installed) and adopted Conditor against echelon-current.",
+        "nextAction": "Open the PR and merge once CI is green.",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-06T16:30:42Z",
+      "conclusion": "Toolchain at praxis 3.7.2 / ordo 1.4.2; conditor.json adopted; verifiers pass."
     }
   ]
 }
