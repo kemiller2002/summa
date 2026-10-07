@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-07T21:50:43.000Z",
+  "updatedAt": "2026-10-07T21:53:19.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -606,13 +606,43 @@
     {
       "id": "WI-0012",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-07T21:50:43.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Ledger.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/LedgerTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-07T21:53:19.000Z",
       "telemetryExecutionIds": [
         "EXE-20261007T215044042Z-90427e71"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "c5f50a5c2597cb65ca169070",
+        "recordedAt": "2026-10-07T21:53:18.000Z",
+        "executionId": "EXE-20261007T215044042Z-90427e71",
+        "repository": "summa",
+        "branch": "feat/ledger",
+        "commit": "601a15d9e9c7feabad6b1525ec4bbe31f13bc2b8",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/ledger",
+        "remoteCommit": "601a15d9e9c7feabad6b1525ec4bbe31f13bc2b8",
+        "summary": "Ledger implemented",
+        "nextAction": "Complete WI-0012",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-07T21:53:19.000Z"
     }
   ]
 }
