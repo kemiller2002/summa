@@ -137,7 +137,7 @@ let empty =
       Keys = Map.empty
       Audit = [] }
 
-let private audit (context: Context) (what: string) (subject: string) (ledger: Ledger) =
+let audit (context: Context) (what: string) (subject: string) (ledger: Ledger) =
     { ledger with
         Audit =
             ledger.Audit

@@ -23,5 +23,5 @@
 | WI-0010 | Move summa to Praxis 3.7.2, Ordo 1.4.2, Visual Engineering 1.0.1 and adopt Conditor | complete |  | medium |
 | WI-0011 | Requirement gap analysis: compare every Summa requirement section and INV requirement family against code and tests | complete | requirements,gap-analysis | high |
 | WI-0012 | Summa.Ledger: fixed-decimal money, chart of accounts, balanced journal entries, posting, reversal and accounting periods (v0.1 sections 1-2) | complete | ledger,accounting | high |
-| WI-0013 | Invoices and receivables: customers, numbering, issue with AR/revenue posting, idempotency, obligations, payment terms (v0.1 sections 3-6, 9-10, 19) | captured | invoicing,receivables | high |
+| WI-0013 | Invoices and receivables: customers, numbering, issue with AR/revenue posting, idempotency, obligations, payment terms (v0.1 sections 3-6, 9-10, 19) | ready | invoicing,receivables | high |
 | WI-0014 | Payments, allocation, AR aging and core financial reports: trial balance, general ledger, income statement, balance sheet (v0.1 sections 11-15) | captured | payments,reports | high |
