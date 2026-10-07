@@ -316,10 +316,10 @@
         "payments,reports"
       ],
       "priority": "high",
-      "status": "captured",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-07T21:48:43.892Z",
-      "updatedAt": "2026-10-07T21:48:43.892Z",
+      "updatedAt": "2026-10-07T21:59:09.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

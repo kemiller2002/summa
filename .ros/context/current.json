@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-07T21:55:40.000Z",
+  "updatedAt": "2026-10-07T21:59:09.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -684,6 +684,51 @@
         }
       },
       "completedAt": "2026-10-07T21:55:40.000Z"
+    },
+    {
+      "id": "WI-0014",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Payments.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Reports.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/PaymentsReportsTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-07T21:59:09.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261007T215710538Z-cfeeb126"
+      ],
+      "latestCheckpoint": {
+        "id": "c92b30d9078522b2c1b347ce",
+        "recordedAt": "2026-10-07T21:59:08.000Z",
+        "executionId": "EXE-20261007T215710538Z-cfeeb126",
+        "repository": "summa",
+        "branch": "feat/payments-reports",
+        "commit": "a5c5a12169f4a4f418ab3c63a2e608750ebc5b7f",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/payments-reports",
+        "remoteCommit": "a5c5a12169f4a4f418ab3c63a2e608750ebc5b7f",
+        "summary": "Payments and reports implemented",
+        "nextAction": "Complete WI-0014",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-07T21:59:09.000Z"
     }
   ]
 }

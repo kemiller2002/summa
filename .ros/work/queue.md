@@ -24,4 +24,4 @@
 | WI-0011 | Requirement gap analysis: compare every Summa requirement section and INV requirement family against code and tests | complete | requirements,gap-analysis | high |
 | WI-0012 | Summa.Ledger: fixed-decimal money, chart of accounts, balanced journal entries, posting, reversal and accounting periods (v0.1 sections 1-2) | complete | ledger,accounting | high |
 | WI-0013 | Invoices and receivables: customers, numbering, issue with AR/revenue posting, idempotency, obligations, payment terms (v0.1 sections 3-6, 9-10, 19) | complete | invoicing,receivables | high |
-| WI-0014 | Payments, allocation, AR aging and core financial reports: trial balance, general ledger, income statement, balance sheet (v0.1 sections 11-15) | captured | payments,reports | high |
+| WI-0014 | Payments, allocation, AR aging and core financial reports: trial balance, general ledger, income statement, balance sheet (v0.1 sections 11-15) | complete | payments,reports | high |
