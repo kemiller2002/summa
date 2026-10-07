@@ -293,10 +293,10 @@
         "invoicing,receivables"
       ],
       "priority": "high",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-07T21:48:43.571Z",
-      "updatedAt": "2026-10-07T21:54:00.000Z",
+      "updatedAt": "2026-10-07T21:55:40.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
