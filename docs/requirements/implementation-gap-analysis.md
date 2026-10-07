@@ -109,8 +109,8 @@ UI and the invoice document requirements remain open (`later`).
 | SUM0-048 | missing | missing | **Set 0 §0.48 Agent Repository Behavior.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | later |
 | SUM0-049 | missing | missing | **Set 0 §0.49 Agent Context and File Scope.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | later |
 | SUM0-050 | missing | missing | **Set 0 §0.50 Requirement Precedence.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | later |
-| SUM1-001 | missing | missing | **v0.1 §1 General Ledger.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | WI-0012 |
-| SUM1-002 | missing | missing | **v0.1 §2 Accounting Periods.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | WI-0012 |
+| SUM1-001 | missing | tested | **v0.1 §1 General Ledger.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. **WI-0012:** chart of accounts with five types and normal balances, unique codes; lines are a debit or a credit by type, positive fixed-decimal amounts; posting requires two or more lines, balance and active accounts; posted entries are immutable with unique ids and corrected only by reversal (`Summa.Ledger.Ledger`, `LedgerTests`). | WI-0012 |
+| SUM1-002 | missing | tested | **v0.1 §2 Accounting Periods.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. **WI-0012:** monthly periods Open/Closed/Locked; posting only into open periods; closing and locking leave entries untouched; reopening needs an explicit privileged call and is audited. | WI-0012 |
 | SUM1-003 | missing | missing | **v0.1 §3 Customers.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | WI-0013 |
 | SUM1-004 | missing | missing | **v0.1 §4 Invoices.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | WI-0013 |
 | SUM1-005 | missing | missing | **v0.1 §5 Invoice Numbering.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | WI-0013 |
@@ -124,10 +124,10 @@ UI and the invoice document requirements remain open (`later`).
 | SUM1-013 | missing | missing | **v0.1 §13 Accounting for Payments.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | WI-0014 |
 | SUM1-014 | missing | missing | **v0.1 §14 Accounts Receivable Aging.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | WI-0014 |
 | SUM1-015 | missing | missing | **v0.1 §15 Core Financial Reports.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | WI-0014 |
-| SUM1-016 | missing | missing | **v0.1 §16 Dimensions.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | later |
+| SUM1-016 | missing | tested | **v0.1 §16 Dimensions.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. **WI-0012:** client, project, engagement, work-item and product dimensions on journal lines, not as accounts. | later |
 | SUM1-017 | missing | missing | **v0.1 §17 Time Entry Integration Boundary.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | later |
-| SUM1-018 | missing | missing | **v0.1 §18 Audit Trail.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | later |
-| SUM1-019 | missing | missing | **v0.1 §19 Idempotency.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | WI-0013 |
+| SUM1-018 | missing | partial | **v0.1 §18 Audit Trail.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. **WI-0012:** ledger operations (account saved, entry posted and reversed, period closed/locked/reopened) append who/what/when/source/correlation records that the API cannot edit. Invoice and payment actions follow. | later |
+| SUM1-019 | missing | partial | **v0.1 §19 Idempotency.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. **WI-0012:** `PostJournalEntry` is idempotent by key (five retries post once; a reused key with a different entry is refused). IssueInvoice and RecordPayment follow. | WI-0013 |
 | SUM1-020 | missing | missing | **v0.1 §20 Data Export and Escape Hatch.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | later |
 | SUM2-001 | missing | missing | **v0.2 §1 Partial Payments.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | later |
 | SUM2-002 | missing | missing | **v0.2 §2 Multiple Payments Against One Invoice.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | later |
@@ -154,7 +154,7 @@ UI and the invoice document requirements remain open (`later`).
 | SUM2-023 | missing | missing | **v0.2 §23 Year-End Closing.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | later |
 | SUM2-024 | missing | missing | **v0.2 §24 Cash vs Accrual Reporting.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | later |
 | SUM2-025 | missing | missing | **v0.2 §25 Duplicate Detection.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | later |
-| SUM2-026 | missing | missing | **v0.2 §26 Currency Precision.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | later |
+| SUM2-026 | missing | tested | **v0.2 §26 Currency Precision.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. **WI-0012:** money is int64 minor units with an explicit currency; parsing refuses more than two decimals; quantity extension rounds half away from zero; currencies never mix (`Money`, `LedgerTests`). | later |
 | SUM2-027 | missing | missing | **v0.2 §27 Date Semantics.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | later |
 | SUM2-028 | missing | missing | **v0.2 §28 Audit Provenance.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | later |
 | SUM2-029 | missing | missing | **v0.2 §29 Permissions Boundary.** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. | later |
@@ -287,4 +287,4 @@ UI and the invoice document requirements remain open (`later`).
 
 | Corpus | Rows | Current tested | Current partial | Current missing |
 |---|---:|---:|---:|---:|
-| Summa requirements | 223 | 0 | 1 | 222 |
+| Summa requirements | 223 | 4 | 3 | 216 |

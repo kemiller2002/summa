@@ -270,10 +270,10 @@
         "ledger,accounting"
       ],
       "priority": "high",
-      "status": "captured",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-07T21:48:43.262Z",
-      "updatedAt": "2026-10-07T21:48:43.262Z",
+      "updatedAt": "2026-10-07T21:53:19.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Summa's financial domain: fixed-decimal money, the double-entry
+       ledger, accounting periods, invoices, receivables, payments and the
+       core reports. Pure F#: no clock, storage, network or browser access
+       (dates, ids and the performer arrive as arguments), and no package
+       dependencies beyond FSharp.Core. -->
+
+  <ItemGroup>
+    <Compile Include="Money.fs" />
+    <Compile Include="Ledger.fs" />
+  </ItemGroup>
+
+</Project>
