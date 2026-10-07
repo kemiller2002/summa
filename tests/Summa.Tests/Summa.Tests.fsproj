@@ -11,6 +11,7 @@
     <Compile Include="Support.fs" />
     <Compile Include="GapAnalysisTests.fs" />
     <Compile Include="LedgerTests.fs" />
+    <Compile Include="InvoicingTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

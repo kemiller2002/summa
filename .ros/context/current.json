@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-07T21:53:19.000Z",
+  "updatedAt": "2026-10-07T21:55:40.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -643,6 +643,47 @@
         }
       },
       "completedAt": "2026-10-07T21:53:19.000Z"
+    },
+    {
+      "id": "WI-0013",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Invoicing.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/InvoicingTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-07T21:55:40.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261007T215401193Z-1ae7494f"
+      ],
+      "latestCheckpoint": {
+        "id": "7d9a5cd2eae9f287071bf8cf",
+        "recordedAt": "2026-10-07T21:55:39.000Z",
+        "executionId": "EXE-20261007T215401193Z-1ae7494f",
+        "repository": "summa",
+        "branch": "feat/invoicing",
+        "commit": "406f7ff3fe40f9f79526639ef08bbd1dca942a37",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/invoicing",
+        "remoteCommit": "406f7ff3fe40f9f79526639ef08bbd1dca942a37",
+        "summary": "Invoicing implemented",
+        "nextAction": "Complete WI-0013",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-07T21:55:40.000Z"
     }
   ]
 }
