@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 11,
+  "nextSeq": 15,
   "items": [
     {
       "id": "WI-0001",
@@ -228,6 +228,98 @@
       "attachments": [],
       "createdAt": "2026-10-06T16:26:29.749Z",
       "updatedAt": "2026-10-06T16:30:42Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0011",
+      "title": "Requirement gap analysis: compare every Summa requirement section and INV requirement family against code and tests",
+      "description": null,
+      "tags": [
+        "requirements,gap-analysis"
+      ],
+      "priority": "high",
+      "status": "complete",
+      "attachments": [],
+      "createdAt": "2026-10-07T21:48:42.952Z",
+      "updatedAt": "2026-10-07T21:50:20.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0012",
+      "title": "Summa.Ledger: fixed-decimal money, chart of accounts, balanced journal entries, posting, reversal and accounting periods (v0.1 sections 1-2)",
+      "description": null,
+      "tags": [
+        "ledger,accounting"
+      ],
+      "priority": "high",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-07T21:48:43.262Z",
+      "updatedAt": "2026-10-07T21:48:43.262Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0013",
+      "title": "Invoices and receivables: customers, numbering, issue with AR/revenue posting, idempotency, obligations, payment terms (v0.1 sections 3-6, 9-10, 19)",
+      "description": null,
+      "tags": [
+        "invoicing,receivables"
+      ],
+      "priority": "high",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-07T21:48:43.571Z",
+      "updatedAt": "2026-10-07T21:48:43.571Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0014",
+      "title": "Payments, allocation, AR aging and core financial reports: trial balance, general ledger, income statement, balance sheet (v0.1 sections 11-15)",
+      "description": null,
+      "tags": [
+        "payments,reports"
+      ],
+      "priority": "high",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-07T21:48:43.892Z",
+      "updatedAt": "2026-10-07T21:48:43.892Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
