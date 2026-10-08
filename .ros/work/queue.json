@@ -904,10 +904,10 @@
         "depends:fides"
       ],
       "priority": "high",
-      "status": "captured",
+      "status": "ready",
       "attachments": [],
       "createdAt": "2026-10-08T15:51:52.000Z",
-      "updatedAt": "2026-10-08T18:08:36.000Z",
+      "updatedAt": "2026-10-08T22:18:37.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

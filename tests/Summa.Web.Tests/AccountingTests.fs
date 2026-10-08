@@ -141,6 +141,57 @@ let ``books that fail their checks are refused, and only then can they be replac
     Assert.Equal(model.Books.Value.Books.Invoices.Count, (update ctx ResetConfirmed model |> fst).Books.Value.Books.Invoices.Count)
     Assert.Equal("True", value "isUntrustworthy" (update ctx (Loaded(Some "not json")) (configured ()) |> fst))
 
+[<Fact>]
+let ``books saved before the manifest named its credit, deposit and bad-debt accounts are migrated and saved once`` () =
+    let model = started () |> customer
+
+    let snapshot =
+        match Summa.Storage.LocalSnapshot.encode model.Manifest.Value model.Books.Value with
+        | Ok text -> text
+        | Error e -> failwith $"%A{e}"
+
+    // The manifest as schema 1 wrote it.
+    let v1 =
+        let added = set [ "customerCreditsAccount"; "customerDepositsAccount"; "badDebtAccount" ]
+
+        let body =
+            match Summa.Storage.Organization.body model.Manifest.Value with
+            | Arca.Json.Object members ->
+                Arca.Json.Object(
+                    members
+                    |> List.map (function
+                        | "accounting", Arca.Json.Object a -> "accounting", Arca.Json.Object(a |> List.filter (fst >> added.Contains >> not))
+                        | other -> other)
+                )
+            | other -> other
+
+        match Summa.Storage.Organization.toRecord model.Manifest.Value with
+        | Ok record ->
+            match Arca.Record.encode Arca.Record.DefaultMaxBytes { record with SchemaVersion = 1; Body = body } with
+            | Ok text -> text
+            | Error e -> failwith $"%A{e}"
+        | Error e -> failwith $"%A{e}"
+
+    let older =
+        match JsonNode.Parse snapshot with
+        | null -> failwith "not JSON"
+        | node ->
+            let o = node.AsObject()
+            o["manifest"] <- JsonValue.Create v1
+            o.ToJsonString()
+
+    let migrated, effects = update ctx (Loaded(Some older)) (configured ())
+    Assert.Equal("True", value "isReady" migrated)
+    Assert.Equal("These books were updated to name their credit, deposit and bad-debt accounts.", value "notice" migrated)
+    Assert.Equal("6500", migrated.Manifest.Value.Accounting.BadDebtAccount)
+
+    match effects with
+    | [ SaveBooks saved ] ->
+        let reopened, again = update ctx (Loaded(Some saved)) (configured ())
+        Assert.Equal("True", value "isReady" reopened)
+        Assert.Empty again
+    | other -> failwith $"%A{other}"
+
 // ---- The wire ---------------------------------------------------------------------------
 
 let private aegis = Summa.Web.Application.Boundary.configure [ (Aegis.Sinks.Collector()).Sink() ]

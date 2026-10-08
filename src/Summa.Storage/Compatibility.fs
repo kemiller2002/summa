@@ -18,12 +18,12 @@ type Access =
     | ReadOnly of reasons: Diagnostic list
     | Refused of reasons: Diagnostic list
 
-/// The access the organization's manifests allow (SUM0-031, SUM3-009): the
-/// storage version, then each record type's schema version.
-let access (supported: SchemaSupport list) (organization: Organization.OrganizationManifest) (manifest: Manifest) : Access =
+/// The access a storage version and an Arca manifest allow (SUM0-031,
+/// SUM3-009): the storage version, then each record type's schema version.
+let private accessAt (supported: SchemaSupport list) (storageVersion: int) (manifest: Manifest) : Access =
     let storage =
-        if organization.StorageVersion <> Organization.StorageVersion then
-            [ UnsupportedStorageVersion(organization.StorageVersion, Organization.StorageVersion) ]
+        if storageVersion <> Organization.StorageVersion then
+            [ UnsupportedStorageVersion(storageVersion, Organization.StorageVersion) ]
         else
             []
 
@@ -48,3 +48,25 @@ let access (supported: SchemaSupport list) (organization: Organization.Organizat
     | [], reasons -> ReadOnly reasons
     | reasons, _ -> Refused reasons
 
+
+/// The access the organization's manifests allow (SUM0-031, SUM3-009).
+let access (supported: SchemaSupport list) (organization: Organization.OrganizationManifest) (manifest: Manifest) : Access =
+    accessAt supported organization.StorageVersion manifest
+
+/// The access a stored organization manifest allows. One at an older schema
+/// keeps the folder read-only, whatever the Arca manifest declares, until
+/// its explicit migration (`Migrations.organizationOperation`) is committed.
+let storedAccess (supported: SchemaSupport list) (organization: Organization.StoredManifest) (manifest: Manifest) : Access =
+    match organization with
+    | Organization.CurrentManifest current -> access supported current manifest
+    | Organization.NeedsMigration(version, body) ->
+        let older =
+            IncompatibleSchema(RecordType.value Organization.manifestType, $"schema {version} is older than {Organization.schema.Current}; migrate before writing")
+
+        match Codec.integer "storageVersion" body with
+        | Error detail -> Refused [ InvalidOrganizationManifest detail ]
+        | Ok storageVersion ->
+            match accessAt supported storageVersion manifest with
+            | ReadWrite -> ReadOnly [ older ]
+            | ReadOnly reasons -> ReadOnly(if List.contains older reasons then reasons else reasons @ [ older ])
+            | Refused reasons -> Refused reasons

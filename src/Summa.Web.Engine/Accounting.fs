@@ -715,14 +715,19 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
     | Loaded(Some text) ->
         match LocalSnapshot.decode text with
         | Ok restored when restored.Problems.IsEmpty ->
-            enter
-                model.Place
+            let opened =
                 { model with
                     Storage = Ready
                     Manifest = Some restored.Manifest
                     Books = Some restored.Books
-                    Company = companyForm restored.Manifest },
-            []
+                    Company = companyForm restored.Manifest }
+
+            // A manifest migrated as it was read is saved at once, so the
+            // migration is written once and said once.
+            if restored.Migrated then
+                save (enter model.Place { opened with Notice = Some "These books were updated to name their credit, deposit and bad-debt accounts." })
+            else
+                enter model.Place opened, []
         | Ok restored -> { model with Storage = Untrustworthy(restored.Problems |> List.map Diagnostics.describe) }, []
         | Error why -> { model with Storage = Untrustworthy [ why ] }, []
     | Saved true -> { model with Unsaved = max 0 (model.Unsaved - 1) }, []
@@ -984,7 +989,7 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
                     match books.Books.Invoices.TryFind invoiceId with
                     | None -> Error "Open the invoice the credit is for."
                     | Some invoice ->
-                        let accounts = LocalSnapshot.receivableAccounts manifest books.Books.Ledger
+                        let accounts = Organization.receivableAccounts manifest books.Books.Ledger
                         let entry prefix = nextId prefix books.Books.Ledger.Entries.ContainsKey
 
                         let memo: CreditMemo =
@@ -1271,7 +1276,7 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
                       Date = today ctx
                       JournalEntryId = nextId "JE-CR" books.Books.Ledger.Entries.ContainsKey }
 
-                Credits.creditUnapplied (context ctx) (LocalSnapshot.receivableAccounts manifest books.Books.Ledger) request books |> Result.mapError describe)
+                Credits.creditUnapplied (context ctx) (Organization.receivableAccounts manifest books.Books.Ledger) request books |> Result.mapError describe)
         | None -> model, []
     | ReceiptCustomerChanged v -> { model with Receipt = { model.Receipt with CustomerId = v } }, []
     | ReceiptAmountChanged v -> { model with Receipt = { model.Receipt with Amount = v } }, []
