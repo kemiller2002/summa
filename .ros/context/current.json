@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T15:59:18.000Z",
+  "updatedAt": "2026-10-08T16:09:43.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1239,6 +1239,55 @@
         }
       },
       "completedAt": "2026-10-08T15:59:18.000Z"
+    },
+    {
+      "id": "WI-0022",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Projection.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Operations/Backup.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Operations/Recovery.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Storage.Tests/RecoveryTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-08T16:09:43.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261008T160041321Z-fa6acf65"
+      ],
+      "latestCheckpoint": {
+        "id": "8398b875b37ef99ac07b0010",
+        "recordedAt": "2026-10-08T16:09:41.000Z",
+        "executionId": "EXE-20261008T160041321Z-fa6acf65",
+        "repository": "summa",
+        "branch": "feat/wi-0022-recovery",
+        "commit": "784c575f8306ef8978566bc8df6e216b509671bc",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa.git"
+        },
+        "remoteBranch": "feat/wi-0022-recovery",
+        "remoteCommit": "784c575f8306ef8978566bc8df6e216b509671bc",
+        "summary": "Index, reconciliation, recovery, sealed backups and the drill",
+        "nextAction": "Open and merge the PR",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-08T16:09:43.000Z"
     }
   ]
 }

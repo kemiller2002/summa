@@ -22,6 +22,8 @@
     <Compile Include="Governance.fs" />
     <Compile Include="Invariants.fs" />
     <Compile Include="FinancialRecords.fs" />
+    <Compile Include="Projection.fs" />
+    <Compile Include="Reconciliation.fs" />
     <Compile Include="Compatibility.fs" />
     <Compile Include="Commands.fs" />
     <Compile Include="Verification.fs" />

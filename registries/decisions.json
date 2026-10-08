@@ -131,6 +131,49 @@
     "version": "1.0.0"
   },
   {
+    "created": "2026-10-08",
+    "id": "DF-SUMMA-2026-0004",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0004--recovery-objectives-backups-and-retention.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261008T160041321Z-fa6acf65": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-08T16:07:53.351Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Choose recovery objectives, the backup format and retention"
+        }
+      }
+    },
+    "related_documents": [
+      "docs/operations/recovery.md",
+      "research/decisions/DF-SUMMA-2026-0001--summa-owns-the-chrona-contract-and-stores-through-arca.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "operations",
+      "backup",
+      "recovery",
+      "encryption"
+    ],
+    "title": "Recovery objectives, sealed backups and retention",
+    "updated": "2026-10-08",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-10-05",
     "id": "DF-SUMMA-FND-2026-0001",
     "owners": [
