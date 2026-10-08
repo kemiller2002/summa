@@ -16,6 +16,7 @@
     <Compile Include="Books.fs" />
     <Compile Include="FinancialRecordsTests.fs" />
     <Compile Include="CommandTests.fs" />
+    <Compile Include="IntegrityTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

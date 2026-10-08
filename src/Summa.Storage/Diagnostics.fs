@@ -21,6 +21,12 @@ type Diagnostic =
     | NamespaceUnusable of root: string * detail: string
     | InvalidStoredRecord of path: string * detail: string
     | StorageOperationRefused of detail: string
+    // Integrity -----------------------------------------------------------
+    | InvariantViolated of rule: string * subject: string * detail: string
+    | EditedOutsideSumma of path: string
+    | ImmutableRecordChanged of path: string
+    | IncompatibleSchema of recordType: string * detail: string
+    | MigrationUnsafe of detail: string
 
 /// The diagnostic's stable code.
 let code =
@@ -40,6 +46,11 @@ let code =
     | NamespaceUnusable _ -> "SUMMA.STORAGE.NAMESPACE_UNUSABLE"
     | InvalidStoredRecord _ -> "SUMMA.STORAGE.INVALID_RECORD"
     | StorageOperationRefused _ -> "SUMMA.STORAGE.OPERATION_REFUSED"
+    | InvariantViolated _ -> "SUMMA.INTEGRITY.INVARIANT_VIOLATED"
+    | EditedOutsideSumma _ -> "SUMMA.INTEGRITY.EDITED_OUTSIDE"
+    | ImmutableRecordChanged _ -> "SUMMA.INTEGRITY.IMMUTABLE_CHANGED"
+    | IncompatibleSchema _ -> "SUMMA.INTEGRITY.INCOMPATIBLE_SCHEMA"
+    | MigrationUnsafe _ -> "SUMMA.INTEGRITY.MIGRATION_UNSAFE"
 
 /// One sentence for people.
 let describe =
@@ -59,3 +70,8 @@ let describe =
     | NamespaceUnusable(root, detail) -> $"'{root}' cannot be used: {detail}."
     | InvalidStoredRecord(path, detail) -> $"'{path}' is not a valid record: {detail}."
     | StorageOperationRefused detail -> $"The change was refused: {detail}."
+    | InvariantViolated(rule, subject, detail) -> $"Integrity failure ({rule}) in {subject}: {detail}."
+    | EditedOutsideSumma path -> $"'{path}' was last changed outside Summa; it is validated, not trusted."
+    | ImmutableRecordChanged path -> $"'{path}' is a posted record that was changed after it was written."
+    | IncompatibleSchema(recordType, detail) -> $"{recordType}: {detail}."
+    | MigrationUnsafe detail -> $"The migration is not safe: {detail}."

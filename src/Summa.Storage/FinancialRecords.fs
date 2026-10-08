@@ -749,36 +749,18 @@ let private assemble (parts: Part list) : Receivables =
       Payments = parts |> List.choose (function PaymentPart p -> Some(p.Id, p) | _ -> None) |> Map.ofList
       Allocations = parts |> List.choose (function AllocationPart a -> Some a | _ -> None) |> List.sortBy _.Id }
 
-/// Cross-record rules that make the books trustworthy: every issued invoice
-/// has its entry and obligation, every allocation its payment, invoice and
-/// entry, and every entry balances and names known accounts.
-let private consistency (r: Receivables) =
-    let ledger = r.Books.Ledger
+/// Cross-record rules that make the books trustworthy (`Invariants`), plus
+/// what only the stored form can show: an idempotency key used twice.
+let private consistency (entries: (PostedEntry * string option) list) (r: Receivables) =
+    let reusedKeys =
+        entries
+        |> List.choose (fun (e, k) -> k |> Option.map (fun key -> key, e.Id))
+        |> List.groupBy fst
+        |> List.filter (fun (_, uses) -> uses.Length > 1)
+        |> List.map (fun (key, uses) -> InvariantViolated("unique-idempotency-keys", key, $"used by {uses.Length} entries"))
 
-    [ for KeyValue(id, i) in r.Books.Invoices do
-          if not (ledger.Entries.ContainsKey i.JournalEntryId) then InvalidStoredRecord(id, $"its journal entry {i.JournalEntryId} is missing")
-          if not (r.Books.Obligations.ContainsKey i.ObligationId) then InvalidStoredRecord(id, $"its obligation {i.ObligationId} is missing")
-      for a in r.Allocations do
-          if not (r.Payments.ContainsKey a.PaymentId) then InvalidStoredRecord(a.Id, $"its payment {a.PaymentId} is missing")
-          if not (r.Books.Invoices.ContainsKey a.InvoiceId) then InvalidStoredRecord(a.Id, $"its invoice {a.InvoiceId} is missing")
-          if not (ledger.Entries.ContainsKey a.JournalEntryId) then InvalidStoredRecord(a.Id, $"its journal entry {a.JournalEntryId} is missing")
-      for KeyValue(id, e) in ledger.Entries do
-          let currencies =
-              e.Lines
-              |> List.map (fun l ->
-                  match l.Side with
-                  | Debit m
-                  | Credit m -> m.Currency)
-              |> List.distinct
-
-          match currencies with
-          | [ currency ] ->
-              let debits, credits = totals currency e.Lines
-              if debits <> credits then InvalidStoredRecord(id, "the entry does not balance")
-          | _ -> InvalidStoredRecord(id, "the entry mixes currencies or has no lines")
-
-          for l in e.Lines do
-              if not (ledger.Accounts.ContainsKey l.AccountId) then InvalidStoredRecord(id, $"account {l.AccountId} is unknown") ]
+    reusedKeys
+    @ (Invariants.check r |> List.map (fun v -> InvariantViolated(v.Rule, v.Subject, v.Detail)))
 
 /// Loads the financial records read from an organization's folder. Each
 /// object must be a canonical record of a financial type, at the path its
@@ -826,4 +808,7 @@ let load (objects: StoredObject list) : Loaded =
             let p = RelativePath.render o.Path
             p, { Path = p; Revision = o.Revision; Content = o.Content })
         |> Map.ofList
-      Problems = (decoded |> List.choose (function Error d -> Some d | Ok _ -> None)) @ misplaced @ consistency state }
+      Problems =
+        (decoded |> List.choose (function Error d -> Some d | Ok _ -> None))
+        @ misplaced
+        @ consistency (parts |> List.choose (function EntryPart(e, k) -> Some(e, k) | _ -> None)) state }

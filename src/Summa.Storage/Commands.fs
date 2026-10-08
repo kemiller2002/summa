@@ -29,6 +29,8 @@ type CommandFailure<'e> =
     | NeedsApproval of Capability
     /// The stored books have integrity problems; nothing runs on them.
     | Untrustworthy of Diagnostic list
+    /// The organization's data is older or newer than this Summa writes (SUM0-031).
+    | Incompatible of Compatibility.Access
     /// The domain refused the command.
     | Rejected of 'e
     /// The change cannot be stored (for example it would rewrite a posted record).
@@ -208,8 +210,33 @@ let decide
                                 |> Result.mapError Unstorable
                                 |> Result.map (fun operation -> next, Some(Operation.requireChangeToken token operation))))
 
-/// Runs a command through a provider: read, decide, commit; on a conflict or
-/// a stale change token read again and decide again, up to `attempts` times.
+/// How this Summa may use the organization's folder, from its Arca manifest
+/// and organization manifest; a folder without them is not usable.
+let compatibility (provider: StorageProvider) (ns: Namespace) : Async<Result<Compatibility.Access, CommandFailure<'e>>> =
+    let organizationId = ns.Dataset |> Option.map DatasetId.value |> Option.defaultValue ""
+
+    async {
+        match Layout.manifestPath, Organization.path organizationId with
+        | Ok arcaPath, Ok organizationPath ->
+            let! arca = provider.Read ns arcaPath
+            let! organization = provider.Read ns organizationPath
+
+            match arca, organization with
+            | Error failure, _
+            | _, Error failure -> return Error(StorageFailed failure)
+            | Ok arcaFound, Ok(ReadOutcome.Found organizationFound) ->
+                match Storage.openNamespace ns arcaFound, Organization.decode organizationId organizationFound with
+                | Ok manifest, Ok organization ->
+                    return Ok(Compatibility.access (Organization.schema :: MemberRecord.schema :: FinancialRecords.schemas) organization manifest)
+                | Error problems, _ -> return Error(Untrustworthy problems)
+                | _, Error problem -> return Error(Untrustworthy [ problem ])
+            | Ok _, Ok ReadOutcome.Absent -> return Error(Untrustworthy [ NamespaceNotInitialized(RelativePath.render ns.Root) ])
+        | _ -> return Error(Untrustworthy [ InvalidOrganizationId organizationId ])
+    }
+
+/// Runs a command through a provider: check the folder's schema
+/// compatibility, then read, decide and commit; on a conflict or a stale
+/// change token read again and decide again, up to `attempts` times.
 let execute
     (provider: StorageProvider)
     (gates: Set<Capability>)
@@ -245,4 +272,9 @@ let execute
                         | Error failure -> return Error(StorageFailed failure)
         }
 
-    attempt 1
+    async {
+        match! compatibility provider ns with
+        | Error failure -> return Error failure
+        | Ok Compatibility.ReadWrite -> return! attempt 1
+        | Ok other -> return Error(Incompatible other)
+    }
