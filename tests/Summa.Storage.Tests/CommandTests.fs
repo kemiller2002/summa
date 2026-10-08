@@ -229,3 +229,85 @@ let ``billing through commands: import, propose and accept each commit once, and
     let loaded = FinancialRecords.load (reread |> List.filter (fun o -> Layout.keyOf o.Path |> Option.exists (fun k -> FinancialRecords.isFinancial k.Type)))
     Assert.Empty loaded.Problems
     Assert.Equal(Summa.Ledger.Sources.TimeSource [ { PublicationId = "pub-1"; ActivityId = "act-1"; Revision = 1; Minutes = 90 } ], loaded.State.Books.Invoices["INV-001"].Lines.Head.Source)
+
+let private company =
+    { acme with
+        Company = { acme.Company with LegalName = "Acme Consulting LLC"; Address = "1 Main St"; Email = "billing@acme.example" }
+        Invoices = { acme.Invoices with PaymentInstructions = "ACH to account ending 0042" } }
+
+let private requestFor draftId invoiceId n =
+    Organization.issueRequest company chart draftId (DateOnly(2026, 10, 7)) invoiceId $"JE-ISS-{n}" $"OBL-{n}"
+
+let private prepare (draftId: string) (r: Receivables) =
+    saveDraft ledgerContext { draft with DraftId = draftId } r.Books
+    |> Result.mapError (fun p -> [ { Summa.Ledger.Issuance.Code = "draft"; Summa.Ledger.Issuance.Explanation = $"%A{p}"; Summa.Ledger.Issuance.Resolution = "" } ])
+    |> Result.bind (fun books -> Summa.Ledger.Issuance.submitForReview ledgerContext (requestFor draftId "x" 0) { r with Books = books })
+
+[<Fact>]
+let ``issuing through a command uses the organization's defaults and stores the invoice with its artifacts`` () =
+    let store, ns = founded ()
+    setUp store ns |> Support.ok |> ignore
+    run store ns kevin CreateDraftInvoice "draft-A" (prepare "D-A") |> Support.ok |> ignore
+    let issueA r = Summa.Ledger.Issuance.issueInvoice ledgerContext (requestFor "D-A" "INV-A" 1) r |> Result.map fst
+    let issued = run store ns kevin IssueInvoice "issue-A" issueA |> Support.ok
+    let invoice = issued.State.Books.Invoices["INV-A"]
+    Assert.Equal("INV-2026-0001", invoice.Number)
+    Assert.Equal(Summa.Ledger.Invoicing.Net 30, invoice.Terms)
+    Assert.Equal("Acme Consulting LLC", invoice.Issuer.LegalName)
+    let reread = Commands.readAll store.Provider ns |> Async.RunSynchronously |> Support.ok
+    let loaded = FinancialRecords.load (reread |> List.filter (fun o -> Layout.keyOf o.Path |> Option.exists (fun k -> FinancialRecords.isFinancial k.Type)))
+    Assert.Empty loaded.Problems
+    Assert.True((issued.State.Books.Artifacts = loaded.State.Books.Artifacts))
+    Assert.True((invoice = loaded.State.Books.Invoices["INV-A"]))
+    Assert.Equal<(Summa.Ledger.Sources.ArtifactKind * Summa.Ledger.Issuance.ArtifactCheck) list>(
+        [ Summa.Ledger.Sources.InvoiceHtml, Summa.Ledger.Issuance.Intact; Summa.Ledger.Sources.InvoiceJson, Summa.Ledger.Issuance.Intact ],
+        Summa.Ledger.Issuance.verify loaded.State "INV-A"
+    )
+
+[<Fact>]
+let ``two invoices issued at once never get the same number`` () =
+    let store, ns = founded ()
+    setUp store ns |> Support.ok |> ignore
+    run store ns kevin CreateDraftInvoice "draft-A" (prepare "D-A") |> Support.ok |> ignore
+    let prepared = run store ns kevin CreateDraftInvoice "draft-B" (prepare "D-B") |> Support.ok
+    let issueA r = Summa.Ledger.Issuance.issueInvoice ledgerContext (requestFor "D-A" "INV-A" 1) r |> Result.map fst
+    let issueB r = Summa.Ledger.Issuance.issueInvoice ledgerContext (requestFor "D-B" "INV-B" 2) r |> Result.map fst
+    // Someone else issues D-A between our read and our commit.
+    let before = prepared.State |> FinancialRecords.toRecords |> Result.bind FinancialRecords.contents |> Support.ok
+    let after = prepared.State |> issueA |> Support.ok |> FinancialRecords.toRecords |> Result.bind FinancialRecords.contents |> Support.ok
+    let mutable interfered = false
+
+    let racing =
+        { store.Provider with
+            Commit =
+                fun operation ->
+                    if not interfered then
+                        interfered <- true
+
+                        for KeyValue(path, (_, content)) in after do
+                            if before.TryFind path |> Option.map snd <> Some content then
+                                store.WriteExternally(ns.Location, RelativePath.render ns.Root + "/" + path, Some content)
+
+                        for KeyValue(path, _) in before do
+                            if not (after.ContainsKey path) then
+                                store.WriteExternally(ns.Location, RelativePath.render ns.Root + "/" + path, None)
+
+                    store.Provider.Commit operation }
+
+    let outcome =
+        execute racing defaultApprovalGates ns 3 { Actor = kevin; Capability = IssueInvoice; Summary = "issue B"; IdempotencyKey = "cmd-issue-B-0001"; Transition = issueB }
+        |> Async.RunSynchronously
+        |> Support.ok
+
+    Assert.Equal(2, outcome.Attempts)
+    Assert.Equal("INV-2026-0001", outcome.State.Books.Invoices["INV-A"].Number)
+    Assert.Equal("INV-2026-0002", outcome.State.Books.Invoices["INV-B"].Number)
+
+[<Fact>]
+let ``choosing an invoice number is its own capability, and a person must approve it`` () =
+    let request = requestFor "D-A" "INV-A" 1
+    Assert.Equal(IssueInvoice, Commands.issueCapability request)
+    Assert.Equal(OverrideInvoiceNumber, Commands.issueCapability { request with NumberOverride = Some "INV-2026-0100" })
+    Assert.Contains(OverrideInvoiceNumber, defaultApprovalGates)
+    Assert.DoesNotContain(OverrideInvoiceNumber, Grants.bookkeeper)
+    Assert.Contains(OverrideInvoiceNumber, Grants.accountant)

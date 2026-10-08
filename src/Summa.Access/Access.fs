@@ -55,6 +55,8 @@ type Capability =
     | OverrideRate
     /// Maintain rate cards and engagements: fees, milestones and terms.
     | ManageBilling
+    /// Choose an invoice's number instead of the next one (INV-NUM-009).
+    | OverrideInvoiceNumber
 
 let allCapabilities =
     [ ViewFinancials
@@ -81,7 +83,8 @@ let allCapabilities =
       RecordExpense
       ProposeInvoice
       OverrideRate
-      ManageBilling ]
+      ManageBilling
+      OverrideInvoiceNumber ]
 
 /// The capability's stable name, as records and diagnostics state it.
 let capabilityName (capability: Capability) = $"%A{capability}"
@@ -130,7 +133,8 @@ module Grants =
               ClosePeriod
               ReopenPeriod
               OverrideRate
-              ManageBilling ]
+              ManageBilling
+              OverrideInvoiceNumber ]
 
     let administrator = Set.ofList allCapabilities
 
@@ -204,7 +208,7 @@ let organizationsOf (rosters: Roster list) (principalId: string) =
 /// Operations that need a person's approval when anyone else prepares them.
 /// Configurable per organization; this is the default.
 let defaultApprovalGates =
-    set [ IssueInvoice; WriteOffReceivable; PostManualAdjustment; ClosePeriod; RefundCustomer ]
+    set [ IssueInvoice; OverrideInvoiceNumber; WriteOffReceivable; PostManualAdjustment; ClosePeriod; RefundCustomer ]
 
 /// What a principal holding the capability may do with it.
 type Decision =

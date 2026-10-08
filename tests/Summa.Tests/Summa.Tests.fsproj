@@ -17,6 +17,7 @@
     <Compile Include="CorrectionsTests.fs" />
     <Compile Include="BillingTests.fs" />
     <Compile Include="ChronaImportTests.fs" />
+    <Compile Include="IssuanceTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

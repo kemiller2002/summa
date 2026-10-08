@@ -38,13 +38,24 @@ let draftFor lines =
       Terms = None
       DueDate = None
       Corrects = None
-      EngagementId = None }
+      EngagementId = None
+      Details = noDetails
+      Version = 0
+      Review = Editing }
 
 let request =
     { DraftId = "D-1"
       IssueDate = DateOnly(2026, 10, 7)
       NumberOverride = None
-      Prefix = "EF"
+      Numbering = defaultNumbering "EF"
+      ExpectedVersion = None
+      Issuer =
+        { LegalName = "Echelon Foundry LLC"
+          Address = "1 Foundry Way\nSpringfield"
+          TaxId = Some "12-3456789"
+          Email = "billing@echelon.example"
+          PaymentInstructions = "ACH to account ending 6789" }
+      Template = Summa.Ledger.Documents.currentTemplate
       SystemTerms = Net 30
       ReceivableAccountId = "ar"
       InvoiceId = "INV-001"
@@ -91,7 +102,7 @@ let ``numbers are sequential per year, overrides must be unique, and issued numb
     let withSecond = saveDraft context { draftFor [ consulting 1000L 10000L ] with DraftId = "D-2" } books |> ok
     let books2, invoice2 = issue context second withSecond |> ok
     Assert.Equal("EF-2026-0002", invoice2.Number)
-    Assert.Equal("EF-2027-0001", nextNumber "EF" 2027 books2)
+    Assert.Equal("EF-2027-0001", nextNumber (defaultNumbering "EF") (DateOnly(2027, 1, 4)) books2)
     let third = { second with DraftId = "D-3"; InvoiceId = "INV-003"; JournalEntryId = "JE-000003"; ObligationId = "OBL-003"; NumberOverride = Some "EF-2026-0001" }
     let withThird = saveDraft context { draftFor [ consulting 1000L 10000L ] with DraftId = "D-3" } books2 |> ok
     Assert.Equal<InvoiceProblem list>([ DuplicateInvoiceNumber "EF-2026-0001" ], issue context third withThird |> refused)
@@ -102,7 +113,7 @@ let ``numbers are sequential per year, overrides must be unique, and issued numb
 let ``an invoice that cannot be issued says why, and nothing is posted`` () =
     let bad = { draftFor [ { consulting 1000L 0L with RevenueAccountId = "cash" } ] with CustomerId = "CUST-ABC" }
     let books1 = withDraft bad
-    Assert.Equal<InvoiceProblem list>([ TotalNotPositive; InvalidRevenueAccount "cash" ], issue context request books1 |> refused)
+    Assert.Equal<InvoiceProblem list>([ NoSubstantiveLine; TotalNotPositive; InvalidRevenueAccount "cash" ], issue context request books1 |> refused)
     Assert.Empty(books1.Ledger.Entries)
     Assert.Equal<InvoiceProblem list>([ NoLines; TotalNotPositive ], issue context request (withDraft (draftFor [])) |> refused)
     let inactive = books |> saveCustomer context { abc with Active = false }
