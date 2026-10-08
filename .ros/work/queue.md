@@ -49,5 +49,5 @@
 | WI-0036 | Real end-to-end sign-in and storage check against the user's Fides deployment and a Summa data repository | captured | summa, e2e, blocked-on:deployment | medium |
 | WI-0037 | Summa 04b: the application's store on GitHub - Arca's GitHub provider with the Fides token provider, start-up from the manifests, the offline queue on localStorage and conflict resolution in the interface (SUM0-002, SUM0-007, SUM0-018, SUM0-019) | captured | summa, order:04, storage, depends:arca, depends:fides | high |
 | WI-0038 | Summa 06b: financial schema migrations - run a record-schema change as an explicit, versioned migration through Arca, checked by Verification.checkMigration before it is activated (SUM0-032, SUM3-010) | captured | summa, order:06, migration | medium |
-| WI-0039 | Summa 14b: GitHub Pages deployment of the accounting app on summa.echelonfoundry.com (after WI-0030) | ready | deployment, pages | medium |
+| WI-0039 | Summa 14b: GitHub Pages deployment of the accounting app on summa.echelonfoundry.com (after WI-0030) | complete | deployment, pages | medium |
 | WI-0040 | Summa 11b: explicit tax model room (INV-ADJ-005) | captured | invoicing, tax | low |
