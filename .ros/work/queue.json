@@ -441,10 +441,10 @@
         "depends:arca"
       ],
       "priority": "high",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:03.313Z",
-      "updatedAt": "2026-10-08T15:35:20.000Z",
+      "updatedAt": "2026-10-08T15:40:29.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

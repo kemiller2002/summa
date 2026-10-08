@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T15:35:20.000Z",
+  "updatedAt": "2026-10-08T15:40:29.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1096,13 +1096,51 @@
     {
       "id": "WI-0019",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-08T15:35:20.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Access/Access.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Governance.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Storage.Tests/AccessTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Storage.Tests/GovernanceTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-08T15:40:29.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T153520745Z-2bc6b1d6"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "5fb7cd2f8481990732810d9c",
+        "recordedAt": "2026-10-08T15:40:28.000Z",
+        "executionId": "EXE-20261008T153520745Z-2bc6b1d6",
+        "repository": "summa",
+        "branch": "feat/wi-0019-authorization",
+        "commit": "31d4fbed7525688c1048f838eab75cb09ed71036",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa.git"
+        },
+        "remoteBranch": "feat/wi-0019-authorization",
+        "remoteCommit": "31d4fbed7525688c1048f838eab75cb09ed71036",
+        "summary": "Summa.Access authorization, approval gates, governance and member records",
+        "nextAction": "Open and merge the PR",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-08T15:40:29.000Z"
     }
   ]
 }
