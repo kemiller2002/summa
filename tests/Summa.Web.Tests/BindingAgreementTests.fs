@@ -88,37 +88,57 @@ module private Hub =
 module private Accounting =
     open Summa.Web.Engine.Accounting
 
+    let private at hash : Limen.Routing.PageLocation =
+        { Origin = "https://summa.example"
+          Path = "/app/"
+          Query = ""
+          Hash = hash }
+
     /// The application on every screen, with every list populated.
     let views =
         let ctx = { Now = System.DateTimeOffset(2026, 10, 7, 9, 0, 0, System.TimeSpan.Zero); Actor = "local-person" }
         let step model msg = update ctx msg model |> fst
-        let configured = [ Started; ConfigurationRead(Ok """{"environment":"local","environmentName":"test"}""") ] |> List.fold step initial
+        let go hash = LocationChanged(at hash)
+        let configured = [ Started(at ""); ConfigurationRead(Ok """{"environment":"local","environmentName":"test"}""") ] |> List.fold step initial
         let started = step configured (Loaded None)
 
         let withCustomer =
-            [ Navigate "customers"; CustomerNameChanged "ABC"; CustomerAddressChanged "1 Main"; CustomerTermsChanged "0"; CustomerAdded ]
+            [ go "#/customers"; CustomerNameChanged "ABC"; CustomerAddressChanged "1 Main"; CustomerTermsChanged "0"; CustomerAdded ]
             |> List.fold step started
 
-        let opened = [ NewInvoice; DraftCustomerChanged "CUST-0001" ] |> List.fold step withCustomer
+        let opened = [ go "#/invoices/new"; DraftCustomerChanged "CUST-0001" ] |> List.fold step withCustomer
         let key = opened.Draft.Lines.Head.Key
         let drafted = [ LineDescriptionChanged(key, "Work"); LineRateChanged(key, "100") ] |> List.fold step opened
 
-        let blocked = [ Navigate "settings"; CompanyAddressChanged ""; CompanySaved; DraftSubmitted ] |> List.fold step drafted
-        let fixedUp = [ Navigate "settings"; CompanyAddressChanged "1 Way"; CompanySaved; DraftOpened "D-0001"; DraftSubmitted; DraftIssued ] |> List.fold step blocked
-        let paid = [ PaymentAmountChanged "50"; PaymentRecorded ] |> List.fold step fixedUp
+        let blocked = [ go "#/settings"; CompanyAddressChanged ""; CompanySaved; go "#/invoices/new"; DraftCustomerChanged "CUST-0001" ] |> List.fold step drafted
+        let blocked = [ LineDescriptionChanged(blocked.Draft.Lines.Head.Key, "Work"); LineRateChanged(blocked.Draft.Lines.Head.Key, "100"); DraftSubmitted ] |> List.fold step blocked
+        let fixedUp = [ go "#/settings"; CompanyAddressChanged "1 Way"; CompanySaved; go "#/drafts/D-0001"; DraftSubmitted; DraftIssued ] |> List.fold step blocked
+        let paid = [ InvoiceTabChosen "payments"; PaymentAmountChanged "50"; PaymentRecorded ] |> List.fold step fixedUp
         let late = { paid with Today = System.DateOnly(2027, 6, 1) }
         let untrustworthy = step configured (Loaded(Some "{}"))
-        let misconfigured = [ Started; ConfigurationRead(Error "HTTP 404") ] |> List.fold step initial
+        let misconfigured = [ Started(at ""); ConfigurationRead(Error "HTTP 404") ] |> List.fold step initial
         let extra = [ "canPrint", Value(Flag true) ]
+        let visit hash = step paid (go hash)
 
         [ view started @ extra
           view blocked
           view paid
+          view (visit "#/invoices/INV-0001")
+          view (visit "#/invoices/INV-0001?tab=history")
           view late
-          view { late with Route = Receivables }
+          view (visit "#/invoices?status=paid")
+          view (visit "#/invoices?q=nothing-matches")
+          view (visit "#/customers")
+          view (visit "#/customers?q=nothing-matches")
+          view { (visit "#/receivables") with Today = System.DateOnly(2027, 6, 1) }
+          view (visit "#/drafts/D-0001")
+          view (visit "#/no-such-place")
+          view (visit "#/periods/2026-13")
+          view (visit "#/reports")
+          view (step paid (LinkCopied false))
           view untrustworthy
           view misconfigured
-          view (step initial Started) ]
+          view (step initial (Started(at ""))) ]
 
 let private agree (page: string) (views: View list) (events: Set<string>) =
     let html = readRepoFile $"{page}/index.html"
@@ -172,3 +192,38 @@ let ``every dialog a row action opens exists on the page`` () =
 [<Fact>]
 let ``the accounting page binds only what its engine projects and sends only what it handles`` () =
     agree "app" Accounting.views (Summa.Web.Application.AccountingWire.events |> Map.keys |> Set.ofSeq)
+
+/// Limen renders a data-if or data-each template's first element only, so a
+/// template with two elements would silently drop the second. Each one on
+/// every page has exactly one element at its root.
+[<Fact>]
+let ``every bound template has exactly one root element`` () =
+    let voids = set [ "area"; "base"; "br"; "col"; "embed"; "hr"; "img"; "input"; "link"; "meta"; "source"; "track"; "wbr" ]
+
+    for page in [ "web"; "web-hub"; "app" ] do
+        let html = Regex.Replace(readRepoFile $"{page}/index.html", "<!--.*?-->", "", RegexOptions.Singleline)
+
+        // Walk the tags, counting each open template's direct child elements.
+        let _, counts =
+            Regex.Matches(html, @"<(/?)([a-zA-Z][\w-]*)([^>]*)>")
+            |> Seq.fold
+                (fun (stack: (string * int * string) list, counts: (string * int) list) m ->
+                    let closing = m.Groups[1].Value = "/"
+                    let name = m.Groups[2].Value.ToLowerInvariant()
+                    let selfClosing = voids.Contains name || m.Groups[3].Value.EndsWith "/"
+
+                    let counted =
+                        match stack with
+                        | ("template", n, label) :: rest when not closing -> ("template", n + 1, label) :: rest
+                        | other -> other
+
+                    match closing, counted with
+                    | true, ("template", n, label) :: rest when name = "template" -> rest, (label, n) :: counts
+                    | true, _ :: rest -> rest, counts
+                    | true, [] -> [], counts
+                    | false, _ when selfClosing -> counted, counts
+                    | false, _ -> (name, 0, $"{page}: <{name}{m.Groups[3].Value}>") :: counted, counts)
+                ([], [])
+
+        for label, children in counts do
+            Assert.True((children = 1), $"{label} has {children} root elements")

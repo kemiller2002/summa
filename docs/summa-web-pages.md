@@ -32,6 +32,34 @@ starts demo books. Printing opens the browser's print dialog through the
 `summa.print` pack (`web-kernel/print.js`). `tests/browser/app.spec.js`
 drives the real page.
 
+### Deep links
+
+Every view is a link (SUM-LINK-001..012,
+[`DF-SUMMA-2026-0010`](../research/decisions/DF-SUMMA-2026-0010--deep-links-through-limen-routing.md)):
+the place, list filters, sort, search, report dates and the invoice's tab live
+after the `#`, so a copied link opens the same view on any static host:
+
+```text
+#/invoices?q=acme&status=paid,unpaid&from=2026-01-01&sort=due
+#/invoices/INV-0001?tab=history
+#/receivables?asOf=2026-06-30&customer=CUST-0001
+```
+
+- The routes are `src/Summa.Web.Engine/Routes.fs` on Limen's router
+  (`vendor/Limen.Routing`, until Limen 0.9.0 ships). Their inventory is
+  `.echelon/routes.json`; regenerate it with
+  `SUMMA_WRITE_ROUTES=1 dotnet test tests/Summa.Web.Tests`.
+- Navigation is plain `<a href="#/...">` links. The engine adopts the address
+  the kernel reports, pushes when it moves to another place (issuing an
+  invoice), and replaces when a view is refined (a filter, a tab), so Back
+  returns to the previous place.
+- Links hold opaque ids, dates and declared names only: never an amount, a
+  balance, a token or an account number.
+- A link to nothing, a value Summa does not understand, or a place the person
+  may not open each has its own page. "Copy link" copies the canonical
+  address. `tests/browser/deep-links.spec.js` drives all of this, including
+  a static host at a sub-path.
+
 ## Running them
 
 ```bash

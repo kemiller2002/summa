@@ -2,7 +2,7 @@
 id: DF-SUMMA-2026-0010
 title: Deep links through Limen.Routing, vendored until Limen 0.9.0
 status: accepted
-version: 1.0.0
+version: 1.1.0
 created: 2026-10-08
 updated: 2026-10-08
 owners:
@@ -19,8 +19,9 @@ tags: [web, limen, routing, deep-links]
 provenance:
   contributions:
     EXE-20261008T194235483Z-c793abf6:
-      operations: [created]
+      operations: [created, modified]
       at: 2026-10-08T19:49:22.488Z
+      last: 2026-10-08T20:28:13.593Z
       actor:
         kind: agent
         id: anthropic/claude-code
@@ -89,6 +90,22 @@ moving to the package later is mechanical.
    declares `sign-in` with `returnTo`. `Routes.parse` and `Routes.resume` are
    tested for an anonymous viewer, but the application has no sign-in until
    WI-0035.
+
+9. **In-page anchors are not places.** A fragment that does not start with
+   `#/` (the skip link's `#main`) keeps the current place, and the engine
+   replaces the address back to its canonical location. The browser still
+   moves focus to the anchor.
+10. **Receivables as of a date are a domain view.** `Payments.asOf` keeps only
+    what was issued, received, applied, refunded, reversed, written off or
+    voided by the date. Aging that view is the receivables as they stood. The
+    date is in the link (`asOf`).
+11. **Search terms that could be amounts stay out of the URL.** A list's `q`
+    matches names, numbers and references, never amounts. v0.4 §18 asks
+    global search to find amounts. That search is a transient overlay, not a
+    place: the record it opens is a link, and its terms are not.
+12. **Engine-chosen moves.** Issuing an invoice pushes to it. Saving a new
+    invoice replaces `/invoices/new` with `/drafts/<id>`, so Back never offers
+    an empty form for a draft that exists.
 
 ## Consequences
 

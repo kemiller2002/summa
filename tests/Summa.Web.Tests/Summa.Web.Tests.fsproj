@@ -19,6 +19,7 @@
     <Compile Include="AccountingTests.fs" />
     <Compile Include="BindingAgreementTests.fs" />
     <Compile Include="RoutesTests.fs" />
+    <Compile Include="DeepLinkTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

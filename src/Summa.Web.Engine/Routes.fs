@@ -121,28 +121,28 @@ let allPayments =
 
 // ---- Names of declared values ---------------------------------------------------------------
 
-/// A union case and its text in the URL, both ways.
+/// A union case and its text in the URL, both ways, and every text.
 let private names (pairs: ('a * string) list) =
     (fun (value: 'a) -> pairs |> List.find (fst >> (=) value) |> snd),
     (fun (text: string) -> pairs |> List.tryFind (snd >> (=) text) |> Option.map fst),
     pairs |> List.map snd
 
-let private invoiceTabText, private invoiceTabOf, private invoiceTabs =
+let invoiceTabText, invoiceTabOf, invoiceTabs =
     names [ Document, "document"; InvoicePayments, "payments"; History, "history" ]
 
-let private customerTabText, private customerTabOf, private customerTabs =
+let customerTabText, customerTabOf, customerTabs =
     names [ CustomerInvoices, "invoices"; CustomerPayments, "payments"; CustomerCredits, "credits" ]
 
-let private invoiceSortText, private invoiceSortOf, private invoiceSorts =
+let invoiceSortText, invoiceSortOf, invoiceSorts =
     names [ Newest, "newest"; Oldest, "oldest"; DueFirst, "due"; ByNumber, "number"; ByCustomer, "customer" ]
 
-let private customerSortText, private customerSortOf, private customerSorts =
+let customerSortText, customerSortOf, customerSorts =
     names [ ByName, "name"; ByBalance, "balance" ]
 
-let private paymentSortText, private paymentSortOf, private paymentSorts =
+let paymentSortText, paymentSortOf, paymentSorts =
     names [ NewestPayment, "newest"; OldestPayment, "oldest" ]
 
-let private basisText, private basisOf, private bases = names [ Accrual, "accrual"; Cash, "cash" ]
+let basisText, basisOf, bases = names [ Accrual, "accrual"; Cash, "cash" ]
 
 /// The settlement states an invoice list can be filtered by (Payments.InvoiceStatus).
 let invoiceStatuses = [ "unpaid"; "partly-paid"; "paid"; "written-off"; "voided" ]

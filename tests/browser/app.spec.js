@@ -53,7 +53,9 @@ test("customer, invoice, review, issue, payment: the first vertical slice in the
   await expect(page.locator("#invoice-total")).toHaveText("6,217.50 USD");
   await expect(page.locator("#invoice-status")).toHaveText("Unpaid");
 
-  // A partial payment, then the rest.
+  // A partial payment, then the rest, on the invoice's Payments tab.
+  await page.click('.summa-tab[data-tab="payments"]');
+  await expect(page).toHaveURL(/#\/invoices\/INV-0001\?tab=payments$/);
   await page.fill("#payment-amount", "1000.00");
   await page.fill("#payment-reference", "ACH-1");
   await page.click("#record-payment");
@@ -91,6 +93,9 @@ test("the books survive a reload and stay checked", async ({ app: { page } }) =>
   await expect(page.locator("#invoice-total")).toHaveText("300.00 USD");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-kernel", "running");
+  // The address names the invoice, so the reload opens it again.
+  await expect(page.locator("#invoice-total")).toHaveText("300.00 USD");
+  await nav(page, "Home").click();
   await expect(page.locator("#total-outstanding")).toHaveText("300.00 USD");
   await nav(page, "Receivables").click();
   await expect(page.locator("#aging-table tbody tr td").first()).toHaveText("ABC Corp");
@@ -106,6 +111,8 @@ test("the books survive a reload and stay checked", async ({ app: { page } }) =>
   await expect(page.locator("html")).toHaveAttribute("data-kernel", "running");
   await expect(page.locator("#storage-problems li").first()).toBeVisible();
   await page.click("#reset-books");
+  await expect(page.locator("#aging-table")).toHaveCount(0);
+  await nav(page, "Home").click();
   await expect(page.locator("#total-outstanding")).toHaveText("0.00 USD");
 });
 

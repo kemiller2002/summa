@@ -77,6 +77,12 @@ body {
   cursor: pointer;
 }
 
+a.summa-nav__link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
 .summa-nav__link[aria-current="page"] {
   background: color-mix(in srgb, var(--ef-color-action-primary, #0b5cad) 12%, Canvas);
   font-weight: 600;
@@ -290,12 +296,98 @@ body {
   }
 }
 
+/* Header actions: Copy link and New invoice (WI-0041). */
+.summa-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+a.summa-new {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+/* Filters, sort and search: each change is part of the link. */
+.summa-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem 1rem;
+}
+
+.summa-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0;
+  padding: 0.25rem 0.75rem 0.5rem;
+  border: 1px solid var(--ef-color-border-subtle, #d0d7de);
+  border-radius: 0.375rem;
+}
+
+.summa-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-block-size: 2.75rem;
+}
+
+.summa-check input {
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+}
+
+.summa-count {
+  margin: 0;
+  color: var(--ef-color-text-muted, #57606a);
+}
+
+.summa-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--ef-color-border-subtle, #d0d7de);
+}
+
+.summa-tab {
+  font: inherit;
+  min-block-size: 2.75rem;
+  padding: 0.5rem 0.875rem;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.summa-tab[aria-pressed="true"] {
+  border-bottom-color: var(--ef-color-action-primary, #0b5cad);
+  font-weight: 600;
+}
+
+.summa-tab:focus-visible {
+  outline: 3px solid var(--ef-color-focus, #1f6feb);
+  outline-offset: 2px;
+}
+
+.summa-outcome {
+  max-inline-size: 40rem;
+}
+
+.summa-copy-fallback input {
+  inline-size: 100%;
+  font-family: ui-monospace, monospace;
+}
+
 /* Print only the invoice: Folio's print.css lays out the document. */
 @media print {
   .summa-banner,
   .summa-header,
   .summa-messages,
   .summa-error,
+  .summa-copy-fallback,
   .summa-invoice-head,
   .summa-screen-only {
     display: none !important;

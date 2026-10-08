@@ -42,25 +42,6 @@ type Configuration =
     /// The configuration cannot be used; nothing runs.
     | Misconfigured of reason: string
 
-type Route =
-    | Dashboard
-    | Customers
-    | Invoices
-    | Editor
-    | InvoiceDetail of invoiceId: string
-    | Receivables
-    | Settings
-
-let routeName =
-    function
-    | Dashboard -> "dashboard"
-    | Customers -> "customers"
-    | Invoices -> "invoices"
-    | Editor -> "editor"
-    | InvoiceDetail _ -> "invoice"
-    | Receivables -> "receivables"
-    | Settings -> "settings"
-
 type CustomerForm =
     { Name: string
       BillingName: string
@@ -115,7 +96,16 @@ type Model =
       Storage: Storage
       Manifest: Organization.OrganizationManifest option
       Books: Receivables option
-      Route: Route
+      /// Where the person is (WI-0041): the place the URL names.
+      Place: Routes.Place
+      /// Why the URL names no place the person can open, if it does not.
+      Unrouted: Limen.Routing.RouteError option
+      /// The canonical location the browser shows.
+      Router: Limen.Routing.RouterState
+      /// The page's own address, for "Copy link".
+      Page: Limen.Routing.PageLocation option
+      /// The link to copy by hand when the browser refused to copy it.
+      CopyFallback: string option
       Today: DateOnly
       Customer: CustomerForm
       Draft: DraftForm
@@ -150,7 +140,11 @@ let initial =
       Storage = Loading
       Manifest = None
       Books = None
-      Route = Dashboard
+      Place = Routes.Home
+      Unrouted = None
+      Router = Limen.Routing.Navigation.initial
+      Page = None
+      CopyFallback = None
       Today = DateOnly(2000, 1, 1)
       Customer = emptyCustomer
       Draft = draft
@@ -166,20 +160,37 @@ let initial =
 type Ctx = { Now: DateTimeOffset; Actor: string }
 
 type Msg =
-    | Started
+    /// The kernel started, at this address (a deep link, or the home page).
+    | Started of Limen.Routing.PageLocation
+    /// Back, Forward or a followed link moved the browser to this address.
+    | LocationChanged of Limen.Routing.PageLocation
     /// The configuration document's text, or why it could not be read.
     | ConfigurationRead of Result<string, string>
     /// The stored snapshot, or None when this browser has none yet.
     | Loaded of string option
     | Saved of ok: bool
-    | Navigate of string
+    | LinkCopyRequested
+    | LinkCopied of ok: bool
+    | InvoiceSearchChanged of string
+    | InvoiceStatusToggled of string
+    | InvoiceCustomerChosen of string
+    | InvoiceFromChanged of string
+    | InvoiceToChanged of string
+    | InvoiceOverdueToggled
+    | InvoiceSortChosen of string
+    | InvoiceFiltersCleared
+    | CustomerSearchChanged of string
+    | CustomerSortChosen of string
+    | CustomerInactiveToggled
+    | ReceivablesAsOfChanged of string
+    | ReceivablesCustomerChosen of string
+    | InvoiceTabChosen of string
     | CustomerNameChanged of string
     | CustomerBillingNameChanged of string
     | CustomerAddressChanged of string
     | CustomerEmailChanged of string
     | CustomerTermsChanged of string
     | CustomerAdded
-    | NewInvoice
     | DraftCustomerChanged of string
     | LineDescriptionChanged of key: string * string
     | LineHoursChanged of key: string * string
@@ -190,8 +201,6 @@ type Msg =
     | DraftNotesChanged of string
     | DraftSubmitted
     | DraftIssued
-    | DraftOpened of draftId: string
-    | InvoiceOpened of invoiceId: string
     | PrintRequested
     | PaymentAmountChanged of string
     | PaymentDateChanged of string
@@ -210,6 +219,10 @@ type AppEffect =
     | LoadBooks
     | SaveBooks of snapshot: string
     | PrintPage
+    /// Push or replace the browser's location (Limen Core Navigation).
+    | Navigate of Limen.Routing.NavigationEffect
+    /// Write text to the clipboard (Limen Core Clipboard).
+    | CopyText of string
 
 // ---- Helpers ---------------------------------------------------------------------------
 
@@ -343,18 +356,97 @@ let private formOf (counter: int) (draft: DraftInvoice) =
 let private editLine (key: string) (change: LineForm -> LineForm) (model: Model) =
     { model with Draft = { model.Draft with Lines = model.Draft.Lines |> List.map (fun l -> if l.Key = key then change l else l) } }, []
 
-let private routeOf (name: string) (model: Model) =
-    match name with
-    | "customers" -> Customers
-    | "invoices" -> Invoices
-    | "editor" -> Editor
-    | "receivables" -> Receivables
-    | "settings" -> Settings
-    | "invoice" ->
-        match model.Route with
-        | InvoiceDetail id -> InvoiceDetail id
-        | _ -> Invoices
-    | _ -> Dashboard
+// ---- Places (WI-0041) -------------------------------------------------------------------
+
+/// Local books are their owner's own: every capability. Sign-in (WI-0035)
+/// replaces this with the signed-in member's capabilities.
+let viewer =
+    Routes.Member(Summa.Access.Access.allCapabilities |> List.map Summa.Access.Access.capabilityName |> Set.ofList)
+
+/// A fragment that is not a route ("#main", the skip link's target) is an
+/// in-page anchor: the place stays, and the address is put back.
+let private isAnchor (page: Limen.Routing.PageLocation) = page.Hash.Length > 1 && not (page.Hash.StartsWith "#/")
+
+let private navigation (effect: Limen.Routing.NavigationEffect option) = effect |> Option.map Navigate |> Option.toList
+
+/// Prepares what a place shows when the person arrives at it: the draft it
+/// opens, the invoice a payment is for, an empty new invoice.
+let private enter (place: Routes.Place) (model: Model) =
+    match place with
+    | Routes.Invoice(invoiceId, _) when model.Payment.InvoiceId <> invoiceId ->
+        { model with Payment = { model.Payment with InvoiceId = invoiceId; Amount = ""; Reference = ""; Date = "" } }
+    | Routes.Draft draftId when model.Draft.DraftId <> Some draftId ->
+        match model.Books |> Option.bind (fun b -> b.Books.Drafts.TryFind draftId) with
+        | Some draft ->
+            let form, counter = formOf model.Counter draft
+            { model with Draft = form; Counter = counter; Blockers = [] }
+        | None -> model
+    | Routes.NewInvoice customerId ->
+        let draft, counter = emptyDraft model.Counter
+        { model with Draft = { draft with CustomerId = defaultArg customerId "" }; Counter = counter; Blockers = [] }
+    | _ -> model
+
+/// Goes to a place the engine chose: `operation` is RouteCodec.navigate (a
+/// push, for another place) or RouteCodec.refine (a replace, for the same
+/// view refined).
+let private move operation (place: Routes.Place) (model: Model) =
+    match operation Routes.codec model.Router place with
+    | Ok(router, effect) ->
+        let moved = { model with Router = router; Place = place; Unrouted = None; CopyFallback = None }
+        (if place <> model.Place then enter place moved else moved), navigation effect
+    // A place built from the books' own ids always formats; stay put if not.
+    | Error _ -> model, []
+
+let private goTo place model = move Limen.Routing.RouteCodec.navigate place model
+let private refineTo place model = move Limen.Routing.RouteCodec.refine place model
+
+/// Adopts the address the browser reports (a deep link, Back, Forward, a
+/// followed link). Never a push: at most a replace to its canonical form.
+let private adopt (page: Limen.Routing.PageLocation) (model: Model) =
+    let model = { model with Page = Some page; CopyFallback = None }
+
+    match model.Router.Current with
+    | Some current when isAnchor page -> model, [ Navigate(Limen.Routing.NavigationEffect.Replace current) ]
+    | _ ->
+        let location = if isAnchor page then "/" else Routes.locationOf page
+        let router, resolution, effect = Limen.Routing.RouteCodec.adopt Routes.codec (Routes.guard viewer) model.Router location
+
+        let arrive (place: Routes.Place) router effects =
+            let changed = place <> model.Place || model.Unrouted.IsSome
+
+            let arrived =
+                { model with
+                    Router = router
+                    Place = place
+                    Unrouted = None
+                    Notice = (if changed then None else model.Notice)
+                    Error = (if changed then None else model.Error) }
+
+            (if changed then enter place arrived else arrived), effects
+
+        match resolution with
+        // These books need no sign-in: go straight to where the link pointed.
+        | Ok(Routes.SignIn returnTo) ->
+            let target = Routes.resume viewer returnTo
+            let resumed, replace = Limen.Routing.Navigation.replace router target
+
+            match Routes.parse viewer target with
+            | Ok place -> arrive place resumed (navigation replace)
+            | Error _ -> arrive Routes.Home resumed (navigation replace)
+        | Ok place -> arrive place router (navigation effect)
+        | Error problem -> { model with Router = router; Unrouted = Some problem; Notice = None; Error = None }, navigation effect
+
+let private invoiceList (model: Model) =
+    match model.Place with
+    | Routes.Invoices list -> list
+    | _ -> Routes.allInvoices
+
+let private customerList (model: Model) =
+    match model.Place with
+    | Routes.Customers list -> list
+    | _ -> Routes.allCustomers
+
+let private nonEmpty (text: string) = if text.Trim() = "" then None else Some(text.Trim())
 
 // ---- Update ----------------------------------------------------------------------------
 
@@ -362,7 +454,10 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
     let model = { model with Today = today ctx }
 
     match msg with
-    | Started -> { model with Configuration = Configuring; Storage = Loading }, [ LoadConfiguration ]
+    | Started page ->
+        let started, effects = adopt page { model with Configuration = Configuring; Storage = Loading }
+        started, LoadConfiguration :: effects
+    | LocationChanged page -> adopt page model
     | ConfigurationRead(Error why) ->
         { model with Configuration = Misconfigured $"The deployment's configuration could not be read ({why})." }, []
     | ConfigurationRead(Ok document) ->
@@ -384,22 +479,27 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
 
         match LocalSnapshot.start (context ctx) "Demo Consulting" company "ACH to account ending 0000 (demo)" with
         | Ok(manifest, books) ->
-            save
-                { model with
-                    Storage = Ready
-                    Manifest = Some manifest
-                    Books = Some books
-                    Company = companyForm manifest
-                    Notice = Some "A new set of books was started in this browser." }
+            save (
+                enter
+                    model.Place
+                    { model with
+                        Storage = Ready
+                        Manifest = Some manifest
+                        Books = Some books
+                        Company = companyForm manifest
+                        Notice = Some "A new set of books was started in this browser." }
+            )
         | Error problems -> { model with Storage = Untrustworthy [ describe problems ] }, []
     | Loaded(Some text) ->
         match LocalSnapshot.decode text with
         | Ok restored when restored.Problems.IsEmpty ->
-            { model with
-                Storage = Ready
-                Manifest = Some restored.Manifest
-                Books = Some restored.Books
-                Company = companyForm restored.Manifest },
+            enter
+                model.Place
+                { model with
+                    Storage = Ready
+                    Manifest = Some restored.Manifest
+                    Books = Some restored.Books
+                    Company = companyForm restored.Manifest },
             []
         | Ok restored -> { model with Storage = Untrustworthy(restored.Problems |> List.map Diagnostics.describe) }, []
         | Error why -> { model with Storage = Untrustworthy [ why ] }, []
@@ -409,7 +509,51 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
             Unsaved = max 0 (model.Unsaved - 1)
             Error = Some "This browser could not save the books. The last change is shown but may be lost on reload." },
         []
-    | Navigate name -> { model with Route = routeOf name model; Notice = None; Error = None; Blockers = [] }, []
+    | LinkCopyRequested ->
+        match model.Page, model.Router.Current with
+        | Some page, Some location -> model, [ CopyText(Limen.Routing.Link.share Routes.mode page location) ]
+        | _ -> model, []
+    | LinkCopied true -> { model with Notice = Some "Link copied."; Error = None; CopyFallback = None }, []
+    | LinkCopied false ->
+        { model with
+            Notice = None
+            Error = Some "This browser did not let Summa copy the link. Copy it from here:"
+            CopyFallback =
+                Option.map2 (Limen.Routing.Link.share Routes.mode) model.Page model.Router.Current },
+        []
+    | InvoiceSearchChanged v -> refineTo (Routes.Invoices { invoiceList model with Search = nonEmpty v }) model
+    | InvoiceStatusToggled status when List.contains status Routes.invoiceStatuses ->
+        let list = invoiceList model
+        let toggled = if list.Status.Contains status then list.Status.Remove status else list.Status.Add status
+        refineTo (Routes.Invoices { list with Status = toggled }) model
+    | InvoiceStatusToggled _ -> model, []
+    | InvoiceCustomerChosen v -> refineTo (Routes.Invoices { invoiceList model with Customer = nonEmpty v }) model
+    | InvoiceFromChanged v -> refineTo (Routes.Invoices { invoiceList model with From = parseDate v }) model
+    | InvoiceToChanged v -> refineTo (Routes.Invoices { invoiceList model with To = parseDate v }) model
+    | InvoiceOverdueToggled -> refineTo (Routes.Invoices { invoiceList model with Overdue = not (invoiceList model).Overdue }) model
+    | InvoiceSortChosen v ->
+        match Routes.invoiceSortOf v with
+        | Some sort -> refineTo (Routes.Invoices { invoiceList model with Sort = sort }) model
+        | None -> model, []
+    | InvoiceFiltersCleared -> refineTo (Routes.Invoices Routes.allInvoices) model
+    | CustomerSearchChanged v -> refineTo (Routes.Customers { customerList model with Search = nonEmpty v }) model
+    | CustomerSortChosen v ->
+        match Routes.customerSortOf v with
+        | Some sort -> refineTo (Routes.Customers { customerList model with Sort = sort }) model
+        | None -> model, []
+    | CustomerInactiveToggled -> refineTo (Routes.Customers { customerList model with Inactive = not (customerList model).Inactive }) model
+    | ReceivablesAsOfChanged v ->
+        match model.Place with
+        | Routes.Receivables(_, customerId) -> refineTo (Routes.Receivables(parseDate v, customerId)) model
+        | _ -> model, []
+    | ReceivablesCustomerChosen v ->
+        match model.Place with
+        | Routes.Receivables(asOf, _) -> refineTo (Routes.Receivables(asOf, nonEmpty v)) model
+        | _ -> model, []
+    | InvoiceTabChosen v ->
+        match model.Place, Routes.invoiceTabOf v with
+        | Routes.Invoice(invoiceId, _), Some tab -> refineTo (Routes.Invoice(invoiceId, tab)) model
+        | _ -> model, []
     | CustomerNameChanged v -> { model with Customer = { model.Customer with Name = v } }, []
     | CustomerBillingNameChanged v -> { model with Customer = { model.Customer with BillingName = v } }, []
     | CustomerAddressChanged v -> { model with Customer = { model.Customer with Address = v } }, []
@@ -448,9 +592,6 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
                     Ok { books with Books = saveCustomer (context ctx) customer books.Books })
 
             (if added.Error.IsNone then { added with Customer = emptyCustomer } else added), effects
-    | NewInvoice ->
-        let draft, counter = emptyDraft model.Counter
-        { model with Route = Editor; Draft = draft; Counter = counter; Blockers = []; Notice = None; Error = None }, []
     | DraftCustomerChanged v -> { model with Draft = { model.Draft with CustomerId = v } }, []
     | LineDescriptionChanged(key, v) -> editLine key (fun l -> { l with Description = v }) model
     | LineHoursChanged(key, v) -> editLine key (fun l -> { l with Hours = v }) model
@@ -481,23 +622,31 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
                 | Ok saved ->
                     let withDraft = { books with Books = saved }
 
-                    match Issuance.submitForReview (context ctx) request withDraft with
-                    | Ok reviewed ->
-                        save
-                            { model with
-                                Books = Some reviewed
-                                Draft = { model.Draft with DraftId = Some draft.DraftId }
-                                Blockers = []
-                                Notice = Some "Ready to issue. Check the preview, then issue it."
-                                Error = None }
-                    | Error blockers ->
-                        save
-                            { model with
-                                Books = Some withDraft
-                                Draft = { model.Draft with DraftId = Some draft.DraftId }
-                                Blockers = blockers
-                                Notice = Some "Saved as a draft. Resolve the items below before issuing."
-                                Error = None }
+                    let reviewed =
+                        match Issuance.submitForReview (context ctx) request withDraft with
+                        | Ok reviewed ->
+                            save
+                                { model with
+                                    Books = Some reviewed
+                                    Draft = { model.Draft with DraftId = Some draft.DraftId }
+                                    Blockers = []
+                                    Notice = Some "Ready to issue. Check the preview, then issue it."
+                                    Error = None }
+                        | Error blockers ->
+                            save
+                                { model with
+                                    Books = Some withDraft
+                                    Draft = { model.Draft with DraftId = Some draft.DraftId }
+                                    Blockers = blockers
+                                    Notice = Some "Saved as a draft. Resolve the items below before issuing."
+                                    Error = None }
+
+                    // A new invoice, once saved, is its draft: replace the address.
+                    match reviewed, model.Place with
+                    | (saved, effects), Routes.NewInvoice _ ->
+                        let moved, more = refineTo (Routes.Draft draft.DraftId) saved
+                        moved, effects @ more
+                    | result, _ -> result
         | _ -> model, []
     | DraftIssued ->
         match model.Manifest, model.Books, model.Draft.DraftId with
@@ -508,30 +657,20 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
             | Ok(issued, invoice) ->
                 let draft, counter = emptyDraft model.Counter
 
-                save
-                    { model with
-                        Books = Some issued
-                        Route = InvoiceDetail invoice.InvoiceId
-                        Draft = draft
-                        Counter = counter
-                        Blockers = []
-                        Notice = Some $"Invoice {invoice.Number} issued."
-                        Error = None }
+                let saved, effects =
+                    save
+                        { model with
+                            Books = Some issued
+                            Draft = draft
+                            Counter = counter
+                            Blockers = []
+                            Notice = Some $"Invoice {invoice.Number} issued."
+                            Error = None }
+
+                let moved, more = goTo (Routes.Invoice(invoice.InvoiceId, Routes.Document)) saved
+                moved, effects @ more
             | Error blockers -> { model with Blockers = blockers; Error = Some "The invoice cannot be issued yet." }, []
         | _ -> { model with Error = Some "Save and review the draft first." }, []
-    | DraftOpened draftId ->
-        match model.Books |> Option.bind (fun b -> b.Books.Drafts.TryFind draftId) with
-        | Some draft ->
-            let form, counter = formOf model.Counter draft
-            { model with Route = Editor; Draft = form; Counter = counter; Blockers = []; Notice = None; Error = None }, []
-        | None -> { model with Error = Some $"Draft {draftId} is not here any more." }, []
-    | InvoiceOpened invoiceId ->
-        { model with
-            Route = InvoiceDetail invoiceId
-            Payment = { model.Payment with InvoiceId = invoiceId; Amount = ""; Reference = ""; Date = "" }
-            Notice = None
-            Error = None },
-        []
     | PrintRequested -> model, [ PrintPage ]
     | PaymentAmountChanged v -> { model with Payment = { model.Payment with Amount = v } }, []
     | PaymentDateChanged v -> { model with Payment = { model.Payment with Date = v } }, []
@@ -559,8 +698,8 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
             let recorded, effects =
                 command model $"Payment of {Documents.moneyText amount} recorded." (fun books ->
                     let shown =
-                        match model.Route with
-                        | InvoiceDetail id -> id
+                        match model.Place with
+                        | Routes.Invoice(id, _) -> id
                         | _ -> form.InvoiceId
 
                     match books.Books.Invoices.TryFind shown, model.Manifest with
@@ -660,6 +799,76 @@ let private bucketText =
     | Days61To90 -> "61-90 days"
     | Over90 -> "Over 90 days"
 
+/// What the main area shows for the place the URL names (SUM-LINK-007).
+type Screen =
+    | Showing of Routes.Place
+    /// No such place, or no such record in these books.
+    | Missing
+    | Forbidden
+    /// A parameter Summa does not understand, or a damaged address.
+    | InvalidLink of explanation: string
+    /// A place whose screen a later build adds (WI-0030).
+    | Unbuilt of title: string
+    /// A draft that has since been issued: say so and link the invoice.
+    | IssuedDraft of draftId: string * invoiceId: string
+
+let screen (model: Model) =
+    match model.Unrouted, model.Books with
+    | Some(Limen.Routing.RouteError.NotPermitted _), _ -> Forbidden
+    | Some(Limen.Routing.RouteError.Invalid(_, parameter, value, expected)), _ ->
+        InvalidLink $"The link's '{parameter}' is '{value}', but Summa expects {expected}."
+    | Some(Limen.Routing.RouteError.Malformed part), _ -> InvalidLink $"The link is damaged ({part}). Check that it was copied whole."
+    | Some _, _ -> Missing
+    | None, books ->
+        let holds (pick: Receivables -> Map<string, 'a>) id = books |> Option.forall (fun b -> (pick b).ContainsKey id)
+
+        match model.Place with
+        | Routes.Invoice(id, _) when not (holds (fun b -> b.Books.Invoices) id) -> Missing
+        | Routes.Draft id when not (holds (fun b -> b.Books.Drafts) id) ->
+            match books |> Option.bind (fun b -> b.Books.IssuedFrom.TryFind id) with
+            | Some invoiceId -> IssuedDraft(id, invoiceId)
+            | None -> Missing
+        | Routes.Home
+        | Routes.Customers _
+        | Routes.Invoices _
+        | Routes.NewInvoice _
+        | Routes.Draft _
+        | Routes.Invoice _
+        | Routes.Receivables _
+        | Routes.Settings as place -> Showing place
+        | Routes.SignIn _
+        | Routes.NotFound -> Missing
+        | Routes.Customer _ -> Unbuilt "Customer"
+        | Routes.Payments _
+        | Routes.Payment _ -> Unbuilt "Payments"
+        | Routes.CreditMemos _
+        | Routes.CreditMemo _ -> Unbuilt "Credit memos"
+        | Routes.Engagements _
+        | Routes.Engagement _ -> Unbuilt "Engagements"
+        | Routes.Periods _
+        | Routes.Period _ -> Unbuilt "Accounting periods"
+        | Routes.Ledger _
+        | Routes.JournalEntry _ -> Unbuilt "General ledger"
+        | Routes.Reports
+        | Routes.TrialBalance _
+        | Routes.IncomeStatement _
+        | Routes.BalanceSheet _ -> Unbuilt "Reports"
+
+let private statusKey =
+    function
+    | Issued -> "unpaid"
+    | PartiallyPaid -> "partly-paid"
+    | Paid -> "paid"
+    | WrittenOff -> "written-off"
+    | Voided -> "voided"
+
+let private containsText (search: string option) (texts: string list) =
+    match search with
+    | None -> true
+    | Some term -> texts |> List.exists (fun t -> t.Contains(term, StringComparison.OrdinalIgnoreCase))
+
+let private dateInput = Option.map (fun (d: DateOnly) -> d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)) >> Option.defaultValue ""
+
 /// The environment banner (SUM0-040): every non-production environment
 /// shows it, and a deployment that keeps books in the browser says so.
 let banner (model: Model) =
@@ -690,15 +899,46 @@ let view (model: Model) : View =
         |> Option.map (fun b -> b.Books.Drafts |> Map.toList |> List.map snd)
         |> Option.defaultValue []
 
-    let current = model.Route
-    let on route = flag (routeName current = route)
+    let shown = screen model
+
+    let showing (pick: Routes.Place -> bool) =
+        flag (
+            match shown with
+            | Showing place -> pick place
+            | _ -> false
+        )
+
+    let filters =
+        match model.Place with
+        | Routes.Invoices list -> list
+        | _ -> Routes.allInvoices
+
+    let statusOf (i: IssuedInvoice) = books |> Option.map (fun b -> status b i) |> Option.defaultValue Issued
+
+    let listed =
+        invoices
+        |> List.filter (fun i ->
+            containsText filters.Search [ i.Number; i.Customer.Name ]
+            && (filters.Status.IsEmpty || filters.Status.Contains(statusKey (statusOf i)))
+            && filters.Customer |> Option.forall ((=) i.CustomerId)
+            && filters.From |> Option.forall (fun d -> i.IssueDate >= d)
+            && filters.To |> Option.forall (fun d -> i.IssueDate <= d)
+            && (not filters.Overdue || books |> Option.exists (fun b -> isOverdue model.Today b i)))
+        |> fun rows ->
+            match filters.Sort with
+            | Routes.Newest -> rows
+            | Routes.Oldest -> List.rev rows
+            | Routes.DueFirst -> rows |> List.sortBy (fun i -> i.DueDate, i.Number)
+            | Routes.ByNumber -> rows |> List.sortBy _.Number
+            | Routes.ByCustomer -> rows |> List.sortBy (fun i -> i.Customer.Name, i.Number)
 
     let invoiceRows =
-        invoices
+        listed
         |> List.map (fun i ->
             let st = books |> Option.map (fun b -> status b i) |> Option.defaultValue Issued
 
             [ "id", Text i.InvoiceId
+              "href", Text(Routes.href (Routes.Invoice(i.InvoiceId, Routes.Document)))
               "number", Text i.Number
               "customer", Text i.Customer.Name
               "issueDate", Text(Documents.dateText i.IssueDate)
@@ -710,16 +950,49 @@ let view (model: Model) : View =
               "timing", Text(timingText (timing model.Today i.DueDate (outstandingOf i))) ])
 
     let detail =
-        match current, books with
-        | InvoiceDetail id, Some b -> b.Books.Invoices.TryFind id |> Option.map (fun i -> b, i)
+        match shown, books with
+        | Showing(Routes.Invoice(id, _)), Some b -> b.Books.Invoices.TryFind id |> Option.map (fun i -> b, i)
         | _ -> None
 
     let doc = detail |> Option.map (fun (_, i) -> Documents.ofInvoice i)
 
     let docText (f: Documents.InvoiceDocument -> string) = text (doc |> Option.map f |> Option.defaultValue "")
 
+    let tab =
+        match model.Place with
+        | Routes.Invoice(_, tab) -> tab
+        | _ -> Routes.Document
+
+    let history =
+        detail
+        |> Option.map (fun (b, i) ->
+            let draft = b.Books.IssuedFrom |> Map.tryFindKey (fun _ invoiceId -> invoiceId = i.InvoiceId)
+
+            b.Books.Ledger.Audit
+            |> List.filter (fun a -> a.Subject = i.InvoiceId || Some a.Subject = draft)
+            |> List.sortBy _.When
+            |> List.mapi (fun index a ->
+                [ "key", Text(string index)
+                  "when", Text(a.When.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture))
+                  "who", Text a.Who
+                  "what", Text(a.What.Replace('-', ' ')) ]))
+        |> Option.defaultValue []
+
     let detailValues =
         [ "hasInvoice", flag doc.IsSome
+          "onDocumentTab", flag (tab = Routes.Document)
+          "onPaymentsTab", flag (tab = Routes.InvoicePayments)
+          "onHistoryTab", flag (tab = Routes.History)
+          "invoiceTabs",
+          Items(
+              [ Routes.Document, "Invoice"; Routes.InvoicePayments, "Payments"; Routes.History, "History" ]
+              |> List.map (fun (t, label) ->
+                  [ "value", Text(Routes.invoiceTabText t)
+                    "label", Text label
+                    "selected", Text(if t = tab then "true" else "false") ])
+          )
+          "history", Items history
+          "hasHistory", flag (not history.IsEmpty)
           "docNumber", docText _.Number
           "docIssuer", docText _.Issuer.LegalName
           "docIssuerAddress", docText _.Issuer.Address
@@ -790,8 +1063,39 @@ let view (model: Model) : View =
             |> Option.exists (fun d -> d.Review = SubmittedForReview d.Version)
         | _ -> false
 
+    let customerFilters =
+        match model.Place with
+        | Routes.Customers list -> list
+        | _ -> Routes.allCustomers
+
+    let customerRows =
+        books
+        |> Option.map (fun b ->
+            b.Books.Customers
+            |> Map.toList
+            |> List.map snd
+            |> List.filter (fun c -> (customerFilters.Inactive || c.Active) && containsText customerFilters.Search [ c.Name; c.BillingName; c.Email ])
+            |> List.map (fun c ->
+                c, b.Books.Invoices |> Map.toList |> List.map snd |> List.filter (fun i -> i.CustomerId = c.Id) |> List.map (outstanding b) |> sum "USD")
+            |> fun rows ->
+                match customerFilters.Sort with
+                | Routes.ByName -> rows |> List.sortBy (fun (c, _) -> c.Name)
+                | Routes.ByBalance -> rows |> List.sortByDescending (fun (c, balance) -> balance.Minor, c.Name))
+        |> Option.defaultValue []
+
+    // Receivables as they stood on a date (today unless the URL names one).
+    let receivablesAsOf, receivablesCustomer =
+        match model.Place with
+        | Routes.Receivables(asOf, customerId) -> asOf, customerId
+        | _ -> None, None
+
     let aging =
-        books |> Option.map (aging "USD" model.Today) |> Option.defaultValue []
+        let on = receivablesAsOf |> Option.defaultValue model.Today
+
+        books
+        |> Option.map (asOf on >> aging "USD" on)
+        |> Option.defaultValue []
+        |> List.filter (fun row -> receivablesCustomer |> Option.forall ((=) row.CustomerId))
 
     let configured =
         match model.Configuration with
@@ -824,21 +1128,54 @@ let view (model: Model) : View =
       "hasError", flag model.Error.IsSome
       "error", text (model.Error |> Option.defaultValue "")
       "hasUnsaved", flag (model.Unsaved > 0)
-      "onDashboard", on "dashboard"
-      "onCustomers", on "customers"
-      "onInvoices", on "invoices"
-      "onEditor", on "editor"
-      "onInvoice", on "invoice"
-      "onReceivables", on "receivables"
-      "onSettings", on "settings"
+      "onDashboard", showing ((=) Routes.Home)
+      "onCustomers", showing (function Routes.Customers _ -> true | _ -> false)
+      "onInvoices", showing (function Routes.Invoices _ -> true | _ -> false)
+      "onEditor", showing (function Routes.NewInvoice _ | Routes.Draft _ -> true | _ -> false)
+      "onInvoice", showing (function Routes.Invoice _ -> true | _ -> false)
+      "onReceivables", showing (function Routes.Receivables _ -> true | _ -> false)
+      "onSettings", showing ((=) Routes.Settings)
+      "isNotFound", flag (shown = Missing)
+      "isNotPermitted", flag (shown = Forbidden)
+      "isInvalidLink", flag (match shown with InvalidLink _ -> true | _ -> false)
+      "invalidLink", text (match shown with InvalidLink why -> why | _ -> "")
+      "isUnbuilt", flag (match shown with Unbuilt _ -> true | _ -> false)
+      "unbuiltTitle", text (match shown with Unbuilt title -> title | _ -> "")
+      "isIssuedDraft", flag (match shown with IssuedDraft _ -> true | _ -> false)
+      "issuedDraftId", text (match shown with IssuedDraft(draftId, _) -> draftId | _ -> "")
+      "issuedDraftHref",
+      text (
+          match shown with
+          | IssuedDraft(_, invoiceId) -> Routes.href (Routes.Invoice(invoiceId, Routes.Document))
+          | _ -> ""
+      )
+      "hasCopyFallback", flag model.CopyFallback.IsSome
+      "copyFallback", text (model.CopyFallback |> Option.defaultValue "")
       "navigation",
       Items(
-          [ "dashboard", "Home"; "invoices", "Invoices"; "customers", "Customers"; "receivables", "Receivables"; "settings", "Settings" ]
-          |> List.map (fun (id, label) ->
-              let selected =
-                  routeName current = id || (id = "invoices" && routeName current = "invoice")
+          [ "home", "Home", Routes.Home
+            "invoices", "Invoices", Routes.Invoices Routes.allInvoices
+            "customers", "Customers", Routes.Customers Routes.allCustomers
+            "receivables", "Receivables", Routes.Receivables(None, None)
+            "settings", "Settings", Routes.Settings ]
+          |> List.map (fun (id, label, place) ->
+              let section =
+                  match model.Place with
+                  | Routes.Home -> "home"
+                  | Routes.Invoices _
+                  | Routes.Invoice _
+                  | Routes.NewInvoice _
+                  | Routes.Draft _ -> "invoices"
+                  | Routes.Customers _
+                  | Routes.Customer _ -> "customers"
+                  | Routes.Receivables _ -> "receivables"
+                  | Routes.Settings -> "settings"
+                  | _ -> ""
 
-              [ "id", Text id; "label", Text label; "current", Text(if selected then "page" else "false") ])
+              [ "id", Text id
+                "label", Text label
+                "href", Text(Routes.href place)
+                "current", Text(if section = id && (match shown with Showing _ -> true | _ -> false) then "page" else "false") ])
       )
       // Dashboard
       "totalOutstanding", Value(money owed)
@@ -852,6 +1189,7 @@ let view (model: Model) : View =
           overdue
           |> List.map (fun i ->
               [ "id", Text i.InvoiceId
+                "href", Text(Routes.href (Routes.Invoice(i.InvoiceId, Routes.Document)))
                 "number", Text i.Number
                 "customer", Text i.Customer.Name
                 "dueDate", Text(Documents.dateText i.DueDate)
@@ -863,6 +1201,7 @@ let view (model: Model) : View =
           drafts
           |> List.map (fun d ->
               [ "id", Text d.DraftId
+                "href", Text(Routes.href (Routes.Draft d.DraftId))
                 "customer", Text(books |> Option.map (fun b -> customerName b d.CustomerId) |> Option.defaultValue d.CustomerId)
                 "total", money (total d)
                 "state",
@@ -879,24 +1218,21 @@ let view (model: Model) : View =
       "customerEmail", text model.Customer.Email
       "customerTerms", text model.Customer.TermsDays
       "hasCustomers", flag (books |> Option.exists (fun b -> not b.Books.Customers.IsEmpty))
+      "hasListedCustomers", flag (not customerRows.IsEmpty)
+      "noListedCustomers", flag (books |> Option.exists (fun b -> not b.Books.Customers.IsEmpty) && customerRows.IsEmpty)
+      "customerSearch", text (customerFilters.Search |> Option.defaultValue "")
+      "customerSort", text (Routes.customerSortText customerFilters.Sort)
+      "customerInactive", flag customerFilters.Inactive
       "customers",
       Items(
-          books
-          |> Option.map (fun b ->
-              b.Books.Customers
-              |> Map.toList
-              |> List.map snd
-              |> List.sortBy _.Name
-              |> List.map (fun c ->
-                  let open' =
-                      b.Books.Invoices |> Map.toList |> List.map snd |> List.filter (fun i -> i.CustomerId = c.Id) |> List.map (outstanding b) |> sum "USD"
-
-                  [ "id", Text c.Id
-                    "name", Text c.Name
-                    "email", Text c.Email
-                    "terms", Text(termsLabel c.DefaultTerms)
-                    "balance", money open' ]))
-          |> Option.defaultValue []
+          customerRows
+          |> List.map (fun (c, balance) ->
+              [ "id", Text c.Id
+                "name", Text c.Name
+                "email", Text c.Email
+                "terms", Text(termsLabel c.DefaultTerms)
+                "invoicesHref", Text(Routes.href (Routes.Invoices { Routes.allInvoices with Customer = Some c.Id }))
+                "balance", money balance ])
       )
       // Editor
       "draftCustomer", text model.Draft.CustomerId
@@ -940,7 +1276,32 @@ let view (model: Model) : View =
       "cannotIssue", flag (not reviewedDraft)
       // Invoices
       "hasInvoices", flag (not invoices.IsEmpty)
+      "noListedInvoices", flag (not invoices.IsEmpty && listed.IsEmpty)
+      "invoiceCountText", text $"{listed.Length} of {invoices.Length} invoices"
       "invoices", Items invoiceRows
+      "invoiceSearch", text (filters.Search |> Option.defaultValue "")
+      "invoiceCustomer", text (filters.Customer |> Option.defaultValue "")
+      "invoiceFrom", text (dateInput filters.From)
+      "invoiceTo", text (dateInput filters.To)
+      "invoiceOverdue", flag filters.Overdue
+      "invoiceSort", text (Routes.invoiceSortText filters.Sort)
+      "isFiltered", flag (filters <> Routes.allInvoices)
+      "statusOptions",
+      Items(
+          [ "unpaid", "Unpaid"; "partly-paid", "Partly paid"; "paid", "Paid"; "written-off", "Written off"; "voided", "Voided" ]
+          |> List.map (fun (value, label) -> [ "value", Text value; "label", Text label; "checked", Flag(filters.Status.Contains value) ])
+      )
+      "customerFilterOptions",
+      Items(
+          books
+          |> Option.map (fun b ->
+              b.Books.Customers
+              |> Map.toList
+              |> List.map snd
+              |> List.sortBy _.Name
+              |> List.map (fun c -> [ "value", Text c.Id; "label", Text c.Name ]))
+          |> Option.defaultValue []
+      )
       // Payment
       "paymentAmount", text model.Payment.Amount
       "paymentDate", text model.Payment.Date
@@ -948,6 +1309,9 @@ let view (model: Model) : View =
       "paymentReference", text model.Payment.Reference
       // Receivables
       "hasAging", flag (not aging.IsEmpty)
+      "receivablesAsOf", text (dateInput receivablesAsOf)
+      "receivablesCustomer", text (receivablesCustomer |> Option.defaultValue "")
+      "receivablesDate", text (Documents.dateText (receivablesAsOf |> Option.defaultValue model.Today))
       "aging",
       Items(
           aging

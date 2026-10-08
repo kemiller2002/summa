@@ -66,10 +66,14 @@
     <p class="summa-brand"><span class="summa-brand__mark" aria-hidden="true">Σ</span><span data-text="organizationName"></span></p>
     <nav class="summa-nav" aria-label="Primary">
       <template data-each="navigation" data-key="id">
-        <button type="button" class="summa-nav__link" data-event="navigate" data-bind-aria-current="current" data-bind-data-route="id" data-text="label"></button>
+        <a class="summa-nav__link" data-bind-href="href" data-bind-aria-current="current" data-bind-data-route="id" data-text="label"></a>
       </template>
     </nav>
-    <button type="button" class="ef-button summa-new" id="new-invoice" data-event="newInvoice">New invoice</button>
+    <div class="summa-header__actions">
+      <!-- Every view is a link (WI-0041): this copies the address of the one shown. -->
+      <button type="button" class="ef-button" data-variant="secondary" id="copy-link" data-event="linkCopyRequested">Copy link</button>
+      <a class="ef-button summa-new" id="new-invoice" href="#/invoices/new">New invoice</a>
+    </div>
   </header>
 
   <main class="summa-main ef-stack" id="main" tabindex="-1">
@@ -77,6 +81,46 @@
       <template data-if="hasNotice"><p class="summa-notice" id="notice" data-text="notice"></p></template>
     </div>
     <template data-if="hasError"><p class="summa-error" id="error" role="alert" data-text="error"></p></template>
+    <template data-if="hasCopyFallback">
+      <div class="ef-field summa-copy-fallback"><label class="ef-field__label" for="copy-fallback">Link to this view</label>
+        <input id="copy-fallback" type="text" readonly data-bind-value="copyFallback" /></div>
+    </template>
+
+    <!-- What a link that opens nothing says (SUM-LINK-007). Never a blank page. -->
+    <template data-if="isNotFound">
+      <section class="ef-stack summa-outcome" aria-labelledby="not-found-title">
+        <h1 id="not-found-title">Nothing is at this link</h1>
+        <p>The link names a page or a record these books do not have. It may have been mistyped, or the record may be in other books.</p>
+        <p><a class="summa-link" href="#/">Go to the home page</a></p>
+      </section>
+    </template>
+    <template data-if="isNotPermitted">
+      <section class="ef-stack summa-outcome" aria-labelledby="not-permitted-title">
+        <h1 id="not-permitted-title">You do not have access to this page</h1>
+        <p>Your role in these books does not include it. Ask an administrator if you need it.</p>
+        <p><a class="summa-link" href="#/">Go to the home page</a></p>
+      </section>
+    </template>
+    <template data-if="isInvalidLink">
+      <section class="ef-stack summa-outcome" aria-labelledby="invalid-link-title">
+        <h1 id="invalid-link-title">This link cannot be opened</h1>
+        <p id="invalid-link" data-text="invalidLink"></p>
+        <p><a class="summa-link" href="#/">Go to the home page</a></p>
+      </section>
+    </template>
+    <template data-if="isUnbuilt">
+      <section class="ef-stack summa-outcome" aria-labelledby="unbuilt-title">
+        <h1 id="unbuilt-title" data-text="unbuiltTitle"></h1>
+        <p>This view comes in a later build. The link will open it then.</p>
+        <p><a class="summa-link" href="#/">Go to the home page</a></p>
+      </section>
+    </template>
+    <template data-if="isIssuedDraft">
+      <section class="ef-stack summa-outcome" aria-labelledby="issued-draft-title">
+        <h1 id="issued-draft-title">Draft <span data-text="issuedDraftId"></span> has been issued</h1>
+        <p>An issued invoice cannot be edited. <a class="summa-link" id="issued-draft-invoice" data-bind-href="issuedDraftHref">Open the invoice</a></p>
+      </section>
+    </template>
 
     <!-- Home: what needs attention first (v0.4 §1, §10). -->
     <template data-if="onDashboard">
@@ -96,7 +140,7 @@
               <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Due</th><th scope="col" class="summa-number">Outstanding</th></tr></thead>
               <tbody>
                 <template data-each="overdueInvoices" data-key="id">
-                  <tr><td><button type="button" class="summa-link" data-event="invoiceOpened" data-text="number"></button></td><td data-text="customer"></td><td data-text="dueDate"></td><td class="summa-number" data-text="outstanding"></td></tr>
+                  <tr><td><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="customer"></td><td data-text="dueDate"></td><td class="summa-number" data-text="outstanding"></td></tr>
                 </template>
               </tbody>
             </table>
@@ -110,7 +154,7 @@
               <thead><tr><th scope="col">Draft</th><th scope="col">Customer</th><th scope="col">State</th><th scope="col" class="summa-number">Total</th></tr></thead>
               <tbody>
                 <template data-each="drafts" data-key="id">
-                  <tr><td><button type="button" class="summa-link" data-event="draftOpened" data-text="id"></button></td><td data-text="customer"></td><td data-text="state"></td><td class="summa-number" data-text="total"></td></tr>
+                  <tr><td><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="customer"></td><td data-text="state"></td><td class="summa-number" data-text="total"></td></tr>
                 </template>
               </tbody>
             </table>
@@ -124,12 +168,24 @@
       <section class="ef-stack" aria-labelledby="customers-title">
         <h1 id="customers-title">Customers</h1>
         <template data-if="hasCustomers">
+          <div class="summa-filters" role="search" aria-label="Customers">
+            <div class="ef-field"><label class="ef-field__label" for="customer-search">Search</label>
+              <input id="customer-search" type="search" data-event="customerSearchChanged" data-on="input" data-bind-value="customerSearch" /></div>
+            <div class="ef-field"><label class="ef-field__label" for="customer-sort">Sort by</label>
+              <select id="customer-sort" data-event="customerSortChosen" data-bind-value="customerSort">
+                <option value="name">Name</option><option value="balance">Open balance</option>
+              </select></div>
+            <label class="summa-check"><input id="customer-inactive" type="checkbox" data-event="customerInactiveToggled" data-on="change" data-bind-checked="customerInactive" /> Include inactive</label>
+          </div>
+        </template>
+        <template data-if="noListedCustomers"><p id="no-customers">No customer matches.</p></template>
+        <template data-if="hasListedCustomers">
           <table class="summa-table" id="customers-table">
             <caption class="ef-visually-hidden">Customers</caption>
-            <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Terms</th><th scope="col" class="summa-number">Open balance</th></tr></thead>
+            <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Terms</th><th scope="col" class="summa-number">Open balance</th><th scope="col"><span class="ef-visually-hidden">Invoices</span></th></tr></thead>
             <tbody>
               <template data-each="customers" data-key="id">
-                <tr><td data-text="name"></td><td data-text="email"></td><td data-text="terms"></td><td class="summa-number" data-text="balance"></td></tr>
+                <tr><td data-text="name"></td><td data-text="email"></td><td data-text="terms"></td><td class="summa-number" data-text="balance"></td><td><a class="summa-link" data-bind-href="invoicesHref">Invoices</a></td></tr>
               </template>
             </tbody>
           </table>
@@ -209,13 +265,40 @@
       <section class="ef-stack" aria-labelledby="invoices-title">
         <h1 id="invoices-title">Invoices</h1>
         <template data-if="hasInvoices">
+          <div class="ef-stack" id="invoice-list">
+          <div class="summa-filters" role="search" aria-label="Invoices">
+            <div class="ef-field"><label class="ef-field__label" for="invoice-search">Search number or customer</label>
+              <input id="invoice-search" type="search" data-event="invoiceSearchChanged" data-on="input" data-bind-value="invoiceSearch" /></div>
+            <div class="ef-field"><label class="ef-field__label" for="invoice-customer">Customer</label>
+              <select id="invoice-customer" data-event="invoiceCustomerChosen" data-bind-value="invoiceCustomer">
+                <option value="">All customers</option>
+                <template data-each="customerFilterOptions" data-key="value"><option data-bind-value="value" data-text="label"></option></template>
+              </select></div>
+            <div class="ef-field"><label class="ef-field__label" for="invoice-from">Issued from</label>
+              <input id="invoice-from" type="date" data-event="invoiceFromChanged" data-on="change" data-bind-value="invoiceFrom" /></div>
+            <div class="ef-field"><label class="ef-field__label" for="invoice-to">Issued to</label>
+              <input id="invoice-to" type="date" data-event="invoiceToChanged" data-on="change" data-bind-value="invoiceTo" /></div>
+            <div class="ef-field"><label class="ef-field__label" for="invoice-sort">Sort by</label>
+              <select id="invoice-sort" data-event="invoiceSortChosen" data-bind-value="invoiceSort">
+                <option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="due">Due date</option><option value="number">Number</option><option value="customer">Customer</option>
+              </select></div>
+            <fieldset class="summa-statuses"><legend>Status</legend>
+              <template data-each="statusOptions" data-key="value">
+                <label class="summa-check"><input type="checkbox" class="invoice-status" data-event="invoiceStatusToggled" data-on="change" data-bind-checked="checked" data-bind-data-status="value" /> <span data-text="label"></span></label>
+              </template>
+              <label class="summa-check"><input id="invoice-overdue" type="checkbox" data-event="invoiceOverdueToggled" data-on="change" data-bind-checked="invoiceOverdue" /> Overdue only</label>
+            </fieldset>
+            <template data-if="isFiltered"><button type="button" class="ef-button" data-variant="secondary" id="clear-filters" data-event="invoiceFiltersCleared">Clear filters</button></template>
+          </div>
+          <p class="summa-count" id="invoice-count-text" role="status" data-text="invoiceCountText"></p>
+          <template data-if="noListedInvoices"><p id="no-invoices">No invoice matches these filters.</p></template>
           <table class="summa-table" id="invoices-table">
             <caption class="ef-visually-hidden">Issued invoices</caption>
             <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Issued</th><th scope="col">Due</th><th scope="col">Status</th><th scope="col" class="summa-number">Total</th><th scope="col" class="summa-number">Outstanding</th></tr></thead>
             <tbody>
               <template data-each="invoices" data-key="id">
                 <tr>
-                  <td><button type="button" class="summa-link" data-event="invoiceOpened" data-text="number"></button></td>
+                  <td><a class="summa-link" data-bind-href="href" data-text="number"></a></td>
                   <td data-text="customer"></td><td data-text="issueDate"></td><td data-text="dueDate"></td>
                   <td><span class="ef-status-lozenge" data-bind-data-state="statusTone" data-text="status"></span> <span class="summa-timing" data-text="timing"></span></td>
                   <td class="summa-number" data-text="total"></td><td class="summa-number" data-text="outstanding"></td>
@@ -223,6 +306,7 @@
               </template>
             </tbody>
           </table>
+          </div>
         </template>
       </section>
     </template>
@@ -234,8 +318,16 @@
           <div class="summa-invoice-head">
             <h1 id="invoice-title">Invoice <span data-text="docNumber"></span></h1>
             <p><span class="ef-status-lozenge" id="invoice-status" data-text="detailStatus"></span> Outstanding <strong id="invoice-outstanding" data-text="detailOutstanding"></strong></p>
-            <template data-if="canPrint"><button type="button" class="ef-button" data-variant="secondary" id="print-invoice" data-event="printRequested">Print or save as PDF</button></template>
           </div>
+          <!-- The tab is part of the link (?tab=payments); choosing one refines the view. -->
+          <div class="summa-tabs summa-screen-only" role="group" aria-label="Invoice views">
+            <template data-each="invoiceTabs" data-key="value">
+              <button type="button" class="summa-tab" data-event="invoiceTabChosen" data-bind-aria-pressed="selected" data-bind-data-tab="value" data-text="label"></button>
+            </template>
+          </div>
+          <template data-if="onDocumentTab">
+          <div class="ef-stack" id="document-tab">
+          <template data-if="canPrint"><p class="summa-screen-only"><button type="button" class="ef-button" data-variant="secondary" id="print-invoice" data-event="printRequested">Print or save as PDF</button></p></template>
           <ef-print-document class="summa-document" id="invoice-document">
             <ef-print-header repeat="page"><span slot="left" data-text="docIssuer"></span><span slot="right">Invoice <span data-text="docNumber"></span></span></ef-print-header>
             <header class="summa-document__head">
@@ -264,6 +356,10 @@
             <template data-if="docHasNotes"><section aria-label="Notes"><h2 class="summa-document__label">Notes</h2><p class="summa-pre" data-text="docNotes"></p></section></template>
             <ef-print-footer repeat="page"><span slot="right"><ef-print-page-number format="page-of-pages"></ef-print-page-number></span></ef-print-footer>
           </ef-print-document>
+          </div>
+          </template>
+
+          <template data-if="onPaymentsTab">
 
           <section class="ef-surface ef-stack summa-screen-only" aria-labelledby="payments-title">
             <h2 id="payments-title">Payments</h2>
@@ -291,6 +387,18 @@
               </form>
             </template>
           </section>
+          </template>
+
+          <template data-if="onHistoryTab">
+            <section class="ef-surface ef-stack" aria-labelledby="history-title">
+              <h2 id="history-title">History</h2>
+              <table class="summa-table" id="invoice-history">
+                <caption class="ef-visually-hidden">What happened to this invoice</caption>
+                <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th></tr></thead>
+                <tbody><template data-each="history" data-key="key"><tr><td data-text="when"></td><td data-text="who"></td><td data-text="what"></td></tr></template></tbody>
+              </table>
+            </section>
+          </template>
         </section>
       </template>
     </template>
@@ -299,6 +407,16 @@
     <template data-if="onReceivables">
       <section class="ef-stack" aria-labelledby="receivables-title">
         <h1 id="receivables-title">Receivables</h1>
+        <div class="summa-filters" role="search" aria-label="Receivables">
+          <div class="ef-field"><label class="ef-field__label" for="receivables-as-of">As of</label>
+            <input id="receivables-as-of" type="date" data-event="receivablesAsOfChanged" data-on="change" data-bind-value="receivablesAsOf" /></div>
+          <div class="ef-field"><label class="ef-field__label" for="receivables-customer">Customer</label>
+            <select id="receivables-customer" data-event="receivablesCustomerChosen" data-bind-value="receivablesCustomer">
+              <option value="">All customers</option>
+              <template data-each="customerFilterOptions" data-key="value"><option data-bind-value="value" data-text="label"></option></template>
+            </select></div>
+        </div>
+        <p class="summa-count" id="receivables-date">Aged as of <span data-text="receivablesDate"></span>.</p>
         <template data-if="hasAging">
           <table class="summa-table" id="aging-table">
             <caption class="ef-visually-hidden">Receivables by age</caption>
