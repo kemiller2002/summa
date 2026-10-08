@@ -1059,20 +1059,20 @@
         "EXE-20261008T151654460Z-39282886"
       ],
       "latestCheckpoint": {
-        "id": "1138a5969d3f9efc88d7bc59",
-        "recordedAt": "2026-10-08T15:28:37.000Z",
+        "id": "b433d599b3b4765ee904b623",
+        "recordedAt": "2026-10-08T15:29:09.000Z",
         "executionId": "EXE-20261008T151654460Z-39282886",
         "repository": "summa",
         "branch": "feat/wi-0018-data-location",
-        "commit": "a53b2aa2753f1f9dd69d967cb53621455ad9c18d",
+        "commit": "a6757be5145ce7fd4d99f878f3dd30f48050076c",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa.git"
         },
         "remoteBranch": "feat/wi-0018-data-location",
-        "remoteCommit": "a53b2aa2753f1f9dd69d967cb53621455ad9c18d",
-        "summary": "Summa.Storage pure core: deployment config, namespaces, application and organization manifests, 18 tests on Arca in-memory",
-        "nextAction": "Update the gap analysis rows (SUM-DATALOC, SUM0-005..011, SUM0-033, SUM0-043), deployment-configuration doc, then PR; WI-0019 sign-in next",
+        "remoteCommit": "a6757be5145ce7fd4d99f878f3dd30f48050076c",
+        "summary": "Summa.Storage pure core and deployment-configuration doc pushed",
+        "nextAction": "Update gap-analysis rows for SUM-DATALOC/SUM0-005..011/SUM0-033/SUM0-043, open the PR; then WI-0019",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
