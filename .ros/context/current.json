@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T21:46:40.000Z",
+  "updatedAt": "2026-10-08T21:53:25.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1690,13 +1690,51 @@
     {
       "id": "WI-0042",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-08T21:46:40.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Engine/Summa.Web.Engine.fsproj"
+        },
+        {
+          "type": "implementation",
+          "path": "vendor/nuget/limen-fsharp.lock"
+        },
+        {
+          "type": "implementation",
+          "path": "conditor.json"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/RoutesTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-08T21:53:25.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T214640906Z-b2269183"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "837e0b20a9a9391bbb3c5450",
+        "recordedAt": "2026-10-08T21:53:23.000Z",
+        "executionId": "EXE-20261008T214640906Z-b2269183",
+        "repository": "summa",
+        "branch": "feat/wi-0042-limen-0.9.0",
+        "commit": "dea81cb190a6b1c4958df57c084aa08927e7d3f5",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/wi-0042-limen-0.9.0",
+        "remoteCommit": "dea81cb190a6b1c4958df57c084aa08927e7d3f5",
+        "summary": "Limen 0.9.0 through Conditor and npm; the routing package replaces the vendored copy; inventory validated against the schema",
+        "nextAction": "Merge after CI",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-08T21:53:25.000Z"
     }
   ]
 }

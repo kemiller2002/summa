@@ -1019,10 +1019,10 @@
       "description": null,
       "tags": [],
       "priority": "medium",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T19:49:23.119Z",
-      "updatedAt": "2026-10-08T21:46:40.000Z",
+      "updatedAt": "2026-10-08T21:53:25.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
