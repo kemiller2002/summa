@@ -1561,20 +1561,20 @@
         "EXE-20261008T184655871Z-69753eb4"
       ],
       "latestCheckpoint": {
-        "id": "58a497de7f34228108a5b613",
-        "recordedAt": "2026-10-08T18:47:50.000Z",
+        "id": "1e31f8f38c23c8cd0b1b675a",
+        "recordedAt": "2026-10-08T20:53:53.000Z",
         "executionId": "EXE-20261008T184655871Z-69753eb4",
         "repository": "summa",
-        "branch": "feat/wi-0030-app",
-        "commit": "a8347836a5d881be84d48dc7f251b7ae0a4420d1",
+        "branch": "feat/wi-0030-slice2",
+        "commit": "907a32bafc5f5aaf8a7a7a94b9e6d010713cf45c",
         "remote": {
           "name": "origin",
-          "url": "https://github.com/kemiller2002/summa.git"
+          "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0030-app",
-        "remoteCommit": "a8347836a5d881be84d48dc7f251b7ae0a4420d1",
-        "summary": "Slice 1: the accounting application with the first vertical slice in the browser, books in browser storage",
-        "nextAction": "Slice 2: pre-issue preview, payments inbox, follow-up, ledger and reports workspaces, period close, CPA workspace, work queue, PDF artifacts, environment banners from configuration",
+        "remoteBranch": "feat/wi-0030-slice2",
+        "remoteCommit": "907a32bafc5f5aaf8a7a7a94b9e6d010713cf45c",
+        "summary": "Slice 2: payments, customers, credit memos (with their Folio document) and engagements, each at its own address",
+        "nextAction": "Slice 3: ledger, journal entries, reports (trial balance, income statement accrual/cash, balance sheet) and periods with close, each at its own address",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
