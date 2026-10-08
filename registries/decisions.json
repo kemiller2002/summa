@@ -1,5 +1,50 @@
 [
   {
+    "created": "2026-10-08",
+    "id": "DF-SUMMA-2026-0001",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0001--summa-owns-the-chrona-contract-and-stores-through-arca.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261008T074602101Z-3aa35119": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-08T07:47:02.355Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Record user decisions of 2026-10-08 and the per-application data-location requirement"
+        }
+      }
+    },
+    "related_documents": [
+      "docs/requirements/implementation-gap-analysis.md",
+      "docs/requirements/SUMMA-DATA-LOCATION.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "contracts",
+      "chrona",
+      "build-order",
+      "storage",
+      "strata",
+      "encryption"
+    ],
+    "title": "Summa owns the Chrona-to-Summa contract as a versioned contracts package, is built after Chrona, stores data through Arca without Strata, and signs in through Fides",
+    "updated": "2026-10-08",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-10-05",
     "id": "DF-SUMMA-FND-2026-0001",
     "owners": [

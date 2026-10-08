@@ -49,3 +49,53 @@ let private counts column =
 let ``both summaries are the counts of their columns`` () =
     Assert.Equal<int list>(counts (fun (_, b, _) -> b), summary "## Summary")
     Assert.Equal<int list>(counts (fun (_, _, c) -> c), summary "## Coverage after this programme")
+
+/// Every row that is not yet `tested` is planned: an open work item in the
+/// Praxis queue (captured, ready, active or blocked) names it, directly
+/// (`SUM2-028`, `INV-DOC`) or inside a range of the same set
+/// (`SUM0-005..011`). A gap that no open work item names would be silently
+/// dropped from the backlog.
+let private openWorkText =
+    use queue = System.Text.Json.JsonDocument.Parse(readRepoFile ".ros/work/queue.json")
+
+    queue.RootElement.GetProperty("items").EnumerateArray()
+    |> Seq.filter (fun item ->
+        match item.GetProperty("status").GetString() with
+        | "complete"
+        | "abandoned" -> false
+        | _ -> true)
+    |> Seq.map (fun item ->
+        let text (name: string) =
+            match item.TryGetProperty name with
+            | true, value when value.ValueKind = System.Text.Json.JsonValueKind.String -> string (value.GetString())
+            | _ -> ""
+
+        text "title" + "\n" + text "description")
+    |> String.concat "\n"
+
+let private plannedIds =
+    let known = rows |> List.map (fun (id, _, _) -> id)
+
+    let direct =
+        Regex.Matches(openWorkText, @"\b(?:SUM\d-\d{3}|INV-[A-Z0-9]+)\b") |> Seq.map _.Value
+
+    let ranges =
+        Regex.Matches(openWorkText, @"\b(SUM\d)-(\d{3})\.\.(?:SUM\d-)?(\d{3})")
+        |> Seq.collect (fun m ->
+            let set, low, high = m.Groups[1].Value, int m.Groups[2].Value, int m.Groups[3].Value
+            known
+            |> List.filter (fun id ->
+                id.StartsWith(set + "-")
+                && int (id.Substring 5) >= low
+                && int (id.Substring 5) <= high))
+
+    Seq.append direct ranges |> Set.ofSeq
+
+[<Fact>]
+let ``every row that is not yet tested is named by an open work item`` () =
+    let unplanned =
+        rows
+        |> List.filter (fun (id, _, current) -> current <> "tested" && not (plannedIds.Contains id))
+        |> List.map (fun (id, _, _) -> id)
+
+    Assert.Empty unplanned
