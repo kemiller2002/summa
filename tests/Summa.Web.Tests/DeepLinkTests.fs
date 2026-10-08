@@ -245,7 +245,7 @@ let ``copy link copies the absolute address of the canonical place`` () =
 let private aegis = Summa.Web.Application.Boundary.configure [ (Aegis.Sinks.Collector()).Sink() ]
 
 let private send (session: Wire.Session) (message: string) =
-    let next, reply = Wire.handle aegis (fun () -> ctx.Now) "local-person" session message
+    let next, reply = Wire.handle aegis (Summa.Web.Tests.Support.wireEnv ctx.Now) session message
     next, JsonNode.Parse(reply) |> Option.ofObj |> Option.get
 
 [<Fact>]

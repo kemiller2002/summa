@@ -12,12 +12,16 @@
     <Compile Include="Replies.fs" />
     <Compile Include="BacklogWire.fs" />
     <Compile Include="HubWire.fs" />
+    <Compile Include="Bridge.fs" />
+    <Compile Include="Identity.fs" />
     <Compile Include="AccountingWire.fs" />
     <Compile Include="Runtime.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="EchelonFoundry.Aegis.Core" />
+    <PackageReference Include="EchelonFoundry.Fides.Client" />
+    <PackageReference Include="EchelonFoundry.Fides.Arca" />
   </ItemGroup>
 
   <ItemGroup>

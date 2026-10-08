@@ -62,7 +62,7 @@ jobs:
           set -euo pipefail
           site=dist-pages
           for f in .nojekyll index.html app/index.html app/app.js app/summa-app.css app/summa.deployment.json \
-                   web-kernel/limen-wasm.js web-kernel/print.js build/wasm/wwwroot/_framework/dotnet.js \
+                   web-kernel/limen-wasm.js web-kernel/print.js web-kernel/host.js build/wasm/wwwroot/_framework/dotnet.js \
                    node_modules/@echelon-foundry/limen/dist/kernel/browser-kernel.js \
                    node_modules/@echelon-foundry/design-system/dist/all.css \
                    node_modules/@echelon-foundry/print-components/src/styles/print.css; do

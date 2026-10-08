@@ -15,7 +15,7 @@ let mutable private hub = HubWire.initial
 let mutable private accounting = AccountingWire.initial
 
 /// Who acts in a deployment without sign-in: one person, in this browser.
-/// Sign-in through Fides replaces it (WI-0035).
+/// Where sign-in is required, the signed-in person acts (WI-0035).
 [<Literal>]
 let LocalActor = "local-person"
 
@@ -31,8 +31,20 @@ let dispatchHub (messageJson: string) =
     hub <- next
     reply
 
+let private bridge = Bridge.Bridge()
+
+let private now () = System.DateTimeOffset.UtcNow
+
+/// The wire's world: the clock, the browser's cryptographic random source
+/// for Fides' client, and the page's bridge.
+let private accountingEnv: AccountingWire.Env =
+    { Now = now
+      LocalActor = LocalActor
+      Bridge = bridge
+      Identity = Identity.create bridge now System.Security.Cryptography.RandomNumberGenerator.GetBytes }
+
 /// One kernel message for the accounting application (app/).
 let dispatchAccounting (messageJson: string) =
-    let next, reply = AccountingWire.handle aegis.Value (fun () -> System.DateTimeOffset.UtcNow) LocalActor accounting messageJson
+    let next, reply = AccountingWire.handle aegis.Value accountingEnv accounting messageJson
     accounting <- next
     reply
