@@ -31,7 +31,16 @@ type InvoiceConfiguration =
     { /// Prefix of invoice numbers, for example `INV` gives `INV-2026-0001`.
       NumberPrefix: string
       /// Payment terms, in days, when an invoice names none.
-      DefaultTermsDays: int }
+      DefaultTermsDays: int
+      /// How customers pay, printed on invoices (bank details, payment link).
+      PaymentInstructions: string }
+
+/// Who issues the invoices: the organization's legal identity.
+type CompanyInformation =
+    { LegalName: string
+      Address: string
+      TaxId: string option
+      Email: string }
 
 /// The default accounts postings use (v0.1 §1, §3, §11).
 type AccountingDefaults =
@@ -54,6 +63,7 @@ type OrganizationManifest =
       /// The organization's business time zone (IANA id).
       TimeZone: string
       Fiscal: FiscalConfiguration
+      Company: CompanyInformation
       Invoices: InvoiceConfiguration
       Accounting: AccountingDefaults }
 
@@ -107,9 +117,15 @@ let create (organizationId: string) (displayName: string) (slug: string) (curren
       DefaultCurrency = currency
       TimeZone = zone
       Fiscal = { YearStartMonth = 1 }
+      Company =
+        { LegalName = displayName
+          Address = ""
+          TaxId = None
+          Email = "" }
       Invoices =
         { NumberPrefix = "INV"
-          DefaultTermsDays = 30 }
+          DefaultTermsDays = 30
+          PaymentInstructions = "" }
       Accounting =
         { Basis = Accrual
           ReceivablesAccount = "1100"
@@ -129,6 +145,8 @@ let problems (manifest: OrganizationManifest) =
           InvalidOrganizationManifest "the fiscal year must start in a month from 1 to 12"
       if blank manifest.Invoices.NumberPrefix || manifest.Invoices.NumberPrefix |> Seq.exists (fun c -> not (Char.IsAsciiLetterOrDigit c)) then
           InvalidOrganizationManifest "the invoice number prefix must be letters and digits"
+      if blank manifest.Company.LegalName then
+          InvalidOrganizationManifest "the company's legal name is required"
       if manifest.Invoices.DefaultTermsDays < 0 || manifest.Invoices.DefaultTermsDays > 365 then
           InvalidOrganizationManifest "default payment terms must be 0 to 365 days"
       if [ manifest.Accounting.ReceivablesAccount; manifest.Accounting.RevenueAccount; manifest.Accounting.CashAccount ] |> List.exists blank then
@@ -150,10 +168,17 @@ let body (manifest: OrganizationManifest) =
           "defaultCurrency", Json.String manifest.DefaultCurrency
           "timeZone", Json.String manifest.TimeZone
           "fiscal", Json.objectOf [ "yearStartMonth", Codec.number manifest.Fiscal.YearStartMonth ]
+          "company",
+          Json.objectOf
+              [ "legalName", Json.String manifest.Company.LegalName
+                "address", Json.String manifest.Company.Address
+                "taxId", Codec.optionalString manifest.Company.TaxId
+                "email", Json.String manifest.Company.Email ]
           "invoices",
           Json.objectOf
               [ "numberPrefix", Json.String manifest.Invoices.NumberPrefix
-                "defaultTermsDays", Codec.number manifest.Invoices.DefaultTermsDays ]
+                "defaultTermsDays", Codec.number manifest.Invoices.DefaultTermsDays
+                "paymentInstructions", Json.String manifest.Invoices.PaymentInstructions ]
           "accounting",
           Json.objectOf
               [ "basis", Json.String(basisWire manifest.Accounting.Basis)
@@ -210,6 +235,7 @@ let ofBody (value: Json) : Result<OrganizationManifest, string> =
 
     Codec.closed
         [ "accounting"
+          "company"
           "createdAt"
           "defaultCurrency"
           "displayName"
@@ -234,14 +260,30 @@ let ofBody (value: Json) : Result<OrganizationManifest, string> =
             let fiscal = section "fiscal" [ "yearStartMonth" ] (fun f -> Codec.integer "yearStartMonth" f |> Result.map (fun m -> { YearStartMonth = m }))
 
             let invoices =
-                section "invoices" [ "defaultTermsDays"; "numberPrefix" ] (fun i ->
-                    match Codec.text "numberPrefix" i, Codec.integer "defaultTermsDays" i with
-                    | Ok prefix, Ok days ->
+                section "invoices" [ "defaultTermsDays"; "numberPrefix"; "paymentInstructions" ] (fun i ->
+                    match Codec.text "numberPrefix" i, Codec.integer "defaultTermsDays" i, Codec.text "paymentInstructions" i with
+                    | Ok prefix, Ok days, Ok instructions ->
                         Ok
                             { NumberPrefix = prefix
-                              DefaultTermsDays = days }
-                    | Error e, _
-                    | _, Error e -> Error e)
+                              DefaultTermsDays = days
+                              PaymentInstructions = instructions }
+                    | Error e, _, _
+                    | _, Error e, _
+                    | _, _, Error e -> Error e)
+
+            let company =
+                section "company" [ "address"; "email"; "legalName"; "taxId" ] (fun c ->
+                    match Codec.text "legalName" c, Codec.text "address" c, Codec.optionalText "taxId" c, Codec.text "email" c with
+                    | Ok name, Ok address, Ok taxId, Ok email ->
+                        Ok
+                            { LegalName = name
+                              Address = address
+                              TaxId = taxId
+                              Email = email }
+                    | Error e, _, _, _
+                    | _, Error e, _, _
+                    | _, _, Error e, _
+                    | _, _, _, Error e -> Error e)
 
             let accounting =
                 section "accounting" [ "basis"; "cashAccount"; "receivablesAccount"; "revenueAccount" ] (fun a ->
@@ -257,8 +299,8 @@ let ofBody (value: Json) : Result<OrganizationManifest, string> =
                     | _, _, Error e, _
                     | _, _, _, Error e -> Error e)
 
-            match fiscal, invoices, accounting with
-            | Ok fiscal, Ok invoices, Ok accounting ->
+            match fiscal, company, invoices, accounting with
+            | Ok fiscal, Ok company, Ok invoices, Ok accounting ->
                 let manifest =
                     { OrganizationId = id
                       Slug = slug
@@ -268,15 +310,17 @@ let ofBody (value: Json) : Result<OrganizationManifest, string> =
                       DefaultCurrency = currency
                       TimeZone = zone
                       Fiscal = fiscal
+                      Company = company
                       Invoices = invoices
                       Accounting = accounting }
 
                 match problems manifest with
                 | [] -> Ok manifest
                 | first :: _ -> Error(describe first)
-            | Error e, _, _
-            | _, Error e, _
-            | _, _, Error e -> Error e
+            | Error e, _, _, _
+            | _, Error e, _, _
+            | _, _, Error e, _
+            | _, _, _, Error e -> Error e
         | Error e, _, _, _, _, _, _
         | _, Error e, _, _, _, _, _
         | _, _, Error e, _, _, _, _

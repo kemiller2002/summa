@@ -64,3 +64,13 @@ let initialized () =
         |> committed (initializeOrganization production binding RepositoryVisibility.Private None (context "org") acme |> ok)
 
     binding, state
+
+/// The repository root: the directory holding Summa.sln.
+let repositoryRoot () =
+    let rec up (directory: System.IO.DirectoryInfo | null) =
+        match directory with
+        | null -> failwith "Summa.sln not found above the test assembly"
+        | d when System.IO.File.Exists(System.IO.Path.Combine(d.FullName, "Summa.sln")) -> d.FullName
+        | d -> up d.Parent
+
+    up (System.IO.DirectoryInfo(System.AppContext.BaseDirectory))
