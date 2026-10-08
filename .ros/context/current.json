@@ -1347,7 +1347,27 @@
       "updatedAt": "2026-10-08T16:19:44.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T161945018Z-19388ec7"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "850864cb485774dc24aabf46",
+        "recordedAt": "2026-10-08T16:30:24.000Z",
+        "executionId": "EXE-20261008T161945018Z-19388ec7",
+        "repository": "summa",
+        "branch": "feat/wi-0024-credits",
+        "commit": "413ceb1fa317af91002c67e2fcadb012e0973a15",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa.git"
+        },
+        "remoteBranch": "feat/wi-0024-credits",
+        "remoteCommit": "413ceb1fa317af91002c67e2fcadb012e0973a15",
+        "summary": "Part 1: credits, deposits, memos, refunds, reversals, write-offs, duplicates",
+        "nextAction": "Part 2: void and correct issued invoices, discounts, terms priority, late status, date semantics",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      }
     }
   ]
 }
