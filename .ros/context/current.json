@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-07T21:59:09.000Z",
+  "updatedAt": "2026-10-08T07:20:37.589Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -729,6 +729,64 @@
         }
       },
       "completedAt": "2026-10-07T21:59:09.000Z"
+    },
+    {
+      "id": "WI-0015",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "conditor.json"
+        },
+        {
+          "type": "implementation",
+          "path": ".conditor/lock.json"
+        },
+        {
+          "type": "implementation",
+          "path": ".conditor/authority/resolved-release-set.json"
+        },
+        {
+          "type": "implementation",
+          "path": ".echelon/toolchain.json"
+        },
+        {
+          "type": "tests",
+          "path": ".github/workflows/praxis-validation.yml"
+        },
+        {
+          "type": "implementation",
+          "path": ".echelon/foundations.json"
+        }
+      ],
+      "updatedAt": "2026-10-08T07:20:37.589Z",
+      "telemetryExecutionIds": [
+        "EXE-20261008T071929415Z-de5c3d5b"
+      ],
+      "latestCheckpoint": {
+        "id": "afe7c7c559c8c8e3aea380f5",
+        "recordedAt": "2026-10-08T07:20:35.589Z",
+        "executionId": "EXE-20261008T071929415Z-de5c3d5b",
+        "repository": "summa",
+        "branch": "chore/ordo-1.5.0",
+        "commit": "58430a7029e881446db9da9a903fae6985e9ec8a",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "chore/ordo-1.5.0",
+        "remoteCommit": "58430a7029e881446db9da9a903fae6985e9ec8a",
+        "summary": "conditor upgrade --current to echelon-current 1.2.0 (Ordo 1.4.2 -> 1.5.0) committed and pushed; local checks passed",
+        "nextAction": "Open the PR, get CI green and merge",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-08T07:20:37.589Z",
+      "conclusion": "Ordo 1.5.0 through echelon-current 1.2.0; local checks passed (log: /tmp/claude-0/-home-user-praxis/7bcb3038-90cc-534e-8e5b-9be62aa1de8c/scratchpad/sweep/logs/summa.log)"
     }
   ]
 }
