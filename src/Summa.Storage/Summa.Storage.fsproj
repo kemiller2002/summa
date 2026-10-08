@@ -18,10 +18,13 @@
     <Compile Include="Deployment.fs" />
     <Compile Include="Application.fs" />
     <Compile Include="Storage.fs" />
+    <Compile Include="MemberRecord.fs" />
+    <Compile Include="Governance.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../Summa.Ledger/Summa.Ledger.fsproj" />
+    <ProjectReference Include="../Summa.Access/Summa.Access.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
