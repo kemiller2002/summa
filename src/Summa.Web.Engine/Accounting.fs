@@ -90,6 +90,41 @@ type CompanyForm =
       Email: string
       PaymentInstructions: string }
 
+/// The `data-files-input` the page's PDF picker carries.
+[<Literal>]
+let PdfInput = "invoicePdf"
+
+/// The files pack's largest single read (Limen MAX_READ_BYTES).
+[<Literal>]
+let ChunkBytes = 1048576
+
+/// The optional packs the kernel offered and the engine selected.
+type Packs = { Files: bool; Store: bool }
+
+/// This environment's artifact store in the browser (Limen's store pack).
+type ArtifactStore =
+    | StoreClosed
+    | StoreOpening
+    | StoreOpen
+    | StoreUnavailable of reason: string
+
+/// A file the person picked, as the files pack describes it.
+type PickedFile =
+    { Id: string
+      Name: string
+      Size: int64
+      Type: string }
+
+/// Storing or fetching an invoice's PDF (INV-DOC-011).
+type PdfWork =
+    | PdfIdle
+    /// Reading the picked file, one slice at a time.
+    | PdfReading of invoiceId: string * file: string * size: int64 * chunks: byte[] list
+    /// The checked bytes are being written to the artifact store.
+    | PdfStoring of invoiceId: string * sha256: string * size: int64
+    /// The stored PDF is being read back to offer as a download.
+    | PdfFetching of fileName: string
+
 /// Where the books stand in this browser.
 type Storage =
     /// Asked the browser for the stored snapshot.
@@ -121,6 +156,9 @@ type Model =
       Company: CompanyForm
       Credit: CreditForm
       Engagement: EngagementForm
+      Packs: Packs
+      Artifacts: ArtifactStore
+      Pdf: PdfWork
       Blockers: Issuance.Blocker list
       Notice: string option
       Error: string option
@@ -162,6 +200,9 @@ let initial =
       Company = { LegalName = ""; Address = ""; Email = ""; PaymentInstructions = "" }
       Credit = { Amount = ""; Reason = "" }
       Engagement = { CustomerId = ""; Name = ""; FixedFee = "" }
+      Packs = { Files = false; Store = false }
+      Artifacts = StoreClosed
+      Pdf = PdfIdle
       Blockers = []
       Notice = None
       Error = None
@@ -255,6 +296,17 @@ type Msg =
     | PeriodClosed
     | PeriodLocked
     | PeriodReopened
+    /// Which optional packs the kernel offered (files, store).
+    | PacksNegotiated of Packs
+    | ArtifactStoreOpened of Result<unit, string>
+    /// The person picked a file in the PDF input, or cleared it.
+    | PdfPicked of PickedFile option
+    /// A slice of the picked file, base64, and whether it was the last.
+    | PdfChunkRead of Result<string * bool, string>
+    | PdfStored of Result<unit, string>
+    | PdfDownloadRequested
+    /// The stored PDF's bytes (base64), or None when this browser no longer has them.
+    | PdfFetched of Result<string option, string>
 
 type AppEffect =
     | LoadConfiguration
@@ -265,6 +317,15 @@ type AppEffect =
     | Navigate of Limen.Routing.NavigationEffect
     /// Write text to the clipboard (Limen Core Clipboard).
     | CopyText of string
+    /// Open (or create) this environment's artifact database.
+    | OpenArtifactStore of database: string
+    | ReadFileSlice of file: string * offset: int64 * length: int
+    | ReleaseFile of file: string
+    /// Put a PDF, base64, into the artifact database under its SHA-256.
+    | PutArtifact of database: string * sha256: string * data: string * size: int64
+    | GetArtifact of database: string * sha256: string
+    /// Offer bytes (base64) to the person as a download.
+    | OfferDownload of fileName: string * mediaType: string * data: string
 
 // ---- Helpers ---------------------------------------------------------------------------
 
@@ -550,7 +611,9 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
                 Configuration =
                     Misconfigured "This deployment names a data location on GitHub, which this build cannot open yet: it keeps books only in the browser." },
             []
-        | Ok config -> { model with Configuration = Configured config }, [ LoadBooks ]
+        | Ok config when model.Packs.Store ->
+            { model with Configuration = Configured config; Artifacts = StoreOpening }, [ LoadBooks; OpenArtifactStore(Artifacts.database config) ]
+        | Ok config -> { model with Configuration = Configured config; Artifacts = StoreUnavailable "this browser offers no artifact store" }, [ LoadBooks ]
     | Loaded None ->
         let company: Organization.CompanyInformation =
             { LegalName = "Demo Consulting LLC"
@@ -986,6 +1049,69 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
                 change books.Books.Ledger
                 |> Result.map (fun ledger -> { books with Books = { books.Books with Ledger = ledger } })
                 |> Result.mapError describe)
+        | _ -> model, []
+    | PacksNegotiated packs -> { model with Packs = packs }, []
+    | ArtifactStoreOpened(Ok()) -> { model with Artifacts = StoreOpen }, []
+    | ArtifactStoreOpened(Error why) -> { model with Artifacts = StoreUnavailable why }, []
+    | PdfPicked None -> model, []
+    | PdfPicked(Some file) ->
+        let release = [ ReleaseFile file.Id ]
+
+        match model.Place, model.Pdf, model.Artifacts with
+        | Routes.Invoice(invoiceId, _), PdfIdle, StoreOpen ->
+            match Artifacts.checkSize file.Size with
+            | Error problem -> { model with Error = Some(Artifacts.describe problem); Notice = None }, release
+            | Ok size ->
+                { model with Pdf = PdfReading(invoiceId, file.Id, size, []); Notice = Some $"Reading {file.Name}…"; Error = None },
+                [ ReadFileSlice(file.Id, 0L, int (min size (int64 ChunkBytes))) ]
+        | _ -> { model with Error = Some "Open the invoice the PDF is for, and wait for the one being stored."; Notice = None }, release
+    | PdfChunkRead result ->
+        match model.Pdf, result, model.Configuration with
+        | PdfReading(invoiceId, file, size, chunks), Ok(data, eof), Configured config ->
+            let read = chunks @ [ Convert.FromBase64String data ]
+            let offset = read |> List.sumBy (fun c -> int64 c.Length)
+
+            if not eof && offset < size then
+                { model with Pdf = PdfReading(invoiceId, file, size, read) }, [ ReadFileSlice(file, offset, int (min (size - offset) (int64 ChunkBytes))) ]
+            else
+                let bytes = Array.concat read
+
+                match Artifacts.fingerprint bytes with
+                | Ok(sha, length) ->
+                    { model with Pdf = PdfStoring(invoiceId, sha, length); Notice = Some "Storing the PDF…" },
+                    [ ReleaseFile file; PutArtifact(Artifacts.database config, sha, Convert.ToBase64String bytes, length) ]
+                | Error problem -> { model with Pdf = PdfIdle; Error = Some(Artifacts.describe problem); Notice = None }, [ ReleaseFile file ]
+        | PdfReading(_, file, _, _), Error why, _ ->
+            { model with Pdf = PdfIdle; Error = Some $"The file could not be read ({why})."; Notice = None }, [ ReleaseFile file ]
+        | _ -> model, []
+    | PdfStored result ->
+        match model.Pdf, result, model.Configuration with
+        | PdfStoring(invoiceId, sha, size), Ok(), Configured config ->
+            let recorded, effects =
+                command { model with Pdf = PdfIdle } "The PDF is stored with the invoice." (fun books ->
+                    Artifacts.recordPdf (context ctx) config invoiceId (sha, size) books |> Result.mapError Artifacts.describe)
+
+            recorded, effects
+        | PdfStoring _, Error why, _ ->
+            { model with Pdf = PdfIdle; Error = Some $"This browser could not store the PDF ({why})."; Notice = None }, []
+        | _ -> model, []
+    | PdfDownloadRequested ->
+        match model.Place, model.Books, model.Configuration, model.Artifacts with
+        | Routes.Invoice(invoiceId, _), Some books, Configured config, StoreOpen ->
+            match Artifacts.storedPdf config books invoiceId, books.Books.Invoices.TryFind invoiceId with
+            | Ok(Some sha), Some invoice -> { model with Pdf = PdfFetching $"{invoice.Number}.pdf" }, [ GetArtifact(Artifacts.database config, sha) ]
+            | Error problem, _ -> { model with Error = Some(Artifacts.describe problem) }, []
+            | _ -> model, []
+        | _ -> model, []
+    | PdfFetched result ->
+        match model.Pdf, result with
+        | PdfFetching fileName, Ok(Some data) -> { model with Pdf = PdfIdle }, [ OfferDownload(fileName, "application/pdf", data) ]
+        | PdfFetching _, Ok None ->
+            { model with
+                Pdf = PdfIdle
+                Error = Some "This browser no longer holds the PDF. Its fingerprint is still recorded; attach the same file again to restore it." },
+            []
+        | PdfFetching _, Error why -> { model with Pdf = PdfIdle; Error = Some $"The PDF could not be read back ({why})." }, []
         | _ -> model, []
     | ResetConfirmed ->
         // Only offered when the stored books fail their checks.
@@ -1976,6 +2102,42 @@ let view (model: Model) : View =
                         "amount", Text(Documents.amountText l.Amount) ]))
               |> Option.defaultValue []
           )
+          // The PDF printed through Folio and kept in this environment's store (INV-DOC-011).
+          "pdfStatus",
+          text (
+              match detail, model.Configuration with
+              | Some(b, i), Configured config ->
+                  match b.Books.Artifacts.TryFind(Issuance.artifactId i.InvoiceId Sources.InvoicePdf), Artifacts.storedPdf config b i.InvoiceId with
+                  | _, Ok(Some sha) -> $"Stored. SHA-256 {sha.Substring(0, 12)}…"
+                  | _, Error problem -> Artifacts.describe problem
+                  | Some a, _ ->
+                      match a.Status with
+                      | Sources.Failed why -> $"Not stored yet: the last attempt failed ({why})."
+                      | _ -> "Not stored yet. Print the invoice and save it as PDF, then attach that file here."
+                  | None, _ -> "This invoice has no PDF record."
+              | _ -> ""
+          )
+          "canAttachPdf",
+          flag (
+              model.Packs.Files
+              && model.Artifacts = StoreOpen
+              && model.Pdf = PdfIdle
+              && match detail, model.Configuration with
+                 | Some(b, i), Configured config -> Artifacts.storedPdf config b i.InvoiceId = Ok None
+                 | _ -> false
+          )
+          "isPdfWorking", flag (model.Pdf <> PdfIdle)
+          "canDownloadPdf",
+          flag (
+              model.Artifacts = StoreOpen
+              && model.Pdf = PdfIdle
+              && match detail, model.Configuration with
+                 | Some(b, i), Configured config ->
+                     match Artifacts.storedPdf config b i.InvoiceId with
+                     | Ok(Some _) -> true
+                     | _ -> false
+                 | _ -> false
+          )
           "detailEntryId", text (detail |> Option.map (fun (_, i) -> i.JournalEntryId) |> Option.defaultValue "")
           "detailEntryHref", text (detail |> Option.map (fun (_, i) -> Routes.href (Routes.JournalEntry i.JournalEntryId)) |> Option.defaultValue "")
           "detailCustomer", text (detail |> Option.map (fun (_, i) -> i.Customer.Name) |> Option.defaultValue "")
@@ -2255,6 +2417,38 @@ let view (model: Model) : View =
                 "explanation", Text b.Explanation
                 "resolution", Text b.Resolution ])
       )
+      // The document the reviewed draft would be issued as (INV-REV-001).
+      yield!
+          (let preview =
+              match model.Manifest, books, model.Draft.DraftId with
+              | Some manifest, Some b, Some draftId when reviewedDraft ->
+                  Issuance.preview b (issueRequest manifest b draftId model.Today) |> Result.toOption |> Option.map fst
+              | _ -> None
+
+           let pv (f: Documents.InvoiceDocument -> string) = text (preview |> Option.map f |> Option.defaultValue "")
+
+           [ "hasPreview", flag preview.IsSome
+             "previewNumber", pv _.Number
+             "previewIssuer", pv _.Issuer.LegalName
+             "previewCustomer", pv _.Customer.BillingName
+             "previewIssueDate", pv (fun d -> Documents.dateText d.IssueDate)
+             "previewDueDate", pv (fun d -> Documents.dateText d.DueDate)
+             "previewTerms", pv (fun d -> Documents.termsText d.Terms)
+             "previewTotal", pv (fun d -> Documents.moneyText d.Total)
+             "previewPayment", pv _.Issuer.PaymentInstructions
+             "previewLines",
+             Items(
+                 preview
+                 |> Option.map (fun d ->
+                     d.Lines
+                     |> List.mapi (fun index l ->
+                         [ "key", Text(string index)
+                           "description", Text l.Description
+                           "quantity", Text(Documents.quantityText l.QuantityThousandths)
+                           "rate", Text(Documents.amountText l.UnitPrice)
+                           "amount", Text(Documents.amountText l.Amount) ]))
+                 |> Option.defaultValue []
+             ) ])
       "canIssue", flag reviewedDraft
       "cannotIssue", flag (not reviewedDraft)
       // Invoices

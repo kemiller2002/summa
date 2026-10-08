@@ -70,11 +70,20 @@ type OrganizationConfig =
       /// its first administrators. No one becomes one by opening it.
       Administrators: string list }
 
+/// Where a deployment keeps binary artifacts such as PDFs (set 0 §0.35,
+/// §0.38): never in the financial records, and never shared between
+/// environments.
+type ArtifactsConfig =
+    /// IndexedDB in the browser, in a database named for the environment
+    /// (`summa-artifacts-<environment>`, optionally with a suffix).
+    | BrowserDatabase of name: string
+
 type DeploymentConfig =
     { Environment: EnvironmentKind
       EnvironmentName: string
       Location: LocationConfig option
       Identity: IdentityConfig option
+      Artifacts: ArtifactsConfig
       /// The default first.
       Organizations: OrganizationConfig list }
 
@@ -259,18 +268,48 @@ let private organizationsOf value =
             | None -> Ok organizations)
     | Some _ -> invalid "'organizations' is not a list"
 
+let private environmentText =
+    function
+    | EnvironmentKind.Local -> "local"
+    | EnvironmentKind.Test -> "test"
+    | EnvironmentKind.Staging -> "staging"
+    | EnvironmentKind.Production -> "production"
+
+/// The artifact store a deployment names, or its environment's own. A
+/// browser database's name starts with `summa-artifacts-<environment>`, so
+/// environments served from one origin never share one.
+let private artifactsOf (environment: EnvironmentKind) value =
+    let own = $"summa-artifacts-{environmentText environment}"
+
+    match Json.field "artifacts" value with
+    | None -> Ok(BrowserDatabase own)
+    | Some artifacts ->
+        closed [ "database"; "store" ] artifacts
+        |> Result.bind (fun () ->
+            match text "store" artifacts, text "database" artifacts with
+            | Ok "browser", Ok database ->
+                let suffix = if database.StartsWith own then database.Substring own.Length else "?"
+
+                if suffix = "" || (suffix.StartsWith "-" && suffix.Length > 1 && suffix.Length <= 40 && suffix |> Seq.forall (fun c -> Char.IsAsciiLetterLower c || Char.IsAsciiDigit c || c = '-')) then
+                    Ok(BrowserDatabase database)
+                else
+                    invalid $"'database' must be '{own}' or start with '{own}-', so no other environment can share it"
+            | Ok other, Ok _ -> invalid $"'{other}' is not an artifact store this build can use: 'browser'"
+            | Error e, _
+            | _, Error e -> Error e)
+
 /// A deployment's configuration from its JSON text, every value validated.
 let parse (document: string) : Result<DeploymentConfig, Diagnostic> =
     match Json.parse document with
     | Error error -> invalid (JsonError.describe error)
     | Ok value ->
-        closed [ "environment"; "environmentName"; "identity"; "location"; "organizations" ] value
+        closed [ "artifacts"; "environment"; "environmentName"; "identity"; "location"; "organizations" ] value
         |> Result.bind (fun () ->
             match text "environment" value |> Result.bind environmentOf, text "environmentName" value with
             | Ok _, Ok name when String.IsNullOrWhiteSpace name -> Error(MissingField "environmentName")
             | Ok environment, Ok environmentName ->
-                match optionalLocation value, organizationsOf value, identityOf value with
-                | Ok location, Ok organizations, Ok identity ->
+                match optionalLocation value, organizationsOf value, identityOf value, artifactsOf environment value with
+                | Ok location, Ok organizations, Ok identity, Ok artifacts ->
                     if location.IsNone && not organizations.IsEmpty then
                         invalid "'organizations' needs a 'location'"
                     elif location.IsSome && (identity.IsNone || organizations.IsEmpty) then
@@ -283,9 +322,11 @@ let parse (document: string) : Result<DeploymentConfig, Diagnostic> =
                               EnvironmentName = environmentName
                               Location = location
                               Identity = identity
+                              Artifacts = artifacts
                               Organizations = organizations }
-                | Error e, _, _
-                | _, Error e, _
-                | _, _, Error e -> Error e
+                | Error e, _, _, _
+                | _, Error e, _, _
+                | _, _, Error e, _
+                | _, _, _, Error e -> Error e
             | Error e, _
             | _, Error e -> Error e)

@@ -69,6 +69,7 @@ let events: Map<string, string -> string -> Msg> =
           "periodClosed", (fun _ _ -> PeriodClosed)
           "periodLocked", (fun _ _ -> PeriodLocked)
           "periodReopened", (fun _ _ -> PeriodReopened)
+          "pdfDownloadRequested", (fun _ _ -> PdfDownloadRequested)
           "customerNameChanged", (fun _ value -> CustomerNameChanged value)
           "customerBillingNameChanged", (fun _ value -> CustomerBillingNameChanged value)
           "customerAddressChanged", (fun _ value -> CustomerAddressChanged value)
@@ -118,7 +119,9 @@ type Inbound =
     | ClipboardResult of correlation: string * copied: bool
     | Event of name: string * key: string option * value: string option
     | StorageResult of correlation: string * StorageOutcome
-    | CapabilityResult of correlation: string * capability: string * completed: bool
+    /// A pack's outcome: Completed with its result, or why it was not executed.
+    | CapabilityResult of correlation: string * capability: string * outcome: JsonNode
+    | CapabilityFact of capability: string * fact: JsonNode
     | HttpResult of correlation: string * Result<string, string>
     | Ignored
 
@@ -154,8 +157,7 @@ let private effectResult (node: JsonNode) =
 
         HttpResult(correlation, result)
     | "CapabilityResult" ->
-        let outcome = required "outcome" path asObject node
-        CapabilityResult(correlation, required "capability" path asString node, required "kind" $"{path}.outcome" asString outcome = "Completed")
+        CapabilityResult(correlation, required "capability" path asString node, required "outcome" path asObject node)
     | "ClipboardResult" ->
         let outcome = required "outcome" path asObject node
         ClipboardResult(correlation, required "kind" $"{path}.outcome" asString outcome = "Success")
@@ -185,18 +187,19 @@ let decode (messageJson: string) =
         let event = required "event" "$" asObject message
         Event(required "name" "$.event" asString event, optional "key" "$.event" asString event, optional "value" "$.event" asString event)
     | "EffectResult" -> effectResult (required "result" "$" asObject message)
-    | "CapabilityFact" -> Ignored
+    | "CapabilityFact" -> CapabilityFact(required "capability" "$" asString message, required "fact" "$" asObject message)
     | other -> raise (MalformedInput("$.kind", $"a known message kind, not '{other}'"))
 
 // ---- The handshake ---------------------------------------------------------------------------------
 
 [<NoComparison; NoEquality>]
 type Answer =
-    | Accepted of minor: int * contract: JsonNode * printing: bool
+    | Accepted of minor: int * contract: JsonNode * printing: bool * packs: Packs
     | Rejected of reason: (Utf8JsonWriter -> unit)
 
-/// Accepts Limen Core and selects `summa.print` when the kernel offers it;
-/// without it the page simply offers no print button.
+/// Accepts Limen Core and selects `summa.print`, `limen.files` and
+/// `limen.store` when the kernel offers them. Without print there is no
+/// print button; without files and the store, no PDF can be attached.
 let answer (offer: JsonNode) =
     let path = "$.handshake"
     let protocol = required "protocol" path asObject offer
@@ -204,7 +207,8 @@ let answer (offer: JsonNode) =
     let minor = required "minor" $"{path}.protocol" asInt protocol
     let contract = required "contract" path asObject offer
     let offered = required "capabilities" path asArray offer
-    let printing = offered |> List.exists (fun c -> sameUnit print $"{path}.capabilities[]" c "id")
+    let offers contract = offered |> List.exists (fun c -> sameUnit contract $"{path}.capabilities[]" c "id")
+    let printing = offers print
 
     if major <> 1 then
         Rejected(fun writer ->
@@ -217,7 +221,7 @@ let answer (offer: JsonNode) =
             writer.WritePropertyName "offered"
             writeNode writer contract)
     else
-        Accepted(min minor ProtocolMinor, contract, printing)
+        Accepted(min minor ProtocolMinor, contract, printing, { Files = offers files; Store = offers store })
 
 // ---- Session ---------------------------------------------------------------------------------------
 
@@ -227,6 +231,12 @@ type Purpose =
     | Saving
     | Printing
     | Copying
+    | OpeningStore
+    | ReadingFile
+    | StoringArtifact
+    | FetchingArtifact
+    | Releasing
+    | Downloading
 
 [<NoComparison; NoEquality>]
 type Session =
@@ -251,6 +261,10 @@ type Request =
     | Print of correlation: string
     | Navigation of correlation: string * operation: string * url: string
     | Clipboard of correlation: string * text: string
+    /// A request to an optional pack, written by `request`.
+    | PackRequest of correlation: string * pack: Contract * request: (Utf8JsonWriter -> unit)
+
+let private artifactsStore = "artifacts"
 
 let private requests (session: Session) (effects: AppEffect list) =
     effects
@@ -272,7 +286,87 @@ let private requests (session: Session) (effects: AppEffect list) =
                     | Limen.Routing.NavigationEffect.Replace location -> "replace", location
 
                 s, out @ [ Navigation(correlation, operation, Limen.Routing.Location.href Summa.Web.Engine.Routes.mode location) ]
-            | CopyText text -> { s with Pending = s.Pending.Add(correlation, Copying) }, out @ [ Clipboard(correlation, text) ])
+            | CopyText text -> { s with Pending = s.Pending.Add(correlation, Copying) }, out @ [ Clipboard(correlation, text) ]
+            | OpenArtifactStore database ->
+                let request (w: Utf8JsonWriter) =
+                    w.WriteString("operation", "open")
+                    w.WriteString("database", database)
+                    w.WriteNumber("version", 1)
+                    w.WritePropertyName "stores"
+                    w.WriteStartArray()
+                    w.WriteStartObject()
+                    w.WriteString("name", artifactsStore)
+                    w.WriteString("keyPath", "sha256")
+                    w.WritePropertyName "indexes"
+                    w.WriteStartArray()
+                    w.WriteEndArray()
+                    w.WriteEndObject()
+                    w.WriteEndArray()
+                    w.WritePropertyName "dropStores"
+                    w.WriteStartArray()
+                    w.WriteEndArray()
+
+                { s with Pending = s.Pending.Add(correlation, OpeningStore) }, out @ [ PackRequest(correlation, store, request) ]
+            | ReadFileSlice(file, offset, length) ->
+                let request (w: Utf8JsonWriter) =
+                    w.WriteString("operation", "read")
+                    w.WriteString("file", file)
+                    w.WriteString("format", "base64")
+                    w.WriteNumber("offset", offset)
+                    w.WriteNumber("length", length)
+
+                { s with Pending = s.Pending.Add(correlation, ReadingFile) }, out @ [ PackRequest(correlation, files, request) ]
+            | ReleaseFile file ->
+                let request (w: Utf8JsonWriter) =
+                    w.WriteString("operation", "release")
+                    w.WriteString("file", file)
+
+                { s with Pending = s.Pending.Add(correlation, Releasing) }, out @ [ PackRequest(correlation, files, request) ]
+            | PutArtifact(database, sha, data, size) ->
+                let request (w: Utf8JsonWriter) =
+                    w.WriteString("operation", "transact")
+                    w.WriteString("database", database)
+                    w.WriteString("mode", "readwrite")
+                    w.WritePropertyName "operations"
+                    w.WriteStartArray()
+                    w.WriteStartObject()
+                    w.WriteString("op", "put")
+                    w.WriteString("store", artifactsStore)
+                    w.WritePropertyName "value"
+                    w.WriteStartObject()
+                    w.WriteString("sha256", sha)
+                    w.WriteString("mediaType", "application/pdf")
+                    w.WriteNumber("size", size)
+                    w.WriteString("data", data)
+                    w.WriteEndObject()
+                    w.WriteEndObject()
+                    w.WriteEndArray()
+
+                { s with Pending = s.Pending.Add(correlation, StoringArtifact) }, out @ [ PackRequest(correlation, store, request) ]
+            | GetArtifact(database, sha) ->
+                let request (w: Utf8JsonWriter) =
+                    w.WriteString("operation", "transact")
+                    w.WriteString("database", database)
+                    w.WriteString("mode", "readonly")
+                    w.WritePropertyName "operations"
+                    w.WriteStartArray()
+                    w.WriteStartObject()
+                    w.WriteString("op", "get")
+                    w.WriteString("store", artifactsStore)
+                    w.WriteString("key", sha)
+                    w.WriteEndObject()
+                    w.WriteEndArray()
+
+                { s with Pending = s.Pending.Add(correlation, FetchingArtifact) }, out @ [ PackRequest(correlation, store, request) ]
+            | OfferDownload(fileName, mediaType, data) ->
+                let request (w: Utf8JsonWriter) =
+                    w.WriteString("operation", "download")
+                    w.WriteString("fileName", fileName)
+                    w.WriteString("mimeType", mediaType)
+                    w.WriteString("format", "base64")
+                    w.WriteString("data", data)
+
+                { s with Pending = s.Pending.Add(correlation, Downloading) }, out @ [ PackRequest(correlation, files, request) ])
         (session, [])
 
 let private writeRequest (writer: Utf8JsonWriter) =
@@ -325,6 +419,17 @@ let private writeRequest (writer: Utf8JsonWriter) =
         writer.WriteString("correlationId", correlation)
         writer.WriteString("text", text)
         writer.WriteEndObject()
+    | PackRequest(correlation, pack, request) ->
+        writer.WriteStartObject()
+        writer.WriteString("kind", "Capability")
+        writer.WriteString("correlationId", correlation)
+        writer.WriteString("capability", pack.Id)
+        writer.WriteNumber("version", pack.Version)
+        writer.WritePropertyName "request"
+        writer.WriteStartObject()
+        request writer
+        writer.WriteEndObject()
+        writer.WriteEndObject()
 
 let render (session: Session) (out: Request list) (handshake: Answer option) =
     let view =
@@ -346,7 +451,7 @@ let render (session: Session) (out: Request list) (handshake: Answer option) =
 
         match handshake with
         | None -> ()
-        | Some(Accepted(minor, contract, printing)) ->
+        | Some(Accepted(minor, contract, printing, packs)) ->
             writer.WritePropertyName "handshake"
             writer.WriteStartObject()
             writer.WriteString("kind", "Accepted")
@@ -360,6 +465,8 @@ let render (session: Session) (out: Request list) (handshake: Answer option) =
             writer.WritePropertyName "capabilities"
             writer.WriteStartArray()
             if printing then writeOffer writer print
+            if packs.Files then writeOffer writer files
+            if packs.Store then writeOffer writer store
             writer.WriteEndArray()
             writer.WriteEndObject()
         | Some(Rejected reason) ->
@@ -384,13 +491,14 @@ let private step (ctx: Ctx) (session: Session) (inbound: Inbound) =
         | Initialize(offer, page) ->
             let answered = offer |> Option.map answer
 
-            let printing =
+            let printing, packs =
                 match answered with
-                | Some(Accepted(_, _, p)) -> p
-                | _ -> false
+                | Some(Accepted(_, _, p, packs)) -> p, packs
+                | _ -> false, { Files = false; Store = false }
 
-            let s, out = run (Started page) { session with Printing = printing }
-            s, out, answered
+            let started, first = run (Started page) { session with Printing = printing }
+            let s, more = run (PacksNegotiated packs) started
+            s, first @ more, answered
         | LocationChanged page ->
             let s, out = run (Msg.LocationChanged page) session
             s, out, None
@@ -429,7 +537,70 @@ let private step (ctx: Ctx) (session: Session) (inbound: Inbound) =
                 let s, out = run (ConfigurationRead result) { session with Pending = session.Pending.Remove correlation }
                 s, out, None
             | _ -> session, [], None
-        | CapabilityResult(correlation, _, _) -> { session with Pending = session.Pending.Remove correlation }, [], None
+        | CapabilityResult(correlation, _, outcome) ->
+            let rest = { session with Pending = session.Pending.Remove correlation }
+            let path = "$.result.outcome"
+            let completed = required "kind" path asString outcome = "Completed"
+            let result () = required "result" path asObject outcome
+            let kindOf (node: JsonNode) = required "kind" $"{path}.result" asString node
+
+            let failure () =
+                if completed then kindOf (result ()) else required "kind" path asString outcome + (optional "reason" path asString outcome |> Option.map (fun r -> $": {r}") |> Option.defaultValue "")
+
+            let answer =
+                match session.Pending.TryFind correlation with
+                | Some OpeningStore -> Some(ArtifactStoreOpened(if completed && kindOf (result ()) = "Opened" then Ok() else Error(failure ())))
+                | Some ReadingFile ->
+                    Some(
+                        PdfChunkRead(
+                            if completed && kindOf (result ()) = "Read" then
+                                let read = result ()
+                                Ok(required "data" $"{path}.result" asString read, required "eof" $"{path}.result" asBool read)
+                            else
+                                Error(failure ())
+                        )
+                    )
+                | Some StoringArtifact -> Some(PdfStored(if completed && kindOf (result ()) = "Committed" then Ok() else Error(failure ())))
+                | Some FetchingArtifact ->
+                    Some(
+                        PdfFetched(
+                            if completed && kindOf (result ()) = "Committed" then
+                                match required "results" $"{path}.result" asArray (result ()) with
+                                | first :: _ when required "kind" $"{path}.result.results[0]" asString first = "Found" ->
+                                    let value = required "value" $"{path}.result.results[0]" asObject first
+                                    Ok(Some(required "data" $"{path}.result.results[0].value" asString value))
+                                | _ -> Ok None
+                            else
+                                Error(failure ())
+                        )
+                    )
+                | _ -> None
+
+            match answer with
+            | Some msg ->
+                let s, out = run msg rest
+                s, out, None
+            | None -> rest, [], None
+        | CapabilityFact(capability, fact) when capability = files.Id ->
+            let path = "$.fact"
+
+            match required "kind" path asString fact with
+            | "Selected" when required "name" $"{path}.input" asString (required "input" path asObject fact) = PdfInput ->
+                let picked =
+                    required "files" path asArray fact
+                    |> List.tryHead
+                    |> Option.map (fun file ->
+                        let at = $"{path}.files[0]"
+
+                        { Id = required "file" at asString file
+                          Name = required "name" at asString file
+                          Size = required "size" at asInt64 file
+                          Type = required "type" at asString file })
+
+                let s, out = run (PdfPicked picked) session
+                s, out, None
+            | _ -> session, [], None
+        | CapabilityFact _ -> session, [], None
         | Ignored -> session, [], None
 
     next, render next out handshake

@@ -22,6 +22,8 @@ type IsolationProblem =
     | DuplicateEnvironment of name: string
     /// Staging must be production-like: storage and sign-in both configured.
     | StagingNotProductionLike of name: string
+    /// Two environments would keep their artifacts (PDFs) in one store.
+    | SharedArtifacts of first: string * second: string
 
 let private kindName =
     function
@@ -55,6 +57,9 @@ let check (deployments: DeploymentConfig list) : IsolationProblem list =
                   for y in locations second do
                       if repositoryOf x = repositoryOf y && x.Branch = y.Branch && x.BasePath = y.BasePath then
                           SharedLocation(a, b)
+              if first.Artifacts = second.Artifacts then
+                  SharedArtifacts(a, b)
+
               let production, other, otherName =
                   if first.Environment = EnvironmentKind.Production then Some first, second, b
                   elif second.Environment = EnvironmentKind.Production then Some second, first, a
