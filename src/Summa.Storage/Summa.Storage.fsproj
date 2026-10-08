@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Where and how Summa stores its data (WI-0018 onwards): deployment
+    configuration, Summa's namespace and organization folders, manifests,
+    record codecs and the command-to-commit rules, built on Arca's pure core.
+    Pure: an Arca provider (in memory in tests, GitHub in the application)
+    performs every read and commit.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Diagnostics.fs" />
+    <Compile Include="Codec.fs" />
+    <Compile Include="Organization.fs" />
+    <Compile Include="Deployment.fs" />
+    <Compile Include="Application.fs" />
+    <Compile Include="Storage.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Summa.Ledger/Summa.Ledger.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="EchelonFoundry.Arca.Core" />
+  </ItemGroup>
+
+</Project>
