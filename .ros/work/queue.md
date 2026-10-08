@@ -51,3 +51,5 @@
 | WI-0038 | Summa 06b: financial schema migrations - run a record-schema change as an explicit, versioned migration through Arca, checked by Verification.checkMigration before it is activated (SUM0-032, SUM3-010) | captured | summa, order:06, migration | medium |
 | WI-0039 | Summa 14b: GitHub Pages deployment of the accounting app on summa.echelonfoundry.com (after WI-0030) | complete | deployment, pages | medium |
 | WI-0040 | Summa 11b: explicit tax model room (INV-ADJ-005) | captured | invoicing, tax | low |
+| WI-0041 | Summa 14c: deep links - every navigable view, list filter, sort, search and date range in the URL (hash routes on static Pages, opaque ids only, not-found and not-permitted views, return after sign-in, Copy link), with the route model and codec matching Limen 0.9.0's Limen.Routing (SUM-LINK-001..012) | active |  | high |
+| WI-0042 | Summa 14d: replace the vendored Limen.Routing (vendor/Limen.Routing, DF-SUMMA-2026-0010) with the Limen 0.9.0 package once it is released | captured |  | medium |

@@ -22,10 +22,14 @@ let private expected =
           ids @"(?m)^## (\d+)\. " "SUM4" (source "summa-v0.4-requirements.txt")
           Regex.Matches(source "summa-invoice-generation-requirements.txt", @"\b(INV-[A-Z0-9]+)-\d{3}\b")
           |> Seq.map _.Groups[1].Value
+          |> Set.ofSeq
+          // The deep-linking requirement (SUM-LINK), added 2026-10-08.
+          Regex.Matches(readRepoFile "docs/requirements/SUMMA-DEEP-LINKING.md", @"(?m)^\*\*(SUM-LINK-\d{3}) ")
+          |> Seq.map _.Groups[1].Value
           |> Set.ofSeq ]
 
 let private rows =
-    Regex.Matches(analysis, @"(?m)^\| ((?:SUM\d-\d{3})|(?:INV-[A-Z0-9]+)) \| (tested|partial|missing) \| (tested|partial|missing) \|")
+    Regex.Matches(analysis, @"(?m)^\| ((?:SUM\d-\d{3})|(?:SUM-LINK-\d{3})|(?:INV-[A-Z0-9]+)) \| (tested|partial|missing) \| (tested|partial|missing) \|")
     |> Seq.map (fun m -> m.Groups[1].Value, m.Groups[2].Value, m.Groups[3].Value)
     |> Seq.toList
 
@@ -77,17 +81,17 @@ let private plannedIds =
     let known = rows |> List.map (fun (id, _, _) -> id)
 
     let direct =
-        Regex.Matches(openWorkText, @"\b(?:SUM\d-\d{3}|INV-[A-Z0-9]+)\b") |> Seq.map _.Value
+        Regex.Matches(openWorkText, @"\b(?:SUM\d-\d{3}|SUM-LINK-\d{3}|INV-[A-Z0-9]+)\b") |> Seq.map _.Value
 
     let ranges =
-        Regex.Matches(openWorkText, @"\b(SUM\d)-(\d{3})\.\.(?:SUM\d-)?(\d{3})")
+        Regex.Matches(openWorkText, @"\b(SUM\d|SUM-LINK)-(\d{3})\.\.(?:SUM\d-|SUM-LINK-)?(\d{3})")
         |> Seq.collect (fun m ->
             let set, low, high = m.Groups[1].Value, int m.Groups[2].Value, int m.Groups[3].Value
             known
             |> List.filter (fun id ->
                 id.StartsWith(set + "-")
-                && int (id.Substring 5) >= low
-                && int (id.Substring 5) <= high))
+                && int (id.Substring(set.Length + 1)) >= low
+                && int (id.Substring(set.Length + 1)) <= high))
 
     Seq.append direct ranges |> Set.ofSeq
 
