@@ -185,7 +185,7 @@
             <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Terms</th><th scope="col" class="summa-number">Open balance</th><th scope="col"><span class="ef-visually-hidden">Invoices</span></th></tr></thead>
             <tbody>
               <template data-each="customers" data-key="id">
-                <tr><td data-text="name"></td><td data-text="email"></td><td data-text="terms"></td><td class="summa-number" data-text="balance"></td><td><a class="summa-link" data-bind-href="invoicesHref">Invoices</a></td></tr>
+                <tr><td><a class="summa-link" data-bind-href="href" data-text="name"></a></td><td data-text="email"></td><td data-text="terms"></td><td class="summa-number" data-text="balance"></td><td><a class="summa-link" data-bind-href="invoicesHref">Invoices</a></td></tr>
               </template>
             </tbody>
           </table>
@@ -220,7 +220,7 @@
             <div class="ef-field"><label class="ef-field__label" for="draft-customer">Customer</label>
               <select id="draft-customer" data-event="draftCustomerChanged" data-bind-value="draftCustomer">
                 <option value="">Choose a customer</option>
-                <template data-each="customerOptions" data-key="value"><option data-bind-value="value" data-text="label"></option></template>
+                <template data-each="customerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
               </select>
               <p class="ef-field__description">Terms: <span id="draft-terms" data-text="draftCustomerTerms"></span></p></div>
             <div class="ef-field"><label class="ef-field__label" for="draft-po">Purchase order</label>
@@ -272,7 +272,7 @@
             <div class="ef-field"><label class="ef-field__label" for="invoice-customer">Customer</label>
               <select id="invoice-customer" data-event="invoiceCustomerChosen" data-bind-value="invoiceCustomer">
                 <option value="">All customers</option>
-                <template data-each="customerFilterOptions" data-key="value"><option data-bind-value="value" data-text="label"></option></template>
+                <template data-each="invoiceCustomerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
               </select></div>
             <div class="ef-field"><label class="ef-field__label" for="invoice-from">Issued from</label>
               <input id="invoice-from" type="date" data-event="invoiceFromChanged" data-on="change" data-bind-value="invoiceFrom" /></div>
@@ -317,7 +317,7 @@
         <section class="ef-stack" aria-labelledby="invoice-title">
           <div class="summa-invoice-head">
             <h1 id="invoice-title">Invoice <span data-text="docNumber"></span></h1>
-            <p><span class="ef-status-lozenge" id="invoice-status" data-text="detailStatus"></span> Outstanding <strong id="invoice-outstanding" data-text="detailOutstanding"></strong></p>
+            <p><a class="summa-link" id="invoice-customer" data-bind-href="detailCustomerHref" data-text="detailCustomer"></a> · <span class="ef-status-lozenge" id="invoice-status" data-text="detailStatus"></span> Outstanding <strong id="invoice-outstanding" data-text="detailOutstanding"></strong></p>
           </div>
           <!-- The tab is part of the link (?tab=payments); choosing one refines the view. -->
           <div class="summa-tabs summa-screen-only" role="group" aria-label="Invoice views">
@@ -386,6 +386,25 @@
                 <div class="ef-actions"><button type="submit" class="ef-button" id="record-payment">Record payment</button></div>
               </form>
             </template>
+            <h3 id="credits-title">Credits applied</h3>
+            <table class="summa-table" id="invoice-credits">
+              <caption class="ef-visually-hidden">Credits applied to this invoice</caption>
+              <thead><tr><th scope="col">Applied</th><th scope="col">From</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+              <tbody><template data-each="detailCredits" data-key="key"><tr><td data-text="date"></td><td><a class="summa-link" data-bind-href="href" data-text="source"></a></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
+            </table>
+            <template data-if="canRecordPayment">
+              <form class="ef-stack" id="credit-form" data-event="creditMemoIssued" aria-labelledby="credit-form-title">
+                <h3 id="credit-form-title">Issue a credit memo</h3>
+                <p class="ef-field__description">The invoice stays as issued. A credit memo reduces what is owed, and the customer receives it as its own document.</p>
+                <div class="summa-fields">
+                  <div class="ef-field"><label class="ef-field__label" for="credit-amount">Amount to credit</label>
+                    <input id="credit-amount" type="text" inputmode="decimal" required data-event="creditAmountChanged" data-on="input" data-bind-value="creditAmount" /></div>
+                  <div class="ef-field"><label class="ef-field__label" for="credit-reason">Reason, as the customer will read it</label>
+                    <input id="credit-reason" type="text" required data-event="creditReasonChanged" data-on="input" data-bind-value="creditReason" /></div>
+                </div>
+                <div class="ef-actions"><button type="submit" class="ef-button" data-variant="secondary" id="issue-credit">Issue credit memo</button></div>
+              </form>
+            </template>
           </section>
           </template>
 
@@ -413,7 +432,7 @@
           <div class="ef-field"><label class="ef-field__label" for="receivables-customer">Customer</label>
             <select id="receivables-customer" data-event="receivablesCustomerChosen" data-bind-value="receivablesCustomer">
               <option value="">All customers</option>
-              <template data-each="customerFilterOptions" data-key="value"><option data-bind-value="value" data-text="label"></option></template>
+              <template data-each="receivablesCustomerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
             </select></div>
         </div>
         <p class="summa-count" id="receivables-date">Aged as of <span data-text="receivablesDate"></span>.</p>
@@ -428,6 +447,229 @@
             </tbody>
           </table>
         </template>
+      </section>
+    </template>
+
+    <!-- Engagements (v0.2 §16-17). -->
+    <template data-if="onEngagements">
+      <section class="ef-stack" aria-labelledby="engagements-title">
+        <h1 id="engagements-title">Engagements</h1>
+        <div class="summa-filters" role="search" aria-label="Engagements">
+          <div class="ef-field"><label class="ef-field__label" for="engagements-customer">Customer</label>
+            <select id="engagements-customer" data-event="engagementsCustomerChosen" data-bind-value="engagementCustomer">
+              <option value="">All customers</option>
+              <template data-each="engagementsCustomerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
+            </select></div>
+        </div>
+        <template data-if="hasEngagements">
+          <table class="summa-table" id="engagements-table">
+            <caption class="ef-visually-hidden">Engagements</caption>
+            <thead><tr><th scope="col">Engagement</th><th scope="col">Customer</th><th scope="col">Fee</th></tr></thead>
+            <tbody><template data-each="engagements" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="name"></a></td><td><a class="summa-link" data-bind-href="customerHref" data-text="customer"></a></td><td data-text="fee"></td></tr></template></tbody>
+          </table>
+        </template>
+        <form class="ef-surface ef-stack" id="engagement-form" data-event="engagementAdded" aria-labelledby="engagement-form-title">
+          <h2 id="engagement-form-title">Add an engagement</h2>
+          <div class="summa-fields">
+            <div class="ef-field"><label class="ef-field__label" for="engagement-customer">Customer</label>
+              <select id="engagement-customer" data-event="engagementCustomerChanged" data-bind-value="engagementFormCustomer">
+                <option value="">Choose a customer</option>
+                <template data-each="engagementFormCustomerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
+              </select></div>
+            <div class="ef-field"><label class="ef-field__label" for="engagement-name">Name</label>
+              <input id="engagement-name" type="text" required data-event="engagementNameChanged" data-on="input" data-bind-value="engagementFormName" /></div>
+            <div class="ef-field"><label class="ef-field__label" for="engagement-fee">Fixed fee</label>
+              <input id="engagement-fee" type="text" inputmode="decimal" aria-describedby="engagement-fee-note" data-event="engagementFeeChanged" data-on="input" data-bind-value="engagementFormFee" />
+              <p class="ef-field__description" id="engagement-fee-note">Leave empty for hourly work.</p></div>
+          </div>
+          <div class="ef-actions"><button type="submit" class="ef-button" id="add-engagement">Add engagement</button></div>
+        </form>
+      </section>
+    </template>
+
+    <template data-if="onEngagement">
+      <section class="ef-stack" aria-labelledby="engagement-title">
+        <h1 id="engagement-title" data-text="engName"></h1>
+        <dl class="summa-facts">
+          <div><dt>Customer</dt><dd><a class="summa-link" data-bind-href="engCustomerHref" data-text="engCustomer"></a></dd></div>
+          <div><dt>Fee</dt><dd id="engagement-fee-text" data-text="engFee"></dd></div>
+          <div><dt>Terms</dt><dd data-text="engTerms"></dd></div>
+        </dl>
+        <p><a class="summa-link" data-bind-href="engNewInvoiceHref">New invoice for this customer</a></p>
+        <template data-if="engHasMilestones">
+          <table class="summa-table" id="engagement-milestones">
+            <caption>Milestones</caption>
+            <thead><tr><th scope="col">Milestone</th><th scope="col">State</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+            <tbody><template data-each="engMilestones" data-key="key"><tr><td data-text="label"></td><td data-text="state"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
+          </table>
+        </template>
+        <table class="summa-table" id="engagement-invoices">
+          <caption>Invoices</caption>
+          <thead><tr><th scope="col">Invoice</th><th scope="col">Issued</th><th scope="col" class="summa-number">Total</th></tr></thead>
+          <tbody><template data-each="engInvoices" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="issueDate"></td><td class="summa-number" data-text="total"></td></tr></template></tbody>
+        </table>
+      </section>
+    </template>
+
+    <!-- One customer and their invoices, payments and credits (v0.4 §3). -->
+    <template data-if="onCustomer">
+      <section class="ef-stack" aria-labelledby="customer-title">
+        <h1 id="customer-title" data-text="custName"></h1>
+        <dl class="summa-facts">
+          <div><dt>Billed as</dt><dd data-text="custBillingName"></dd></div>
+          <div><dt>Billing email</dt><dd data-text="custEmail"></dd></div>
+          <div><dt>Terms</dt><dd data-text="custTerms"></dd></div>
+          <div><dt>Open balance</dt><dd id="customer-balance" data-text="custBalance"></dd></div>
+          <div><dt>Credit available</dt><dd id="customer-credit" data-text="custCredit"></dd></div>
+          <div><dt>Status</dt><dd data-text="custStatus"></dd></div>
+        </dl>
+        <p class="summa-pre" data-text="custAddress"></p>
+        <p><a class="summa-link" id="customer-new-invoice" data-bind-href="custNewInvoiceHref">New invoice for this customer</a></p>
+        <div class="summa-tabs" role="group" aria-label="Customer views">
+          <template data-each="customerTabs" data-key="value">
+            <button type="button" class="summa-tab" data-event="customerTabChosen" data-bind-aria-pressed="selected" data-bind-data-tab="value" data-text="label"></button>
+          </template>
+        </div>
+        <template data-if="onCustInvoicesTab">
+          <table class="summa-table" id="customer-invoices">
+            <caption class="ef-visually-hidden">Invoices</caption>
+            <thead><tr><th scope="col">Invoice</th><th scope="col">Issued</th><th scope="col">Status</th><th scope="col" class="summa-number">Outstanding</th></tr></thead>
+            <tbody><template data-each="custInvoices" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="issueDate"></td><td data-text="status"></td><td class="summa-number" data-text="outstanding"></td></tr></template></tbody>
+          </table>
+        </template>
+        <template data-if="onCustPaymentsTab">
+          <table class="summa-table" id="customer-payments">
+            <caption class="ef-visually-hidden">Payments</caption>
+            <thead><tr><th scope="col">Payment</th><th scope="col">Received</th><th scope="col">Reference</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+            <tbody><template data-each="custPayments" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date"></td><td data-text="reference"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
+          </table>
+        </template>
+        <template data-if="onCustCreditsTab">
+          <table class="summa-table" id="customer-credits">
+            <caption class="ef-visually-hidden">Credit memos</caption>
+            <thead><tr><th scope="col">Credit memo</th><th scope="col">Issued</th><th scope="col">Reason</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Unused</th></tr></thead>
+            <tbody><template data-each="custCredits" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date"></td><td data-text="reason"></td><td class="summa-number" data-text="amount"></td><td class="summa-number" data-text="remaining"></td></tr></template></tbody>
+          </table>
+        </template>
+      </section>
+    </template>
+
+    <!-- Payments received (v0.4 §11, §13). -->
+    <template data-if="onPayments">
+      <section class="ef-stack" aria-labelledby="payments-list-title">
+        <h1 id="payments-list-title">Payments</h1>
+        <template data-if="hasPayments">
+          <div class="ef-stack" id="payment-list">
+            <div class="summa-filters" role="search" aria-label="Payments">
+              <div class="ef-field"><label class="ef-field__label" for="payment-search">Search reference or customer</label>
+                <input id="payment-search" type="search" data-event="paymentSearchChanged" data-on="input" data-bind-value="paymentSearch" /></div>
+              <div class="ef-field"><label class="ef-field__label" for="payment-customer">Customer</label>
+                <select id="payment-customer" data-event="paymentCustomerChosen" data-bind-value="paymentCustomer">
+                  <option value="">All customers</option>
+                  <template data-each="paymentCustomerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
+                </select></div>
+              <div class="ef-field"><label class="ef-field__label" for="payment-from">Received from</label>
+                <input id="payment-from" type="date" data-event="paymentFromChanged" data-on="change" data-bind-value="paymentFrom" /></div>
+              <div class="ef-field"><label class="ef-field__label" for="payment-to">Received to</label>
+                <input id="payment-to" type="date" data-event="paymentToChanged" data-on="change" data-bind-value="paymentTo" /></div>
+              <div class="ef-field"><label class="ef-field__label" for="payment-sort">Sort by</label>
+                <select id="payment-sort" data-event="paymentSortChosen" data-bind-value="paymentSort">
+                  <option value="newest">Newest first</option><option value="oldest">Oldest first</option>
+                </select></div>
+              <label class="summa-check"><input id="payment-unapplied" type="checkbox" data-event="paymentUnappliedToggled" data-on="change" data-bind-checked="paymentUnapplied" /> Not fully applied</label>
+              <template data-if="isPaymentFiltered"><button type="button" class="ef-button" data-variant="secondary" id="clear-payment-filters" data-event="paymentFiltersCleared">Clear filters</button></template>
+            </div>
+            <p class="summa-count" id="payment-count-text" role="status" data-text="paymentCountText"></p>
+            <template data-if="noListedPayments"><p id="no-payments">No payment matches these filters.</p></template>
+            <table class="summa-table" id="payments-table">
+              <caption class="ef-visually-hidden">Payments received</caption>
+              <thead><tr><th scope="col">Payment</th><th scope="col">Received</th><th scope="col">Customer</th><th scope="col">Method</th><th scope="col">Reference</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Not applied</th></tr></thead>
+              <tbody><template data-each="payments" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date"></td><td><a class="summa-link" data-bind-href="customerHref" data-text="customer"></a></td><td data-text="method"></td><td data-text="reference"></td><td class="summa-number" data-text="amount"></td><td class="summa-number" data-text="unapplied"></td></tr></template></tbody>
+            </table>
+          </div>
+        </template>
+      </section>
+    </template>
+
+    <template data-if="onPayment">
+      <section class="ef-stack" aria-labelledby="payment-title">
+        <h1 id="payment-title">Payment <span data-text="payId"></span></h1>
+        <template data-if="payReversed"><p class="summa-error" role="note">This payment was reversed.</p></template>
+        <dl class="summa-facts">
+          <div><dt>Received</dt><dd data-text="payDate"></dd></div>
+          <div><dt>Customer</dt><dd><a class="summa-link" data-bind-href="payCustomerHref" data-text="payCustomer"></a></dd></div>
+          <div><dt>Method</dt><dd data-text="payMethod"></dd></div>
+          <div><dt>Reference</dt><dd data-text="payReference"></dd></div>
+          <div><dt>Amount</dt><dd id="payment-amount-text" data-text="payAmount"></dd></div>
+          <div><dt>Not applied</dt><dd id="payment-unapplied-text" data-text="payUnapplied"></dd></div>
+        </dl>
+        <table class="summa-table" id="payment-allocations">
+          <caption>Applied to</caption>
+          <thead><tr><th scope="col">Invoice</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+          <tbody><template data-each="payAllocations" data-key="key"><tr><td><a class="summa-link" data-bind-href="href" data-text="invoice"></a></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
+        </table>
+      </section>
+    </template>
+
+    <!-- Credit memos (v0.2 §6, INV-COR-008). -->
+    <template data-if="onCreditMemos">
+      <section class="ef-stack" aria-labelledby="credit-memos-title">
+        <h1 id="credit-memos-title">Credit memos</h1>
+        <div class="summa-filters" role="search" aria-label="Credit memos">
+          <div class="ef-field"><label class="ef-field__label" for="credit-memos-customer">Customer</label>
+            <select id="credit-memos-customer" data-event="creditMemosCustomerChosen" data-bind-value="memoCustomer">
+              <option value="">All customers</option>
+              <template data-each="memoCustomerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
+            </select></div>
+        </div>
+        <template data-if="hasCreditMemos">
+          <table class="summa-table" id="credit-memos-table">
+            <caption class="ef-visually-hidden">Credit memos</caption>
+            <thead><tr><th scope="col">Credit memo</th><th scope="col">Issued</th><th scope="col">Customer</th><th scope="col">Invoice</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Unused</th></tr></thead>
+            <tbody><template data-each="creditMemos" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date"></td><td><a class="summa-link" data-bind-href="customerHref" data-text="customer"></a></td><td><a class="summa-link" data-bind-href="invoiceHref" data-text="invoice"></a></td><td class="summa-number" data-text="amount"></td><td class="summa-number" data-text="remaining"></td></tr></template></tbody>
+          </table>
+        </template>
+        <p>A credit memo is issued from the invoice it corrects, on its Payments tab.</p>
+      </section>
+    </template>
+
+    <template data-if="onCreditMemo">
+      <section class="ef-stack" aria-labelledby="credit-memo-title">
+        <div class="summa-invoice-head">
+          <h1 id="credit-memo-title">Credit memo <span data-text="cmId"></span></h1>
+          <p>Credits <a class="summa-link" id="credit-memo-invoice" data-bind-href="cmInvoiceHref" data-text="cmInvoice"></a> · Unused <strong id="credit-memo-remaining" data-text="cmRemaining"></strong></p>
+          <template data-if="canPrint"><p class="summa-screen-only"><button type="button" class="ef-button" data-variant="secondary" id="print-credit-memo" data-event="printRequested">Print or save as PDF</button></p></template>
+        </div>
+        <template data-if="cmHasDocument">
+          <ef-print-document class="summa-document" id="credit-memo-document">
+            <ef-print-header repeat="page"><span slot="left" data-text="cmIssuer"></span><span slot="right">Credit memo <span data-text="cmId"></span></span></ef-print-header>
+            <header class="summa-document__head">
+              <div><p class="summa-document__issuer" data-text="cmIssuer"></p><p class="summa-pre" data-text="cmIssuerAddress"></p></div>
+              <dl class="summa-document__facts">
+                <div><dt>Credit memo</dt><dd data-text="cmId"></dd></div>
+                <div><dt>Issue date</dt><dd data-text="cmIssueDate"></dd></div>
+                <div><dt>Credits invoice</dt><dd><span data-text="cmInvoice"></span>, issued <span data-text="cmInvoiceDate"></span></dd></div>
+              </dl>
+            </header>
+            <section aria-label="Credit to"><h2 class="summa-document__label">Credit to</h2><p data-text="cmCustomer"></p><p class="summa-pre" data-text="cmCustomerAddress"></p></section>
+            <section aria-label="Reason"><h2 class="summa-document__label">Reason</h2><p class="summa-pre" id="credit-memo-reason" data-text="cmReason"></p></section>
+            <template data-if="cmHasLines">
+              <ef-print-table><table class="summa-table" id="credit-memo-lines">
+                <caption>Credited lines</caption>
+                <thead><tr><th scope="col">Description</th><th scope="col" class="summa-number">Quantity</th><th scope="col" class="summa-number">Charged</th></tr></thead>
+                <tbody><template data-each="cmLines" data-key="key"><tr><td data-text="description"></td><td class="summa-number" data-text="quantity"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
+              </table></ef-print-table>
+            </template>
+            <ef-print-keep><dl class="summa-document__totals"><div class="summa-document__due"><dt>Amount credited</dt><dd id="credit-memo-amount" data-text="cmAmount"></dd></div></dl></ef-print-keep>
+            <ef-print-footer repeat="page"><span slot="right"><ef-print-page-number format="page-of-pages"></ef-print-page-number></span></ef-print-footer>
+          </ef-print-document>
+        </template>
+        <template data-if="cmNoDocument"><p>This credit memo was not raised against an invoice, so it has no customer document. It credited <span data-text="cmAmount"></span>: <span data-text="cmReason"></span>.</p></template>
+        <table class="summa-table summa-screen-only" id="credit-memo-applications">
+          <caption>Applied to</caption>
+          <thead><tr><th scope="col">Invoice</th><th scope="col">Applied</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+          <tbody><template data-each="cmApplications" data-key="key"><tr><td><a class="summa-link" data-bind-href="href" data-text="invoice"></a></td><td data-text="date"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
+        </table>
       </section>
     </template>
 

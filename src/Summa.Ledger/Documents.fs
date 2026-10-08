@@ -129,10 +129,10 @@ let termsText =
 
 // ---- HTML, template summa.invoice 1.0.0 -----------------------------------------------
 
-let private escape (text: string) =
+let internal escape (text: string) =
     text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;").Replace("'", "&#39;")
 
-let private multiline (text: string) =
+let internal multiline (text: string) =
     text.Replace("\r\n", "\n").Split('\n') |> Array.map escape |> String.concat "<br>"
 
 let private row (label: string) (value: string) =

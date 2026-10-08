@@ -108,7 +108,7 @@ let ``every link on the page is a relative hash link`` () =
     let model = books ()
 
     Assert.Equal<string list>(
-        [ "#/"; "#/invoices"; "#/customers"; "#/receivables"; "#/settings" ],
+        [ "#/"; "#/invoices"; "#/customers"; "#/engagements"; "#/payments"; "#/credit-memos"; "#/receivables"; "#/settings" ],
         items "navigation" model |> List.map (field "href")
     )
 

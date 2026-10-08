@@ -20,6 +20,7 @@
     <Compile Include="BindingAgreementTests.fs" />
     <Compile Include="RoutesTests.fs" />
     <Compile Include="DeepLinkTests.fs" />
+    <Compile Include="ScreensTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

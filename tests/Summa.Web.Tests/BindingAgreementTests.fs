@@ -118,7 +118,21 @@ module private Accounting =
         let untrustworthy = step configured (Loaded(Some "{}"))
         let misconfigured = [ Started(at ""); ConfigurationRead(Error "HTTP 404") ] |> List.fold step initial
         let extra = [ "canPrint", Value(Flag true) ]
-        let visit hash = step paid (go hash)
+
+        // An engagement and a credit memo, so every list on every screen has rows.
+        let full =
+            [ go "#/engagements"
+              EngagementCustomerChanged "CUST-0001"
+              EngagementNameChanged "Retainer"
+              EngagementFeeChanged "1000"
+              EngagementAdded
+              go "#/invoices/INV-0001?tab=payments"
+              CreditAmountChanged "10"
+              CreditReasonChanged "Goodwill"
+              CreditMemoIssued ]
+            |> List.fold step paid
+
+        let visit hash = step full (go hash)
 
         [ view started @ extra
           view blocked
@@ -135,6 +149,17 @@ module private Accounting =
           view (visit "#/no-such-place")
           view (visit "#/periods/2026-13")
           view (visit "#/reports")
+          view (visit "#/invoices/INV-0001?tab=payments")
+          view (visit "#/payments")
+          view (visit "#/payments?q=nothing-matches")
+          view (visit "#/payments/PAY-0001")
+          view (visit "#/customers/CUST-0001")
+          view (visit "#/customers/CUST-0001?tab=payments")
+          view (visit "#/customers/CUST-0001?tab=credits")
+          view (visit "#/credit-memos")
+          view (visit "#/credit-memos/CM-0001")
+          view (visit "#/engagements")
+          view (visit "#/engagements/ENG-0001")
           view (step paid (LinkCopied false))
           view untrustworthy
           view misconfigured
