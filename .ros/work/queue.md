@@ -26,3 +26,4 @@
 | WI-0013 | Invoices and receivables: customers, numbering, issue with AR/revenue posting, idempotency, obligations, payment terms (v0.1 sections 3-6, 9-10, 19) | complete | invoicing,receivables | high |
 | WI-0014 | Payments, allocation, AR aging and core financial reports: trial balance, general ledger, income statement, balance sheet (v0.1 sections 11-15) | complete | payments,reports | high |
 | WI-0015 | Move summa to Ordo 1.5.0 via echelon-current 1.2.0 (conditor upgrade --current) | complete |  | medium |
+| WI-0016 | Fix the browser-suite CI hang: Chromium install blocks indefinitely in an unbounded apt-get update run by playwright install --with-deps | ready | ci,playwright,reliability | high |
