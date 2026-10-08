@@ -15,3 +15,6 @@ playwright-report/
 
 # Praxis runtime locks (transient, per checkout)
 .ros/locks/
+
+# The assembled GitHub Pages site (tools/pages/assemble-site.mjs).
+dist-pages/
