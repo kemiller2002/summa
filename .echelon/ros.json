@@ -9,7 +9,7 @@
     {
       "path": ".echelon/toolchain.json",
       "ownership": "shared",
-      "sha256": "3f4b52f72fb4b263ff86e1678a5be2e6908eff1dc76581a376463ddb42592160"
+      "sha256": "87218ac8894061233aad2f68d2599d5a6088d3aadd6acc1fda2a6065bf82fe7e"
     },
     {
       "path": ".editorconfig",
@@ -34,7 +34,7 @@
     {
       "path": ".gitignore",
       "ownership": "user-owned",
-      "sha256": "c24cd9e29c6603218820a2bb8eeb2d8b9acdffbfc34c8b6f467cacbef1d2e1a4"
+      "sha256": "3ee91e5260ba26937ff3f7029ee4a266da33932a185e8438b50da17c507e6320"
     },
     {
       "path": "AGENTS.md",
@@ -59,7 +59,7 @@
     {
       "path": "HANDOFF.md",
       "ownership": "shared",
-      "sha256": "220e5addb2b78f9259bb8e98896aca09b735430c3269d8bbca79c16d545ebcda"
+      "sha256": "0dfd66151247458a464de53866b7041aefd3df4d5a34a05370c8811fb0e7ada5"
     },
     {
       "path": "PROJECT-CHARTER.md",
@@ -74,12 +74,12 @@
     {
       "path": "context/ARCHITECTURE.md",
       "ownership": "shared",
-      "sha256": "8633b1e5c77088a963e26d78b8b4419fbd11d2df22975607929edec8ccbb827f"
+      "sha256": "fc2159921b9fc22b2f95b9b535462cd4400dd153a3dbc60816cd038ed32aa2d8"
     },
     {
       "path": "context/CURRENT-STATE.md",
       "ownership": "shared",
-      "sha256": "9a5a2530864af6387d8887df0724f5e52d4bc95c636acc764682868440642bf9"
+      "sha256": "a5e298a1918fdc4afa6e309f1a4986eb76b17b7a3046954e80e68018b564cbbf"
     },
     {
       "path": "context/DECISIONS.md",
@@ -189,7 +189,7 @@
     {
       "path": "registries/decisions.json",
       "ownership": "generated",
-      "sha256": "ee0e2cd4d44c990c873b235d426746c23093bdb876588781257c34d74888c517"
+      "sha256": "ff76ce6d10043248779c8dd761607a204f9247f9737b11f9e29c1376a8cdb189"
     },
     {
       "path": "registries/evidence.json",

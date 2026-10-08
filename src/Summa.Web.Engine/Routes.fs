@@ -2,8 +2,8 @@
 /// navigate to, every list's filter, sort and search, and every report's
 /// dates, as a location in the URL, so a copied link opens the same view.
 ///
-/// The table and codec are Limen.Routing's (Limen 0.9.0; vendored until it
-/// ships, DF-SUMMA-2026-0010). This module only says what Summa's places are:
+/// The table and codec are Limen.Routing's (the EchelonFoundry.Limen.Routing
+/// 0.9.0 package, DF-SUMMA-2026-0010). This module only says what Summa's places are:
 /// the routes, their typed parameters and how they map onto `Place`.
 ///
 /// Locations hold opaque ids, dates, months and declared names only. No

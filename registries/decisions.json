@@ -419,6 +419,20 @@
             "modified"
           ],
           "reason": "Decide how Summa meets the deep-linking requirement before Limen 0.9.0 ships"
+        },
+        "EXE-20261008T214640906Z-b2269183": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-08T21:46:41.662Z",
+          "operations": [
+            "modified"
+          ],
+          "reason": "Record the switch from the vendored router to the Limen 0.9.0 package (WI-0042)"
         }
       }
     },
@@ -438,9 +452,9 @@
       "routing",
       "deep-links"
     ],
-    "title": "Deep links through Limen.Routing, vendored until Limen 0.9.0",
+    "title": "Deep links through Limen.Routing",
     "updated": "2026-10-08",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   {
     "created": "2026-10-08",

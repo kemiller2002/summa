@@ -17,9 +17,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Limen 0.9.0's router (DF-SUMMA-2026-0010). -->
+    <PackageReference Include="EchelonFoundry.Limen.Routing" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../Summa.Ledger/Summa.Ledger.fsproj" />
     <ProjectReference Include="../Summa.Storage/Summa.Storage.fsproj" />
-    <!-- Limen 0.9.0's routing library, vendored until it ships (DF-SUMMA-2026-0010). -->
-    <ProjectReference Include="../../vendor/Limen.Routing/Limen.Routing.fsproj" />
   </ItemGroup>
 </Project>

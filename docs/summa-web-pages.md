@@ -49,7 +49,7 @@ after the `#`, so a copied link opens the same view on any static host:
 ```
 
 - The routes are `src/Summa.Web.Engine/Routes.fs` on Limen's router
-  (`vendor/Limen.Routing`, until Limen 0.9.0 ships). Their inventory is
+  (the `EchelonFoundry.Limen.Routing` 0.9.0 package). Their inventory is
   `.echelon/routes.json`; regenerate it with
   `SUMMA_WRITE_ROUTES=1 dotnet test tests/Summa.Web.Tests`.
 - Navigation is plain `<a href="#/...">` links. The engine adopts the address

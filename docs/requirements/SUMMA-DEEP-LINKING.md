@@ -23,6 +23,16 @@ provenance:
         model: unknown
         runtime: claude-code
       reason: "Record the user's portfolio deep-linking requirement as SUM-LINK-001..012 (WI-0041)"
+    EXE-20261008T214640906Z-b2269183:
+      operations: [modified]
+      at: 2026-10-08T21:46:42.066Z
+      actor:
+        kind: agent
+        id: anthropic/claude-code
+        provider: anthropic
+        model: unknown
+        runtime: claude-code
+      reason: "Point SUM-LINK at the Limen 0.9.0 package (WI-0042)"
 ---
 
 # SUM-LINK — deep links
@@ -31,7 +41,7 @@ A portfolio requirement from the user (2026-10-08): every Echelon
 application puts all navigable state in the URL, so that a copied link opens
 the same view. Summa meets it through Limen's shared router (Limen 0.9.0,
 `Limen.Routing`; requirements `LCP-088..112`, decision `DF-LIMEN-2026-0006`).
-Until 0.9.0 ships, the library is vendored unchanged (`DF-SUMMA-2026-0010`).
+Summa uses the `EchelonFoundry.Limen.Routing` 0.9.0 package (`DF-SUMMA-2026-0010`).
 
 The work item is **WI-0041**; the screens are built in **WI-0030**.
 
