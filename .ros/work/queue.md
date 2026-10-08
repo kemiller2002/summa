@@ -4,7 +4,7 @@
 |---|---|---|---|---|
 | ECHELON-UPGRADE-2026-09-21 | Modernize Summa Echelon engineering capabilities | complete | tooling, ordo, limen | high |
 | FOUNDATIONS-APPLICABILITY | FOUNDATIONS-APPLICABILITY | complete |  |  |
-| GH-4 | Prepare Summa implementation baseline | active | readiness,bootstrap | high |
+| GH-4 | Prepare Summa implementation baseline | complete | readiness,bootstrap | high |
 | LIMEN-0-7-0 | LIMEN-0-7-0 | complete |  |  |
 | LIMEN-0-7-0-APPLY | LIMEN-0-7-0-APPLY | complete |  |  |
 | LIMEN-0-7-0-FND | LIMEN-0-7-0-FND | complete |  |  |
