@@ -360,10 +360,10 @@
         "ci,playwright,reliability"
       ],
       "priority": "high",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T07:37:33.473Z",
-      "updatedAt": "2026-10-08T07:37:33.000Z",
+      "updatedAt": "2026-10-08T07:49:53.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
