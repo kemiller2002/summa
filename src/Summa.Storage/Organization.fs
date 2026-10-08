@@ -366,3 +366,45 @@ let decode (organizationId: string) (stored: StoredObject) : Result<Organization
                         Ok manifest
                     else
                         Error(InvalidStoredRecord(where, $"the manifest belongs to '{manifest.OrganizationId}'")))))
+
+// ---- What issuing reads from the manifest (SUM0-011) ----------------------------------
+
+/// The organization as it appears on its invoices, snapshotted at issue.
+let issuer (manifest: OrganizationManifest) : Summa.Ledger.Invoicing.IssuerSnapshot =
+    { LegalName = manifest.Company.LegalName
+      Address = manifest.Company.Address
+      TaxId = manifest.Company.TaxId
+      Email = manifest.Company.Email
+      PaymentInstructions = manifest.Invoices.PaymentInstructions }
+
+/// Yearly numbering under the organization's prefix: `INV-2026-0001`.
+let numbering (manifest: OrganizationManifest) = Summa.Ledger.Invoicing.defaultNumbering manifest.Invoices.NumberPrefix
+
+/// The organization's default terms, used when neither the invoice, its
+/// engagement nor its customer sets any.
+let systemTerms (manifest: OrganizationManifest) =
+    if manifest.Invoices.DefaultTermsDays = 0 then
+        Summa.Ledger.Invoicing.DueOnReceipt
+    else
+        Summa.Ledger.Invoicing.Net manifest.Invoices.DefaultTermsDays
+
+/// The id of the account the manifest names by code; the code itself when
+/// no account has it, so issuing reports it as an invalid account.
+let accountByCode (ledger: Summa.Ledger.Ledger.Ledger) (code: string) =
+    ledger.Accounts |> Map.tryFindKey (fun _ a -> a.Code = code) |> Option.defaultValue code
+
+/// An issue request with the organization's defaults filled in; the caller
+/// supplies the draft, the date and the ids of what issuing creates.
+let issueRequest (manifest: OrganizationManifest) (ledger: Summa.Ledger.Ledger.Ledger) (draftId: string) (issueDate: DateOnly) (invoiceId: string) (journalEntryId: string) (obligationId: string) : Summa.Ledger.Invoicing.IssueRequest =
+    { DraftId = draftId
+      IssueDate = issueDate
+      NumberOverride = None
+      Numbering = numbering manifest
+      ExpectedVersion = None
+      Issuer = issuer manifest
+      Template = Summa.Ledger.Documents.currentTemplate
+      SystemTerms = systemTerms manifest
+      ReceivableAccountId = accountByCode ledger manifest.Accounting.ReceivablesAccount
+      InvoiceId = invoiceId
+      JournalEntryId = journalEntryId
+      ObligationId = obligationId }

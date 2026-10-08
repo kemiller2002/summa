@@ -85,7 +85,10 @@ let correctingDraft (draftId: string) (invoice: IssuedInvoice) : DraftInvoice =
       Terms = None
       DueDate = None
       Corrects = Some invoice.InvoiceId
-      EngagementId = invoice.EngagementId }
+      EngagementId = invoice.EngagementId
+      Details = noDetails
+      Version = 0
+      Review = Editing }
 
 /// A draft copied from an issued invoice, to be changed and issued in its
 /// place. Terms the invoice set itself are kept; inherited terms are
@@ -95,6 +98,7 @@ let reissueDraft (draftId: string) (invoice: IssuedInvoice) : DraftInvoice =
         Lines = invoice.Lines
         Adjustments = invoice.Adjustments
         Discounts = invoice.Discounts
+        Details = invoice.Details
         Terms = (if invoice.TermsSource = InvoiceTerms then Some invoice.Terms else None) }
 
 /// Void and reissue: voids the invoice and saves a draft copied from it, to
@@ -111,4 +115,4 @@ let voidAndReissue (context: Context) (request: VoidRequest) (draftId: string) (
 
             saveDraft context draft voided.Books
             |> Result.mapError (DraftRefused >> List.singleton)
-            |> Result.map (fun books -> { voided with Books = books }, draft))
+            |> Result.map (fun books -> { voided with Books = books }, books.Drafts[draftId]))

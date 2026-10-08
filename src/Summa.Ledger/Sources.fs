@@ -169,3 +169,40 @@ type BillingReview =
       Reason: string
       RaisedAt: DateTimeOffset
       Resolution: string option }
+
+/// What a generated invoice artifact is.
+type ArtifactKind =
+    /// The semantic HTML document, printed through Folio (INV-DOC-010).
+    | InvoiceHtml
+    /// The PDF for delivery and archival (INV-DOC-011).
+    | InvoicePdf
+    /// The versioned machine-readable document (INV-DOC-012).
+    | InvoiceJson
+
+type ArtifactStatus =
+    | Generated
+    /// To be produced after issue; delivery that needs it waits (INV-DOC-015).
+    | Pending
+    | Failed of reason: string
+
+/// Metadata of a generated invoice artifact (INV-DOC-008, INV-DOC-009,
+/// SUM0-036). The bytes live outside the financial records: HTML and JSON
+/// are reproduced from the invoice's immutable snapshot and checked by
+/// hash, and a PDF is stored in the environment's artifact storage and
+/// referenced here (INV-DOC-013, SUM0-035).
+type InvoiceArtifact =
+    { Id: string
+      InvoiceId: string
+      Kind: ArtifactKind
+      MediaType: string
+      /// A stable reference: `summa:` for reproducible documents, or the
+      /// artifact storage location of a stored file.
+      Reference: string
+      /// Lower-case hex SHA-256 of the bytes.
+      Sha256: string option
+      Size: int64 option
+      CreatedAt: DateTimeOffset
+      TemplateId: string
+      TemplateVersion: string
+      Renderer: string option
+      Status: ArtifactStatus }

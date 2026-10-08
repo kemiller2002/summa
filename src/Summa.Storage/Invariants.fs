@@ -238,6 +238,18 @@ let private billingRules (r: Receivables) =
           if not (books.Time.ContainsKey v.PublicationId) then violation "review-references" id $"time {v.PublicationId} was never imported"
           if not (books.Invoices.ContainsKey v.InvoiceId) then violation "review-references" id $"invoice {v.InvoiceId} is missing" ]
 
+let private artifactRules (r: Receivables) =
+    [ for KeyValue(id, a) in r.Books.Artifacts do
+          if not (r.Books.Invoices.ContainsKey a.InvoiceId) then
+              violation "artifacts-reference-invoices" id $"invoice {a.InvoiceId} is missing"
+      // INV-DOC-006: an issued document always reproduces to what was issued.
+      for invoiceId in r.Books.Artifacts |> Map.toList |> List.map (fun (_, a) -> a.InvoiceId) |> List.distinct do
+          for kind, check in Summa.Ledger.Issuance.verify r invoiceId do
+              match check with
+              | Summa.Ledger.Issuance.Altered(expected, actual) ->
+                  violation "documents-reproduce" invoiceId $"%A{kind} hashes to {actual}, not {expected}"
+              | _ -> () ]
+
 /// Every invariant the books break, in a stable order; empty when they hold.
 let check (r: Receivables) : Violation list =
-    entryRules r.Books.Ledger @ invoiceRules r @ paymentRules r @ creditRules r @ voidRules r @ billingRules r
+    entryRules r.Books.Ledger @ invoiceRules r @ paymentRules r @ creditRules r @ voidRules r @ billingRules r @ artifactRules r

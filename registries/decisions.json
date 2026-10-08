@@ -262,6 +262,50 @@
     "version": "1.0.0"
   },
   {
+    "created": "2026-10-08",
+    "id": "DF-SUMMA-2026-0007",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0007--invoice-documents-artifacts-and-issuance.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261008T172746682Z-be397865": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-08T17:46:20.342Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Choose how invoice documents, artifacts, numbering and issuance work"
+        }
+      }
+    },
+    "related_documents": [
+      "docs/requirements/implementation-gap-analysis.md",
+      "research/decisions/DF-SUMMA-2026-0005--discounts-voids-and-pre-release-record-schemas.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "invoicing",
+      "documents",
+      "folio",
+      "artifacts",
+      "numbering"
+    ],
+    "title": "Invoice documents, artifacts, numbering and the issue command",
+    "updated": "2026-10-08",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-10-05",
     "id": "DF-SUMMA-FND-2026-0001",
     "owners": [

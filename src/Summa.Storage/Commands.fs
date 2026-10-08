@@ -20,6 +20,11 @@ open Summa.Access.Access
 open Summa.Storage.Diagnostics
 open Summa.Storage.FinancialRecords
 
+/// The capability issuing an invoice needs: choosing the number instead
+/// of the next one is its own capability (INV-NUM-009).
+let issueCapability (request: Summa.Ledger.Invoicing.IssueRequest) =
+    if request.NumberOverride.IsSome then OverrideInvoiceNumber else IssueInvoice
+
 /// Why a command did not commit.
 type CommandFailure<'e> =
     /// The actor cannot carry a command (SUM3-012, SUM0-004).

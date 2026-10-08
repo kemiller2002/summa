@@ -131,6 +131,30 @@ let lineAmount (line: InvoiceLine) = subtract (lineGross line) (lineDiscount lin
 let discountTotal (currency: string) (subtotal: Money) (discounts: InvoiceDiscount list) =
     discounts |> List.map (fun d -> discountOn subtotal d.Rule) |> sum currency
 
+/// What an invoice says beyond its lines (INV-DATA-006, INV-DATA-013,
+/// INV-DATA-014): references the customer needs, the service period, and
+/// notes for the customer kept apart from internal ones.
+type InvoiceDetails =
+    { PurchaseOrder: string option
+      ClientReference: string option
+      ServicePeriod: (DateOnly * DateOnly) option
+      CustomerNotes: string option
+      InternalNotes: string option }
+
+let noDetails =
+    { PurchaseOrder = None
+      ClientReference = None
+      ServicePeriod = None
+      CustomerNotes = None
+      InternalNotes = None }
+
+/// Where a draft stands before issue (INV-STATE-002). Any change to the
+/// draft returns it to Editing, so a review applies to one version only
+/// (INV-REV-006).
+type DraftReview =
+    | Editing
+    | SubmittedForReview of version: int
+
 /// A draft may be edited freely; it has an internal id, not a number (§5).
 type DraftInvoice =
     { DraftId: string
@@ -145,13 +169,50 @@ type DraftInvoice =
       /// The issued invoice this one corrects or reissues (v0.2 §7).
       Corrects: string option
       /// The engagement it bills, whose terms apply before the customer's.
-      EngagementId: string option }
+      EngagementId: string option
+      Details: InvoiceDetails
+      /// Increases with every saved change; a save must name the version it
+      /// changes (INV-DRAFT-004). A new draft is version 0 until saved.
+      Version: int
+      Review: DraftReview }
 
 let subtotal (draft: DraftInvoice) = draft.Lines |> List.map lineAmount |> sum draft.Currency
 
 let total (draft: DraftInvoice) =
     let net = subtotal draft
     add (subtract net (discountTotal draft.Currency net draft.Discounts)) (sum draft.Currency draft.Adjustments)
+
+/// The issuer as shown on the invoice at issue (INV-DATA-005).
+type IssuerSnapshot =
+    { LegalName: string
+      Address: string
+      TaxId: string option
+      Email: string
+      /// Remittance instructions exactly as shown (INV-PAYINST-003).
+      PaymentInstructions: string }
+
+/// The customer as billed at issue (INV-DATA-004): later changes to the
+/// customer never change an issued invoice.
+type CustomerSnapshot =
+    { CustomerId: string
+      Name: string
+      BillingName: string
+      BillingAddress: string
+      Email: string }
+
+/// The print template an invoice is rendered with (INV-DOC-007).
+type TemplateRef =
+    { Id: string
+      Version: string
+      /// The Folio renderer tier the template targets, for example `P0`.
+      Profile: string }
+
+/// Who committed the invoice, when, and which draft version (INV-REV-007).
+type Approval =
+    { By: string
+      At: DateTimeOffset
+      DraftVersion: int
+      CorrelationId: string option }
 
 type IssuedInvoice =
     { InvoiceId: string
@@ -172,6 +233,11 @@ type IssuedInvoice =
       /// The issued invoice this one corrects or reissues (v0.2 §7).
       Corrects: string option
       EngagementId: string option
+      Details: InvoiceDetails
+      Issuer: IssuerSnapshot
+      Customer: CustomerSnapshot
+      Template: TemplateRef
+      Approval: Approval
       JournalEntryId: string
       ObligationId: string
       IssuedAt: DateTimeOffset
@@ -211,6 +277,12 @@ type InvoiceProblem =
     /// A correcting invoice must name an issued invoice of the same customer.
     | InvalidCorrection of string
     | InvalidEngagement of string
+    /// The draft changed since the version this request names (INV-DRAFT-004).
+    | StaleDraft of current: int
+    /// No line charges anything (INV-ISS-008).
+    | NoSubstantiveLine
+    /// A negative quantity or price; corrections use credit memos (INV-ADJ-004).
+    | NegativeLine of string
 
 /// Where an invoice proposal stands (v0.1 §17, v0.2 §15): approved time
 /// becomes a proposal, a person reviews it, and only then an invoice.
@@ -254,7 +326,9 @@ type Books =
       Withdrawals: Map<string, TimeWithdrawal>
       Proposals: Map<string, Proposal>
       Rates: RateCard
-      Reviews: Map<string, BillingReview> }
+      Reviews: Map<string, BillingReview>
+      /// Generated invoice artifacts by artifact id.
+      Artifacts: Map<string, InvoiceArtifact> }
 
 let openBooks (ledger: Ledger) =
     { Ledger = ledger
@@ -269,23 +343,53 @@ let openBooks (ledger: Ledger) =
       Withdrawals = Map.empty
       Proposals = Map.empty
       Rates = noRates
-      Reviews = Map.empty }
+      Reviews = Map.empty
+      Artifacts = Map.empty }
 
 let saveCustomer (context: Context) (customer: Customer) (books: Books) =
     { books with
         Customers = books.Customers.Add(customer.Id, customer)
         Ledger = audit context "customer-saved" customer.Id books.Ledger }
 
+/// Saves a draft. The draft names the version it changes: 0 for a new
+/// draft, otherwise the version that was read; a stale save is refused
+/// rather than overwriting newer work (INV-DRAFT-004, INV-DRAFT-005).
+/// Saving the same content again changes nothing; any change returns the
+/// draft to Editing.
 let saveDraft (context: Context) (draft: DraftInvoice) (books: Books) =
-    match books.IssuedFrom.TryFind draft.DraftId with
-    | Some invoiceId -> Error [ AlreadyIssued invoiceId ]
-    | None ->
-        let what = if books.Drafts.ContainsKey draft.DraftId then "invoice-changed" else "invoice-created"
-        Ok { books with Drafts = books.Drafts.Add(draft.DraftId, draft); Ledger = audit context what draft.DraftId books.Ledger }
+    match books.IssuedFrom.TryFind draft.DraftId, books.Drafts.TryFind draft.DraftId with
+    | Some invoiceId, _ -> Error [ AlreadyIssued invoiceId ]
+    | None, Some stored when stored = draft -> Ok books
+    | None, Some stored when stored.Version <> draft.Version -> Error [ StaleDraft stored.Version ]
+    | None, None when draft.Version <> 0 -> Error [ StaleDraft 0 ]
+    | None, stored ->
+        let what = if stored.IsSome then "invoice-changed" else "invoice-created"
+        let saved = { draft with Version = draft.Version + 1; Review = Editing }
+        Ok { books with Drafts = books.Drafts.Add(draft.DraftId, saved); Ledger = audit context what draft.DraftId books.Ledger }
 
-/// The next sequential number for a year: `EF-2026-0001`, `EF-2026-0002`...
-let nextNumber (prefix: string) (year: int) (books: Books) =
-    let stem = $"{prefix}-{year:D4}-"
+/// Whether numbers restart every calendar year or run on (INV-NUM-004).
+type NumberScope =
+    | Yearly
+    | Continuous
+
+/// How invoice numbers are formed (INV-NUM-004, INV-NUM-005): the prefix
+/// names the series, the scope says whether the year is part of it.
+/// Numbers are unique and never reused; gaps are allowed (INV-NUM-008).
+type NumberingPolicy =
+    { Prefix: string
+      Scope: NumberScope
+      Digits: int }
+
+let defaultNumbering prefix = { Prefix = prefix; Scope = Yearly; Digits = 4 }
+
+/// The next number in the series: `EF-2026-0001` for a yearly series,
+/// `EF-0001` for a continuous one. It is one more than the highest number
+/// ever issued in the series, voided invoices included (INV-NUM-007).
+let nextNumber (policy: NumberingPolicy) (issueDate: DateOnly) (books: Books) =
+    let stem =
+        match policy.Scope with
+        | Yearly -> $"{policy.Prefix}-{issueDate.Year:D4}-"
+        | Continuous -> $"{policy.Prefix}-"
 
     let highest =
         books.Invoices
@@ -299,15 +403,21 @@ let nextNumber (prefix: string) (year: int) (books: Books) =
                 None)
         |> List.fold max 0
 
-    $"{stem}{highest + 1:D4}"
+    stem + (highest + 1).ToString(String('0', max 1 policy.Digits))
 
 /// Ids and accounts the issuing step needs from its caller.
 type IssueRequest =
     { DraftId: string
       IssueDate: DateOnly
       /// None takes the next sequential number.
+      /// A number chosen by a person, checked for collisions (INV-NUM-009).
       NumberOverride: string option
-      Prefix: string
+      Numbering: NumberingPolicy
+      /// The draft version being issued; None issues whatever version is
+      /// current (INV-REV-006).
+      ExpectedVersion: int option
+      Issuer: IssuerSnapshot
+      Template: TemplateRef
       /// The organization's default terms, used when neither the draft nor
       /// the customer has terms (v0.2 §18).
       SystemTerms: PaymentTerms
@@ -318,6 +428,10 @@ type IssueRequest =
 
 let private validateDraft (books: Books) (draft: DraftInvoice) =
     [ if draft.Lines.IsEmpty then NoLines
+      elif draft.Lines |> List.forall (fun l -> (lineAmount l).Minor = 0L) then NoSubstantiveLine
+      for line in draft.Lines do
+          if line.QuantityThousandths < 0L || line.UnitPrice.Minor < 0L then NegativeLine line.Description
+          if line.UnitPrice.Currency <> draft.Currency then InvalidDiscount $"'{line.Description}' is priced in {line.UnitPrice.Currency}, not {draft.Currency}"
       match books.Customers.TryFind draft.CustomerId with
       | None -> UnknownCustomer draft.CustomerId
       | Some c when not c.Active -> InactiveCustomer draft.CustomerId
@@ -365,10 +479,13 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
         match books.Drafts.TryFind request.DraftId with
         | None -> Error [ UnknownDraft request.DraftId ]
         | Some draft ->
-            let number = request.NumberOverride |> Option.defaultValue (nextNumber request.Prefix request.IssueDate.Year books)
+            let number = request.NumberOverride |> Option.defaultValue (nextNumber request.Numbering request.IssueDate books)
 
             let problems =
-                validateDraft books draft
+                (match request.ExpectedVersion with
+                 | Some expected when expected <> draft.Version -> [ StaleDraft draft.Version ]
+                 | _ -> [])
+                @ validateDraft books draft
                 @ (if books.Invoices |> Map.exists (fun _ i -> i.Number = number) then [ DuplicateInvoiceNumber number ] else [])
 
             if not problems.IsEmpty then
@@ -433,6 +550,20 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
                           Total = invoiceTotal
                           Corrects = draft.Corrects
                           EngagementId = draft.EngagementId
+                          Details = draft.Details
+                          Issuer = request.Issuer
+                          Customer =
+                            { CustomerId = customer.Id
+                              Name = customer.Name
+                              BillingName = customer.BillingName
+                              BillingAddress = customer.BillingAddress
+                              Email = customer.Email }
+                          Template = request.Template
+                          Approval =
+                            { By = context.Who
+                              At = context.When
+                              DraftVersion = draft.Version
+                              CorrelationId = context.CorrelationId }
                           JournalEntryId = posted.Id
                           ObligationId = request.ObligationId
                           IssuedAt = context.When

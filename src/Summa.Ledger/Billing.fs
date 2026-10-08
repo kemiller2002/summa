@@ -571,11 +571,12 @@ let overrideRate (context: Context) (proposalId: string) (index: int) (rate: Mon
                     r
             ))
 
-/// The sources of a proposal that changed since it was made (INV-CHR-008):
-/// time withdrawn or superseded, or a source now used elsewhere.
-let changedSources (r: Receivables) (p: Proposal) =
-    [ for l in p.Lines do
-          match l.Line.Source with
+/// What is wrong with the sources of these lines, billed by `owner` (a
+/// proposal or draft id): time withdrawn, superseded or missing, or a source
+/// invoiced or reserved elsewhere (INV-CHR-008, INV-ISS-011).
+let sourceProblems (r: Receivables) (owner: string) (lines: InvoiceLine list) =
+    [ for line in lines do
+          match line.Source with
           | TimeSource refs ->
               for t in refs do
                   match r.Books.Time.TryFind t.PublicationId with
@@ -584,11 +585,16 @@ let changedSources (r: Receivables) (p: Proposal) =
                   | Some found when superseded r.Books found.PublicationId -> $"time {t.PublicationId} was superseded"
                   | Some found when found.Revision <> t.Revision -> $"time {t.PublicationId} changed revision"
                   | Some _ -> ()
+          | ExpenseSource x when not (r.Books.Expenses.ContainsKey x) -> $"expense {x} is missing"
           | _ -> ()
-          for key in sourceKeys r.Books l.Line do
-              match blocked r p.Id key with
+          for key in sourceKeys r.Books line do
+              match blocked r owner key with
               | Some why -> $"{key} is {why}"
               | None -> () ]
+
+/// The sources of a proposal that changed since it was made (INV-CHR-008).
+let changedSources (r: Receivables) (p: Proposal) =
+    sourceProblems r p.Id (p.Lines |> List.map _.Line)
 
 /// Marks a proposal ready for review: every line priced, zero prices only
 /// where the policy allows them, and every source current. Idempotent.
@@ -640,7 +646,10 @@ let accept (context: Context) (proposalId: string) (request: IssueRequest) (r: R
                   Terms = None
                   DueDate = None
                   Corrects = None
-                  EngagementId = p.EngagementId }
+                  EngagementId = p.EngagementId
+                  Details = noDetails
+                  Version = 0
+                  Review = Editing }
 
             saveDraft context draft r.Books
             |> Result.bind (issue context request)

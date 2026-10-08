@@ -648,10 +648,10 @@
         "folio"
       ],
       "priority": "medium",
-      "status": "captured",
+      "status": "ready",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:05.811Z",
-      "updatedAt": "2026-10-08T16:16:53.000Z",
+      "updatedAt": "2026-10-08T17:27:45.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
