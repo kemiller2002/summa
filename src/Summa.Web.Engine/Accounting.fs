@@ -62,6 +62,16 @@ type IdentityChange =
 /// (`github:<numeric id>`); the login is only a display name (SUM0-004).
 type SignedInPerson = { ActorId: string; Login: string }
 
+/// Where to go after a sign-in that left for GitHub (WI-0043): the page
+/// comes back at the registered redirect address, without its fragment, so
+/// the target was kept in this tab before leaving.
+type ReturnTarget =
+    /// The page did not come back from GitHub: the address says where to go.
+    | NotReturning
+    /// Back from GitHub; this tab's kept target has not been read yet.
+    | AwaitingTarget
+    | TargetRead of location: string option
+
 /// Sign-in, for a deployment whose books live on GitHub (WI-0035).
 type SignInState =
     /// Local books: no one signs in.
@@ -211,7 +221,8 @@ type Model =
       Unsaved: int
       SignIn: SignInState
       /// Keep the session in this tab rather than this page only.
-      KeepInTab: bool }
+      KeepInTab: bool
+      Return: ReturnTarget }
 
 let private newLine (counter: int) =
     let key, next = nextKey "line" counter
@@ -253,6 +264,7 @@ let initial =
       Pdf = PdfIdle
       SignIn = NotRequired
       KeepInTab = false
+      Return = NotReturning
       Blockers = []
       Notice = None
       Error = None
@@ -273,6 +285,8 @@ type Msg =
     | SignInRequested
     | SignOutRequested
     | KeepSignInToggled
+    /// The return target this tab kept across the sign-in (WI-0043).
+    | ReturnTargetRead of string option
     /// The stored snapshot, or None when this browser has none yet.
     | Loaded of string option
     | Saved of ok: bool
@@ -404,6 +418,10 @@ type AppEffect =
     | BeginIdentity of Deployment.IdentityConfig * query: (string * string) list
     | StartSignIn of KeepSignIn
     | EndSignIn
+    /// Keep (or, with None, forget) the location to return to, in this tab
+    /// only: it must survive the round trip to GitHub and nothing longer.
+    | KeepReturnTarget of string option
+    | ReadReturnTarget
 
 // ---- Helpers ---------------------------------------------------------------------------
 
@@ -676,6 +694,31 @@ let private signedOut (state: SignInState) (model: Model) =
             Today = model.Today
             SignIn = state }
 
+/// Whether a page was opened with the provider's callback.
+let isCallback (query: (string * string) list) =
+    query |> List.exists (fun (name, _) -> name = "state" || name = "code" || name = "error")
+
+/// Signed in: go where the person was going. Back from GitHub, that is the
+/// target this tab kept, once it has been read; it is checked again against
+/// what the person may now see, replaces the sign-in in history, and is
+/// forgotten (SUM-LINK-008). Otherwise the address itself says.
+let private returnAfterSignIn (model: Model) =
+    match model.SignIn, model.Return with
+    | SignedInAs _, TargetRead target ->
+        let viewer = viewerOf model
+        let destination = Routes.resume viewer target
+        let router, replace = Limen.Routing.Navigation.replace model.Router destination
+
+        let place =
+            match Routes.parse viewer destination with
+            | Ok place -> place
+            | Error _ -> Routes.Home
+
+        let arrived = { model with Router = router; Place = place; Unrouted = None; Return = NotReturning }
+        (if place <> model.Place then enter place arrived else arrived), navigation replace @ [ KeepReturnTarget None ]
+    | _, AwaitingTarget -> model, []
+    | _ -> readopt model
+
 let private invoiceList (model: Model) =
     match model.Place with
     | Routes.Invoices list -> list
@@ -791,8 +834,9 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
             // Books on GitHub: who signs in comes first (WI-0035).
             | Some identity ->
                 let query = model.Page |> Option.map (fun p -> queryPairs p.Query) |> Option.defaultValue []
-                let restoring, effects = readopt { model with Configuration = Configured config; SignIn = Restoring }
-                restoring, BeginIdentity(identity, query) :: effects
+                let returning = isCallback query
+                let restoring, effects = readopt { model with Configuration = Configured config; SignIn = Restoring; Return = (if returning then AwaitingTarget else NotReturning) }
+                restoring, BeginIdentity(identity, query) :: (if returning then [ ReadReturnTarget ] else []) @ effects
             | None -> { model with Configuration = Misconfigured "This deployment names a data location on GitHub but no way to sign in." }, []
         | Ok config when model.Packs.Store ->
             { model with Configuration = Configured config; Artifacts = StoreOpening }, [ LoadBooks; OpenArtifactStore(Artifacts.database config) ]
@@ -802,7 +846,7 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
         // Local books: Fides is not running, so nothing it says applies.
         | NotRequired, _ -> model, []
         | _, IdentitySignedIn(provider, subject, login) ->
-            readopt { model with SignIn = SignedInAs { ActorId = $"{provider}:{subject}"; Login = login } }
+            returnAfterSignIn { model with SignIn = SignedInAs { ActorId = $"{provider}:{subject}"; Login = login } }
         | _, IdentitySigningIn -> { model with SignIn = LeavingForProvider }, []
         | _, IdentitySignedOut code -> signedOut (SignedOut(code |> Option.map signInNotice)) model
         // Signed in: the session stays; GitHub is only unreachable for now.
@@ -812,13 +856,25 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
     | SignInRequested ->
         match model.SignIn with
         | SignedOut _
-        | ProviderUnavailable -> { model with SignIn = LeavingForProvider }, [ StartSignIn(if model.KeepInTab then ThisTab else ThisPage) ]
+        | ProviderUnavailable ->
+            // The page leaves for GitHub and comes back without its address:
+            // keep where to return in this tab first (SUM-LINK-008).
+            let target =
+                match model.Place with
+                | Routes.SignIn returnTo -> returnTo
+                | _ -> None
+
+            { model with SignIn = LeavingForProvider }, [ KeepReturnTarget target; StartSignIn(if model.KeepInTab then ThisTab else ThisPage) ]
         | _ -> model, []
     | SignOutRequested ->
         match model.SignIn with
         | SignedInAs _ -> model, [ EndSignIn ]
         | _ -> model, []
     | KeepSignInToggled -> { model with KeepInTab = not model.KeepInTab }, []
+    | ReturnTargetRead target ->
+        match model.Return with
+        | AwaitingTarget -> returnAfterSignIn { model with Return = TargetRead target }
+        | _ -> model, []
     | Loaded None ->
         let company: Organization.CompanyInformation =
             { LegalName = "Demo Consulting LLC"

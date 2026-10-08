@@ -1,4 +1,4 @@
-// Sign-in through Fides, end to end in a real browser (WI-0035, SUM0-003,
+// Sign-in through Fides, end to end in a real browser (WI-0035, WI-0043, SUM0-003,
 // SUM0-004, SUM3-012): the deployment's configuration names a GitHub data
 // location and the exchange, the page leaves for GitHub, GitHub sends it back
 // with a code, Fides' client (running in the WASM engine) exchanges it, and
@@ -75,20 +75,22 @@ const signInTest = test.extend({
 const storageText = (page, store) => page.evaluate((name) => JSON.stringify({ ...window[name] }), store);
 
 signInTest("a person signs in with GitHub as the identity GitHub resolved, keeps it for the tab, then signs out", async ({ deployment: { page, origin, exchanged } }) => {
-  await page.goto(`${origin}/#/customers`);
+  await page.goto(`${origin}/#/customers?q=acme`);
   await expect(page.locator("html")).toHaveAttribute("data-kernel", "running");
 
   // Nothing of the books before sign-in; the link asked for is kept.
   await expect(page.locator("#sign-in")).toBeVisible();
   await expect(page.locator(".summa-shell")).toHaveCount(0);
-  await expect(page).toHaveURL(`${origin}/#/sign-in?returnTo=%2Fcustomers`);
+  await expect(page).toHaveURL(`${origin}/#/sign-in?returnTo=%2Fcustomers%3Fq%3Dacme`);
 
   await page.check("#keep-sign-in");
   await page.click("#sign-in");
 
-  // Back from GitHub: signed in, with the callback removed from the address.
+  // Back from GitHub: signed in, with the callback removed from the address,
+  // at the link first asked for (WI-0043), which the tab then forgets.
   await expect(page.locator("#signed-in-login")).toHaveText("octocat");
-  expect(new URL(page.url()).search).toBe("");
+  await expect(page).toHaveURL(`${origin}/#/customers?q=acme`);
+  expect(await storageText(page, "sessionStorage")).not.toContain("summa.returnTo");
   expect(exchanged).toEqual(["/v1/token"]);
 
   // The token is in this tab's session storage, as chosen, and nowhere else.

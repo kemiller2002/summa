@@ -265,6 +265,10 @@ type Purpose =
     | FetchingArtifact
     | Releasing
     | Downloading
+    /// Keeping or forgetting the return target in this tab (WI-0043).
+    | KeepingReturn
+    /// Reading the return target this tab kept across a sign-in.
+    | ReadingReturn
 
 [<NoComparison; NoEquality>]
 type Session =
@@ -309,6 +313,12 @@ type Request =
     | PackRequest of correlation: string * pack: Contract * request: (Utf8JsonWriter -> unit)
 
 let private artifactsStore = "artifacts"
+
+/// Where this tab keeps the location to return to after sign-in: session
+/// storage, which survives the round trip to GitHub in this tab and nothing
+/// longer. It holds a relative location, never a token (SUM-LINK-008).
+[<Literal>]
+let ReturnKey = "summa.returnTo"
 
 let private requests (session: Session) (effects: AppEffect list) =
     effects
@@ -411,6 +421,13 @@ let private requests (session: Session) (effects: AppEffect list) =
                     w.WriteString("data", data)
 
                 { s with Pending = s.Pending.Add(correlation, Downloading) }, out @ [ PackRequest(correlation, files, request) ]
+            | KeepReturnTarget _
+            | ReadReturnTarget when not s.Hosting -> s, out
+            | KeepReturnTarget(Some location) ->
+                { s with Pending = s.Pending.Add(correlation, KeepingReturn) }, out @ [ Host(correlation, "tabSet", [ "key", ReturnKey; "value", location ]) ]
+            | KeepReturnTarget None ->
+                { s with Pending = s.Pending.Add(correlation, KeepingReturn) }, out @ [ Host(correlation, "tabRemove", [ "key", ReturnKey ]) ]
+            | ReadReturnTarget -> { s with Pending = s.Pending.Add(correlation, ReadingReturn) }, out @ [ Host(correlation, "tabGet", [ "key", ReturnKey ]) ]
             // Fides' client carries these out (`step`).
             | BeginIdentity _
             | StartSignIn _
@@ -590,7 +607,7 @@ let private actorOf (env: Env) (model: Model) =
     | _ -> env.LocalActor
 
 let private step (env: Env) (now: DateTimeOffset) (session: Session) (inbound: Inbound) =
-    let run msg (s: Session) =
+    let rec run msg (s: Session) =
         let model, effects = update { Now = now; Actor = actorOf env s.Model } msg s.Model
 
         // Sign-in effects go to Fides' client; its browser calls come back
@@ -602,7 +619,14 @@ let private step (env: Env) (now: DateTimeOffset) (session: Session) (inbound: I
             | EndSignIn -> env.Identity.SignOut()
             | _ -> ())
 
-        requests { s with Model = model } effects
+        let s, out = requests { s with Model = model } effects
+
+        // Without the host pack nothing was kept in this tab.
+        if not s.Hosting && List.contains ReadReturnTarget effects then
+            let s, more = run (ReturnTargetRead None) s
+            s, out @ more
+        else
+            s, out
 
     /// Hands the kernel's answer to the operation waiting on it.
     let answerBridge (s: Session) correlation answer =
@@ -696,6 +720,20 @@ let private step (env: Env) (now: DateTimeOffset) (session: Session) (inbound: I
                 s, out, None
             | _ when env.Bridge.Waits correlation -> answerBridge session correlation (Bridge.Http result)
             | _ -> session, [], None
+        | CapabilityResult(correlation, capability, outcome) when capability = host.Id && session.Pending.ContainsKey correlation ->
+            let rest = { session with Pending = session.Pending.Remove correlation }
+            let path = "$.result.outcome"
+
+            match session.Pending[correlation] with
+            | ReadingReturn ->
+                let read =
+                    match required "kind" path asString outcome with
+                    | "Completed" -> optional "value" $"{path}.result" asString (required "result" path asObject outcome)
+                    | _ -> None
+
+                let s, out = run (ReturnTargetRead read) rest
+                s, out, None
+            | _ -> rest, [], None
         | CapabilityResult(correlation, capability, outcome) when capability = host.Id && env.Bridge.Waits correlation ->
             let path = "$.result.outcome"
 

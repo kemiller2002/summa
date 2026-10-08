@@ -581,6 +581,20 @@
             "created"
           ],
           "reason": "Decide how the accounting application signs people in with GitHub through Fides (WI-0035)"
+        },
+        "EXE-20261008T231225908Z-26468e34": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-08T23:21:06.000Z",
+          "operations": [
+            "modified"
+          ],
+          "reason": "Carry the return target across the round trip to GitHub (WI-0043)"
         }
       }
     },
@@ -602,7 +616,7 @@
     ],
     "title": "Sign-in through Fides' client in the accounting application",
     "updated": "2026-10-08",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   {
     "created": "2026-10-05",
