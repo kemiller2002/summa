@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T16:10:59.000Z",
+  "updatedAt": "2026-10-08T16:17:48.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1292,13 +1292,51 @@
     {
       "id": "WI-0023",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-08T16:10:59.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Environments.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Health.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Settings.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Storage.Tests/EnvironmentTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-08T16:17:48.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T161059828Z-0b0ae391"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "1deb7815b4627e3e134cd96b",
+        "recordedAt": "2026-10-08T16:17:47.000Z",
+        "executionId": "EXE-20261008T161059828Z-0b0ae391",
+        "repository": "summa",
+        "branch": "feat/wi-0023-environments",
+        "commit": "3511fdb5cc63e1b83b9386ec2ed29dd50a743cbb",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa.git"
+        },
+        "remoteBranch": "feat/wi-0023-environments",
+        "remoteCommit": "3511fdb5cc63e1b83b9386ec2ed29dd50a743cbb",
+        "summary": "Environments, scopes, health and safe start-up",
+        "nextAction": "Open and merge the PR",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-08T16:17:48.000Z"
     }
   ]
 }
