@@ -826,10 +826,10 @@
         "fides"
       ],
       "priority": "high",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T14:59:16.000Z",
-      "updatedAt": "2026-10-08T14:59:16.000Z",
+      "updatedAt": "2026-10-08T15:01:29.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T14:59:16.000Z",
+  "updatedAt": "2026-10-08T15:01:29.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -953,13 +953,51 @@
     {
       "id": "WI-0034",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-08T14:59:16.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "conditor.json"
+        },
+        {
+          "type": "implementation",
+          "path": "vendor/nuget/arca.lock"
+        },
+        {
+          "type": "implementation",
+          "path": "vendor/nuget/fides.lock"
+        },
+        {
+          "type": "tests",
+          "path": ".conditor/lock.json"
+        }
+      ],
+      "updatedAt": "2026-10-08T15:01:29.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T145917028Z-ca5d610d"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "71050add5f5200b105fcafac",
+        "recordedAt": "2026-10-08T15:01:28.000Z",
+        "executionId": "EXE-20261008T145917028Z-ca5d610d",
+        "repository": "summa",
+        "branch": "chore/echelon-current-170",
+        "commit": "6ac3ed1a50edac11a708d4a342da7227f0e9acd4",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa.git"
+        },
+        "remoteBranch": "chore/echelon-current-170",
+        "remoteCommit": "6ac3ed1a50edac11a708d4a342da7227f0e9acd4",
+        "summary": "Summa on echelon-current 1.7.0; Arca and Fides 0.2.0 in vendor/nuget; conditor verify passes",
+        "nextAction": "Merge, then WI-0017",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-08T15:01:29.000Z"
     }
   ]
 }

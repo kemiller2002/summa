@@ -44,4 +44,4 @@
 | WI-0031 | Summa 15: data export and escape hatch, v0.2 scenario tests, property, invariant and failure-injection tests (SUM1-020, SUM2-032, SUM3-042, SUM3-043, SUM0-001, SUM0-050) | captured | summa, order:15, quality | medium |
 | WI-0032 | Stop the Chromium install from hanging the browser-suite CI (unbounded apt-get update in playwright install --with-deps) | complete | ci, playwright, reliability | high |
 | WI-0033 | Fold draft PRs #6 and #7 (billing provenance, INV-PROV) into the backlog as Summa-owned requirements and close them | complete | housekeeping, provenance | high |
-| WI-0034 | Move summa to echelon-current 1.7.0 with Conditor 0.6.0 and install Arca 0.2.0 and Fides 0.2.0 through Conditor | ready | toolchain, conditor, arca, fides | high |
+| WI-0034 | Move summa to echelon-current 1.7.0 with Conditor 0.6.0 and install Arca 0.2.0 and Fides 0.2.0 through Conditor | complete | toolchain, conditor, arca, fides | high |
