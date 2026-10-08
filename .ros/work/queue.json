@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 34,
+  "nextSeq": 35,
   "items": [
     {
       "id": "WI-0001",
@@ -804,6 +804,32 @@
       "attachments": [],
       "createdAt": "2026-10-08T14:55:54.000Z",
       "updatedAt": "2026-10-08T14:57:43.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0034",
+      "title": "Move summa to echelon-current 1.7.0 with Conditor 0.6.0 and install Arca 0.2.0 and Fides 0.2.0 through Conditor",
+      "description": "conditor upgrade --current against the echelon-current 1.7.0 linux-x64 resolved set; declare arca 0.2.0 and fides 0.2.0 in conditor.json so their attested release assets land in vendor/nuget with locks and NuGet.config source mapping; pin them in Directory.Packages.props; conditor verify passes.",
+      "tags": [
+        "toolchain",
+        "conditor",
+        "arca",
+        "fides"
+      ],
+      "priority": "high",
+      "status": "ready",
+      "attachments": [],
+      "createdAt": "2026-10-08T14:59:16.000Z",
+      "updatedAt": "2026-10-08T14:59:16.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
