@@ -19,7 +19,7 @@ Echelon foundation stack, under Praxis.
   [`docs/requirements/implementation-gap-analysis.md`](docs/requirements/implementation-gap-analysis.md)
   (`SUMv-NNN` section ids and `INV-<FAMILY>` rows; baseline and current
   columns; `tests/Summa.Tests/GapAnalysisTests.fs` holds the counts).
-  71 tested, 27 partial, 125 missing of 223 (baseline 0 / 1 / 222).
+  71 tested, 26 partial, 126 missing of 223 (baseline 0 / 1 / 222).
 - `src/Summa.Ledger` is the pure financial domain: `Money`, `Ledger`
   (WI-0012), `Invoicing` (WI-0013), `Payments` and `Reports` (WI-0014). The
   v0.1 First Vertical Slice runs end to end as a test
