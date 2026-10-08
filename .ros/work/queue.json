@@ -519,10 +519,10 @@
         "recovery"
       ],
       "priority": "high",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:04.225Z",
-      "updatedAt": "2026-10-08T16:00:40.000Z",
+      "updatedAt": "2026-10-08T16:09:43.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
