@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T16:51:53.000Z",
+  "updatedAt": "2026-10-08T17:17:57.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1390,6 +1390,63 @@
         }
       },
       "completedAt": "2026-10-08T16:51:53.000Z"
+    },
+    {
+      "id": "WI-0025",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Billing.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/ChronaImport.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Sources.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/BillingTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/ChronaImportTests.fs"
+        },
+        {
+          "type": "decision",
+          "path": "research/decisions/DF-SUMMA-2026-0006--billing-sources-rates-and-double-billing.md"
+        }
+      ],
+      "updatedAt": "2026-10-08T17:17:57.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261008T171643684Z-a5cb7cbd"
+      ],
+      "latestCheckpoint": {
+        "id": "f1e98abff66875c4510a962e",
+        "recordedAt": "2026-10-08T17:17:55.000Z",
+        "executionId": "EXE-20261008T171643684Z-a5cb7cbd",
+        "repository": "summa",
+        "branch": "feat/wi-0025-billing",
+        "commit": "a2df9bae976191a2077f9e5e1c52d274665d62c9",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa.git"
+        },
+        "remoteBranch": "feat/wi-0025-billing",
+        "remoteCommit": "a2df9bae976191a2077f9e5e1c52d274665d62c9",
+        "summary": "Billing models done: hourly from Chrona, fixed fees, milestones, expenses, rates, proposals, double-billing protection, Chrona feedback",
+        "nextAction": "Open and merge the PR",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-08T17:17:57.000Z"
     }
   ]
 }

@@ -186,3 +186,46 @@ let ``commits stay inside the organization's folder and carry the actor, never a
         Assert.DoesNotContain("ghp_", o.Content)
 
     Assert.Contains(store.State.History, fun c -> c.Message.Contains "github:583231")
+
+[<Fact>]
+let ``billing through commands: import, propose and accept each commit once, and nothing is billed twice`` () =
+    let store, ns = founded ()
+    setUp store ns |> Support.ok |> ignore
+    let accounts: Summa.Ledger.Billing.BillingAccounts = { TimeRevenue = "revenue"; FeeRevenue = "revenue"; ReimbursedExpenses = "revenue" }
+    let card: Summa.Ledger.Sources.RateCard = { Rates = [ Summa.Ledger.Sources.Everyone, Summa.Ledger.Money.usd 15000L ]; Roles = Map.empty }
+    let lift f (r: Receivables) = f r.Books |> Result.map (fun b -> { r with Books = b })
+    run store ns kevin ManageBilling "rates" (lift (Summa.Ledger.Billing.saveRateCard ledgerContext card)) |> Support.ok |> ignore
+    let import = fun r -> Summa.Ledger.Billing.importTime ledgerContext { sourceTime "pub-1" "act-1" 1 with EngagementId = None } r |> Result.map fst
+    let before = store.State.History.Length
+    run store ns kevin ImportSourceTime "import-pub-1" import |> Support.ok |> ignore
+    Assert.Equal(before + 1, store.State.History.Length)
+
+    let proposal id: Summa.Ledger.Billing.ProposalRequest =
+        { ProposalId = id
+          CustomerId = abc.Id
+          EngagementId = None
+          Currency = "USD"
+          Time = [ "pub-1" ]
+          Grouping = []
+          FixedFee = false
+          Milestones = []
+          Expenses = []
+          Manual = []
+          Accounts = accounts }
+
+    run store ns kevin ProposeInvoice "propose-P-1" (Summa.Ledger.Billing.propose ledgerContext (proposal "P-1")) |> Support.ok |> ignore
+
+    // A second proposal for the same time is decided on what is stored: refused.
+    match run store ns kevin ProposeInvoice "propose-P-2" (Summa.Ledger.Billing.propose ledgerContext (proposal "P-2")) with
+    | Error(Rejected [ Summa.Ledger.Billing.Unavailable("time pub-1", "reserved by proposal P-1") ]) -> ()
+    | other -> failwith $"%A{other}"
+
+    let issuing = { issueRequest with DraftId = "PD-1" }
+    let accept r = Summa.Ledger.Billing.markReady ledgerContext false "P-1" r |> Result.bind (Summa.Ledger.Billing.accept ledgerContext "P-1" issuing) |> Result.map fst
+    let accepted = run store ns kevin IssueInvoice "accept-P-1" accept |> Support.ok
+    Assert.Equal(Some "INV-001", (Summa.Ledger.Billing.consumed accepted.State).TryFind "time:act-1")
+    // The stored books reload with the invoice and its sources, and stay sound.
+    let reread = Commands.readAll store.Provider ns |> Async.RunSynchronously |> Support.ok
+    let loaded = FinancialRecords.load (reread |> List.filter (fun o -> Layout.keyOf o.Path |> Option.exists (fun k -> FinancialRecords.isFinancial k.Type)))
+    Assert.Empty loaded.Problems
+    Assert.Equal(Summa.Ledger.Sources.TimeSource [ { PublicationId = "pub-1"; ActivityId = "act-1"; Revision = 1; Minutes = 90 } ], loaded.State.Books.Invoices["INV-001"].Lines.Head.Source)

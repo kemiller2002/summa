@@ -171,3 +171,45 @@ let ``a void whose receivable is still open is an integrity failure`` () =
     let path = "records/summa.obligation/OBL-002.json"
     let reopened = objects |> List.map (fun o -> if RelativePath.render o.Path = path then { o with Content = o.Content.Replace("\"cancelled\":true", "\"cancelled\":false") } else o)
     Assert.Contains((load reopened).Problems, fun p -> (Diagnostics.describe p).Contains "its obligation is not cancelled")
+
+[<Fact>]
+let ``billing records round-trip: rates, engagements, expenses, time, proposals, reviews and line provenance`` () =
+    let original = withBilling ()
+    Assert.Empty(Invariants.check original)
+    let loaded = load (stored original)
+    Assert.Empty loaded.Problems
+    let books = loaded.State.Books
+    Assert.True((original.Books.Rates = books.Rates))
+    Assert.True((original.Books.Engagements = books.Engagements))
+    Assert.True((original.Books.Expenses = books.Expenses))
+    Assert.True((original.Books.Time = books.Time))
+    Assert.True((original.Books.Withdrawals = books.Withdrawals))
+    Assert.True((original.Books.Proposals = books.Proposals))
+    Assert.True((original.Books.Reviews = books.Reviews))
+    Assert.True((original.Books.Invoices["INV-002"] = books.Invoices["INV-002"]))
+    let invoice = books.Invoices["INV-002"]
+    Assert.Equal(Some "ENG-1", invoice.EngagementId)
+    Assert.Equal(Summa.Ledger.Invoicing.EngagementTerms, invoice.TermsSource)
+    Assert.Equal(Some Summa.Ledger.Sources.InvoiceOverride, invoice.Lines.Head.Rate |> Option.map _.RateSource)
+    let paths = stored original |> List.map (fun o -> RelativePath.render o.Path) |> Set.ofList
+
+    for expected in
+        [ "records/summa.rate-card/rates.json"
+          "records/summa.engagement/ENG-1.json"
+          "records/summa.expense/2026/EXP-1.json"
+          "records/summa.time/2026/pub-1.json"
+          "records/summa.time-withdrawal/pub-2.json"
+          "records/summa.proposal/P-1.json"
+          "records/summa.billing-review/review-pub-1.json" ] do
+        Assert.Contains(expected, paths)
+
+[<Fact>]
+let ``billing the same source on two live invoices is an integrity failure`` () =
+    let r = withBilling ()
+    let first = r.Books.Invoices["INV-001"]
+    let doubled = { first with Lines = [ { first.Lines.Head with Source = Summa.Ledger.Sources.ExpenseSource "EXP-1" } ] }
+    let broken = { r with Books = { r.Books with Invoices = r.Books.Invoices.Add("INV-001", doubled) } }
+    Assert.Contains(Invariants.check broken, fun v -> v.Rule = "no-double-billing" && v.Subject = "expense:EXP-1")
+    let unknown = { first with Lines = [ { first.Lines.Head with Source = Summa.Ledger.Sources.TimeSource [ { PublicationId = "pub-404"; ActivityId = "act-404"; Revision = 1; Minutes = 60 } ] } ] }
+    let orphan = { r with Books = { r.Books with Invoices = r.Books.Invoices.Add("INV-001", unknown) } }
+    Assert.Contains(Invariants.check orphan, fun v -> v.Rule = "sources-exist")

@@ -6,10 +6,12 @@
 /// Pure.
 module Summa.Storage.Invariants
 
+open System
 open Summa.Ledger.Money
 open Summa.Ledger.Ledger
 open Summa.Ledger.Invoicing
 open Summa.Ledger.Payments
+open Summa.Ledger.Sources
 
 /// One broken invariant: which rule, about what, and how.
 type Violation = { Rule: string; Subject: string; Detail: string }
@@ -173,6 +175,69 @@ let private voidRules (r: Receivables) =
               violation "only-voids-cancel" i.InvoiceId "its obligation is cancelled, but the invoice is not voided"
           | _ -> () ]
 
+let private billingRules (r: Receivables) =
+    let books = r.Books
+    let live = books.Invoices |> Map.filter (fun id _ -> not (r.Voids.ContainsKey id))
+
+    let liveProposals =
+        books.Proposals
+        |> Map.filter (fun _ p ->
+            match p.State with
+            | Proposed
+            | ReadyForReview -> true
+            | _ -> false)
+
+    let sourceProblems subject (line: InvoiceLine) =
+        [ match line.Source with
+          | TimeSource refs ->
+              for t in refs do
+                  match books.Time.TryFind t.PublicationId with
+                  | None -> violation "sources-exist" subject $"time {t.PublicationId} was never imported"
+                  | Some found when found.ActivityId <> t.ActivityId || found.Revision <> t.Revision ->
+                      violation "sources-exist" subject $"time {t.PublicationId} is not the activity revision it names"
+                  | Some _ -> ()
+          | ExpenseSource x when not (books.Expenses.ContainsKey x) -> violation "sources-exist" subject $"expense {x} is missing"
+          | FixedFeeSource e when not (books.Engagements.ContainsKey e) -> violation "sources-exist" subject $"engagement {e} is missing"
+          | MilestoneSource(e, m) when
+              not (books.Engagements.TryFind e |> Option.exists (fun found -> found.Milestones |> List.exists (fun x -> x.Id = m)))
+              ->
+              violation "sources-exist" subject $"milestone {e}/{m} is missing"
+          | _ -> () ]
+
+    [ for KeyValue(id, i) in books.Invoices do
+          for l in i.Lines do
+              yield! sourceProblems id l
+      for KeyValue(id, p) in books.Proposals do
+          for l in p.Lines do
+              yield! sourceProblems id l.Line
+
+          match p.State with
+          | Accepted invoice when not (books.Invoices.ContainsKey invoice) -> violation "accepted-proposal-has-invoice" id $"invoice {invoice} is missing"
+          | _ -> ()
+      // INV-CHR-003: nothing contributes to more than one live invoice.
+      for key, uses in
+          live
+          |> Map.toList
+          |> List.collect (fun (id, i) -> i.Lines |> List.collect (Summa.Ledger.Billing.sourceKeys books) |> List.distinct |> List.map (fun k -> k, id))
+          |> List.groupBy fst do
+          if uses.Length > 1 then
+              violation "no-double-billing" key $"""billed on {String.Join(", ", uses |> List.map snd)}"""
+      // INV-CHR-004: a source is reserved by one live proposal at most.
+      for key, uses in
+          liveProposals
+          |> Map.toList
+          |> List.collect (fun (id, p) -> p.Lines |> List.collect (fun l -> Summa.Ledger.Billing.sourceKeys books l.Line) |> List.distinct |> List.map (fun k -> k, id))
+          |> List.groupBy fst do
+          if uses.Length > 1 then
+              violation "one-reservation-per-source" key $"""reserved by {String.Join(", ", uses |> List.map snd)}"""
+      for KeyValue(id, x) in books.Expenses do
+          if not (books.Ledger.Entries.ContainsKey x.JournalEntryId) then violation "expense-has-entry" id $"its journal entry {x.JournalEntryId} is missing"
+      for KeyValue(id, w) in books.Withdrawals do
+          if not (books.Time.ContainsKey w.PublicationId) then violation "withdrawal-references" id "the withdrawn time was never imported"
+      for KeyValue(id, v) in books.Reviews do
+          if not (books.Time.ContainsKey v.PublicationId) then violation "review-references" id $"time {v.PublicationId} was never imported"
+          if not (books.Invoices.ContainsKey v.InvoiceId) then violation "review-references" id $"invoice {v.InvoiceId} is missing" ]
+
 /// Every invariant the books break, in a stable order; empty when they hold.
 let check (r: Receivables) : Violation list =
-    entryRules r.Books.Ledger @ invoiceRules r @ paymentRules r @ creditRules r @ voidRules r
+    entryRules r.Books.Ledger @ invoiceRules r @ paymentRules r @ creditRules r @ voidRules r @ billingRules r

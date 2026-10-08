@@ -47,12 +47,15 @@ let draft =
             RevenueAccountId = "revenue"
             Project = Some "PRJ-ARCH"
             WorkItem = None
-            Discount = None } ]
+            Discount = None
+            Source = Summa.Ledger.Sources.ManualLine
+            Rate = None } ]
       Adjustments = [ usd 1250L ]
       Discounts = []
       Terms = None
       DueDate = None
-      Corrects = None }
+      Corrects = None
+      EngagementId = None }
 
 let issueRequest =
     { DraftId = "D-1"
@@ -153,3 +156,113 @@ let withDiscountedInvoice () =
 let withCorrections () =
     let request: Summa.Ledger.Corrections.VoidRequest = { InvoiceId = "INV-002"; Reason = "Wrong discount"; Date = DateOnly(2026, 10, 9); JournalEntryId = "JE-VOID-2" }
     Summa.Ledger.Corrections.voidAndReissue ledgerContext request "D-3" (withDiscountedInvoice ()) |> ok |> fst
+
+/// Published time for ABC, as Summa snapshots it.
+let sourceTime (publication: string) (activity: string) (revision: int) : Summa.Ledger.Sources.SourceTime =
+    { PublicationId = publication
+      OrganizationId = "org-1"
+      ActivityId = activity
+      Revision = revision
+      PerformerId = "github:1"
+      BusinessDate = DateOnly(2026, 10, 6)
+      ProjectId = "PRJ-ARCH"
+      ClientId = Some abc.Id
+      EngagementId = Some "ENG-1"
+      ActivityTypeId = "consulting"
+      Description = "Assessment interviews"
+      ExactMinutes = 95
+      BillableMinutes = 90
+      Approved = true
+      RateReference = Some "senior"
+      Origin = Summa.Ledger.Sources.OriginKnown("imported:toggl", Some "toggl:obs-1", Some "EXE-1")
+      Lineage = [ "act-0" ]
+      WorkItem = Some "WI-0042"
+      Supersedes = None
+      PublishedAt = DateTimeOffset(2026, 10, 7, 11, 0, 0, TimeSpan.Zero) }
+
+/// The slice plus billing: a rate card, an engagement with milestones, an
+/// expense, imported time, an accepted proposal (INV-002), a correction
+/// that raised a review, a withdrawal and an abandoned proposal.
+let withBilling () =
+    let open' = Summa.Ledger.Billing.importTime
+    let accounts: Summa.Ledger.Billing.BillingAccounts = { TimeRevenue = "revenue"; FeeRevenue = "revenue"; ReimbursedExpenses = "revenue" }
+    let r = full ()
+
+    let card: Summa.Ledger.Sources.RateCard =
+        { Rates = [ Summa.Ledger.Sources.Everyone, usd 15000L; Summa.Ledger.Sources.ForRole "senior", usd 18000L ]
+          Roles = Map.ofList [ "github:1", "senior" ] }
+
+    let engagement =
+        { Id = "ENG-1"
+          CustomerId = abc.Id
+          Name = "Architecture Assessment"
+          Currency = "USD"
+          FixedFee = Some(usd 1500000L)
+          Milestones =
+            [ { Id = "kickoff"; Label = "Kickoff"; Amount = ShareOfFee 3000; CompletedOn = None }
+              { Id = "report"; Label = "Report"; Amount = MilestoneFixed(usd 200000L); CompletedOn = None } ]
+          Terms = Some(Net 15) }
+
+    let books =
+        r.Books
+        |> Summa.Ledger.Billing.saveRateCard ledgerContext card
+        |> ok
+        |> Summa.Ledger.Billing.saveEngagement ledgerContext engagement
+        |> ok
+        |> Summa.Ledger.Billing.completeMilestone ledgerContext "ENG-1" "kickoff" (DateOnly(2026, 10, 5))
+        |> ok
+
+    let expense: Summa.Ledger.Sources.Expense =
+        { Id = "EXP-1"
+          Date = DateOnly(2026, 10, 3)
+          Description = "Flight"
+          Amount = usd 42000L
+          ExpenseAccountId = "software"
+          PaidFromAccountId = "cash"
+          CustomerId = Some abc.Id
+          ProjectId = Some "PRJ-ARCH"
+          EngagementId = Some "ENG-1"
+          Billable = true
+          JournalEntryId = "JE-EXP-1" }
+
+    let r = { r with Books = books } |> Summa.Ledger.Billing.recordExpense ledgerContext expense |> ok
+    let r = open' ledgerContext (sourceTime "pub-1" "act-1" 1) r |> ok |> fst
+    let r = open' ledgerContext { sourceTime "pub-2" "act-2" 1 with Origin = Summa.Ledger.Sources.OriginUnknown } r |> ok |> fst
+
+    let proposal: Summa.Ledger.Billing.ProposalRequest =
+        { ProposalId = "P-1"
+          CustomerId = abc.Id
+          EngagementId = Some "ENG-1"
+          Currency = "USD"
+          Time = [ "pub-1" ]
+          Grouping = [ Summa.Ledger.Sources.ByProject; Summa.Ledger.Sources.ByServiceMonth ]
+          FixedFee = false
+          Milestones = [ "kickoff" ]
+          Expenses = [ "EXP-1" ]
+          Manual = []
+          Accounts = accounts }
+
+    let issuing = { issueRequest with DraftId = "PD-1"; InvoiceId = "INV-002"; JournalEntryId = "JE-INV-2"; ObligationId = "OBL-002" }
+
+    let r =
+        r
+        |> Summa.Ledger.Billing.propose ledgerContext proposal
+        |> ok
+        |> Summa.Ledger.Billing.overrideRate ledgerContext "P-1" 0 (usd 19000L) "Agreed rate"
+        |> ok
+        |> Summa.Ledger.Billing.markReady ledgerContext false "P-1"
+        |> ok
+        |> Summa.Ledger.Billing.accept ledgerContext "P-1" issuing
+        |> ok
+        |> fst
+
+    let r = open' ledgerContext { sourceTime "pub-1b" "act-1" 2 with Supersedes = Some "pub-1" } r |> ok |> fst
+    let withdrawal: Summa.Ledger.Sources.TimeWithdrawal = { PublicationId = "pub-2"; Revision = 2; Reason = "no longer billable"; WithdrawnAt = DateTimeOffset(2026, 10, 8, 10, 0, 0, TimeSpan.Zero) }
+    let r = Summa.Ledger.Billing.withdrawTime ledgerContext withdrawal r |> ok
+    let manual = { draft.Lines.Head with Description = "Workshop" }
+
+    r
+    |> Summa.Ledger.Billing.propose ledgerContext { proposal with ProposalId = "P-2"; Time = []; Milestones = []; Expenses = []; Manual = [ manual ] }
+    |> ok
+    |> Summa.Ledger.Billing.abandon ledgerContext "P-2"
+    |> ok
