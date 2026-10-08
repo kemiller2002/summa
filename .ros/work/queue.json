@@ -414,10 +414,10 @@
         "depends:arca"
       ],
       "priority": "high",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:02.981Z",
-      "updatedAt": "2026-10-08T15:16:53.000Z",
+      "updatedAt": "2026-10-08T15:31:01.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -459,7 +459,7 @@
     {
       "id": "WI-0020",
       "title": "Summa 04: authoritative financial storage on Arca - one record per file, command-to-commit, optimistic concurrency, no silent rebase (SUM0-002, SUM0-012..021, SUM0-027, SUM0-028, SUM0-044..046, SUM3-001, SUM3-003, SUM3-005, SUM0-034, SUM1-019 remainder)",
-      "description": "Depends on WI-0018, WI-0019, arca slice 6 (GitHub adapter, ARCA-API/OUT) and arca slice 8 (integrity, ARCA-INT). Persist the Summa.Ledger, invoice and payment records through Arca as canonical JSON, one financial object or event per file at deterministic paths. One financial command is one commit (for example 'summa: issue invoice INV-2026-0042'). Commands carry the expected repository state; when HEAD moves they are revalidated, never silently rebased. Draft records are mutable and posted ones immutable. Corrections are compensating records. No physical deletion of financial records. Git history is evidence only. Storage avoids the scale traps of SUM0-034, and idempotency (SUM1-019) extends to storage retries through Arca idempotency keys.",
+      "description": "Depends on WI-0018, WI-0019, arca slice 6 (GitHub adapter, ARCA-API/OUT) and arca slice 8 (integrity, ARCA-INT). Persist the Summa.Ledger, invoice and payment records through Arca as canonical JSON, one financial object or event per file at deterministic paths. One financial command is one commit (for example 'summa: issue invoice INV-2026-0042'). Commands carry the expected repository state; when HEAD moves they are revalidated, never silently rebased. Draft records are mutable and posted ones immutable. Corrections are compensating records. No physical deletion of financial records. Git history is evidence only. Storage avoids the scale traps of SUM0-034, and idempotency (SUM1-019) extends to storage retries through Arca idempotency keys. Also the WI-0018 remainders, applied to every financial write against GitHub: SUM0-005..009, SUM0-011 and SUM0-043 (Summa.Storage namespaces, application and organization manifests).",
       "tags": [
         "summa",
         "order:04",
@@ -470,7 +470,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:03.619Z",
-      "updatedAt": "2026-10-08T07:46:03.619Z",
+      "updatedAt": "2026-10-08T15:30:25.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T15:26:15.000Z",
+  "updatedAt": "2026-10-08T15:31:01.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1051,13 +1051,47 @@
     {
       "id": "WI-0018",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-08T15:16:54.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Storage.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "docs/deployment-configuration.md"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Storage.Tests/StorageTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-08T15:31:01.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T151654460Z-39282886"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "efb1cb09d8960abc04da492a",
+        "recordedAt": "2026-10-08T15:31:00.000Z",
+        "executionId": "EXE-20261008T151654460Z-39282886",
+        "repository": "summa",
+        "branch": "feat/wi-0018-data-location",
+        "commit": "1b894f0ad9da8ab1061b2802076593aefeaff955",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa.git"
+        },
+        "remoteBranch": "feat/wi-0018-data-location",
+        "remoteCommit": "1b894f0ad9da8ab1061b2802076593aefeaff955",
+        "summary": "Summa.Storage data location, namespaces and manifests, gap rows updated",
+        "nextAction": "Open and merge the PR",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-08T15:31:01.000Z"
     }
   ]
 }
