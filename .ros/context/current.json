@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T22:41:59.000Z",
+  "updatedAt": "2026-10-08T23:00:33.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1792,13 +1792,63 @@
     {
       "id": "WI-0035",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-08T22:41:59.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Application/Identity.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Application/Bridge.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Engine/Accounting.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "web-kernel/host.js"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/SignInTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/sign-in.spec.js"
+        },
+        {
+          "type": "decision",
+          "path": "research/decisions/DF-SUMMA-2026-0013--sign-in-through-fides-in-the-application.md"
+        }
+      ],
+      "updatedAt": "2026-10-08T23:00:33.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T224159765Z-e3bcf517"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "f7ec01bfc9a237f4daaac00e",
+        "recordedAt": "2026-10-08T23:00:26.000Z",
+        "executionId": "EXE-20261008T224159765Z-e3bcf517",
+        "repository": "summa",
+        "branch": "feat/wi-0035-sign-in",
+        "commit": "eccab4d44ef0262ad419d0f68f177c347d1d4b2f",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/wi-0035-sign-in",
+        "remoteCommit": "eccab4d44ef0262ad419d0f68f177c347d1d4b2f",
+        "summary": "Sign-in through Fides' client over Limen requests: engine states, summa.host pack, actor github:<id>, token provider for Arca (DF-SUMMA-2026-0013)",
+        "nextAction": "Complete WI-0035 after CI; then WI-0043 carries the return target across the GitHub round trip",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-08T23:00:33.000Z"
     }
   ]
 }
