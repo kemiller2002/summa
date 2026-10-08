@@ -1561,20 +1561,20 @@
         "EXE-20261008T184655871Z-69753eb4"
       ],
       "latestCheckpoint": {
-        "id": "1eca41b2edd4d67e3db5611a",
-        "recordedAt": "2026-10-08T21:12:15.000Z",
+        "id": "6ae14c587dc3cee9761a639e",
+        "recordedAt": "2026-10-08T21:37:33.000Z",
         "executionId": "EXE-20261008T184655871Z-69753eb4",
         "repository": "summa",
-        "branch": "feat/wi-0030-slice3",
-        "commit": "b7b253f5021dec4b23f557f65a63c54424ea5bbf",
+        "branch": "feat/wi-0030-slice4",
+        "commit": "3d1caa05b23530f35e1edfd3224e52eca08bf29c",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0030-slice3",
-        "remoteCommit": "b7b253f5021dec4b23f557f65a63c54424ea5bbf",
-        "summary": "Slice 3: ledger, journal entries, reports (accrual and cash) and periods with close readiness, each at its own address",
-        "nextAction": "Slice 4: PDF artifacts through Folio and the files and store packs, artifact storage per environment, pre-issue preview",
+        "remoteBranch": "feat/wi-0030-slice4",
+        "remoteCommit": "3d1caa05b23530f35e1edfd3224e52eca08bf29c",
+        "summary": "Slice 4: invoice PDFs stored per environment through the files and store packs, artifact store configuration and isolation, pre-issue preview, multipage print check",
+        "nextAction": "Slice 5: follow-up, the unallocated payments inbox, the CPA workspace and the work queue",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
