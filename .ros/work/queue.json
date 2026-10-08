@@ -998,10 +998,10 @@
       "description": null,
       "tags": [],
       "priority": "high",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T19:42:22.824Z",
-      "updatedAt": "2026-10-08T19:42:34.000Z",
+      "updatedAt": "2026-10-08T20:29:00.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

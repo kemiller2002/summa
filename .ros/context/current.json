@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T19:42:35.000Z",
+  "updatedAt": "2026-10-08T20:29:00.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1629,33 +1629,63 @@
     {
       "id": "WI-0041",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-08T19:42:35.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Engine/Routes.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Engine/Accounting.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "vendor/Limen.Routing/UPSTREAM.json"
+        },
+        {
+          "type": "implementation",
+          "path": ".echelon/routes.json"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/RoutesTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/DeepLinkTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/deep-links.spec.js"
+        }
+      ],
+      "updatedAt": "2026-10-08T20:29:00.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T194235483Z-c793abf6"
       ],
       "latestCheckpoint": {
-        "id": "c14b7fbc1498d15ddbe32d64",
-        "recordedAt": "2026-10-08T19:54:50.000Z",
+        "id": "3106d36161c3f18a8e2a147c",
+        "recordedAt": "2026-10-08T20:28:42.000Z",
         "executionId": "EXE-20261008T194235483Z-c793abf6",
         "repository": "summa",
-        "branch": "feat/wi-0041-deep-links",
-        "commit": "0b479d8fd5aef2fd7b9b846cd10f52c24b5df093",
+        "branch": "feat/wi-0041-app-links",
+        "commit": "1984b3f623f39853d87d26f0b643c0b5d09aac6c",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0041-deep-links",
-        "remoteCommit": "0b479d8fd5aef2fd7b9b846cd10f52c24b5df093",
-        "summary": "Route model and codec on vendored Limen.Routing, route inventory, SUM-LINK requirements, DF-SUMMA-2026-0010",
-        "nextAction": "Wire deep links into the existing accounting screens: adopt Initialize/LocationChanged, href links, refine filters, not-found/not-permitted pages, Copy link",
+        "remoteBranch": "feat/wi-0041-app-links",
+        "remoteCommit": "1984b3f623f39853d87d26f0b643c0b5d09aac6c",
+        "summary": "Route model, inventory and requirements merged (#43); deep links wired into the accounting application's screens with browser tests",
+        "nextAction": "Complete WI-0041; WI-0043 carries deep links for WI-0030's new screens and for sign-in",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
         }
-      }
+      },
+      "completedAt": "2026-10-08T20:29:00.000Z"
     }
   ]
 }
