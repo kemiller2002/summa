@@ -2,7 +2,7 @@
 id: DF-SUMMA-2026-0009
 title: The accounting application and its local books
 status: accepted
-version: 1.1.0
+version: 1.2.0
 created: 2026-10-08
 updated: 2026-10-08
 owners:
@@ -19,7 +19,7 @@ provenance:
     EXE-20261008T184655871Z-69753eb4:
       operations: [created, modified]
       at: 2026-10-08T18:46:56.261Z
-      last: 2026-10-08T20:50:53.501Z
+      last: 2026-10-08T21:10:08.225Z
       actor:
         kind: agent
         id: anthropic/claude-code
@@ -68,3 +68,19 @@ The product UI (v0.4) needs a page that works before sign-in (WI-0035) and the G
    The kernel cannot set a select's value before its options exist. Each
    option therefore carries `selected`, so a link that names a customer
    opens with that customer chosen.
+9. **The books' screens use Summa's own reports** (slice 3). The ledger,
+   trial balance, balance sheet and income statement (accrual, or
+   `Periods.cashBasis` for cash) are computed by `Summa.Ledger`, never in the
+   page. Every account, date and basis is in the link.
+10. **An entry is traced to its origin by the id it was posted under.** Each
+    invoice, allocation, credit memo, application and write-off records its
+    journal entry id, and the entry page links back through it, rather than
+    parsing the entry's source text.
+11. **What blocks a period close.** A trial balance that does not balance at
+    the month's end, or a payment received in the month that is not fully
+    applied, blocks closing: the page lists the blockers and the close
+    command refuses. Unissued drafts are reported but do not block, because
+    they post nothing.
+12. **Reopening a period is permitted in local books**, whose single person is
+    their owner. With sign-in (WI-0035), reopening needs the `ReopenPeriod`
+    capability.

@@ -242,6 +242,19 @@ type Msg =
     | EngagementNameChanged of string
     | EngagementFeeChanged of string
     | EngagementAdded
+    | LedgerAccountChosen of string
+    | LedgerFromChanged of string
+    | LedgerToChanged of string
+    | ReportAsOfChanged of string
+    | IncomeFromChanged of string
+    | IncomeToChanged of string
+    | IncomeBasisChosen of string
+    /// A common date range (v0.4 §24): this-month, last-month, this-quarter,
+    /// last-quarter, year-to-date or last-year.
+    | IncomeRangeChosen of string
+    | PeriodClosed
+    | PeriodLocked
+    | PeriodReopened
 
 type AppEffect =
     | LoadConfiguration
@@ -483,6 +496,38 @@ let private paymentList (model: Model) =
     match model.Place with
     | Routes.Payments list -> list
     | _ -> Routes.allPayments
+
+/// The common report ranges (v0.4 §24), relative to today.
+let dateRange (today: DateOnly) (key: string) : (DateOnly * DateOnly) option =
+    let monthStart (d: DateOnly) = DateOnly(d.Year, d.Month, 1)
+    let quarterStart (d: DateOnly) = DateOnly(d.Year, ((d.Month - 1) / 3) * 3 + 1, 1)
+    let thisMonth = monthStart today
+    let thisQuarter = quarterStart today
+
+    match key with
+    | "this-month" -> Some(thisMonth, today)
+    | "last-month" -> Some(thisMonth.AddMonths -1, thisMonth.AddDays -1)
+    | "this-quarter" -> Some(thisQuarter, today)
+    | "last-quarter" -> Some(thisQuarter.AddMonths -3, thisQuarter.AddDays -1)
+    | "year-to-date" -> Some(DateOnly(today.Year, 1, 1), today)
+    | "last-year" -> Some(DateOnly(today.Year - 1, 1, 1), DateOnly(today.Year - 1, 12, 31))
+    | _ -> None
+
+/// What a period close is blocked by (v0.4 §26): the trial balance at the
+/// month's end must balance, and every payment received in the month must
+/// be applied. Drafts are reported but do not block.
+let periodBlockers (r: Receivables) (year: int, month: int) =
+    let monthEnd = DateOnly(year, month, DateTime.DaysInMonth(year, month))
+    let tb = Reports.trialBalance "USD" monthEnd r.Books.Ledger
+
+    let unapplied =
+        r.Payments |> Map.toList |> List.map snd |> List.filter (fun p -> p.DateReceived.Year = year && p.DateReceived.Month = month && (unallocated r p).Minor > 0L)
+
+    [ if tb.TotalDebits <> tb.TotalCredits then "The trial balance at the month's end does not balance."
+      match unapplied.Length with
+      | 0 -> ()
+      | 1 -> "One payment received this month is not fully applied."
+      | n -> $"{n} payments received this month are not fully applied." ]
 
 // ---- Update ----------------------------------------------------------------------------
 
@@ -886,6 +931,62 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
             else
                 added, effects
         | Ok _, None -> model, []
+    | LedgerAccountChosen v ->
+        match model.Place with
+        | Routes.Ledger(_, from, until) -> refineTo (Routes.Ledger(nonEmpty v, from, until)) model
+        | _ -> model, []
+    | LedgerFromChanged v ->
+        match model.Place with
+        | Routes.Ledger(account, _, until) -> refineTo (Routes.Ledger(account, parseDate v, until)) model
+        | _ -> model, []
+    | LedgerToChanged v ->
+        match model.Place with
+        | Routes.Ledger(account, from, _) -> refineTo (Routes.Ledger(account, from, parseDate v)) model
+        | _ -> model, []
+    | ReportAsOfChanged v ->
+        match model.Place with
+        | Routes.TrialBalance _ -> refineTo (Routes.TrialBalance(parseDate v)) model
+        | Routes.BalanceSheet _ -> refineTo (Routes.BalanceSheet(parseDate v)) model
+        | _ -> model, []
+    | IncomeFromChanged v ->
+        match model.Place with
+        | Routes.IncomeStatement(_, until, basis) -> refineTo (Routes.IncomeStatement(parseDate v, until, basis)) model
+        | _ -> model, []
+    | IncomeToChanged v ->
+        match model.Place with
+        | Routes.IncomeStatement(from, _, basis) -> refineTo (Routes.IncomeStatement(from, parseDate v, basis)) model
+        | _ -> model, []
+    | IncomeBasisChosen v ->
+        match model.Place, Routes.basisOf v with
+        | Routes.IncomeStatement(from, until, _), Some basis -> refineTo (Routes.IncomeStatement(from, until, basis)) model
+        | _ -> model, []
+    | IncomeRangeChosen key ->
+        match model.Place, dateRange (today ctx) key with
+        | Routes.IncomeStatement(_, _, basis), Some(from, until) -> refineTo (Routes.IncomeStatement(Some from, Some until, basis)) model
+        | _ -> model, []
+    | PeriodClosed when (match model.Place, model.Books with
+                         | Routes.Period(y, m), Some b -> not (periodBlockers b (y, m)).IsEmpty
+                         | _ -> false) ->
+        { model with Error = Some "This period is not ready to close. Resolve what is listed first."; Notice = None }, []
+    | PeriodClosed
+    | PeriodLocked
+    | PeriodReopened ->
+        match model.Place with
+        | Routes.Period(year, month) ->
+            let label = Documents.dateText(DateOnly(year, month, 1)).Replace(" 1,", "")
+
+            let notice, change =
+                match msg with
+                | PeriodClosed -> $"{label} is closed. Nothing can be posted to it until it is reopened.", (fun ledger -> Ok(closePeriod (context ctx) (year, month) ledger))
+                | PeriodLocked -> $"{label} is locked.", (fun ledger -> Ok(lockPeriod (context ctx) (year, month) ledger))
+                // Local books are their owner's own, so reopening is permitted.
+                | _ -> $"{label} is open again.", reopenPeriod (context ctx) true (year, month)
+
+            command model notice (fun books ->
+                change books.Books.Ledger
+                |> Result.map (fun ledger -> { books with Books = { books.Books with Ledger = ledger } })
+                |> Result.mapError describe)
+        | _ -> model, []
     | ResetConfirmed ->
         // Only offered when the stored books fail their checks.
         match model.Storage with
@@ -943,8 +1044,6 @@ type Screen =
     | Forbidden
     /// A parameter Summa does not understand, or a damaged address.
     | InvalidLink of explanation: string
-    /// A place whose screen a later build adds (WI-0030).
-    | Unbuilt of title: string
     /// A draft that has since been issued: say so and link the invoice.
     | IssuedDraft of draftId: string * invoiceId: string
 
@@ -985,14 +1084,16 @@ let screen (model: Model) =
         | Routes.CreditMemo _
         | Routes.Engagements _
         | Routes.Engagement _ as place -> Showing place
+        | Routes.JournalEntry id when not (holds (fun b -> b.Books.Ledger.Entries) id) -> Missing
+        | Routes.Ledger(Some account, _, _) when not (holds (fun b -> b.Books.Ledger.Accounts) account) -> Missing
         | Routes.Periods _
-        | Routes.Period _ -> Unbuilt "Accounting periods"
+        | Routes.Period _
         | Routes.Ledger _
-        | Routes.JournalEntry _ -> Unbuilt "General ledger"
+        | Routes.JournalEntry _
         | Routes.Reports
         | Routes.TrialBalance _
         | Routes.IncomeStatement _
-        | Routes.BalanceSheet _ -> Unbuilt "Reports"
+        | Routes.BalanceSheet _ as place -> Showing place
 
 let private statusKey =
     function
@@ -1375,6 +1476,363 @@ let private placeValues (model: Model) (shown: Screen) : View =
           |> Option.defaultValue []
       ) ]
 
+let private monthLabel (year: int, month: int) =
+    DateOnly(year, month, 1).ToString("MMMM yyyy", CultureInfo.InvariantCulture)
+
+let private periodStateText =
+    function
+    | PeriodState.Open -> "Open"
+    | PeriodState.Closed -> "Closed"
+    | PeriodState.Locked -> "Locked"
+
+/// Where a journal entry came from (v0.4 §22): the invoice, payment, credit
+/// memo, credit application or write-off that posted it.
+let private originOf (r: Receivables) (entryId: string) : (string * Routes.Place) option =
+    [ fun () ->
+          r.Books.Invoices
+          |> Map.tryPick (fun _ i -> if i.JournalEntryId = entryId then Some($"Invoice {i.Number}", Routes.Invoice(i.InvoiceId, Routes.Document)) else None)
+      fun () -> r.Allocations |> List.tryFind (fun a -> a.JournalEntryId = entryId) |> Option.map (fun a -> $"Payment {a.PaymentId}", Routes.Payment a.PaymentId)
+      fun () -> r.CreditMemos |> Map.tryPick (fun _ m -> if m.JournalEntryId = entryId then Some($"Credit memo {m.Id}", Routes.CreditMemo m.Id) else None)
+      fun () ->
+          r.Applications
+          |> List.tryFind (fun a -> a.JournalEntryId = entryId)
+          |> Option.map (fun a -> "Credit applied to an invoice", Routes.Invoice(a.InvoiceId, Routes.InvoicePayments))
+      fun () -> r.WriteOffs |> Map.tryPick (fun _ w -> if w.JournalEntryId = entryId then Some("Write-off", Routes.Invoice(w.InvoiceId, Routes.History)) else None) ]
+    |> List.tryPick (fun find -> find ())
+
+/// The general ledger, journal entries, reports and accounting periods
+/// (WI-0030 slice 3), each with its account, dates and basis in the link.
+let private bookValues (model: Model) (shown: Screen) : View =
+    let books = model.Books
+    let ledger = books |> Option.map (fun b -> b.Books.Ledger)
+    let usd = zero "USD"
+    let amount (m: Money) = Text(if m.Minor = 0L then "" else Documents.amountText m)
+    let entryHref id = Text(Routes.href (Routes.JournalEntry id))
+    let accountName id = ledger |> Option.bind (fun l -> l.Accounts.TryFind id) |> Option.map (fun a -> $"{a.Code} {a.Name}") |> Option.defaultValue id
+    let flagOf b = Value(Flag b)
+    let textOf (t: string) = Value(Text t)
+    let within (from: DateOnly option) (until: DateOnly option) (d: DateOnly) = from |> Option.forall (fun f -> d >= f) && until |> Option.forall (fun u -> d <= u)
+
+    // ---- The general ledger
+    let ledgerAccount, ledgerFrom, ledgerTo =
+        match model.Place with
+        | Routes.Ledger(account, from, until) -> account, from, until
+        | _ -> None, None, None
+
+    let accountOptions =
+        ledger
+        |> Option.map (fun l ->
+            l.Accounts
+            |> Map.toList
+            |> List.map snd
+            |> List.sortBy _.Code
+            |> List.map (fun a -> [ "value", Text a.Id; "label", Text $"{a.Code} {a.Name}"; "selected", Flag(Some a.Id = ledgerAccount) ]))
+        |> Option.defaultValue []
+
+    let accountRows =
+        match ledger, ledgerAccount with
+        | Some l, Some account when l.Accounts.ContainsKey account -> Reports.generalLedger "USD" account l
+        | _ -> []
+
+    let opening =
+        accountRows
+        |> List.takeWhile (fun r -> ledgerFrom |> Option.exists (fun f -> r.Date < f))
+        |> List.tryLast
+        |> Option.map _.RunningBalance
+        |> Option.defaultValue usd
+
+    let ledgerRows =
+        accountRows
+        |> List.filter (fun r -> within ledgerFrom ledgerTo r.Date)
+        |> List.mapi (fun i r ->
+            [ "key", Text $"{r.EntryId}-{i}"
+              "date", Text(Documents.dateText r.Date)
+              "entry", Text r.EntryId
+              "href", entryHref r.EntryId
+              "description", Text r.Description
+              "debit", amount r.Debit
+              "credit", amount r.Credit
+              "balance", Text(Documents.amountText r.RunningBalance) ])
+
+    let journalRows =
+        match ledger, ledgerAccount with
+        | Some l, None ->
+            l.Journal
+            |> List.map (fun id -> l.Entries[id])
+            |> List.filter (fun e -> within ledgerFrom ledgerTo e.Date)
+            |> List.map (fun e ->
+                [ "key", Text e.Id
+                  "date", Text(Documents.dateText e.Date)
+                  "entry", Text e.Id
+                  "href", entryHref e.Id
+                  "description", Text e.Description
+                  "amount", Text(Documents.amountText (fst (totals "USD" e.Lines))) ])
+        | _ -> []
+
+    // ---- One journal entry
+    let entry =
+        match shown, ledger with
+        | Showing(Routes.JournalEntry id), Some l -> l.Entries.TryFind id |> Option.map (fun e -> l, e)
+        | _ -> None
+
+    let entryText (f: PostedEntry -> string) = textOf (entry |> Option.map (snd >> f) |> Option.defaultValue "")
+
+    // ---- Reports
+    let today = model.Today
+
+    let reportAsOf =
+        match model.Place with
+        | Routes.TrialBalance asOf
+        | Routes.BalanceSheet asOf -> asOf
+        | _ -> None
+
+    let asOfDate = reportAsOf |> Option.defaultValue today
+
+    let trial =
+        match shown, ledger with
+        | Showing(Routes.TrialBalance _), Some l -> Some(Reports.trialBalance "USD" asOfDate l)
+        | _ -> None
+
+    let sheet =
+        match shown, ledger with
+        | Showing(Routes.BalanceSheet _), Some l -> Some(Reports.balanceSheet "USD" asOfDate l)
+        | _ -> None
+
+    let incomeFrom, incomeTo, basis =
+        match model.Place with
+        | Routes.IncomeStatement(from, until, basis) -> from, until, basis
+        | _ -> None, None, Routes.Accrual
+
+    let fromDate = incomeFrom |> Option.defaultValue (DateOnly(today.Year, 1, 1))
+    let toDate = incomeTo |> Option.defaultValue today
+
+    let income =
+        match shown, books, model.Manifest with
+        | Showing(Routes.IncomeStatement _), Some b, Some manifest ->
+            match basis with
+            | Routes.Accrual ->
+                let s = Reports.incomeStatement "USD" fromDate toDate b.Books.Ledger
+                Some(s.Revenue, s.Expenses, s.NetIncome)
+            | Routes.Cash ->
+                let cash = Organization.accountByCode b.Books.Ledger manifest.Accounting.CashAccount
+                let s = Periods.cashBasis "USD" fromDate toDate [ cash ] b
+                Some(s.Revenue, s.Expenses, s.NetIncome)
+        | _ -> None
+
+    let money' (pick: 'r -> Money) (report: 'r option) = textOf (report |> Option.map (pick >> Documents.moneyText) |> Option.defaultValue "")
+
+    // ---- Periods
+    let year =
+        match model.Place with
+        | Routes.Periods year -> year |> Option.defaultValue today.Year
+        | Routes.Period(year, _) -> year
+        | _ -> today.Year
+
+    let stateOf (l: Ledger) (y, m) = l.Periods.TryFind((y, m)) |> Option.defaultValue PeriodState.Open
+    let inMonth (y, m) (d: DateOnly) = d.Year = y && d.Month = m
+
+    let monthRows =
+        ledger
+        |> Option.map (fun l ->
+            [ 1..12 ]
+            |> List.map (fun m ->
+                [ "key", Text $"{year:D4}-{m:D2}"
+                  "label", Text(monthLabel (year, m))
+                  "href", Text(Routes.href (Routes.Period(year, m)))
+                  "state", Text(periodStateText (stateOf l (year, m)))
+                  "entries", Text(string (l.Journal |> List.filter (fun id -> inMonth (year, m) l.Entries[id].Date) |> List.length)) ]))
+        |> Option.defaultValue []
+
+    let period =
+        match shown, books with
+        | Showing(Routes.Period(y, m)), Some b -> Some(b, (y, m))
+        | _ -> None
+
+    let periodState = period |> Option.map (fun (b, p) -> stateOf b.Books.Ledger p)
+
+    let periodEntries =
+        period
+        |> Option.map (fun (b, p) ->
+            let l = b.Books.Ledger
+
+            l.Journal
+            |> List.map (fun id -> l.Entries[id])
+            |> List.filter (fun e -> inMonth p e.Date)
+            |> List.map (fun e ->
+                [ "key", Text e.Id
+                  "date", Text(Documents.dateText e.Date)
+                  "entry", Text e.Id
+                  "href", entryHref e.Id
+                  "description", Text e.Description
+                  "amount", Text(Documents.amountText (fst (totals "USD" e.Lines))) ]))
+        |> Option.defaultValue []
+
+    // What to look at before closing a period (v0.4 period close).
+    let checks =
+        period
+        |> Option.map (fun (b, (y, m)) ->
+            let monthEnd = DateOnly(y, m, DateTime.DaysInMonth(y, m))
+            let tb = Reports.trialBalance "USD" monthEnd b.Books.Ledger
+            let unapplied = b.Payments |> Map.toList |> List.map snd |> List.filter (fun p -> inMonth (y, m) p.DateReceived && (unallocated b p).Minor > 0L)
+
+            [ "trial", "Trial balance at month end", (if tb.TotalDebits = tb.TotalCredits then "Balances" else "Does not balance"), tb.TotalDebits = tb.TotalCredits
+              "drafts", "Drafts not yet issued", string b.Books.Drafts.Count, b.Books.Drafts.IsEmpty
+              "unapplied", "Payments received this month not fully applied", string unapplied.Length, unapplied.IsEmpty ]
+            |> List.map (fun (key, label, result, ok) -> [ "key", Text key; "label", Text label; "result", Text result; "tone", Text(if ok then "ok" else "attention") ]))
+        |> Option.defaultValue []
+
+    let placeIs (pick: Routes.Place -> bool) =
+        flagOf (
+            match shown with
+            | Showing place -> pick place
+            | _ -> false
+        )
+
+    [ "onLedger", placeIs (function Routes.Ledger _ -> true | _ -> false)
+      "onJournalEntry", placeIs (function Routes.JournalEntry _ -> true | _ -> false)
+      "onReports", placeIs ((=) Routes.Reports)
+      "onTrialBalance", placeIs (function Routes.TrialBalance _ -> true | _ -> false)
+      "onIncomeStatement", placeIs (function Routes.IncomeStatement _ -> true | _ -> false)
+      "onBalanceSheet", placeIs (function Routes.BalanceSheet _ -> true | _ -> false)
+      "onPeriods", placeIs (function Routes.Periods _ -> true | _ -> false)
+      "onPeriod", placeIs (function Routes.Period _ -> true | _ -> false)
+      // Ledger
+      "ledgerAccountOptions", Items accountOptions
+      "ledgerAccount", textOf (ledgerAccount |> Option.defaultValue "")
+      "ledgerAccountName", textOf (ledgerAccount |> Option.map accountName |> Option.defaultValue "")
+      "ledgerFrom", textOf (dateInput ledgerFrom)
+      "ledgerTo", textOf (dateInput ledgerTo)
+      "isAccountLedger", flagOf ledgerAccount.IsSome
+      "isJournal", flagOf ledgerAccount.IsNone
+      "ledgerOpening", textOf (Documents.amountText opening)
+      "hasLedgerOpening", flagOf ledgerFrom.IsSome
+      "ledgerRows", Items ledgerRows
+      "journalRows", Items journalRows
+      "hasLedgerRows", flagOf (not ledgerRows.IsEmpty || not journalRows.IsEmpty)
+      // One entry
+      "entryId", entryText _.Id
+      "entryDate", entryText (fun e -> Documents.dateText e.Date)
+      "entryDescription", entryText _.Description
+      "entrySource", entryText _.Source
+      "entryPostedAt", entryText (fun e -> e.PostedAt.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture))
+      "entryReverses", flagOf (entry |> Option.exists (fun (_, e) -> e.Reverses.IsSome))
+      "entryReversesHref", textOf (entry |> Option.bind (fun (_, e) -> e.Reverses) |> Option.map (fun id -> Routes.href (Routes.JournalEntry id)) |> Option.defaultValue "")
+      "entryReversesId", entryText (fun e -> e.Reverses |> Option.defaultValue "")
+      "entryLines",
+      Items(
+          entry
+          |> Option.map (fun (l, e) ->
+              e.Lines
+              |> List.mapi (fun i line ->
+                  let debit, credit =
+                      match line.Side with
+                      | Debit m -> m, usd
+                      | Credit m -> usd, m
+
+                  [ "key", Text(string i)
+                    "account", Text(accountName line.AccountId)
+                    "href", Text(Routes.href (Routes.Ledger(Some line.AccountId, None, None)))
+                    "memo", Text(line.Memo |> Option.defaultValue "")
+                    "debit", amount debit
+                    "credit", amount credit ]))
+          |> Option.defaultValue []
+      )
+      "hasEntryOrigin", flagOf (entry |> Option.exists (fun (_, e) -> books |> Option.bind (fun b -> originOf b e.Id) |> Option.isSome))
+      "entryOrigin", textOf (entry |> Option.bind (fun (_, e) -> books |> Option.bind (fun b -> originOf b e.Id)) |> Option.map fst |> Option.defaultValue "")
+      "entryOriginHref",
+      textOf (entry |> Option.bind (fun (_, e) -> books |> Option.bind (fun b -> originOf b e.Id)) |> Option.map (snd >> Routes.href) |> Option.defaultValue "")
+      "entryDebits", textOf (entry |> Option.map (fun (_, e) -> Documents.amountText (fst (totals "USD" e.Lines))) |> Option.defaultValue "")
+      "entryCredits", textOf (entry |> Option.map (fun (_, e) -> Documents.amountText (snd (totals "USD" e.Lines))) |> Option.defaultValue "")
+      // Reports
+      "trialBalanceHref", textOf (Routes.href (Routes.TrialBalance None))
+      "incomeStatementHref", textOf (Routes.href (Routes.IncomeStatement(None, None, Routes.Accrual)))
+      "balanceSheetHref", textOf (Routes.href (Routes.BalanceSheet None))
+      "reportAsOf", textOf (dateInput reportAsOf)
+      "reportDate", textOf (Documents.dateText asOfDate)
+      "trialRows",
+      Items(
+          trial
+          |> Option.map (fun tb ->
+              tb.Rows
+              |> List.map (fun r ->
+                  [ "key", Text r.AccountId
+                    "code", Text r.Code
+                    "name", Text r.Name
+                    "href", Text(Routes.href (Routes.Ledger(Some r.AccountId, None, Some asOfDate)))
+                    "debit", amount r.Debit
+                    "credit", amount r.Credit ]))
+          |> Option.defaultValue []
+      )
+      "trialDebits", money' (fun (t: Reports.TrialBalance) -> t.TotalDebits) trial
+      "trialCredits", money' (fun (t: Reports.TrialBalance) -> t.TotalCredits) trial
+      "trialBalances", flagOf (trial |> Option.exists (fun tb -> tb.TotalDebits = tb.TotalCredits))
+      "sheetAssets", money' (fun (b: Reports.BalanceSheet) -> b.Assets) sheet
+      "sheetLiabilities", money' (fun (b: Reports.BalanceSheet) -> b.Liabilities) sheet
+      "sheetEquity", money' (fun (b: Reports.BalanceSheet) -> b.Equity) sheet
+      "sheetEarnings", money' (fun (b: Reports.BalanceSheet) -> b.CurrentEarnings) sheet
+      "sheetBalances", flagOf (sheet |> Option.exists Reports.balances)
+      "incomeFrom", textOf (dateInput incomeFrom)
+      "incomeTo", textOf (dateInput incomeTo)
+      "incomePeriod", textOf $"{Documents.dateText fromDate} to {Documents.dateText toDate}"
+      "incomeBasis", textOf (Routes.basisText basis)
+      "incomeBasisLabel", textOf (if basis = Routes.Cash then "Cash basis" else "Accrual basis")
+      "incomeAccounts",
+      Items(
+          match shown, books, model.Manifest with
+          | Showing(Routes.IncomeStatement _), Some b, Some manifest ->
+              let ledgerHref account = Text(Routes.href (Routes.Ledger(Some account, Some fromDate, Some toDate)))
+
+              match basis with
+              | Routes.Accrual ->
+                  let operating = Reports.withoutClosing b.Books.Ledger
+
+                  operating.Accounts
+                  |> Map.toList
+                  |> List.map snd
+                  |> List.filter (fun a -> a.Type = Revenue || a.Type = Expense)
+                  |> List.sortBy _.Code
+                  |> List.choose (fun a ->
+                      let rows = Reports.generalLedger "USD" a.Id operating |> List.filter (fun r -> r.Date >= fromDate && r.Date <= toDate)
+                      let debits = rows |> List.map _.Debit |> sum "USD"
+                      let credits = rows |> List.map _.Credit |> sum "USD"
+                      let net = if a.Type = Revenue then subtract credits debits else subtract debits credits
+
+                      if net.Minor = 0L then None
+                      else Some [ "key", Text a.Id; "account", Text $"{a.Code} {a.Name}"; "kind", Text(if a.Type = Revenue then "Revenue" else "Expense"); "amount", Text(Documents.amountText net); "href", ledgerHref a.Id ])
+              | Routes.Cash ->
+                  let cash = Organization.accountByCode b.Books.Ledger manifest.Accounting.CashAccount
+
+                  (Periods.cashBasis "USD" fromDate toDate [ cash ] b).RevenueByAccount
+                  |> List.filter (fun (_, m) -> m.Minor <> 0L)
+                  |> List.map (fun (account, m) -> [ "key", Text account; "account", Text(accountName account); "kind", Text "Revenue received"; "amount", Text(Documents.amountText m); "href", ledgerHref account ])
+          | _ -> []
+      )
+      "incomeRanges",
+      Items(
+          [ "this-month", "This month"; "last-month", "Last month"; "this-quarter", "This quarter"; "last-quarter", "Last quarter"; "year-to-date", "Year to date"; "last-year", "Last year" ]
+          |> List.map (fun (key, label) ->
+              let chosen = dateRange today key = Some(fromDate, toDate) && incomeFrom.IsSome
+              [ "value", Text key; "label", Text label; "selected", Text(if chosen then "true" else "false") ])
+      )
+      "incomeRevenue", money' (fun (r, _, _) -> r) income
+      "incomeExpenses", money' (fun (_, e, _) -> e) income
+      "incomeNet", money' (fun (_, _, n) -> n) income
+      // Periods
+      "periodsYear", textOf (string year)
+      "previousYearHref", textOf (Routes.href (Routes.Periods(Some(year - 1))))
+      "nextYearHref", textOf (Routes.href (Routes.Periods(Some(year + 1))))
+      "months", Items monthRows
+      "periodLabel", textOf (period |> Option.map (snd >> monthLabel) |> Option.defaultValue "")
+      "periodState", textOf (periodState |> Option.map periodStateText |> Option.defaultValue "")
+      "periodYearHref", textOf (period |> Option.map (fun (_, (y, _)) -> Routes.href (Routes.Periods(Some y))) |> Option.defaultValue "")
+      "periodEntries", Items periodEntries
+      "periodChecks", Items checks
+      "periodBlockers", Items(period |> Option.map (fun (b, p) -> periodBlockers b p |> List.mapi (fun i why -> [ "key", Text(string i); "blocker", Text why ])) |> Option.defaultValue [])
+      "isPeriodBlocked", flagOf (periodState = Some PeriodState.Open && period |> Option.exists (fun (b, p) -> not (periodBlockers b p).IsEmpty))
+      "canClosePeriod", flagOf (periodState = Some PeriodState.Open && period |> Option.exists (fun (b, p) -> (periodBlockers b p).IsEmpty))
+      "canLockPeriod", flagOf (periodState = Some PeriodState.Closed)
+      "canReopenPeriod", flagOf (periodState = Some PeriodState.Closed || periodState = Some PeriodState.Locked) ]
+
 let view (model: Model) : View =
     let books = model.Books
     let zeroUsd = zero "USD"
@@ -1518,6 +1976,8 @@ let view (model: Model) : View =
                         "amount", Text(Documents.amountText l.Amount) ]))
               |> Option.defaultValue []
           )
+          "detailEntryId", text (detail |> Option.map (fun (_, i) -> i.JournalEntryId) |> Option.defaultValue "")
+          "detailEntryHref", text (detail |> Option.map (fun (_, i) -> Routes.href (Routes.JournalEntry i.JournalEntryId)) |> Option.defaultValue "")
           "detailCustomer", text (detail |> Option.map (fun (_, i) -> i.Customer.Name) |> Option.defaultValue "")
           "detailCustomerHref",
           text (detail |> Option.map (fun (_, i) -> Routes.href (Routes.Customer(i.CustomerId, Routes.CustomerInvoices))) |> Option.defaultValue "")
@@ -1654,8 +2114,6 @@ let view (model: Model) : View =
       "isNotPermitted", flag (shown = Forbidden)
       "isInvalidLink", flag (match shown with InvalidLink _ -> true | _ -> false)
       "invalidLink", text (match shown with InvalidLink why -> why | _ -> "")
-      "isUnbuilt", flag (match shown with Unbuilt _ -> true | _ -> false)
-      "unbuiltTitle", text (match shown with Unbuilt title -> title | _ -> "")
       "isIssuedDraft", flag (match shown with IssuedDraft _ -> true | _ -> false)
       "issuedDraftId", text (match shown with IssuedDraft(draftId, _) -> draftId | _ -> "")
       "issuedDraftHref",
@@ -1675,6 +2133,9 @@ let view (model: Model) : View =
             "payments", "Payments", Routes.Payments Routes.allPayments
             "credit-memos", "Credit memos", Routes.CreditMemos None
             "receivables", "Receivables", Routes.Receivables(None, None)
+            "ledger", "Ledger", Routes.Ledger(None, None, None)
+            "reports", "Reports", Routes.Reports
+            "periods", "Periods", Routes.Periods None
             "settings", "Settings", Routes.Settings ]
           |> List.map (fun (id, label, place) ->
               let section =
@@ -1693,6 +2154,14 @@ let view (model: Model) : View =
                   | Routes.CreditMemos _
                   | Routes.CreditMemo _ -> "credit-memos"
                   | Routes.Receivables _ -> "receivables"
+                  | Routes.Ledger _
+                  | Routes.JournalEntry _ -> "ledger"
+                  | Routes.Reports
+                  | Routes.TrialBalance _
+                  | Routes.IncomeStatement _
+                  | Routes.BalanceSheet _ -> "reports"
+                  | Routes.Periods _
+                  | Routes.Period _ -> "periods"
                   | Routes.Settings -> "settings"
                   | _ -> ""
 
@@ -1837,3 +2306,4 @@ let view (model: Model) : View =
       "companyPayment", text model.Company.PaymentInstructions ]
     @ detailValues
     @ placeValues model shown
+    @ bookValues model shown

@@ -1561,20 +1561,20 @@
         "EXE-20261008T184655871Z-69753eb4"
       ],
       "latestCheckpoint": {
-        "id": "1e31f8f38c23c8cd0b1b675a",
-        "recordedAt": "2026-10-08T20:53:53.000Z",
+        "id": "1eca41b2edd4d67e3db5611a",
+        "recordedAt": "2026-10-08T21:12:15.000Z",
         "executionId": "EXE-20261008T184655871Z-69753eb4",
         "repository": "summa",
-        "branch": "feat/wi-0030-slice2",
-        "commit": "907a32bafc5f5aaf8a7a7a94b9e6d010713cf45c",
+        "branch": "feat/wi-0030-slice3",
+        "commit": "b7b253f5021dec4b23f557f65a63c54424ea5bbf",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0030-slice2",
-        "remoteCommit": "907a32bafc5f5aaf8a7a7a94b9e6d010713cf45c",
-        "summary": "Slice 2: payments, customers, credit memos (with their Folio document) and engagements, each at its own address",
-        "nextAction": "Slice 3: ledger, journal entries, reports (trial balance, income statement accrual/cash, balance sheet) and periods with close, each at its own address",
+        "remoteBranch": "feat/wi-0030-slice3",
+        "remoteCommit": "b7b253f5021dec4b23f557f65a63c54424ea5bbf",
+        "summary": "Slice 3: ledger, journal entries, reports (accrual and cash) and periods with close readiness, each at its own address",
+        "nextAction": "Slice 4: PDF artifacts through Folio and the files and store packs, artifact storage per environment, pre-issue preview",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"

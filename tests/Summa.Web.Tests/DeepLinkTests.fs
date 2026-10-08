@@ -108,7 +108,7 @@ let ``every link on the page is a relative hash link`` () =
     let model = books ()
 
     Assert.Equal<string list>(
-        [ "#/"; "#/invoices"; "#/customers"; "#/engagements"; "#/payments"; "#/credit-memos"; "#/receivables"; "#/settings" ],
+        [ "#/"; "#/invoices"; "#/customers"; "#/engagements"; "#/payments"; "#/credit-memos"; "#/receivables"; "#/ledger"; "#/reports"; "#/periods"; "#/settings" ],
         items "navigation" model |> List.map (field "href")
     )
 
@@ -214,12 +214,6 @@ let ``a link with a value Summa does not understand names it`` () =
     Assert.Equal("True", value "isInvalidLink" model)
     Assert.Equal("The link's 'period' is '2026-13', but Summa expects month.", value "invalidLink" model)
     Assert.Equal("True", value "isInvalidLink" (run [ go "#/invoices/%E0%A4" ] model |> fst))
-
-[<Fact>]
-let ``a place whose screen is not built yet says so`` () =
-    let model = run [ go "#/reports/trial-balance?asOf=2026-09-30" ] (books ()) |> fst
-    Assert.Equal("True", value "isUnbuilt" model)
-    Assert.Equal("Reports", value "unbuiltTitle" model)
 
 // ---- Sign-in (SUM-LINK-008) ------------------------------------------------------------------------
 

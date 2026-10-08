@@ -108,13 +108,6 @@
         <p><a class="summa-link" href="#/">Go to the home page</a></p>
       </section>
     </template>
-    <template data-if="isUnbuilt">
-      <section class="ef-stack summa-outcome" aria-labelledby="unbuilt-title">
-        <h1 id="unbuilt-title" data-text="unbuiltTitle"></h1>
-        <p>This view comes in a later build. The link will open it then.</p>
-        <p><a class="summa-link" href="#/">Go to the home page</a></p>
-      </section>
-    </template>
     <template data-if="isIssuedDraft">
       <section class="ef-stack summa-outcome" aria-labelledby="issued-draft-title">
         <h1 id="issued-draft-title">Draft <span data-text="issuedDraftId"></span> has been issued</h1>
@@ -411,6 +404,7 @@
           <template data-if="onHistoryTab">
             <section class="ef-surface ef-stack" aria-labelledby="history-title">
               <h2 id="history-title">History</h2>
+              <p>Posted to the books as <a class="summa-link" id="invoice-entry" data-bind-href="detailEntryHref" data-text="detailEntryId"></a>.</p>
               <table class="summa-table" id="invoice-history">
                 <caption class="ef-visually-hidden">What happened to this invoice</caption>
                 <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th></tr></thead>
@@ -669,6 +663,181 @@
           <caption>Applied to</caption>
           <thead><tr><th scope="col">Invoice</th><th scope="col">Applied</th><th scope="col" class="summa-number">Amount</th></tr></thead>
           <tbody><template data-each="cmApplications" data-key="key"><tr><td><a class="summa-link" data-bind-href="href" data-text="invoice"></a></td><td data-text="date"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
+        </table>
+      </section>
+    </template>
+
+    <!-- The general ledger: the journal, or one account with a running balance (v0.4 §20-21). -->
+    <template data-if="onLedger">
+      <section class="ef-stack" aria-labelledby="ledger-title">
+        <h1 id="ledger-title">Ledger</h1>
+        <div class="summa-filters" role="search" aria-label="Ledger">
+          <div class="ef-field"><label class="ef-field__label" for="ledger-account">Account</label>
+            <select id="ledger-account" data-event="ledgerAccountChosen" data-bind-value="ledgerAccount">
+              <option value="">All entries (journal)</option>
+              <template data-each="ledgerAccountOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
+            </select></div>
+          <div class="ef-field"><label class="ef-field__label" for="ledger-from">From</label>
+            <input id="ledger-from" type="date" data-event="ledgerFromChanged" data-on="change" data-bind-value="ledgerFrom" /></div>
+          <div class="ef-field"><label class="ef-field__label" for="ledger-to">To</label>
+            <input id="ledger-to" type="date" data-event="ledgerToChanged" data-on="change" data-bind-value="ledgerTo" /></div>
+        </div>
+        <template data-if="isAccountLedger">
+          <div class="ef-stack" id="account-ledger">
+            <h2 id="ledger-account-name" data-text="ledgerAccountName"></h2>
+            <template data-if="hasLedgerOpening"><p class="summa-count">Balance brought forward <strong id="ledger-opening" data-text="ledgerOpening"></strong></p></template>
+            <table class="summa-table" id="ledger-table">
+              <caption class="ef-visually-hidden">Entries to this account</caption>
+              <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Description</th><th scope="col" class="summa-number">Debit</th><th scope="col" class="summa-number">Credit</th><th scope="col" class="summa-number">Balance</th></tr></thead>
+              <tbody><template data-each="ledgerRows" data-key="key"><tr><td data-text="date"></td><td><a class="summa-link" data-bind-href="href" data-text="entry"></a></td><td data-text="description"></td><td class="summa-number" data-text="debit"></td><td class="summa-number" data-text="credit"></td><td class="summa-number" data-text="balance"></td></tr></template></tbody>
+            </table>
+          </div>
+        </template>
+        <template data-if="isJournal">
+          <table class="summa-table" id="journal-table">
+            <caption class="ef-visually-hidden">Journal entries</caption>
+            <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Description</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+            <tbody><template data-each="journalRows" data-key="key"><tr><td data-text="date"></td><td><a class="summa-link" data-bind-href="href" data-text="entry"></a></td><td data-text="description"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
+          </table>
+        </template>
+      </section>
+    </template>
+
+    <template data-if="onJournalEntry">
+      <section class="ef-stack" aria-labelledby="entry-title">
+        <h1 id="entry-title">Journal entry <span data-text="entryId"></span></h1>
+        <dl class="summa-facts">
+          <div><dt>Date</dt><dd data-text="entryDate"></dd></div>
+          <div><dt>Description</dt><dd data-text="entryDescription"></dd></div>
+          <div><dt>Source</dt><dd data-text="entrySource"></dd></div>
+          <div><dt>Posted</dt><dd data-text="entryPostedAt"></dd></div>
+        </dl>
+        <template data-if="hasEntryOrigin"><p>Posted by <a class="summa-link" id="entry-origin" data-bind-href="entryOriginHref" data-text="entryOrigin"></a></p></template>
+        <template data-if="entryReverses"><p>Reverses <a class="summa-link" data-bind-href="entryReversesHref" data-text="entryReversesId"></a></p></template>
+        <table class="summa-table" id="entry-lines">
+          <caption>Lines</caption>
+          <thead><tr><th scope="col">Account</th><th scope="col">Memo</th><th scope="col" class="summa-number">Debit</th><th scope="col" class="summa-number">Credit</th></tr></thead>
+          <tbody><template data-each="entryLines" data-key="key"><tr><td><a class="summa-link" data-bind-href="href" data-text="account"></a></td><td data-text="memo"></td><td class="summa-number" data-text="debit"></td><td class="summa-number" data-text="credit"></td></tr></template></tbody>
+          <tfoot><tr><th scope="row" colspan="2">Totals</th><td class="summa-number" id="entry-debits" data-text="entryDebits"></td><td class="summa-number" id="entry-credits" data-text="entryCredits"></td></tr></tfoot>
+        </table>
+      </section>
+    </template>
+
+    <!-- Reports (v0.1 §15, v0.2 §24, v0.4 §23). -->
+    <template data-if="onReports">
+      <section class="ef-stack" aria-labelledby="reports-title">
+        <h1 id="reports-title">Reports</h1>
+        <ul class="summa-report-list">
+          <li><a class="summa-link" id="trial-balance-link" data-bind-href="trialBalanceHref">Trial balance</a></li>
+          <li><a class="summa-link" id="income-statement-link" data-bind-href="incomeStatementHref">Income statement</a></li>
+          <li><a class="summa-link" id="balance-sheet-link" data-bind-href="balanceSheetHref">Balance sheet</a></li>
+        </ul>
+      </section>
+    </template>
+
+    <template data-if="onTrialBalance">
+      <section class="ef-stack" aria-labelledby="trial-balance-title">
+        <h1 id="trial-balance-title">Trial balance</h1>
+        <div class="summa-filters" role="search" aria-label="Trial balance">
+          <div class="ef-field"><label class="ef-field__label" for="trial-as-of">As of</label>
+            <input id="trial-as-of" type="date" data-event="reportAsOfChanged" data-on="change" data-bind-value="reportAsOf" /></div>
+        </div>
+        <p class="summa-count">As of <span data-text="reportDate"></span>.</p>
+        <table class="summa-table" id="trial-balance-table">
+          <caption class="ef-visually-hidden">Trial balance</caption>
+          <thead><tr><th scope="col">Code</th><th scope="col">Account</th><th scope="col" class="summa-number">Debit</th><th scope="col" class="summa-number">Credit</th></tr></thead>
+          <tbody><template data-each="trialRows" data-key="key"><tr><td data-text="code"></td><td><a class="summa-link" data-bind-href="href" data-text="name"></a></td><td class="summa-number" data-text="debit"></td><td class="summa-number" data-text="credit"></td></tr></template></tbody>
+          <tfoot><tr><th scope="row" colspan="2">Totals</th><td class="summa-number" id="trial-debits" data-text="trialDebits"></td><td class="summa-number" id="trial-credits" data-text="trialCredits"></td></tr></tfoot>
+        </table>
+        <template data-if="trialBalances"><p class="summa-notice" id="trial-balances">Debits equal credits.</p></template>
+      </section>
+    </template>
+
+    <template data-if="onIncomeStatement">
+      <section class="ef-stack" aria-labelledby="income-title">
+        <h1 id="income-title">Income statement</h1>
+        <div class="summa-filters" role="search" aria-label="Income statement">
+          <div class="ef-field"><label class="ef-field__label" for="income-from">From</label>
+            <input id="income-from" type="date" data-event="incomeFromChanged" data-on="change" data-bind-value="incomeFrom" /></div>
+          <div class="ef-field"><label class="ef-field__label" for="income-to">To</label>
+            <input id="income-to" type="date" data-event="incomeToChanged" data-on="change" data-bind-value="incomeTo" /></div>
+          <div class="ef-field"><label class="ef-field__label" for="income-basis">Basis</label>
+            <select id="income-basis" data-event="incomeBasisChosen" data-bind-value="incomeBasis">
+              <option value="accrual">Accrual</option><option value="cash">Cash</option>
+            </select></div>
+        </div>
+        <div class="summa-tabs" role="group" aria-label="Date ranges">
+          <template data-each="incomeRanges" data-key="value">
+            <button type="button" class="summa-tab" data-event="incomeRangeChosen" data-bind-aria-pressed="selected" data-bind-data-range="value" data-text="label"></button>
+          </template>
+        </div>
+        <p class="summa-count"><span id="income-basis-label" data-text="incomeBasisLabel"></span>, <span data-text="incomePeriod"></span>.</p>
+        <dl class="summa-facts" id="income-figures">
+          <div><dt>Revenue</dt><dd id="income-revenue" data-text="incomeRevenue"></dd></div>
+          <div><dt>Expenses</dt><dd id="income-expenses" data-text="incomeExpenses"></dd></div>
+          <div><dt>Net income</dt><dd id="income-net" data-text="incomeNet"></dd></div>
+        </dl>
+        <table class="summa-table" id="income-accounts">
+          <caption>By account</caption>
+          <thead><tr><th scope="col">Account</th><th scope="col">Kind</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+          <tbody><template data-each="incomeAccounts" data-key="key"><tr><td><a class="summa-link" data-bind-href="href" data-text="account"></a></td><td data-text="kind"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
+        </table>
+      </section>
+    </template>
+
+    <template data-if="onBalanceSheet">
+      <section class="ef-stack" aria-labelledby="balance-sheet-title">
+        <h1 id="balance-sheet-title">Balance sheet</h1>
+        <div class="summa-filters" role="search" aria-label="Balance sheet">
+          <div class="ef-field"><label class="ef-field__label" for="sheet-as-of">As of</label>
+            <input id="sheet-as-of" type="date" data-event="reportAsOfChanged" data-on="change" data-bind-value="reportAsOf" /></div>
+        </div>
+        <p class="summa-count">As of <span data-text="reportDate"></span>.</p>
+        <dl class="summa-facts" id="balance-sheet-figures">
+          <div><dt>Assets</dt><dd id="sheet-assets" data-text="sheetAssets"></dd></div>
+          <div><dt>Liabilities</dt><dd id="sheet-liabilities" data-text="sheetLiabilities"></dd></div>
+          <div><dt>Equity</dt><dd id="sheet-equity" data-text="sheetEquity"></dd></div>
+          <div><dt>Current earnings</dt><dd id="sheet-earnings" data-text="sheetEarnings"></dd></div>
+        </dl>
+        <template data-if="sheetBalances"><p class="summa-notice" id="sheet-balances">Assets equal liabilities plus equity.</p></template>
+      </section>
+    </template>
+
+    <!-- Accounting periods and closing them (v0.1 §2, v0.4 period close). -->
+    <template data-if="onPeriods">
+      <section class="ef-stack" aria-labelledby="periods-title">
+        <h1 id="periods-title">Periods <span data-text="periodsYear"></span></h1>
+        <p><a class="summa-link" id="previous-year" data-bind-href="previousYearHref">Previous year</a> · <a class="summa-link" id="next-year" data-bind-href="nextYearHref">Next year</a></p>
+        <table class="summa-table" id="periods-table">
+          <caption class="ef-visually-hidden">Months</caption>
+          <thead><tr><th scope="col">Month</th><th scope="col">State</th><th scope="col" class="summa-number">Entries</th></tr></thead>
+          <tbody><template data-each="months" data-key="key"><tr><td><a class="summa-link" data-bind-href="href" data-text="label"></a></td><td data-text="state"></td><td class="summa-number" data-text="entries"></td></tr></template></tbody>
+        </table>
+      </section>
+    </template>
+
+    <template data-if="onPeriod">
+      <section class="ef-stack" aria-labelledby="period-title">
+        <h1 id="period-title" data-text="periodLabel"></h1>
+        <p>State: <strong id="period-state" data-text="periodState"></strong> · <a class="summa-link" data-bind-href="periodYearHref">All months</a></p>
+        <ul class="summa-checks" id="period-checks">
+          <template data-each="periodChecks" data-key="key"><li data-bind-data-tone="tone"><span data-text="label"></span>: <strong data-text="result"></strong></li></template>
+        </ul>
+        <template data-if="isPeriodBlocked">
+          <div class="summa-blockers" id="period-blockers" role="note">
+            <h2>Not ready to close</h2>
+            <ul><template data-each="periodBlockers" data-key="key"><li data-text="blocker"></li></template></ul>
+          </div>
+        </template>
+        <div class="ef-actions">
+          <template data-if="canClosePeriod"><button type="button" class="ef-button" id="close-period" data-event="periodClosed">Close period</button></template>
+          <template data-if="canLockPeriod"><button type="button" class="ef-button" data-variant="secondary" id="lock-period" data-event="periodLocked">Lock period</button></template>
+          <template data-if="canReopenPeriod"><button type="button" class="ef-button" data-variant="danger" id="reopen-period" data-event="periodReopened">Reopen period</button></template>
+        </div>
+        <table class="summa-table" id="period-entries">
+          <caption>Entries</caption>
+          <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Description</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+          <tbody><template data-each="periodEntries" data-key="key"><tr><td data-text="date"></td><td><a class="summa-link" data-bind-href="href" data-text="entry"></a></td><td data-text="description"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
         </table>
       </section>
     </template>
