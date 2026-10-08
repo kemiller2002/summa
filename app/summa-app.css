@@ -415,6 +415,12 @@ a.summa-new {
   line-height: 2;
 }
 
+.summa-preview {
+  padding: 1rem;
+  border: 1px dashed var(--ef-color-border-subtle, #d0d7de);
+  border-radius: 0.5rem;
+}
+
 /* Print only the invoice: Folio's print.css lays out the document. */
 @media print {
   .summa-banner,

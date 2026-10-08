@@ -30,6 +30,12 @@ let files =
       Version = 1
       Fingerprint = "sha256:2cf28b1016994b11955c412282ec6038a6c8c205a056b14c6039ef6fd5bfabdf" }
 
+/// Structured browser storage over IndexedDB (`limen.store` v1).
+let store =
+    { Id = "limen.store"
+      Version = 1
+      Fingerprint = "sha256:0ba8d199066c4ef37ec8a3fd0767bf191644f581b0faa6c545234a1b5f7c4cf6" }
+
 /// The HTTP transfer profile (`limen.transfer` v1): multipart uploads by file id.
 let transfer =
     { Id = "limen.transfer"

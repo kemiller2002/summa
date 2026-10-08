@@ -112,7 +112,8 @@ module private Accounting =
 
         let blocked = [ go "#/settings"; CompanyAddressChanged ""; CompanySaved; go "#/invoices/new"; DraftCustomerChanged "CUST-0001" ] |> List.fold step drafted
         let blocked = [ LineDescriptionChanged(blocked.Draft.Lines.Head.Key, "Work"); LineRateChanged(blocked.Draft.Lines.Head.Key, "100"); DraftSubmitted ] |> List.fold step blocked
-        let fixedUp = [ go "#/settings"; CompanyAddressChanged "1 Way"; CompanySaved; go "#/drafts/D-0001"; DraftSubmitted; DraftIssued ] |> List.fold step blocked
+        let reviewed = [ go "#/settings"; CompanyAddressChanged "1 Way"; CompanySaved; go "#/drafts/D-0001"; DraftSubmitted ] |> List.fold step blocked
+        let fixedUp = step reviewed DraftIssued
         let paid = [ InvoiceTabChosen "payments"; PaymentAmountChanged "50"; PaymentRecorded ] |> List.fold step fixedUp
         let late = { paid with Today = System.DateOnly(2027, 6, 1) }
         let untrustworthy = step configured (Loaded(Some "{}"))
@@ -134,7 +135,22 @@ module private Accounting =
 
         let visit hash = step full (go hash)
 
+        // A PDF attached and stored, so the stored and downloadable states project.
+        let withPdf =
+            let pdf = System.Text.Encoding.ASCII.GetBytes "%PDF-1.7 test"
+
+            [ PacksNegotiated { Files = true; Store = true }
+              ArtifactStoreOpened(Ok())
+              go "#/invoices/INV-0001"
+              PdfPicked(Some { Id = "f1"; Name = "invoice.pdf"; Size = int64 pdf.Length; Type = "application/pdf" })
+              PdfChunkRead(Ok(System.Convert.ToBase64String pdf, true))
+              PdfStored(Ok()) ]
+            |> List.fold step paid
+
         [ view started @ extra
+          view reviewed
+          view withPdf
+          view (step (step paid (PacksNegotiated { Files = true; Store = true })) (ArtifactStoreOpened(Ok())))
           view blocked
           view paid
           view (visit "#/invoices/INV-0001")
@@ -215,6 +231,8 @@ let ``the files-pack inputs on each page are the ones its engine listens for`` (
         set [ Summa.Web.Engine.HubPage.CreateFileInput ],
         attributeValues "data-files-input" (readRepoFile "web-hub/index.html")
     )
+
+    Assert.Equal<Set<string>>(set [ Summa.Web.Engine.Accounting.PdfInput ], attributeValues "data-files-input" (readRepoFile "app/index.html"))
 
 [<Fact>]
 let ``every dialog a row action opens exists on the page`` () =

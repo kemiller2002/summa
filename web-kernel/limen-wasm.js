@@ -13,6 +13,7 @@ import "../node_modules/@echelon-foundry/print-components/src/components/registe
 import { BrowserKernel } from "../node_modules/@echelon-foundry/limen/dist/kernel/browser-kernel.js";
 import { filesCapability } from "../node_modules/@echelon-foundry/limen/dist/capabilities/files/index.js";
 import { transferCapability } from "../node_modules/@echelon-foundry/limen/dist/capabilities/transfer/index.js";
+import { storeCapability } from "../node_modules/@echelon-foundry/limen/dist/capabilities/store/index.js";
 import { printCapability } from "./print.js";
 
 // Relative to this module, so it resolves the same in the checkout and over
@@ -78,8 +79,10 @@ export async function startPage(exportName, capabilities = filePacks()) {
 }
 
 // The accounting application (app/): Limen's core effects (Storage keeps the
-// books in this browser) and Summa's print pack (./print.js), which opens
-// the browser's print dialog for the invoice's Folio document.
+// books in this browser), Summa's print pack (./print.js), which opens the
+// browser's print dialog for the invoice's Folio document, and the files and
+// store packs, which read the PDF the person saved and keep it in this
+// environment's artifact database.
 export async function startApp() {
-  await startPage("DispatchAccounting", [printCapability()]);
+  await startPage("DispatchAccounting", [printCapability(), filesCapability(), storeCapability()]);
 }

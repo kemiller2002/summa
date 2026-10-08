@@ -61,6 +61,28 @@ and decided.
 per repository, so a dedicated repository is the only way to keep Summa's
 data separate from Chrona's and other applications' (SUM-DATALOC-004).
 
+## Artifacts
+
+Invoice PDFs are kept outside the financial records, in the deployment's
+own artifact store (DF-SUMMA-2026-0011). The records hold only each PDF's
+reference, SHA-256, size and renderer.
+
+```json
+"artifacts": {"store": "browser", "database": "summa-artifacts-local-demo"}
+```
+
+- `store` is `browser`: IndexedDB in the browser, through Limen's store pack.
+- `database` must be `summa-artifacts-<environment>`, or start with it
+  followed by `-` and a suffix. So environments served from one origin never
+  share a database.
+- Without `artifacts`, the database is `summa-artifacts-<environment>`.
+- Two deployments naming the same store fail the isolation check
+  (`Environments.check`).
+
+A PDF is attached after printing the invoice and saving it as PDF. Clearing
+the browser's site data removes the bytes but not the record: attach the
+same file again to restore them.
+
 ## Where the accounting application reads it
 
 The accounting application (`app/`) reads `summa.deployment.json` beside its

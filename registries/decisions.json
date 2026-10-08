@@ -443,6 +443,51 @@
     "version": "1.1.0"
   },
   {
+    "created": "2026-10-08",
+    "id": "DF-SUMMA-2026-0011",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0011--invoice-pdfs-and-artifact-stores-per-environment.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261008T184655871Z-69753eb4": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-08T21:33:25.037Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Decide how the application stores invoice PDFs and isolates artifact stores per environment (WI-0030 slice 4)"
+        }
+      }
+    },
+    "related_documents": [
+      "research/decisions/DF-SUMMA-2026-0007--invoice-documents-artifacts-and-issuance.md",
+      "research/decisions/DF-SUMMA-2026-0009--the-accounting-application-and-its-local-books.md",
+      "docs/deployment-configuration.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "artifacts",
+      "pdf",
+      "folio",
+      "environments",
+      "limen"
+    ],
+    "title": "Invoice PDFs in the application and an artifact store per environment",
+    "updated": "2026-10-08",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-10-05",
     "id": "DF-SUMMA-FND-2026-0001",
     "owners": [

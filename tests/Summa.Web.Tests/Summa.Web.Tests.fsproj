@@ -22,6 +22,7 @@
     <Compile Include="DeepLinkTests.fs" />
     <Compile Include="ScreensTests.fs" />
     <Compile Include="BooksTests.fs" />
+    <Compile Include="PdfTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
