@@ -237,3 +237,24 @@ let ``a stored payment profile holding a full account number is an integrity fai
     let leaked = { r.Books.PaymentProfiles["us-bank@1"] with Instructions = "ACH account 123456789012" }
     let broken = { r with Books = { r.Books with PaymentProfiles = r.Books.PaymentProfiles.Add("us-bank@1", leaked) } }
     Assert.Contains(Invariants.check broken, fun v -> v.Rule = "no-secrets-in-payment-profiles")
+
+[<Fact>]
+let ``adjusting and closing entries keep their kind through storage`` () =
+    let r = full ()
+    let adjusting: Summa.Ledger.Periods.AdjustingEntry =
+        { EntryId = "JE-ADJ-1"; Date = System.DateOnly(2026, 12, 31); Description = "Accrued hosting"; Kind = Summa.Ledger.Periods.Accrual
+          Lines = [ { AccountId = "software"; Side = Debit(usd 5000L); Memo = None; Dimensions = noDimensions }; { AccountId = "credits"; Side = Credit(usd 5000L); Memo = None; Dimensions = noDimensions } ]
+          Reference = Some "WP-3" }
+    let ledger =
+        r.Books.Ledger
+        |> Summa.Ledger.Periods.postAdjusting ledgerContext adjusting
+        |> ok
+        |> Summa.Ledger.Periods.postClosing ledgerContext "USD" (System.DateOnly(2026, 12, 31)) "equity" "JE-CLOSE-2026"
+        |> ok
+    let original = { r with Books = { r.Books with Ledger = ledger } }
+    let loaded = load (stored original)
+    Assert.Empty loaded.Problems
+    let entries = loaded.State.Books.Ledger.Entries
+    Assert.Equal(Summa.Ledger.Periods.Adjusting(Summa.Ledger.Periods.Accrual, Some "WP-3"), Summa.Ledger.Periods.kindOf entries["JE-ADJ-1"])
+    Assert.Equal(Summa.Ledger.Periods.YearEndClose 2026, Summa.Ledger.Periods.kindOf entries["JE-CLOSE-2026"])
+    Assert.Equal(Some "github:583231", Summa.Ledger.Periods.createdBy loaded.State.Books.Ledger "JE-ADJ-1")

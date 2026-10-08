@@ -19,6 +19,7 @@
     <Compile Include="ChronaImportTests.fs" />
     <Compile Include="IssuanceTests.fs" />
     <Compile Include="LifecycleTests.fs" />
+    <Compile Include="PeriodsTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

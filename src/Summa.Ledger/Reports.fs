@@ -90,9 +90,23 @@ type IncomeStatement =
       Expenses: Money
       NetIncome: Money }
 
+/// The source prefix of year-end closing entries (v0.2 §23).
+[<Literal>]
+let ClosingSource = "year-end-close:"
+
+let isClosingEntry (entry: PostedEntry) = entry.Source.StartsWith ClosingSource
+
+/// The ledger without its year-end closing entries: what the year earned.
+let withoutClosing (ledger: Ledger) =
+    { ledger with Journal = ledger.Journal |> List.filter (fun id -> not (isClosingEntry ledger.Entries[id])) }
+
+/// Revenue and expenses over a period. Year-end closing entries move the
+/// result into equity; they are not the year's activity, so they are left
+/// out and a closed year still shows what it earned.
 let incomeStatement (currency: string) (from: DateOnly) (until: DateOnly) (ledger: Ledger) =
-    let revenue = activity ledger currency from until Revenue
-    let expenses = activity ledger currency from until Expense
+    let operating = withoutClosing ledger
+    let revenue = activity operating currency from until Revenue
+    let expenses = activity operating currency from until Expense
 
     { Revenue = revenue
       Expenses = expenses
