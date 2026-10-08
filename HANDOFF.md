@@ -2,15 +2,16 @@
 
 ## Objective
 
-Bootstrap Summa as a greenfield Repository Operating System pilot.
+Build Summa, the invoicing, receivables and ledger application, on F# and the
+Echelon foundation stack, under Praxis.
 
 ## Current state
 
-- ROS 2.0.1-main.78.1 greenfield profile installed on 2026-09-14.
-- Project charter is a draft.
-- No first vertical slice, evidence record, hypothesis, or experiment has been
-  accepted.
-- The operating system is under evaluation.
+- The implementation baseline (issue #4, GH-4) is in place: see
+  [`context/CURRENT-STATE.md`](context/CURRENT-STATE.md) and
+  [`context/ARCHITECTURE.md`](context/ARCHITECTURE.md).
+- The remaining requirements are ordered work items WI-0017..WI-0031
+  ([`docs/requirements/backlog-plan.md`](docs/requirements/backlog-plan.md)).
 
 ## Financial core (2026-10-07)
 
@@ -29,29 +30,24 @@ Bootstrap Summa as a greenfield Repository Operating System pilot.
   partial/multiple payments, v0.3 operational safety, the Chrona time
   integration (v0.1 §17, INV-CHR).
 
-## Next action (financial core)
+## Next action
 
-Persist `Summa.Ledger` state in GitHub with deterministic paths and
-optimistic concurrency (set 0), then the printable invoice on Folio and a
-Limen/Forma invoice-and-payment workflow over the existing domain.
+Follow the backlog plan: WI-0017 (Chrona-to-Summa contracts package), then
+storage on Arca, sign-in through Fides, authorization, and the invoicing,
+receivables and ledger features.
 
 ## Validation
 
 Run:
 
 ```bash
-./ros registry check
-./ros validate
+./praxis registry check
+./praxis validate
+dotnet test Summa.sln
 ```
 
 ## Unresolved questions
 
-1. What concrete communication problem and user should the first slice serve?
-2. What baseline workflow will be used for comparison?
-3. What data, privacy, safety, and accessibility constraints apply?
-4. Which outcome would distinguish useful engineering from additional process?
-
-## Next action
-
-Complete `PROJECT-CHARTER.md`, choose the first bounded outcome, and record its
-baseline and acceptance criteria in `context/CURRENT-STATE.md`.
+1. The deployment (Fides endpoint, GitHub App, Summa data repository) does not
+   exist yet; storage and sign-in are proven against in-memory providers until
+   it does.
