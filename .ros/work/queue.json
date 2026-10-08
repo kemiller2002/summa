@@ -596,10 +596,10 @@
         "chrona"
       ],
       "priority": "medium",
-      "status": "captured",
+      "status": "ready",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:05.184Z",
-      "updatedAt": "2026-10-08T16:50:43.000Z",
+      "updatedAt": "2026-10-08T17:16:41.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

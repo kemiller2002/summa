@@ -46,6 +46,15 @@ type Capability =
     | ManageOrganization
     | ManageUsers
     | ManageSettings
+    /// Take in approved time another application published (v0.1 §17).
+    | ImportSourceTime
+    | RecordExpense
+    /// Turn sources into an invoice proposal for review (v0.2 §15-17).
+    | ProposeInvoice
+    /// Change a proposed rate, with a reason (INV-RATE-004).
+    | OverrideRate
+    /// Maintain rate cards and engagements: fees, milestones and terms.
+    | ManageBilling
 
 let allCapabilities =
     [ ViewFinancials
@@ -67,7 +76,12 @@ let allCapabilities =
       ExportData
       ManageOrganization
       ManageUsers
-      ManageSettings ]
+      ManageSettings
+      ImportSourceTime
+      RecordExpense
+      ProposeInvoice
+      OverrideRate
+      ManageBilling ]
 
 /// The capability's stable name, as records and diagnostics state it.
 let capabilityName (capability: Capability) = $"%A{capability}"
@@ -95,7 +109,9 @@ module Grants =
     let viewer = set [ ViewFinancials ]
 
     /// Day-to-day receivables: drafts, payments and allocation.
-    let bookkeeper = viewer + set [ CreateDraftInvoice; RecordPayment; AllocatePayment; ExportData ]
+    let bookkeeper =
+        viewer
+        + set [ CreateDraftInvoice; RecordPayment; AllocatePayment; ExportData; ImportSourceTime; RecordExpense; ProposeInvoice ]
 
     /// Everything that changes the books.
     let accountant =
@@ -112,7 +128,9 @@ module Grants =
               ReverseJournalEntry
               PostManualAdjustment
               ClosePeriod
-              ReopenPeriod ]
+              ReopenPeriod
+              OverrideRate
+              ManageBilling ]
 
     let administrator = Set.ofList allCapabilities
 

@@ -24,7 +24,9 @@ let consulting hours rate =
       RevenueAccountId = "revenue"
       Project = Some "PRJ-ARCH"
       WorkItem = None
-      Discount = None }
+      Discount = None
+      Source = Summa.Ledger.Sources.ManualLine
+      Rate = None }
 
 let draftFor lines =
     { DraftId = "D-1"
@@ -35,7 +37,8 @@ let draftFor lines =
       Discounts = []
       Terms = None
       DueDate = None
-      Corrects = None }
+      Corrects = None
+      EngagementId = None }
 
 let request =
     { DraftId = "D-1"

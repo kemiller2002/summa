@@ -12,6 +12,7 @@ module Summa.Ledger.Invoicing
 open System
 open Summa.Ledger.Money
 open Summa.Ledger.Ledger
+open Summa.Ledger.Sources
 
 type PaymentTerms =
     | DueOnReceipt
@@ -24,19 +25,49 @@ let dueDate (issueDate: DateOnly) =
     | Net days -> issueDate.AddDays days
     | CustomDate date -> date
 
-/// Where an invoice's terms came from (v0.2 §18): the invoice's own terms
-/// win over the customer's default, which wins over the system default.
+/// Where an invoice's terms came from (v0.2 §18, INV-TERM-002): the
+/// invoice's own terms, then its engagement's, then the customer's default,
+/// then the organization's default.
 type TermsSource =
     | InvoiceTerms
+    | EngagementTerms
     | CustomerTerms
     | SystemTerms
 
 /// The terms that apply, and where they came from.
-let resolveTerms (invoiceTerms: PaymentTerms option) (customerTerms: PaymentTerms option) (systemTerms: PaymentTerms) =
-    match invoiceTerms, customerTerms with
-    | Some terms, _ -> terms, InvoiceTerms
-    | None, Some terms -> terms, CustomerTerms
-    | None, None -> systemTerms, SystemTerms
+let resolveTerms
+    (invoiceTerms: PaymentTerms option)
+    (engagementTerms: PaymentTerms option)
+    (customerTerms: PaymentTerms option)
+    (systemTerms: PaymentTerms)
+    =
+    [ invoiceTerms, InvoiceTerms; engagementTerms, EngagementTerms; customerTerms, CustomerTerms ]
+    |> List.tryPick (fun (terms, source) -> terms |> Option.map (fun t -> t, source))
+    |> Option.defaultValue (systemTerms, SystemTerms)
+
+/// What a milestone bills: a share of the engagement's fixed fee, or an amount.
+type MilestoneAmount =
+    | ShareOfFee of basisPoints: int
+    | MilestoneFixed of Money
+
+/// A billing milestone (v0.2 §17). Completing it and invoicing it are
+/// separate actions.
+type Milestone =
+    { Id: string
+      Label: string
+      Amount: MilestoneAmount
+      CompletedOn: DateOnly option }
+
+/// A billing agreement with a customer (v0.2 §16-17): its fixed fee, its
+/// milestones and its terms. Summa owns it; Chrona refers to it by id.
+type Engagement =
+    { Id: string
+      CustomerId: string
+      Name: string
+      Currency: string
+      FixedFee: Money option
+      Milestones: Milestone list
+      Terms: PaymentTerms option }
 
 /// Calculated, never stored (§9).
 let daysUntilDue (today: DateOnly) (due: DateOnly) = max 0 (due.DayNumber - today.DayNumber)
@@ -79,7 +110,11 @@ type InvoiceLine =
       Project: string option
       WorkItem: string option
       /// A discount on this line only.
-      Discount: Discount option }
+      Discount: Discount option
+      /// Where the line's billing fact came from (INV-SOURCE-007).
+      Source: LineSource
+      /// Where its rate came from; None for a line priced by hand (INV-RATE-001).
+      Rate: RateProvenance option }
 
 /// Quantity times unit price, before the line's discount.
 let lineGross (line: InvoiceLine) = extend line.QuantityThousandths line.UnitPrice
@@ -108,7 +143,9 @@ type DraftInvoice =
       Terms: PaymentTerms option
       DueDate: DateOnly option
       /// The issued invoice this one corrects or reissues (v0.2 §7).
-      Corrects: string option }
+      Corrects: string option
+      /// The engagement it bills, whose terms apply before the customer's.
+      EngagementId: string option }
 
 let subtotal (draft: DraftInvoice) = draft.Lines |> List.map lineAmount |> sum draft.Currency
 
@@ -134,6 +171,7 @@ type IssuedInvoice =
       Total: Money
       /// The issued invoice this one corrects or reissues (v0.2 §7).
       Corrects: string option
+      EngagementId: string option
       JournalEntryId: string
       ObligationId: string
       IssuedAt: DateTimeOffset
@@ -172,6 +210,34 @@ type InvoiceProblem =
     | InvalidDiscount of string
     /// A correcting invoice must name an issued invoice of the same customer.
     | InvalidCorrection of string
+    | InvalidEngagement of string
+
+/// Where an invoice proposal stands (v0.1 §17, v0.2 §15): approved time
+/// becomes a proposal, a person reviews it, and only then an invoice.
+type ProposalState =
+    | Proposed
+    /// Every line is priced and every source is current (INV-RATE-005, INV-CHR-008).
+    | ReadyForReview
+    /// Cancelled; its sources are free again (INV-CHR-005).
+    | Abandoned
+    | Accepted of invoiceId: string
+
+/// A proposed line: an invoice line, and whether its price is known yet.
+/// An unpriced line keeps a zero unit price that is never issued.
+type ProposalLine = { Line: InvoiceLine; Priced: bool }
+
+/// An invoice proposal. While it is Proposed or ReadyForReview it reserves
+/// its sources, so another proposal cannot bill them (INV-CHR-004).
+type Proposal =
+    { Id: string
+      CustomerId: string
+      EngagementId: string option
+      Currency: string
+      Lines: ProposalLine list
+      /// The grouping used for its time, kept so it can be reproduced (INV-CHR-009).
+      Grouping: GroupBy list
+      State: ProposalState
+      CreatedAt: DateTimeOffset }
 
 type Books =
     { Ledger: Ledger
@@ -180,7 +246,15 @@ type Books =
       Invoices: Map<string, IssuedInvoice>
       Obligations: Map<string, Obligation>
       /// Draft id -> the invoice it became.
-      IssuedFrom: Map<string, string> }
+      IssuedFrom: Map<string, string>
+      Engagements: Map<string, Engagement>
+      Expenses: Map<string, Expense>
+      /// Imported time by publication id.
+      Time: Map<string, SourceTime>
+      Withdrawals: Map<string, TimeWithdrawal>
+      Proposals: Map<string, Proposal>
+      Rates: RateCard
+      Reviews: Map<string, BillingReview> }
 
 let openBooks (ledger: Ledger) =
     { Ledger = ledger
@@ -188,7 +262,14 @@ let openBooks (ledger: Ledger) =
       Drafts = Map.empty
       Invoices = Map.empty
       Obligations = Map.empty
-      IssuedFrom = Map.empty }
+      IssuedFrom = Map.empty
+      Engagements = Map.empty
+      Expenses = Map.empty
+      Time = Map.empty
+      Withdrawals = Map.empty
+      Proposals = Map.empty
+      Rates = noRates
+      Reviews = Map.empty }
 
 let saveCustomer (context: Context) (customer: Customer) (books: Books) =
     { books with
@@ -263,6 +344,10 @@ let private validateDraft (books: Books) (draft: DraftInvoice) =
           && discountTotal draft.Currency (subtotal draft) draft.Discounts > subtotal draft
       then
           InvalidDiscount "the invoice discounts are larger than the subtotal"
+      match draft.EngagementId |> Option.map (fun id -> id, books.Engagements.TryFind id) with
+      | Some(id, None) -> InvalidEngagement $"engagement {id} does not exist"
+      | Some(id, Some e) when e.CustomerId <> draft.CustomerId -> InvalidEngagement $"engagement {id} is another customer's"
+      | _ -> ()
       match draft.Corrects with
       | Some original ->
           match books.Invoices.TryFind original with
@@ -290,7 +375,8 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
                 Error problems
             else
                 let customer = books.Customers[draft.CustomerId]
-                let terms, termsSource = resolveTerms draft.Terms customer.DefaultTerms request.SystemTerms
+                let engagementTerms = draft.EngagementId |> Option.bind books.Engagements.TryFind |> Option.bind _.Terms
+                let terms, termsSource = resolveTerms draft.Terms engagementTerms customer.DefaultTerms request.SystemTerms
                 let due = draft.DueDate |> Option.defaultValue (dueDate request.IssueDate terms)
                 let invoiceTotal = total draft
                 let dims project = { noDimensions with Client = Some customer.Id; Project = project }
@@ -346,6 +432,7 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
                           Adjustments = draft.Adjustments
                           Total = invoiceTotal
                           Corrects = draft.Corrects
+                          EngagementId = draft.EngagementId
                           JournalEntryId = posted.Id
                           ObligationId = request.ObligationId
                           IssuedAt = context.When

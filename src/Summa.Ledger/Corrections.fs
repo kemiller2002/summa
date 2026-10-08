@@ -84,7 +84,8 @@ let correctingDraft (draftId: string) (invoice: IssuedInvoice) : DraftInvoice =
       Discounts = []
       Terms = None
       DueDate = None
-      Corrects = Some invoice.InvoiceId }
+      Corrects = Some invoice.InvoiceId
+      EngagementId = invoice.EngagementId }
 
 /// A draft copied from an issued invoice, to be changed and issued in its
 /// place. Terms the invoice set itself are kept; inherited terms are

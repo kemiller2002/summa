@@ -155,9 +155,9 @@ let ``impossible discounts are refused`` () =
 
 [<Fact>]
 let ``terms come from the invoice, then the customer, then the system, and are kept`` () =
-    Assert.Equal((Net 10, InvoiceTerms), resolveTerms (Some(Net 10)) (Some(Net 30)) DueOnReceipt)
-    Assert.Equal((Net 30, CustomerTerms), resolveTerms None (Some(Net 30)) DueOnReceipt)
-    Assert.Equal((DueOnReceipt, SystemTerms), resolveTerms None None DueOnReceipt)
+    Assert.Equal((Net 10, InvoiceTerms), resolveTerms (Some(Net 10)) None (Some(Net 30)) DueOnReceipt)
+    Assert.Equal((Net 30, CustomerTerms), resolveTerms None None (Some(Net 30)) DueOnReceipt)
+    Assert.Equal((DueOnReceipt, SystemTerms), resolveTerms None None None DueOnReceipt)
     let issueWith (customerTerms: PaymentTerms option) (invoiceTerms: PaymentTerms option) =
         let b = openBooks chart |> saveCustomer context { abc with DefaultTerms = customerTerms }
         let withTerms = saveDraft context { draftFor [ consulting 1000L 10000L ] with Terms = invoiceTerms } b |> ok

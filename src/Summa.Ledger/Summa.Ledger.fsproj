@@ -4,16 +4,24 @@
        ledger, accounting periods, invoices, receivables, payments and the
        core reports. Pure F#: no clock, storage, network or browser access
        (dates, ids and the performer arrive as arguments), and no package
-       dependencies beyond FSharp.Core. -->
+       dependencies beyond FSharp.Core. It references Summa.Contracts, the
+       dependency-free Chrona billing contract Summa owns, to read Chrona's
+       publications and derive its feedback. -->
 
   <ItemGroup>
     <Compile Include="Money.fs" />
     <Compile Include="Ledger.fs" />
+    <Compile Include="Sources.fs" />
     <Compile Include="Invoicing.fs" />
     <Compile Include="Payments.fs" />
     <Compile Include="Credits.fs" />
     <Compile Include="Corrections.fs" />
+    <Compile Include="Billing.fs" />
+    <Compile Include="ChronaImport.fs" />
     <Compile Include="Reports.fs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../Summa.Contracts/Summa.Contracts.fsproj" />
+  </ItemGroup>
 </Project>

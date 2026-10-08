@@ -36,7 +36,8 @@ let ``every capability the requirements name exists and round-trips by name`` ()
     for name in
         [ "CreateDraftInvoice"; "IssueInvoice"; "RecordPayment"; "AllocatePayment"; "CreateCreditMemo"; "PostJournalEntry"
           "ReverseJournalEntry"; "ClosePeriod"; "ReopenPeriod"; "ManageOrganization"; "ManageUsers"; "ManageSettings"
-          "ReversePayment"; "PostManualAdjustment"; "WriteOffReceivable"; "RefundCustomer" ] do
+          "ReversePayment"; "PostManualAdjustment"; "WriteOffReceivable"; "RefundCustomer"; "ImportSourceTime"; "RecordExpense"
+          "ProposeInvoice"; "OverrideRate"; "ManageBilling" ] do
         Assert.Equal(Some name, capabilityOf name |> Option.map capabilityName)
 
     Assert.Equal(allCapabilities.Length, allCapabilities |> List.map capabilityName |> List.distinct |> List.length)
