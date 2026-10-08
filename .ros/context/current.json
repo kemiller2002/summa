@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T15:42:21.000Z",
+  "updatedAt": "2026-10-08T15:53:27.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1145,13 +1145,51 @@
     {
       "id": "WI-0020",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-08T15:42:21.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/FinancialRecords.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Commands.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Storage.Tests/CommandTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Storage.Tests/FinancialRecordsTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-08T15:53:27.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T154221634Z-4fa5b6ce"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "2c0371c3f93c240f7ccf0518",
+        "recordedAt": "2026-10-08T15:53:26.000Z",
+        "executionId": "EXE-20261008T154221634Z-4fa5b6ce",
+        "repository": "summa",
+        "branch": "feat/wi-0020-financial-records",
+        "commit": "ebb7eb7c98148a3db82528ada1ecfac9c5a067de",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa.git"
+        },
+        "remoteBranch": "feat/wi-0020-financial-records",
+        "remoteCommit": "ebb7eb7c98148a3db82528ada1ecfac9c5a067de",
+        "summary": "Financial records on Arca and one commit per command",
+        "nextAction": "Open and merge the PR",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-08T15:53:27.000Z"
     }
   ]
 }
