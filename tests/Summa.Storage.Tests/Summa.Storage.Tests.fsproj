@@ -17,10 +17,12 @@
     <Compile Include="FinancialRecordsTests.fs" />
     <Compile Include="CommandTests.fs" />
     <Compile Include="IntegrityTests.fs" />
+    <Compile Include="RecoveryTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../src/Summa.Storage/Summa.Storage.fsproj" />
+    <ProjectReference Include="../../src/Summa.Operations/Summa.Operations.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

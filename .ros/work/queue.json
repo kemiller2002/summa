@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 38,
+  "nextSeq": 39,
   "items": [
     {
       "id": "WI-0001",
@@ -519,10 +519,10 @@
         "recovery"
       ],
       "priority": "high",
-      "status": "captured",
+      "status": "ready",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:04.225Z",
-      "updatedAt": "2026-10-08T15:58:51.000Z",
+      "updatedAt": "2026-10-08T16:00:40.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -692,7 +692,7 @@
     {
       "id": "WI-0029",
       "title": "Summa 13: operational safety - API contracts, observability, structured logging, correlation ids, sensitive data and secrets, import/export safety, deterministic calculations, time zones, outages and idempotent integrations, retention (SUM3-011, SUM3-016..018, SUM3-022..029, SUM3-031..035, INV-OPS, INV-FAIL, INV-SEC, INV-PERF, INV-EXP, INV-FX, INV-INTL, INV-ACC, INV-REC, INV-SET, INV-DATA, INV-CON, INV-ARCH)",
-      "description": "Depends on WI-0020. Also the integration-boundary remainders after WI-0017: domain operations over CRUD (SUM2-031) and versioned invoice schema and command contracts (INV-CONTRACT).",
+      "description": "Depends on WI-0020. Also the integration-boundary remainders after WI-0017: domain operations over CRUD (SUM2-031) and versioned invoice schema and command contracts (INV-CONTRACT). Also the WI-0022 remainders: schedule the sealed backup and the reconciliation jobs in the deployment (SUM3-006), and have commands read through the rebuildable index instead of the whole folder (SUM0-034).",
       "tags": [
         "summa",
         "order:13",
@@ -702,7 +702,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:06.438Z",
-      "updatedAt": "2026-10-08T15:12:46.000Z",
+      "updatedAt": "2026-10-08T16:07:54.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -870,7 +870,7 @@
     {
       "id": "WI-0036",
       "title": "Real end-to-end sign-in and storage check against the user's Fides deployment and a Summa data repository",
-      "description": "Blocked on the user's deployment: no AWS account, domain or GitHub App exists yet, so Fides is deployed nowhere. When it exists: put the exchange origin, application id, GitHub App client id and redirect URI in summa.deployment.json (docs/deployment-configuration.md), point location at a private Summa data repository, list a bootstrap administrator's GitHub numeric id, then sign in, found the organization, issue an invoice, record a payment, sign out, and confirm every commit landed in <basePath>/summa with no token anywhere in the repository. Until then all tests use Arca's in-memory provider and fake Fides exchanges.",
+      "description": "Blocked on the user's deployment: no AWS account, domain or GitHub App exists yet, so Fides is deployed nowhere. When it exists: put the exchange origin, application id, GitHub App client id and redirect URI in summa.deployment.json (docs/deployment-configuration.md), point location at a private Summa data repository, list a bootstrap administrator's GitHub numeric id, then sign in, found the organization, issue an invoice, record a payment, sign out, and confirm every commit landed in <basePath>/summa with no token anywhere in the repository. Until then all tests use Arca's in-memory provider and fake Fides exchanges. Also SUM3-044: run the recovery drill (docs/operations/recovery.md) once against the production-like deployment before real books are trusted to Summa.",
       "tags": [
         "summa",
         "e2e",
@@ -880,7 +880,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T15:39:11.000Z",
-      "updatedAt": "2026-10-08T15:39:11.000Z",
+      "updatedAt": "2026-10-08T16:07:55.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -908,6 +908,31 @@
       "attachments": [],
       "createdAt": "2026-10-08T15:51:52.000Z",
       "updatedAt": "2026-10-08T15:58:51.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0038",
+      "title": "Summa 06b: financial schema migrations - run a record-schema change as an explicit, versioned migration through Arca, checked by Verification.checkMigration before it is activated (SUM0-032, SUM3-010)",
+      "description": "WI-0021 built the safety checks (identity or lineage, trial balance unless a declared correction, invariants after) and WI-0022 the backup and restore. This item runs a migration end to end: open the folder read-only, transform the books, check, write the new schema versions and the manifest's recordSchemas through Arca's Migration (validate, copy, verify, activate, retire), with a backup taken first and the reconciliation run before and after.",
+      "tags": [
+        "summa",
+        "order:06",
+        "migration"
+      ],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T16:07:53.000Z",
+      "updatedAt": "2026-10-08T16:07:53.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

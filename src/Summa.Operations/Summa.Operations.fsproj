@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Operating Summa's data outside the browser (WI-0022; SUM3-006..008,
+    SUM3-044): sealed backups, restore, restore verification, retention,
+    recovery objectives and the recovery drill. It runs where backups are
+    taken (a scheduled job or an operator's machine), never in the WASM
+    application, so it may use the platform's AES-GCM.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Backup.fs" />
+    <Compile Include="Recovery.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Summa.Storage/Summa.Storage.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="EchelonFoundry.Arca.Core" />
+  </ItemGroup>
+
+</Project>
