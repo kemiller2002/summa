@@ -26,7 +26,7 @@
 | WI-0013 | Invoices and receivables: customers, numbering, issue with AR/revenue posting, idempotency, obligations, payment terms (v0.1 sections 3-6, 9-10, 19) | complete | invoicing,receivables | high |
 | WI-0014 | Payments, allocation, AR aging and core financial reports: trial balance, general ledger, income statement, balance sheet (v0.1 sections 11-15) | complete | payments,reports | high |
 | WI-0015 | Move summa to Ordo 1.5.0 via echelon-current 1.2.0 (conditor upgrade --current) | complete |  | medium |
-| WI-0016 | Capture the remaining Summa requirements as dependency-ordered backlog slices; add SUM-DATALOC-001 and record the 2026-10-08 decisions | active | planning, requirements | high |
+| WI-0016 | Capture the remaining Summa requirements as dependency-ordered backlog slices; add SUM-DATALOC-001 and record the 2026-10-08 decisions | complete | planning, requirements | high |
 | WI-0017 | Summa 01: publish the Chrona-to-Summa contract as a small versioned contracts package (pure F# types and JSON codec), released through Summa's release workflow and registered in echelon-registry | captured | summa, order:01, contracts, chrona, package | high |
 | WI-0018 | Summa 02: configurable data location, Summa-owned namespace, application and organization manifests (SUM-DATALOC-001, SUM0-005..011, SUM0-033, SUM0-043) | captured | summa, order:02, data-location, depends:arca | high |
 | WI-0019 | Summa 03: GitHub sign-in through Fides, token handling, principals and capability authorization (SUM0-003, SUM0-004, SUM0-022, SUM0-023, SUM2-029, SUM3-012..015) | captured | summa, order:03, auth, depends:fides, depends:arca | high |
