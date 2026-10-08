@@ -570,10 +570,10 @@
         "corrections"
       ],
       "priority": "medium",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:04.874Z",
-      "updatedAt": "2026-10-08T16:19:44.000Z",
+      "updatedAt": "2026-10-08T16:51:53.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
