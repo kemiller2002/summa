@@ -80,7 +80,10 @@ type CreditMemo =
       RevenueAccountId: string
       Reason: string
       IssueDate: DateOnly
-      JournalEntryId: string }
+      JournalEntryId: string
+      /// The lines of the invoice it credits, by position; empty when it
+      /// credits an amount rather than lines (INV-COR-009).
+      Lines: int list }
 
 /// Where an application or a refund takes its money from.
 type CreditSource =

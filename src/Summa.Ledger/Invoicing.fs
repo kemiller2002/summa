@@ -81,6 +81,9 @@ type Customer =
       Email: string
       /// None falls back to the system default (v0.2 §18).
       DefaultTerms: PaymentTerms option
+      /// The payment instructions profile shown on this customer's invoices;
+      /// None uses the organization's (INV-PAYINST-001).
+      PaymentProfileId: string option
       Active: bool }
 
 /// An explicit discount (v0.2 §13). A discount is never a silently lowered
@@ -98,8 +101,35 @@ let discountOn (amount: Money) =
         { amount with Minor = int64 (Decimal.Round(decimal amount.Minor * decimal basisPoints / 10000m, 0, MidpointRounding.AwayFromZero)) }
     | Fixed m -> m
 
-/// A discount on the whole invoice, with the label shown on it.
-type InvoiceDiscount = { Label: string; Rule: Discount }
+/// A discount on the whole invoice, with the label shown on it and, for a
+/// material discount, why it was given (INV-ADJ-002).
+type InvoiceDiscount =
+    { Label: string
+      Rule: Discount
+      Reason: string option }
+
+/// What an adjustment is (INV-ADJ-003). Discounts, credits and deposits
+/// have their own concepts; an adjustment always adds to the invoice.
+type AdjustmentKind =
+    | Surcharge
+    | Fee
+    /// A tax the person entered, posted to the named liability account.
+    /// Summa never calculates or infers tax (INV-ADJ-005).
+    | Tax of code: string * accountId: string
+
+type Adjustment =
+    { Kind: AdjustmentKind
+      Label: string
+      Amount: Money }
+
+let adjustmentTotal (currency: string) (adjustments: Adjustment list) =
+    adjustments |> List.map _.Amount |> sum currency
+
+/// Who an invoice is sent to (INV-DEL-002).
+type Recipients =
+    { To: string list
+      Cc: string list
+      ReplyTo: string option }
 
 type InvoiceLine =
     { Description: string
@@ -161,8 +191,7 @@ type DraftInvoice =
       CustomerId: string
       Currency: string
       Lines: InvoiceLine list
-      /// Signed adjustments (a discount is negative).
-      Adjustments: Money list
+      Adjustments: Adjustment list
       Discounts: InvoiceDiscount list
       Terms: PaymentTerms option
       DueDate: DateOnly option
@@ -171,6 +200,10 @@ type DraftInvoice =
       /// The engagement it bills, whose terms apply before the customer's.
       EngagementId: string option
       Details: InvoiceDetails
+      /// What an agent or integration assumed in preparing it, shown at
+      /// review (INV-REV-003).
+      Assumptions: string list
+      Recipients: Recipients option
       /// Increases with every saved change; a save must name the version it
       /// changes (INV-DRAFT-004). A new draft is version 0 until saved.
       Version: int
@@ -180,7 +213,7 @@ let subtotal (draft: DraftInvoice) = draft.Lines |> List.map lineAmount |> sum d
 
 let total (draft: DraftInvoice) =
     let net = subtotal draft
-    add (subtract net (discountTotal draft.Currency net draft.Discounts)) (sum draft.Currency draft.Adjustments)
+    add (subtract net (discountTotal draft.Currency net draft.Discounts)) (adjustmentTotal draft.Currency draft.Adjustments)
 
 /// The issuer as shown on the invoice at issue (INV-DATA-005).
 type IssuerSnapshot =
@@ -189,7 +222,11 @@ type IssuerSnapshot =
       TaxId: string option
       Email: string
       /// Remittance instructions exactly as shown (INV-PAYINST-003).
-      PaymentInstructions: string }
+      PaymentInstructions: string
+      /// Payment methods shown, for example ACH or check (INV-PAYINST-004).
+      PaymentMethods: string list
+      /// The profile and version the instructions came from, `id@version`.
+      PaymentProfile: string option }
 
 /// The customer as billed at issue (INV-DATA-004): later changes to the
 /// customer never change an issued invoice.
@@ -212,7 +249,8 @@ type Approval =
     { By: string
       At: DateTimeOffset
       DraftVersion: int
-      CorrelationId: string option }
+      CorrelationId: string option
+      Reason: string option }
 
 type IssuedInvoice =
     { InvoiceId: string
@@ -228,21 +266,20 @@ type IssuedInvoice =
       /// The lines' amounts after their own discounts.
       Subtotal: Money
       Discounts: InvoiceDiscount list
-      Adjustments: Money list
+      Adjustments: Adjustment list
       Total: Money
       /// The issued invoice this one corrects or reissues (v0.2 §7).
       Corrects: string option
       EngagementId: string option
       Details: InvoiceDetails
+      Assumptions: string list
       Issuer: IssuerSnapshot
       Customer: CustomerSnapshot
       Template: TemplateRef
       Approval: Approval
       JournalEntryId: string
       ObligationId: string
-      IssuedAt: DateTimeOffset
-      SentAt: DateTimeOffset option
-      SentTo: string option }
+      IssuedAt: DateTimeOffset }
 
 type ObligationKind =
     | Receivable
@@ -283,6 +320,7 @@ type InvoiceProblem =
     | NoSubstantiveLine
     /// A negative quantity or price; corrections use credit memos (INV-ADJ-004).
     | NegativeLine of string
+    | InvalidAdjustment of string
 
 /// Where an invoice proposal stands (v0.1 §17, v0.2 §15): approved time
 /// becomes a proposal, a person reviews it, and only then an invoice.
@@ -311,6 +349,74 @@ type Proposal =
       State: ProposalState
       CreatedAt: DateTimeOffset }
 
+/// A versioned payment instructions profile (INV-PAYINST-001). A version
+/// is never changed; editing makes a new version, so invoices keep what
+/// they showed (INV-PAYINST-003).
+type PaymentProfile =
+    { Id: string
+      Version: int
+      Label: string
+      Methods: string list
+      Instructions: string }
+
+/// How an invoice is delivered.
+type DeliveryChannel =
+    | EmailChannel
+    | SecureLink
+    /// Sent outside Summa and recorded by a person (INV-DEL-005).
+    | Manual of how: string
+
+/// What a delivery carries (INV-DEL-004).
+type DeliveryPolicy =
+    | AttachPdf
+    | LinkOnly
+    | AttachAndLink
+
+/// How far a delivery attempt got. Delivered only when the provider
+/// confirms it (INV-DEL-010).
+type DeliveryOutcome =
+    | Queued
+    | SentToProvider
+    | ProviderAccepted
+    | Delivered
+    | DeliveryFailed of classification: string
+    | Bounced of reason: string
+    | ManuallySent
+
+/// One attempt to deliver an issued invoice (INV-DEL-007).
+type DeliveryAttempt =
+    { Id: string
+      InvoiceId: string
+      At: DateTimeOffset
+      Actor: string
+      Recipients: Recipients
+      Channel: DeliveryChannel
+      Policy: DeliveryPolicy
+      /// The subject and body template used (INV-DEL-003).
+      MessageTemplate: string
+      Outcome: DeliveryOutcome
+      ProviderReference: string option
+      /// The attempt this one retries or resends.
+      RetryOf: string option }
+
+type DisputeState =
+    | NotDisputed
+    | Disputed of reason: string * since: DateOnly
+    | DisputeResolved of resolution: string * on: DateOnly
+
+type CollectionStage =
+    | NoFollowUp
+    | Reminded of times: int
+    | Escalated of note: string
+    | OnHold of reason: string
+
+/// The operational follow-up of an invoice (INV-STATE-006, INV-STATE-007):
+/// it never changes the invoice or the ledger.
+type FollowUp =
+    { InvoiceId: string
+      Dispute: DisputeState
+      Collection: CollectionStage }
+
 type Books =
     { Ledger: Ledger
       Customers: Map<string, Customer>
@@ -328,7 +434,11 @@ type Books =
       Rates: RateCard
       Reviews: Map<string, BillingReview>
       /// Generated invoice artifacts by artifact id.
-      Artifacts: Map<string, InvoiceArtifact> }
+      Artifacts: Map<string, InvoiceArtifact>
+      /// Payment profiles by `id@version`.
+      PaymentProfiles: Map<string, PaymentProfile>
+      Deliveries: Map<string, DeliveryAttempt>
+      FollowUps: Map<string, FollowUp> }
 
 let openBooks (ledger: Ledger) =
     { Ledger = ledger
@@ -344,7 +454,10 @@ let openBooks (ledger: Ledger) =
       Proposals = Map.empty
       Rates = noRates
       Reviews = Map.empty
-      Artifacts = Map.empty }
+      Artifacts = Map.empty
+      PaymentProfiles = Map.empty
+      Deliveries = Map.empty
+      FollowUps = Map.empty }
 
 let saveCustomer (context: Context) (customer: Customer) (books: Books) =
     { books with
@@ -418,6 +531,8 @@ type IssueRequest =
       ExpectedVersion: int option
       Issuer: IssuerSnapshot
       Template: TemplateRef
+      /// Why the person issuing approved it, when a policy asks (INV-REV-007).
+      ApprovalReason: string option
       /// The organization's default terms, used when neither the draft nor
       /// the customer has terms (v0.2 §18).
       SystemTerms: PaymentTerms
@@ -453,6 +568,16 @@ let private validateDraft (books: Books) (draft: DraftInvoice) =
           | Percent bp when bp < 1 || bp > 10000 -> InvalidDiscount $"'{d.Label}': a percentage must be 0.01%% to 100%%"
           | Fixed m when m.Currency <> draft.Currency || not (isPositive m) -> InvalidDiscount $"'{d.Label}': a fixed discount must be positive and in {draft.Currency}"
           | _ -> ()
+      for a in draft.Adjustments do
+          if a.Amount.Currency <> draft.Currency || not (isPositive a.Amount) then
+              InvalidAdjustment $"'{a.Label}' must be positive and in {draft.Currency}; use a discount or a credit memo to reduce"
+
+          match a.Kind with
+          | Tax(_, account) ->
+              match books.Ledger.Accounts.TryFind account with
+              | Some found when found.Type = Liability && found.Active -> ()
+              | _ -> InvalidAdjustment $"tax '{a.Label}' needs an active liability account, not {account}"
+          | _ -> ()
       if
           draft.Lines |> List.forall (fun l -> (lineAmount l).Minor >= 0L)
           && discountTotal draft.Currency (subtotal draft) draft.Discounts > subtotal draft
@@ -469,6 +594,15 @@ let private validateDraft (books: Books) (draft: DraftInvoice) =
           | Some i when i.CustomerId <> draft.CustomerId -> InvalidCorrection $"invoice {original} is another customer's"
           | Some _ -> ()
       | None -> () ]
+
+/// Surcharges and fees add to revenue; taxes post to their own account.
+let private revenueAdjustments (draft: DraftInvoice) =
+    draft.Adjustments
+    |> List.filter (fun a ->
+        match a.Kind with
+        | Tax _ -> false
+        | _ -> true)
+    |> adjustmentTotal draft.Currency
 
 /// Issues a draft: invoice, AR/revenue entry and obligation, all or none.
 /// Retrying with the same draft id returns the invoice already issued.
@@ -509,13 +643,20 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
                 let revenueLines =
                     draft.Lines
                     |> List.mapi (fun i line ->
-                        let amount = if i = 0 then add (lineAmount line) (sum draft.Currency draft.Adjustments) else lineAmount line
+                        let amount = if i = 0 then add (lineAmount line) (revenueAdjustments draft) else lineAmount line
                         { AccountId = line.RevenueAccountId; Side = Credit amount; Memo = Some line.Description; Dimensions = dims line.Project })
 
                 let discountLines =
                     draft.Discounts
                     |> List.map (fun d ->
                         { AccountId = firstAccount; Side = Debit(discountOn net d.Rule); Memo = Some $"Discount: {d.Label}"; Dimensions = dims None })
+
+                let taxLines =
+                    draft.Adjustments
+                    |> List.choose (fun a ->
+                        match a.Kind with
+                        | Tax(code, account) -> Some { AccountId = account; Side = Credit a.Amount; Memo = Some $"{a.Label} ({code})"; Dimensions = dims None }
+                        | _ -> None)
 
                 let nonZero =
                     List.filter (fun l ->
@@ -528,7 +669,7 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
                       Description = $"Invoice {number}"
                       Lines =
                         { AccountId = request.ReceivableAccountId; Side = Debit invoiceTotal; Memo = Some number; Dimensions = dims None }
-                        :: nonZero (revenueLines @ discountLines)
+                        :: nonZero (revenueLines @ discountLines @ taxLines)
                       Source = $"invoice:{number}" }
 
                 match post context $"issue:{request.DraftId}" request.JournalEntryId entry books.Ledger with
@@ -551,6 +692,7 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
                           Corrects = draft.Corrects
                           EngagementId = draft.EngagementId
                           Details = draft.Details
+                          Assumptions = draft.Assumptions
                           Issuer = request.Issuer
                           Customer =
                             { CustomerId = customer.Id
@@ -563,12 +705,11 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
                             { By = context.Who
                               At = context.When
                               DraftVersion = draft.Version
-                              CorrelationId = context.CorrelationId }
+                              CorrelationId = context.CorrelationId
+                              Reason = request.ApprovalReason }
                           JournalEntryId = posted.Id
                           ObligationId = request.ObligationId
-                          IssuedAt = context.When
-                          SentAt = None
-                          SentTo = None }
+                          IssuedAt = context.When }
 
                     let obligation =
                         { Id = request.ObligationId
@@ -590,13 +731,31 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
                     )
 
 /// Records that an issued invoice was sent, and to whom (§8).
+/// The record is a manual delivery attempt: Summa says it was sent, by
+/// whom and to whom, never that it was delivered.
 let markSent (context: Context) (invoiceId: string) (sentTo: string) (books: Books) =
     match books.Invoices.TryFind invoiceId with
     | None -> Error [ UnknownInvoice invoiceId ]
-    | Some invoice ->
+    | Some _ ->
+        let n = books.Deliveries |> Map.filter (fun _ d -> d.InvoiceId = invoiceId) |> Map.count
+        let id = $"{invoiceId}-sent-{n + 1}"
+
+        let attempt =
+            { Id = id
+              InvoiceId = invoiceId
+              At = context.When
+              Actor = context.Who
+              Recipients = { To = [ sentTo ]; Cc = []; ReplyTo = None }
+              Channel = Manual "recorded as sent"
+              Policy = AttachPdf
+              MessageTemplate = "manual"
+              Outcome = ManuallySent
+              ProviderReference = None
+              RetryOf = None }
+
         Ok
             { books with
-                Invoices = books.Invoices.Add(invoiceId, { invoice with SentAt = Some context.When; SentTo = Some sentTo })
+                Deliveries = books.Deliveries.Add(id, attempt)
                 Ledger = audit context "invoice-sent" invoiceId books.Ledger }
 
 /// The invariant of §6.1, checkable over any books: every issued invoice has

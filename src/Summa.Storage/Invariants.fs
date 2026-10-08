@@ -83,7 +83,7 @@ let private invoiceRules (r: Receivables) =
           if i.Subtotal <> (i.Lines |> List.map lineAmount |> sum i.Currency) then
               violation "invoice-totals-add-up" id "the lines do not make the subtotal"
 
-          if i.Total <> add (subtract i.Subtotal (discountTotal i.Currency i.Subtotal i.Discounts)) (sum i.Currency i.Adjustments) then
+          if i.Total <> add (subtract i.Subtotal (discountTotal i.Currency i.Subtotal i.Discounts)) (adjustmentTotal i.Currency i.Adjustments) then
               violation "invoice-totals-add-up" id "subtotal, discounts and adjustments do not make the total"
 
           match i.Corrects with
@@ -250,6 +250,27 @@ let private artifactRules (r: Receivables) =
                   violation "documents-reproduce" invoiceId $"%A{kind} hashes to {actual}, not {expected}"
               | _ -> () ]
 
+let private lifecycleRules (r: Receivables) =
+    let books = r.Books
+
+    [ for KeyValue(id, d) in books.Deliveries do
+          if not (books.Invoices.ContainsKey d.InvoiceId) then violation "deliveries-reference-invoices" id $"invoice {d.InvoiceId} is missing"
+
+          match d.RetryOf with
+          | Some earlier when not (books.Deliveries.ContainsKey earlier) -> violation "deliveries-reference-invoices" id $"it retries {earlier}, which does not exist"
+          | _ -> ()
+      for KeyValue(id, f) in books.FollowUps do
+          if not (books.Invoices.ContainsKey f.InvoiceId) then violation "follow-ups-reference-invoices" id $"invoice {f.InvoiceId} is missing"
+      // INV-PAYINST-002: no credential or full account number in a stored profile.
+      for KeyValue(id, p) in books.PaymentProfiles do
+          if Summa.Ledger.Issuance.holdsSecret p.Instructions then violation "no-secrets-in-payment-profiles" id "the instructions hold a credential or a full account number"
+      for KeyValue(id, m) in r.CreditMemos do
+          match m.InvoiceId |> Option.bind books.Invoices.TryFind with
+          | Some invoice when m.Lines |> List.exists (fun i -> i < 0 || i >= invoice.Lines.Length) ->
+              violation "credited-lines-exist" id "it credits a line the invoice does not have"
+          | None when not m.Lines.IsEmpty -> violation "credited-lines-exist" id "it credits lines without an invoice"
+          | _ -> () ]
+
 /// Every invariant the books break, in a stable order; empty when they hold.
 let check (r: Receivables) : Violation list =
-    entryRules r.Books.Ledger @ invoiceRules r @ paymentRules r @ creditRules r @ voidRules r @ billingRules r @ artifactRules r
+    entryRules r.Books.Ledger @ invoiceRules r @ paymentRules r @ creditRules r @ voidRules r @ billingRules r @ artifactRules r @ lifecycleRules r

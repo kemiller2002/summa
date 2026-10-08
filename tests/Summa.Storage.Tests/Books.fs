@@ -34,6 +34,7 @@ let abc =
       BillingAddress = "1 Main St"
       Email = "ap@abc.example"
       DefaultTerms = Some(Net 30)
+      PaymentProfileId = None
       Active = true }
 
 let draft =
@@ -50,13 +51,15 @@ let draft =
             Discount = None
             Source = Summa.Ledger.Sources.ManualLine
             Rate = None } ]
-      Adjustments = [ usd 1250L ]
+      Adjustments = [ { Kind = Fee; Label = "Processing fee"; Amount = usd 1250L } ]
       Discounts = []
       Terms = None
       DueDate = None
       Corrects = None
       EngagementId = None
       Details = noDetails
+      Assumptions = []
+      Recipients = None
       Version = 0
       Review = Editing }
 
@@ -71,8 +74,11 @@ let issueRequest =
           Address = "1 Foundry Way\nSpringfield"
           TaxId = Some "12-3456789"
           Email = "billing@echelon.example"
-          PaymentInstructions = "ACH to account ending 6789" }
+          PaymentInstructions = "ACH to account ending 6789"
+          PaymentMethods = []
+          PaymentProfile = None }
       Template = Summa.Ledger.Documents.currentTemplate
+      ApprovalReason = None
       SystemTerms = Net 30
       ReceivableAccountId = "ar"
       InvoiceId = "INV-001"
@@ -137,7 +143,7 @@ let withCredits () =
     let r = recordPayment ledgerContext { payment with Id = "PAY-2"; Amount = usd 10000L; Reference = "ACH-2" } r |> ok
     let r = open' ledgerContext receivableAccounts { CreditId = "CR-1"; PaymentId = "PAY-2"; Date = day; JournalEntryId = "JE-CR-1" } r |> ok
     let r = Summa.Ledger.Credits.recordDeposit ledgerContext receivableAccounts { Id = "DEP-1"; CustomerId = abc.Id; DateReceived = day; Amount = usd 50000L; Method = Wire; Reference = "W-1"; JournalEntryId = "JE-DEP-1" } r |> ok
-    let r = Summa.Ledger.Credits.issueCreditMemo ledgerContext receivableAccounts { Id = "CM-1"; CustomerId = abc.Id; InvoiceId = Some "INV-001"; Amount = usd 2000L; RevenueAccountId = "revenue"; Reason = "Goodwill"; IssueDate = day; JournalEntryId = "JE-CM-1" } r |> ok
+    let r = Summa.Ledger.Credits.issueCreditMemo ledgerContext receivableAccounts { Id = "CM-1"; CustomerId = abc.Id; InvoiceId = Some "INV-001"; Amount = usd 2000L; RevenueAccountId = "revenue"; Reason = "Goodwill"; IssueDate = day; JournalEntryId = "JE-CM-1"; Lines = [] } r |> ok
     let r = Summa.Ledger.Credits.refund ledgerContext receivableAccounts { Id = "RF-1"; CustomerId = abc.Id; Source = FromCredit "CR-1"; Amount = usd 4000L; Date = day; Method = Ach; Reference = "OUT-1"; JournalEntryId = "JE-RF-1" } r |> ok
     let r = recordPayment ledgerContext { payment with Id = "PAY-3"; Amount = usd 7000L; Reference = "CHK-3"; Method = Check } r |> ok
     Summa.Ledger.Credits.reversePayment ledgerContext receivableAccounts { PaymentId = "PAY-3"; Reason = "Bounced check"; Date = day; JournalEntryPrefix = "JE-REV-3" } r |> ok
@@ -156,7 +162,7 @@ let withDiscountedInvoice () =
             CustomerId = xyz.Id
             Lines = [ { draft.Lines.Head with Discount = Some(Percent 1000) } ]
             Adjustments = []
-            Discounts = [ { Label = "Loyalty"; Rule = Fixed(usd 5000L) } ] }
+            Discounts = [ { Label = "Loyalty"; Rule = Fixed(usd 5000L); Reason = None } ] }
 
     let books = r.Books |> saveCustomer ledgerContext xyz |> saveDraft ledgerContext discounted |> ok
     let second = { issueRequest with DraftId = "D-2"; InvoiceId = "INV-002"; JournalEntryId = "JE-INV-2"; ObligationId = "OBL-002"; SystemTerms = DueOnReceipt }
@@ -276,4 +282,34 @@ let withBilling () =
     |> Summa.Ledger.Billing.propose ledgerContext { proposal with ProposalId = "P-2"; Time = []; Milestones = []; Expenses = []; Manual = [ manual ] }
     |> ok
     |> Summa.Ledger.Billing.abandon ledgerContext "P-2"
+    |> ok
+
+/// The slice plus delivery attempts, a payment profile, follow-up and a
+/// draft with typed adjustments, assumptions and recipients.
+let withLifecycle () =
+    let r = withCredits ()
+    let profile: PaymentProfile = { Id = "us-bank"; Version = 0; Label = "US bank"; Methods = [ "ACH" ]; Instructions = "ACH, account ending 6789" }
+    let books = Summa.Ledger.Issuance.savePaymentProfile ledgerContext profile r.Books |> ok
+
+    let prepared =
+        { draft with
+            DraftId = "D-9"
+            Adjustments = [ { Kind = Tax("NY", "credits"); Label = "Sales tax"; Amount = usd 500L }; { Kind = Surcharge; Label = "Rush"; Amount = usd 100L } ]
+            Assumptions = [ "Grouped by project" ]
+            Recipients = Some { To = [ "ap@abc.example" ]; Cc = [ "cfo@abc.example" ]; ReplyTo = Some "billing@echelon.example" } }
+
+    let books = saveDraft ledgerContext prepared books |> ok
+    let r = { r with Books = books }
+
+    let request: Summa.Ledger.Lifecycle.DeliveryRequest =
+        { AttemptId = "DL-1"; InvoiceId = "INV-001"; Recipients = { To = [ "ap@abc.example" ]; Cc = []; ReplyTo = None }; Channel = SecureLink; Policy = LinkOnly; MessageTemplate = "invoice-email/1"; RetryOf = None }
+
+    r
+    |> Summa.Ledger.Lifecycle.send ledgerContext request
+    |> ok
+    |> Summa.Ledger.Lifecycle.recordOutcome ledgerContext "DL-1" (DeliveryFailed "smtp 550") (Some "msg-1")
+    |> ok
+    |> Summa.Ledger.Lifecycle.dispute ledgerContext "INV-001" "Rate questioned" (DateOnly(2026, 10, 21))
+    |> ok
+    |> Summa.Ledger.Lifecycle.setCollection ledgerContext "INV-001" (Escalated "call the CFO")
     |> ok

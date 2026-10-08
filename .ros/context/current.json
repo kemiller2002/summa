@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T17:27:46.000Z",
+  "updatedAt": "2026-10-08T18:09:04.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1451,33 +1451,59 @@
     {
       "id": "WI-0027",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-08T17:27:46.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Issuance.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Documents.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Lifecycle.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/IssuanceTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/LifecycleTests.fs"
+        },
+        {
+          "type": "decision",
+          "path": "research/decisions/DF-SUMMA-2026-0007--invoice-documents-artifacts-and-issuance.md"
+        }
+      ],
+      "updatedAt": "2026-10-08T18:09:04.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T172746682Z-be397865"
       ],
       "latestCheckpoint": {
-        "id": "08ba8334de26c4f2b3ad0009",
-        "recordedAt": "2026-10-08T17:47:52.000Z",
+        "id": "77a149ed0c4fc6a12c527b3a",
+        "recordedAt": "2026-10-08T18:09:02.000Z",
         "executionId": "EXE-20261008T172746682Z-be397865",
         "repository": "summa",
-        "branch": "feat/wi-0027-invoicing",
-        "commit": "a4f58ec4c4bd578c21166217e42a1562bd8d2ab5",
+        "branch": "feat/wi-0027-part2",
+        "commit": "ffada1e0931fdde32f3dbe24d2f91f8d54cb4990",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa.git"
         },
-        "remoteBranch": "feat/wi-0027-invoicing",
-        "remoteCommit": "a4f58ec4c4bd578c21166217e42a1562bd8d2ab5",
-        "summary": "Part 1: numbering, review, issue command, Folio documents and artifacts",
-        "nextAction": "Part 2: state dimensions and actions, delivery attempts, payment profiles, related-document graph, partial credits, typed adjustments, assumptions",
+        "remoteBranch": "feat/wi-0027-part2",
+        "remoteCommit": "ffada1e0931fdde32f3dbe24d2f91f8d54cb4990",
+        "summary": "Invoice generation core done: numbering, review, issue, Folio documents, artifacts, states, delivery, follow-up, payment profiles, corrections graph, typed adjustments",
+        "nextAction": "Open and merge the PR",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
         }
-      }
+      },
+      "completedAt": "2026-10-08T18:09:04.000Z"
     }
   ]
 }

@@ -15,6 +15,7 @@ let abc =
       BillingAddress = "1 Main St"
       Email = "ap@abc.example"
       DefaultTerms = Some(Net 30)
+      PaymentProfileId = None
       Active = true }
 
 let consulting hours rate =
@@ -40,6 +41,8 @@ let draftFor lines =
       Corrects = None
       EngagementId = None
       Details = noDetails
+      Assumptions = []
+      Recipients = None
       Version = 0
       Review = Editing }
 
@@ -54,8 +57,11 @@ let request =
           Address = "1 Foundry Way\nSpringfield"
           TaxId = Some "12-3456789"
           Email = "billing@echelon.example"
-          PaymentInstructions = "ACH to account ending 6789" }
+          PaymentInstructions = "ACH to account ending 6789"
+          PaymentMethods = []
+          PaymentProfile = None }
       Template = Summa.Ledger.Documents.currentTemplate
+      ApprovalReason = None
       SystemTerms = Net 30
       ReceivableAccountId = "ar"
       InvoiceId = "INV-001"
@@ -68,7 +74,7 @@ let withDraft draft = saveDraft context draft books |> ok
 
 let issued () =
     // 34.5 hours at 175.00 = 6,037.50; a 12.50 fee brings it to 6,050.00.
-    let draft = { draftFor [ consulting 34500L 17500L ] with Adjustments = [ usd 1250L ] }
+    let draft = { draftFor [ consulting 34500L 17500L ] with Adjustments = [ { Kind = Fee; Label = "Processing fee"; Amount = usd 1250L } ] }
     issue context request (withDraft draft) |> ok
 
 [<Fact>]
@@ -144,7 +150,7 @@ let ``due dates come from terms; days due and past due are calculated`` () =
 let ``sending is recorded with time and recipient, and every step is audited`` () =
     let books, _ = issued ()
     let sent = markSent { context with When = DateTimeOffset(2026, 10, 8, 9, 0, 0, TimeSpan.Zero) } "INV-001" "ap@abc.example" books |> ok
-    let invoice = sent.Invoices["INV-001"]
-    Assert.Equal((Some "ap@abc.example", Some(DateTimeOffset(2026, 10, 8, 9, 0, 0, TimeSpan.Zero))), (invoice.SentTo, invoice.SentAt))
+    let attempt = sent.Deliveries["INV-001-sent-1"]
+    Assert.Equal((Some "ap@abc.example", DateTimeOffset(2026, 10, 8, 9, 0, 0, TimeSpan.Zero), ManuallySent), (List.tryHead attempt.Recipients.To, attempt.At, attempt.Outcome))
     let actions = sent.Ledger.Audit |> List.map _.What |> List.filter (fun w -> w.StartsWith "invoice" || w.StartsWith "customer")
     Assert.Equal<string list>([ "customer-saved"; "invoice-created"; "invoice-issued"; "invoice-sent" ], actions)

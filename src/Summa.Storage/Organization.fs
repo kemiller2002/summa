@@ -375,7 +375,9 @@ let issuer (manifest: OrganizationManifest) : Summa.Ledger.Invoicing.IssuerSnaps
       Address = manifest.Company.Address
       TaxId = manifest.Company.TaxId
       Email = manifest.Company.Email
-      PaymentInstructions = manifest.Invoices.PaymentInstructions }
+      PaymentInstructions = manifest.Invoices.PaymentInstructions
+      PaymentMethods = []
+      PaymentProfile = None }
 
 /// Yearly numbering under the organization's prefix: `INV-2026-0001`.
 let numbering (manifest: OrganizationManifest) = Summa.Ledger.Invoicing.defaultNumbering manifest.Invoices.NumberPrefix
@@ -403,6 +405,7 @@ let issueRequest (manifest: OrganizationManifest) (ledger: Summa.Ledger.Ledger.L
       ExpectedVersion = None
       Issuer = issuer manifest
       Template = Summa.Ledger.Documents.currentTemplate
+      ApprovalReason = None
       SystemTerms = systemTerms manifest
       ReceivableAccountId = accountByCode ledger manifest.Accounting.ReceivablesAccount
       InvoiceId = invoiceId

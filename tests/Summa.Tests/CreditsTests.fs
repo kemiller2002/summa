@@ -93,7 +93,7 @@ let ``a deposit is a liability until applied, traceable by customer`` () =
 
 [<Fact>]
 let ``a credit memo has its own id, reduces revenue and the customer's balance`` () =
-    let memo = { Id = "CM-1"; CustomerId = "CUST-ABC"; InvoiceId = Some "INV-001"; Amount = usd 50000L; RevenueAccountId = "revenue"; Reason = "Agreed discount on assessment"; IssueDate = day; JournalEntryId = "JE-CM-1" }
+    let memo = { Id = "CM-1"; CustomerId = "CUST-ABC"; InvoiceId = Some "INV-001"; Amount = usd 50000L; RevenueAccountId = "revenue"; Reason = "Agreed discount on assessment"; IssueDate = day; JournalEntryId = "JE-CM-1"; Lines = [] }
     let r = books () |> issueCreditMemo context accountsFor memo |> ok
     Assert.Equal(usd 555000L, balance r.Books.Ledger "USD" day "revenue")
     let applied = apply context accountsFor { ApplicationId = "AP-1"; Source = FromCreditMemo "CM-1"; InvoiceId = "INV-001"; Amount = usd 50000L; Date = day; JournalEntryId = "JE-AP-1" } r |> ok

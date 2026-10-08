@@ -648,6 +648,8 @@ let accept (context: Context) (proposalId: string) (request: IssueRequest) (r: R
                   Corrects = None
                   EngagementId = p.EngagementId
                   Details = noDetails
+                  Assumptions = []
+                  Recipients = None
                   Version = 0
                   Review = Editing }
 

@@ -34,7 +34,7 @@ let ``every financial object and event is its own file at a deterministic path``
           "records/summa.entry/2026/10/JE-000004.json"
           "records/summa.customer/CUST-ABC.json"
           "records/summa.invoice/2026/INV-001.json"
-          "records/summa.delivery/INV-001.json"
+          "records/summa.delivery/INV-001-sent-1.json"
           "records/summa.obligation/OBL-001.json"
           "records/summa.payment/2026/PAY-1.json"
           "records/summa.allocation/AL-1.json" ] do
@@ -213,3 +213,27 @@ let ``billing the same source on two live invoices is an integrity failure`` () 
     let unknown = { first with Lines = [ { first.Lines.Head with Source = Summa.Ledger.Sources.TimeSource [ { PublicationId = "pub-404"; ActivityId = "act-404"; Revision = 1; Minutes = 60 } ] } ] }
     let orphan = { r with Books = { r.Books with Invoices = r.Books.Invoices.Add("INV-001", unknown) } }
     Assert.Contains(Invariants.check orphan, fun v -> v.Rule = "sources-exist")
+
+[<Fact>]
+let ``deliveries, payment profiles, follow-up and typed draft details round-trip`` () =
+    let original = withLifecycle ()
+    Assert.Empty(Invariants.check original)
+    let loaded = load (stored original)
+    Assert.Empty loaded.Problems
+    let books = loaded.State.Books
+    Assert.True((original.Books.Deliveries = books.Deliveries))
+    Assert.True((original.Books.PaymentProfiles = books.PaymentProfiles))
+    Assert.True((original.Books.FollowUps = books.FollowUps))
+    Assert.True((original.Books.Drafts = books.Drafts))
+    Assert.True((original.CreditMemos = loaded.State.CreditMemos))
+    let paths = stored original |> List.map (fun o -> RelativePath.render o.Path) |> Set.ofList
+
+    for expected in [ "records/summa.delivery/DL-1.json"; "records/summa.payment-profile/us-bank-v1.json"; "records/summa.follow-up/INV-001.json" ] do
+        Assert.Contains(expected, paths)
+
+[<Fact>]
+let ``a stored payment profile holding a full account number is an integrity failure`` () =
+    let r = withLifecycle ()
+    let leaked = { r.Books.PaymentProfiles["us-bank@1"] with Instructions = "ACH account 123456789012" }
+    let broken = { r with Books = { r.Books with PaymentProfiles = r.Books.PaymentProfiles.Add("us-bank@1", leaked) } }
+    Assert.Contains(Invariants.check broken, fun v -> v.Rule = "no-secrets-in-payment-profiles")
