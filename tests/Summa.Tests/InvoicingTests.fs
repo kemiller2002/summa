@@ -14,7 +14,7 @@ let abc =
       BillingName = "ABC Corp Accounts Payable"
       BillingAddress = "1 Main St"
       Email = "ap@abc.example"
-      DefaultTerms = Net 30
+      DefaultTerms = Some(Net 30)
       Active = true }
 
 let consulting hours rate =
@@ -23,7 +23,8 @@ let consulting hours rate =
       UnitPrice = usd rate
       RevenueAccountId = "revenue"
       Project = Some "PRJ-ARCH"
-      WorkItem = None }
+      WorkItem = None
+      Discount = None }
 
 let draftFor lines =
     { DraftId = "D-1"
@@ -31,14 +32,17 @@ let draftFor lines =
       Currency = "USD"
       Lines = lines
       Adjustments = []
+      Discounts = []
       Terms = None
-      DueDate = None }
+      DueDate = None
+      Corrects = None }
 
 let request =
     { DraftId = "D-1"
       IssueDate = DateOnly(2026, 10, 7)
       NumberOverride = None
       Prefix = "EF"
+      SystemTerms = Net 30
       ReceivableAccountId = "ar"
       InvoiceId = "INV-001"
       JournalEntryId = "JE-000001"

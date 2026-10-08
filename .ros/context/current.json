@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T16:17:48.000Z",
+  "updatedAt": "2026-10-08T16:51:53.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1337,6 +1337,59 @@
         }
       },
       "completedAt": "2026-10-08T16:17:48.000Z"
+    },
+    {
+      "id": "WI-0024",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Credits.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Corrections.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/CreditsTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/CorrectionsTests.fs"
+        },
+        {
+          "type": "decision",
+          "path": "research/decisions/DF-SUMMA-2026-0005--discounts-voids-and-pre-release-record-schemas.md"
+        }
+      ],
+      "updatedAt": "2026-10-08T16:51:53.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261008T161945018Z-19388ec7"
+      ],
+      "latestCheckpoint": {
+        "id": "eee63bc5d72fe8a6e0991e01",
+        "recordedAt": "2026-10-08T16:51:52.000Z",
+        "executionId": "EXE-20261008T161945018Z-19388ec7",
+        "repository": "summa",
+        "branch": "feat/wi-0024-credits",
+        "commit": "b226925750c8e2218f16a8d3b64586e27c9b1651",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa.git"
+        },
+        "remoteBranch": "feat/wi-0024-credits",
+        "remoteCommit": "b226925750c8e2218f16a8d3b64586e27c9b1651",
+        "summary": "Receivables edge cases done: credits, deposits, memos, refunds, reversals, write-offs, duplicates, corrections, voids, discounts, terms, late status, dates",
+        "nextAction": "Open and merge the PR",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-08T16:51:53.000Z"
     }
   ]
 }

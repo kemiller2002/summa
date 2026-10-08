@@ -48,36 +48,179 @@ type PaymentProblem =
     | ExceedsOutstanding of outstanding: Money
     | AllocationLedgerProblems of Problem list
 
+/// The unallocated part of a payment, recognised as the customer's credit
+/// rather than revenue (v0.2 §4): Debit Cash, Credit Customer Credits.
+type CustomerCredit =
+    { Id: string
+      CustomerId: string
+      SourcePaymentId: string
+      Amount: Money
+      Date: DateOnly
+      JournalEntryId: string }
+
+/// Money received before it is earned (v0.2 §5): Debit Cash, Credit
+/// Customer Deposits. Distinguishable from invoice payments.
+type Deposit =
+    { Id: string
+      CustomerId: string
+      DateReceived: DateOnly
+      Amount: Money
+      Method: PaymentMethod
+      Reference: string
+      JournalEntryId: string }
+
+/// An approved credit with its own identifier (v0.2 §9): Debit the revenue
+/// it reduces, Credit Customer Credits, until applied.
+type CreditMemo =
+    { Id: string
+      CustomerId: string
+      /// The invoice it was raised against, if any.
+      InvoiceId: string option
+      Amount: Money
+      RevenueAccountId: string
+      Reason: string
+      IssueDate: DateOnly
+      JournalEntryId: string }
+
+/// Where an application or a refund takes its money from.
+type CreditSource =
+    | FromCredit of creditId: string
+    | FromDeposit of depositId: string
+    | FromCreditMemo of memoId: string
+
+/// Part of a credit, deposit or credit memo applied to an invoice: Debit the
+/// liability it came from, Credit Accounts Receivable.
+type Application =
+    { Id: string
+      Source: CreditSource
+      InvoiceId: string
+      Amount: Money
+      Date: DateOnly
+      JournalEntryId: string }
+
+/// Money that actually leaves the business (v0.2 §10): Debit the liability
+/// it came from, Credit Cash. It never deletes the original payment.
+type Refund =
+    { Id: string
+      CustomerId: string
+      Source: CreditSource
+      Amount: Money
+      Date: DateOnly
+      Method: PaymentMethod
+      Reference: string
+      JournalEntryId: string }
+
+/// A payment that failed after it was recorded (v0.2 §11): the payment stays
+/// in history, its effects are reversed by compensating entries.
+type PaymentReversal =
+    { PaymentId: string
+      Reason: string
+      Date: DateOnly
+      /// The reversing entries, one per allocation or credit of the payment.
+      JournalEntryIds: string list }
+
+/// An explicit write-off of an uncollectible balance (v0.2 §12): Debit Bad
+/// Debt Expense, Credit Accounts Receivable.
+type WriteOff =
+    { Id: string
+      InvoiceId: string
+      Amount: Money
+      Reason: string
+      Date: DateOnly
+      JournalEntryId: string }
+
+/// An issued invoice that was voided (v0.2 §8): the invoice stays, its
+/// journal entry is reversed by `JournalEntryId` and its obligation is
+/// cancelled. Keyed by the invoice.
+type InvoiceVoid =
+    { InvoiceId: string
+      Reason: string
+      Date: DateOnly
+      JournalEntryId: string }
+
 type Receivables =
     { Books: Books
       Payments: Map<string, Payment>
-      Allocations: Allocation list }
+      Allocations: Allocation list
+      Credits: Map<string, CustomerCredit>
+      Deposits: Map<string, Deposit>
+      CreditMemos: Map<string, CreditMemo>
+      Applications: Application list
+      Refunds: Map<string, Refund>
+      Reversals: Map<string, PaymentReversal>
+      WriteOffs: Map<string, WriteOff>
+      Voids: Map<string, InvoiceVoid> }
 
 let start (books: Books) =
     { Books = books
       Payments = Map.empty
-      Allocations = [] }
+      Allocations = []
+      Credits = Map.empty
+      Deposits = Map.empty
+      CreditMemos = Map.empty
+      Applications = []
+      Refunds = Map.empty
+      Reversals = Map.empty
+      WriteOffs = Map.empty
+      Voids = Map.empty }
+
+/// Allocations that still count: those of payments that were not reversed.
+let liveAllocations (r: Receivables) =
+    r.Allocations |> List.filter (fun a -> not (r.Reversals.ContainsKey a.PaymentId))
 
 let private allocatedTo (r: Receivables) (pick: Allocation -> bool) (currency: string) =
-    r.Allocations |> List.filter pick |> List.map _.Amount |> sum currency
+    liveAllocations r |> List.filter pick |> List.map _.Amount |> sum currency
 
+/// What has been paid against an invoice: live allocations and applied
+/// credits, deposits and credit memos.
 let amountPaid (r: Receivables) (invoice: IssuedInvoice) =
-    allocatedTo r (fun a -> a.InvoiceId = invoice.InvoiceId) invoice.Currency
+    add
+        (allocatedTo r (fun a -> a.InvoiceId = invoice.InvoiceId) invoice.Currency)
+        (r.Applications |> List.filter (fun a -> a.InvoiceId = invoice.InvoiceId) |> List.map _.Amount |> sum invoice.Currency)
 
-let outstanding (r: Receivables) (invoice: IssuedInvoice) = subtract invoice.Total (amountPaid r invoice)
+/// What has been written off against an invoice.
+let writtenOff (r: Receivables) (invoice: IssuedInvoice) =
+    r.WriteOffs |> Map.toList |> List.map snd |> List.filter (fun w -> w.InvoiceId = invoice.InvoiceId) |> List.map _.Amount |> sum invoice.Currency
 
+/// What an invoice still owes; nothing once it is voided.
+let outstanding (r: Receivables) (invoice: IssuedInvoice) =
+    if r.Voids.ContainsKey invoice.InvoiceId then
+        zero invoice.Currency
+    else
+        subtract (subtract invoice.Total (amountPaid r invoice)) (writtenOff r invoice)
+
+/// What of a payment is neither allocated nor recognised as a credit. A
+/// reversed payment has nothing left to allocate.
 let unallocated (r: Receivables) (payment: Payment) =
-    subtract payment.Amount (allocatedTo r (fun a -> a.PaymentId = payment.Id) payment.Amount.Currency)
+    if r.Reversals.ContainsKey payment.Id then
+        zero payment.Amount.Currency
+    else
+        let credited =
+            r.Credits |> Map.toList |> List.map snd |> List.filter (fun c -> c.SourcePaymentId = payment.Id) |> List.map _.Amount |> sum payment.Amount.Currency
+
+        subtract (subtract payment.Amount (allocatedTo r (fun a -> a.PaymentId = payment.Id) payment.Amount.Currency)) credited
 
 type InvoiceStatus =
     | Issued
     | PartiallyPaid
     | Paid
+    /// Nothing is outstanding because the rest was written off (v0.2 §12).
+    | WrittenOff
+    /// Voided: it stays visible, but owes nothing (v0.2 §8).
+    | Voided
 
 /// Paid only when nothing is outstanding (§13).
 let status (r: Receivables) (invoice: IssuedInvoice) =
     let paid = amountPaid r invoice
-    if (outstanding r invoice).Minor = 0L then Paid elif paid.Minor > 0L then PartiallyPaid else Issued
+
+    if r.Voids.ContainsKey invoice.InvoiceId then
+        Voided
+    elif (outstanding r invoice).Minor = 0L then
+        if (writtenOff r invoice).Minor > 0L then WrittenOff else Paid
+    elif paid.Minor > 0L then
+        PartiallyPaid
+    else
+        Issued
 
 type Timing =
     | Current
@@ -104,9 +247,59 @@ let obligationStatus (r: Receivables) (obligation: Obligation) =
         let invoice = r.Books.Invoices |> Map.toList |> List.map snd |> List.find (fun i -> i.ObligationId = obligation.Id)
 
         match status r invoice with
-        | Paid -> Settled
+        | Paid
+        | WrittenOff -> Settled
         | PartiallyPaid -> PartiallySettled
         | Issued -> Open
+        | Voided -> Cancelled
+
+/// Overdue is derived, never set (v0.2 §19): something is still outstanding
+/// and the date is past the due date.
+let isOverdue (today: DateOnly) (r: Receivables) (invoice: IssuedInvoice) =
+    (outstanding r invoice).Minor > 0L && today > invoice.DueDate
+
+/// The date an invoice became paid: the latest payment or application that
+/// counts towards it, once nothing is outstanding by payment. Derived.
+let paidAt (r: Receivables) (invoice: IssuedInvoice) : DateOnly option =
+    match status r invoice with
+    | Paid ->
+        let payments =
+            liveAllocations r
+            |> List.filter (fun a -> a.InvoiceId = invoice.InvoiceId)
+            |> List.choose (fun a -> r.Payments.TryFind a.PaymentId |> Option.map _.DateReceived)
+
+        let applications = r.Applications |> List.filter (fun a -> a.InvoiceId = invoice.InvoiceId) |> List.map _.Date
+        payments @ applications |> List.sort |> List.tryLast
+    | _ -> None
+
+/// The dates of one invoice, kept apart because they mean different things
+/// (v0.2 §27). Business dates are `DateOnly`; the moments Summa recorded
+/// something are `DateTimeOffset`.
+type InvoiceDates =
+    { /// When its draft was first saved.
+      CreatedAt: DateTimeOffset option
+      /// When Summa issued it.
+      IssuedAt: DateTimeOffset
+      /// The date it counts in the books (its issue date).
+      AccountingDate: DateOnly
+      DueDate: DateOnly
+      /// When its journal entry was posted.
+      PostedAt: DateTimeOffset option
+      /// The business date it became paid.
+      PaidAt: DateOnly option }
+
+let dates (r: Receivables) (invoice: IssuedInvoice) =
+    let draftId = r.Books.IssuedFrom |> Map.tryFindKey (fun _ id -> id = invoice.InvoiceId)
+
+    { CreatedAt =
+        draftId
+        |> Option.bind (fun d -> r.Books.Ledger.Audit |> List.tryFind (fun a -> a.What = "invoice-created" && a.Subject = d))
+        |> Option.map _.When
+      IssuedAt = invoice.IssuedAt
+      AccountingDate = invoice.IssueDate
+      DueDate = invoice.DueDate
+      PostedAt = r.Books.Ledger.Entries.TryFind invoice.JournalEntryId |> Option.map _.PostedAt
+      PaidAt = paidAt r invoice }
 
 /// Records a payment. Retrying the same payment is a no-op; reusing its id
 /// for a different payment is refused.
