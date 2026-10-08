@@ -560,6 +560,51 @@
     "version": "1.0.0"
   },
   {
+    "created": "2026-10-08",
+    "id": "DF-SUMMA-2026-0013",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0013--sign-in-through-fides-in-the-application.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261008T224159765Z-e3bcf517": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-08T22:56:40.000Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Decide how the accounting application signs people in with GitHub through Fides (WI-0035)"
+        }
+      }
+    },
+    "related_documents": [
+      "research/decisions/DF-SUMMA-2026-0009--the-accounting-application-and-its-local-books.md",
+      "research/decisions/DF-SUMMA-2026-0010--deep-links-through-limen-routing.md",
+      "docs/deployment-configuration.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "identity",
+      "fides",
+      "github",
+      "limen",
+      "sign-in"
+    ],
+    "title": "Sign-in through Fides' client in the accounting application",
+    "updated": "2026-10-08",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-10-05",
     "id": "DF-SUMMA-FND-2026-0001",
     "owners": [

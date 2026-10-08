@@ -42,6 +42,38 @@ type Configuration =
     /// The configuration cannot be used; nothing runs.
     | Misconfigured of reason: string
 
+/// Where a sign-in keeps the session (Fides retention): this page only, the
+/// default, or this tab until it closes.
+type KeepSignIn =
+    | ThisPage
+    | ThisTab
+
+/// What Fides' client reported (WI-0035). The edge turns the client's
+/// outcomes into these; no token is ever part of one.
+type IdentityChange =
+    /// The provider resolved who signed in: provider, stable subject, login.
+    | IdentitySignedIn of provider: string * subject: string * login: string
+    | IdentitySigningIn
+    /// Signed out, with Fides' reason code when there is one.
+    | IdentitySignedOut of code: string option
+    | IdentityProviderUnavailable
+
+/// Who signed in: the actor is the provider's stable subject
+/// (`github:<numeric id>`); the login is only a display name (SUM0-004).
+type SignedInPerson = { ActorId: string; Login: string }
+
+/// Sign-in, for a deployment whose books live on GitHub (WI-0035).
+type SignInState =
+    /// Local books: no one signs in.
+    | NotRequired
+    /// Restoring a kept session, or completing the provider's callback.
+    | Restoring
+    | SignedOut of notice: string option
+    /// Leaving for the provider's sign-in page.
+    | LeavingForProvider
+    | SignedInAs of SignedInPerson
+    | ProviderUnavailable
+
 type CustomerForm =
     { Name: string
       BillingName: string
@@ -176,7 +208,10 @@ type Model =
       /// Draws keys for form rows, so a sequence of inputs always gives the same keys.
       Counter: int
       /// Saves the browser has not confirmed.
-      Unsaved: int }
+      Unsaved: int
+      SignIn: SignInState
+      /// Keep the session in this tab rather than this page only.
+      KeepInTab: bool }
 
 let private newLine (counter: int) =
     let key, next = nextKey "line" counter
@@ -216,6 +251,8 @@ let initial =
       FollowUpNote = ""
       Receipt = { CustomerId = ""; Amount = ""; Date = ""; Method = "ach"; Reference = "" }
       Pdf = PdfIdle
+      SignIn = NotRequired
+      KeepInTab = false
       Blockers = []
       Notice = None
       Error = None
@@ -232,6 +269,10 @@ type Msg =
     | LocationChanged of Limen.Routing.PageLocation
     /// The configuration document's text, or why it could not be read.
     | ConfigurationRead of Result<string, string>
+    | IdentityChanged of IdentityChange
+    | SignInRequested
+    | SignOutRequested
+    | KeepSignInToggled
     /// The stored snapshot, or None when this browser has none yet.
     | Loaded of string option
     | Saved of ok: bool
@@ -358,6 +399,11 @@ type AppEffect =
     | GetArtifact of database: string * sha256: string
     /// Offer bytes (base64) to the person as a download.
     | OfferDownload of fileName: string * mediaType: string * data: string
+    /// Set up Fides' client and complete the provider's callback (when the
+    /// query carries one) or restore a kept session.
+    | BeginIdentity of Deployment.IdentityConfig * query: (string * string) list
+    | StartSignIn of KeepSignIn
+    | EndSignIn
 
 // ---- Helpers ---------------------------------------------------------------------------
 
@@ -493,10 +539,21 @@ let private editLine (key: string) (change: LineForm -> LineForm) (model: Model)
 
 // ---- Places (WI-0041) -------------------------------------------------------------------
 
-/// Local books are their owner's own: every capability. Sign-in (WI-0035)
-/// replaces this with the signed-in member's capabilities.
-let viewer =
+let private everything =
     Routes.Member(Summa.Access.Access.allCapabilities |> List.map Summa.Access.Access.capabilityName |> Set.ofList)
+
+/// Who is looking. Local books are their owner's own: every capability.
+/// Where sign-in is required, no one is anyone until signed in. A signed-in
+/// person's capabilities come from the organization's roster, which the
+/// GitHub store reads (WI-0037); until it does, the books are not open.
+let viewerOf (model: Model) =
+    match model.SignIn with
+    | NotRequired
+    | SignedInAs _ -> everything
+    | Restoring
+    | SignedOut _
+    | LeavingForProvider
+    | ProviderUnavailable -> Routes.Anonymous
 
 /// A fragment that is not a route ("#main", the skip link's target) is an
 /// in-page anchor: the place stays, and the address is put back.
@@ -546,6 +603,7 @@ let private adopt (page: Limen.Routing.PageLocation) (model: Model) =
     | Some current when isAnchor page -> model, [ Navigate(Limen.Routing.NavigationEffect.Replace current) ]
     | _ ->
         let location = if isAnchor page then "/" else Routes.locationOf page
+        let viewer = viewerOf model
         let router, resolution, effect = Limen.Routing.RouteCodec.adopt Routes.codec (Routes.guard viewer) model.Router location
 
         let arrive (place: Routes.Place) router effects =
@@ -562,7 +620,9 @@ let private adopt (page: Limen.Routing.PageLocation) (model: Model) =
             (if changed then enter place arrived else arrived), effects
 
         match resolution with
-        // These books need no sign-in: go straight to where the link pointed.
+        // Not signed in: the sign-in page, keeping where the link pointed.
+        | Ok(Routes.SignIn _ as place) when viewer = Routes.Anonymous -> arrive place router (navigation effect)
+        // Signed in, or no sign-in needed: go straight to where the link pointed.
         | Ok(Routes.SignIn returnTo) ->
             let target = Routes.resume viewer returnTo
             let resumed, replace = Limen.Routing.Navigation.replace router target
@@ -572,6 +632,49 @@ let private adopt (page: Limen.Routing.PageLocation) (model: Model) =
             | Error _ -> arrive Routes.Home resumed (navigation replace)
         | Ok place -> arrive place router (navigation effect)
         | Error problem -> { model with Router = router; Unrouted = Some problem; Notice = None; Error = None }, navigation effect
+
+/// The address the browser shows, adopted again: who may see what changed.
+let private readopt (model: Model) =
+    match model.Page with
+    | Some page -> adopt page model
+    | None -> model, []
+
+/// A query string as name and value pairs, decoded.
+let queryPairs (query: string) =
+    query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries)
+    |> Array.map (fun pair ->
+        let decode (text: string) = Uri.UnescapeDataString(text.Replace('+', ' '))
+
+        match pair.IndexOf '=' with
+        | -1 -> decode pair, ""
+        | at -> decode (pair.Substring(0, at)), decode (pair.Substring(at + 1)))
+    |> List.ofArray
+
+/// What the sign-in page says for Fides' reason code.
+let signInNotice (code: string) =
+    match code with
+    | "signed_out" -> "You signed out. This page no longer holds your GitHub token."
+    | "expired" -> "Your session ended. Sign in again to continue."
+    | "revoked" -> "Your session was ended, here or in another tab. Sign in again to continue."
+    | "provider_denied" -> "GitHub did not sign you in: the request was declined there."
+    | "state_invalid" -> "That sign-in did not start in this tab, so it was refused. Sign in again here."
+    | "state_expired" -> "That sign-in took too long and expired. Sign in again."
+    | "code_rejected" -> "GitHub refused the sign-in code. Sign in again."
+    | "sign_in_failed" -> "Sign-in could not start. Try again."
+    | other -> $"Sign-in did not complete ({other}). Try again."
+
+/// Signed out: nothing of the person stays in memory. The page starts again
+/// from its configuration, at the sign-in page for where it was.
+let private signedOut (state: SignInState) (model: Model) =
+    readopt
+        { initial with
+            Configuration = model.Configuration
+            Page = model.Page
+            Router = model.Router
+            Place = model.Place
+            Packs = model.Packs
+            Today = model.Today
+            SignIn = state }
 
 let private invoiceList (model: Model) =
     match model.Place with
@@ -684,14 +787,38 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
         match Deployment.parse document with
         | Error problem -> { model with Configuration = Misconfigured(Diagnostics.describe problem) }, []
         | Ok config when config.Location.IsSome ->
-            // Books on GitHub need sign-in and the GitHub store (WI-0035, WI-0037).
-            { model with
-                Configuration =
-                    Misconfigured "This deployment names a data location on GitHub, which this build cannot open yet: it keeps books only in the browser." },
-            []
+            match config.Identity with
+            // Books on GitHub: who signs in comes first (WI-0035).
+            | Some identity ->
+                let query = model.Page |> Option.map (fun p -> queryPairs p.Query) |> Option.defaultValue []
+                let restoring, effects = readopt { model with Configuration = Configured config; SignIn = Restoring }
+                restoring, BeginIdentity(identity, query) :: effects
+            | None -> { model with Configuration = Misconfigured "This deployment names a data location on GitHub but no way to sign in." }, []
         | Ok config when model.Packs.Store ->
             { model with Configuration = Configured config; Artifacts = StoreOpening }, [ LoadBooks; OpenArtifactStore(Artifacts.database config) ]
         | Ok config -> { model with Configuration = Configured config; Artifacts = StoreUnavailable "this browser offers no artifact store" }, [ LoadBooks ]
+    | IdentityChanged change ->
+        match model.SignIn, change with
+        // Local books: Fides is not running, so nothing it says applies.
+        | NotRequired, _ -> model, []
+        | _, IdentitySignedIn(provider, subject, login) ->
+            readopt { model with SignIn = SignedInAs { ActorId = $"{provider}:{subject}"; Login = login } }
+        | _, IdentitySigningIn -> { model with SignIn = LeavingForProvider }, []
+        | _, IdentitySignedOut code -> signedOut (SignedOut(code |> Option.map signInNotice)) model
+        // Signed in: the session stays; GitHub is only unreachable for now.
+        | SignedInAs _, IdentityProviderUnavailable ->
+            { model with Notice = Some "GitHub sign-in is not reachable right now. Your session is kept." }, []
+        | _, IdentityProviderUnavailable -> signedOut ProviderUnavailable model
+    | SignInRequested ->
+        match model.SignIn with
+        | SignedOut _
+        | ProviderUnavailable -> { model with SignIn = LeavingForProvider }, [ StartSignIn(if model.KeepInTab then ThisTab else ThisPage) ]
+        | _ -> model, []
+    | SignOutRequested ->
+        match model.SignIn with
+        | SignedInAs _ -> model, [ EndSignIn ]
+        | _ -> model, []
+    | KeepSignInToggled -> { model with KeepInTab = not model.KeepInTab }, []
     | Loaded None ->
         let company: Organization.CompanyInformation =
             { LegalName = "Demo Consulting LLC"
@@ -2629,7 +2756,30 @@ let view (model: Model) : View =
         | Configured _ -> true
         | _ -> false
 
-    [ "isLoading", flag (configured && model.Storage = Loading)
+    let signingIn =
+        match model.SignIn with
+        | SignedOut _
+        | LeavingForProvider
+        | ProviderUnavailable -> true
+        | _ -> false
+
+    [ "isLoading", flag (configured && model.Storage = Loading && model.SignIn = NotRequired)
+      "isRestoringSession", flag (configured && model.SignIn = Restoring)
+      "needsSignIn", flag (configured && signingIn)
+      "hasSignInNotice", flag (match model.SignIn with SignedOut(Some _) | ProviderUnavailable -> true | _ -> false)
+      "signInNotice",
+      text (
+          match model.SignIn with
+          | SignedOut(Some notice) -> notice
+          | ProviderUnavailable -> "GitHub sign-in is not reachable right now. Try again in a moment."
+          | _ -> ""
+      )
+      "isLeavingForProvider", flag (model.SignIn = LeavingForProvider)
+      "keepInTab", flag model.KeepInTab
+      "isSignedIn", flag (match model.SignIn with SignedInAs _ -> true | _ -> false)
+      "signedInLogin", text (match model.SignIn with SignedInAs person -> person.Login | _ -> "")
+      // Signed in, with books on GitHub: the GitHub store opens them (WI-0037).
+      "awaitsGitHubStore", flag (configured && model.Storage = Loading && (match model.SignIn with SignedInAs _ -> true | _ -> false))
       "isReady", flag (configured && model.Storage = Ready)
       "isUntrustworthy",
       flag (

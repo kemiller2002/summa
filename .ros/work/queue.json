@@ -852,10 +852,10 @@
         "depends:fides"
       ],
       "priority": "high",
-      "status": "captured",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T15:39:11.000Z",
-      "updatedAt": "2026-10-08T15:39:11.000Z",
+      "updatedAt": "2026-10-08T23:00:33.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -895,7 +895,7 @@
     {
       "id": "WI-0037",
       "title": "Summa 04b: the application's store on GitHub - Arca's GitHub provider with the Fides token provider, start-up from the manifests, the offline queue on localStorage and conflict resolution in the interface (SUM0-002, SUM0-007, SUM0-018, SUM0-019)",
-      "description": "Follows WI-0020 (provider-neutral command-to-commit in Summa.Storage.Commands) and WI-0035 (sign-in). Copy Chrona WI-0032/WI-0033/WI-0035: the application's store port runs Summa.Storage.Commands.execute over GitHubStorage.provider (Limen Http effects, Fides.Arca token provider, never a token), opens Summa's and the organization's namespaces through their manifests on start-up (SUM0-007, SUM0-033) and refuses a public production repository; financial commands commit directly to the configured data branch (SUM0-018) while schema and storage-format changes stay in reviewed code (SUM0-019, Arca migrations); offline writes queue on localStorage through Arca's OfflineQueue (OfflinePolicy.QueueWrites) and are sent in order on reconnect, a blocked entry reloaded, revalidated and revised or abandoned; conflicts and outside edits are shown, never resolved silently. Proven against Arca's fake GitHub and in a browser suite. Also SUM3-009 remainder: start-up checks Compatibility.access and fails safely when the data is incompatible. Also SUM3-038 remainder: drain or persist the offline queue before shutdown so no operation is left halfway. Remainder after WI-0027: drafts survive refresh, navigation, connection loss and session interruption through the offline queue (INV-DRAFT-003).",
+      "description": "Follows WI-0020 (provider-neutral command-to-commit in Summa.Storage.Commands) and WI-0035 (sign-in). Copy Chrona WI-0032/WI-0033/WI-0035: the application's store port runs Summa.Storage.Commands.execute over GitHubStorage.provider (Limen Http effects, Fides.Arca token provider, never a token), opens Summa's and the organization's namespaces through their manifests on start-up (SUM0-007, SUM0-033) and refuses a public production repository; financial commands commit directly to the configured data branch (SUM0-018) while schema and storage-format changes stay in reviewed code (SUM0-019, Arca migrations); offline writes queue on localStorage through Arca's OfflineQueue (OfflinePolicy.QueueWrites) and are sent in order on reconnect, a blocked entry reloaded, revalidated and revised or abandoned; conflicts and outside edits are shown, never resolved silently. Proven against Arca's fake GitHub and in a browser suite. Also SUM3-009 remainder: start-up checks Compatibility.access and fails safely when the data is incompatible. Also SUM3-038 remainder: drain or persist the offline queue before shutdown so no operation is left halfway. Remainder after WI-0027: drafts survive refresh, navigation, connection loss and session interruption through the offline queue (INV-DRAFT-003). Also SUM0-003 remainder after WI-0035: the signed-in person's GitHub token, through Fides' token provider, reaches the repository according to GitHub's permissions.",
       "tags": [
         "summa",
         "order:04",
@@ -907,7 +907,7 @@
       "status": "ready",
       "attachments": [],
       "createdAt": "2026-10-08T15:51:52.000Z",
-      "updatedAt": "2026-10-08T22:18:37.000Z",
+      "updatedAt": "2026-10-08T23:10:14.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

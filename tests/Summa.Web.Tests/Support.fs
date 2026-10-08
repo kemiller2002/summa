@@ -30,3 +30,10 @@ let row (id: string) : WorkRow =
       LiveWorkItem = None
       Detail = None
       Raw = "{}" }
+
+/// The accounting wire's world for books without sign-in, at a fixed time.
+let wireEnv (now: System.DateTimeOffset) : Summa.Web.Application.AccountingWire.Env =
+    { Now = (fun () -> now)
+      LocalActor = "local-person"
+      Bridge = Summa.Web.Application.Bridge.Bridge()
+      Identity = Summa.Web.Application.Identity.none }

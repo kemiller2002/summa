@@ -140,7 +140,7 @@ let private textAt (path: string list) (node: JsonNode) =
     (path |> List.fold (fun (n: JsonNode) key -> n.AsObject()[key] |> Option.ofObj |> Option.get) node).GetValue<string>()
 
 let private send (session: Wire.Session) (message: string) =
-    let next, reply = Wire.handle aegis (fun () -> ctx.Now) "local-person" session message
+    let next, reply = Wire.handle aegis (Summa.Web.Tests.Support.wireEnv ctx.Now) session message
     next, JsonNode.Parse(reply) |> Option.ofObj |> Option.get
 
 [<Fact>]

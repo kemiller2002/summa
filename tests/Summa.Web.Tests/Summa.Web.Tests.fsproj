@@ -24,6 +24,7 @@
     <Compile Include="BooksTests.fs" />
     <Compile Include="PdfTests.fs" />
     <Compile Include="AttentionTests.fs" />
+    <Compile Include="SignInTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

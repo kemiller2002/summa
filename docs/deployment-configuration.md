@@ -91,9 +91,12 @@ development deployment). A document that cannot be read or used stops the
 page with the reason, and nothing runs. Every environment other than
 production shows its banner on every screen (SUM0-040,
 `Environments.banner`). A deployment without a `location` keeps its books
-in the browser (DF-SUMMA-2026-0009). This build cannot yet open a
-`location` on GitHub; that needs sign-in (WI-0035) and the GitHub store
-(WI-0037), and until then the page says so and stops.
+in the browser (DF-SUMMA-2026-0009). A deployment with a `location` must
+name an `identity`: the page signs the person in with GitHub through Fides
+first (WI-0035, DF-SUMMA-2026-0013), and shows nothing of the books before.
+Its Content-Security-Policy must allow `connect-src` to the exchange's
+origin. This build cannot yet open the books on GitHub once signed in; that
+is the GitHub store (WI-0037), and until then the page says so.
 
 ## Deployment: GitHub Pages
 

@@ -23,6 +23,15 @@ let print =
       Version = 1
       Fingerprint = "summa.print/1: print" }
 
+/// `summa.host` v1: what Fides' sign-in client needs from the browser beyond
+/// Limen's core effects (web-kernel/host.js): this tab's session storage,
+/// leaving for the identity provider, tidying the address bar and telling
+/// the origin's other tabs.
+let host =
+    { Id = "summa.host"
+      Version = 1
+      Fingerprint = "summa.host/1: tab storage, leave, replace address, broadcast" }
+
 /// Every event app/index.html may send, so a test can hold the page to it.
 let events: Map<string, string -> string -> Msg> =
     Map.ofList
@@ -113,7 +122,10 @@ let events: Map<string, string -> string -> Msg> =
           "companyEmailChanged", (fun _ value -> CompanyEmailChanged value)
           "companyPaymentChanged", (fun _ value -> CompanyPaymentChanged value)
           "companySaved", (fun _ _ -> CompanySaved)
-          "resetConfirmed", (fun _ _ -> ResetConfirmed) ]
+          "resetConfirmed", (fun _ _ -> ResetConfirmed)
+          "signInRequested", (fun _ _ -> SignInRequested)
+          "signOutRequested", (fun _ _ -> SignOutRequested)
+          "keepSignInToggled", (fun _ _ -> KeepSignInToggled) ]
 
 let private message (name: string) (key: string option) (value: string option) =
     match events |> Map.tryFind name with
@@ -138,7 +150,7 @@ type Inbound =
     /// A pack's outcome: Completed with its result, or why it was not executed.
     | CapabilityResult of correlation: string * capability: string * outcome: JsonNode
     | CapabilityFact of capability: string * fact: JsonNode
-    | HttpResult of correlation: string * Result<string, string>
+    | HttpResult of correlation: string * Bridge.HttpAnswer
     | Ignored
 
 let private effectResult (node: JsonNode) =
@@ -160,16 +172,16 @@ let private effectResult (node: JsonNode) =
         let result =
             match required "kind" at asString outcome with
             | "Success" ->
-                let status = required "status" at asInt outcome
+                let body =
+                    match tryField "body" outcome with
+                    | Some(:? JsonValue as v) when v.GetValueKind() = JsonValueKind.String -> v.GetValue<string>()
+                    | Some other -> other.ToJsonString()
+                    | None -> ""
 
-                match tryField "body" outcome with
-                | Some body when status >= 200 && status < 300 ->
-                    match body with
-                    | :? JsonValue as v when v.GetValueKind() = JsonValueKind.String -> Ok(v.GetValue<string>())
-                    | other -> Ok(other.ToJsonString())
-                | _ -> Error $"HTTP {status}"
-            | "Failure" -> Error(required "reason" at asString outcome)
-            | other -> Error other
+                Bridge.Responded(required "status" at asInt outcome, body)
+            | "Failure" -> Bridge.Unreachable(required "reason" at asString outcome)
+            | "OutcomeUnknown" -> Bridge.Unknown(required "reason" at asString outcome)
+            | other -> Bridge.Unreachable other
 
         HttpResult(correlation, result)
     | "CapabilityResult" ->
@@ -210,7 +222,7 @@ let decode (messageJson: string) =
 
 [<NoComparison; NoEquality>]
 type Answer =
-    | Accepted of minor: int * contract: JsonNode * printing: bool * packs: Packs
+    | Accepted of minor: int * contract: JsonNode * printing: bool * packs: Packs * hosting: bool
     | Rejected of reason: (Utf8JsonWriter -> unit)
 
 /// Accepts Limen Core and selects `summa.print`, `limen.files` and
@@ -237,7 +249,7 @@ let answer (offer: JsonNode) =
             writer.WritePropertyName "offered"
             writeNode writer contract)
     else
-        Accepted(min minor ProtocolMinor, contract, printing, { Files = offers files; Store = offers store })
+        Accepted(min minor ProtocolMinor, contract, printing, { Files = offers files; Store = offers store }, offers host)
 
 // ---- Session ---------------------------------------------------------------------------------------
 
@@ -260,6 +272,8 @@ type Session =
       Pending: Map<string, Purpose>
       Sequence: int
       Printing: bool
+      /// The kernel offers `summa.host`, which sign-in needs.
+      Hosting: bool
       Fault: FaultView option }
 
 let initial =
@@ -267,11 +281,25 @@ let initial =
       Pending = Map.empty
       Sequence = 0
       Printing = false
+      Hosting = false
       Fault = None }
+
+/// What the wire is given: the clock, the actor of books without sign-in,
+/// and Fides' client over the page's bridge.
+[<NoComparison; NoEquality>]
+type Env =
+    { Now: unit -> DateTimeOffset
+      LocalActor: string
+      Bridge: Bridge.Bridge
+      Identity: Identity.IdentityPort }
 
 [<NoComparison; NoEquality>]
 type Request =
     | HttpGet of correlation: string * url: string
+    | HttpPost of correlation: string * url: string * body: string * timeoutMs: int
+    | StorageRemove of correlation: string * key: string
+    /// A `summa.host` request: its operation and string arguments.
+    | Host of correlation: string * operation: string * arguments: (string * string) list
     | StorageGet of correlation: string * key: string
     | StorageSet of correlation: string * key: string * value: string
     | Print of correlation: string
@@ -382,8 +410,31 @@ let private requests (session: Session) (effects: AppEffect list) =
                     w.WriteString("format", "base64")
                     w.WriteString("data", data)
 
-                { s with Pending = s.Pending.Add(correlation, Downloading) }, out @ [ PackRequest(correlation, files, request) ])
+                { s with Pending = s.Pending.Add(correlation, Downloading) }, out @ [ PackRequest(correlation, files, request) ]
+            // Fides' client carries these out (`step`).
+            | BeginIdentity _
+            | StartSignIn _
+            | EndSignIn -> s, out)
         (session, [])
+
+/// A browser service the bridge's client asked for, as a Limen request, or
+/// the answer to give at once when the kernel cannot carry it.
+let private bridgeRequest (hosting: bool) (id: string) (call: Bridge.KernelCall) : Result<Request, Bridge.KernelAnswer> =
+    let hosted operation arguments =
+        if hosting then Ok(Host(id, operation, arguments)) else Error Bridge.Missing
+
+    match call with
+    | Bridge.Post(url, body, timeoutMs) -> Ok(HttpPost(id, url, body, timeoutMs))
+    | Bridge.DeviceGet key -> Ok(StorageGet(id, key))
+    | Bridge.DeviceSet(key, value) -> Ok(StorageSet(id, key, value))
+    | Bridge.DeviceRemove key -> Ok(StorageRemove(id, key))
+    | Bridge.TabGet key when not hosting -> Error(Bridge.Read None)
+    | Bridge.TabGet key -> hosted "tabGet" [ "key", key ]
+    | Bridge.TabSet(key, value) -> hosted "tabSet" [ "key", key; "value", value ]
+    | Bridge.TabRemove key -> hosted "tabRemove" [ "key", key ]
+    | Bridge.Leave url -> hosted "leave" [ "url", url ]
+    | Bridge.ReplaceAddress url -> hosted "replaceAddress" [ "url", url ]
+    | Bridge.Announce message -> hosted "broadcast" [ "message", message ]
 
 let private writeRequest (writer: Utf8JsonWriter) =
     function
@@ -394,6 +445,40 @@ let private writeRequest (writer: Utf8JsonWriter) =
         writer.WriteString("method", "GET")
         writer.WriteString("url", url)
         writer.WriteNumber("timeoutMs", RequestTimeoutMs)
+        writer.WriteEndObject()
+    | HttpPost(correlation, url, body, timeoutMs) ->
+        writer.WriteStartObject()
+        writer.WriteString("kind", "Http")
+        writer.WriteString("correlationId", correlation)
+        writer.WriteString("method", "POST")
+        writer.WriteString("url", url)
+        writer.WritePropertyName "headers"
+        writer.WriteStartObject()
+        writer.WriteString("Content-Type", "application/json")
+        writer.WriteEndObject()
+        writer.WriteString("body", body)
+        writer.WriteNumber("timeoutMs", timeoutMs)
+        writer.WriteString("response", "text")
+        writer.WriteString("credentials", "omit")
+        writer.WriteEndObject()
+    | StorageRemove(correlation, key) ->
+        writer.WriteStartObject()
+        writer.WriteString("kind", "Storage")
+        writer.WriteString("operation", "remove")
+        writer.WriteString("correlationId", correlation)
+        writer.WriteString("key", key)
+        writer.WriteEndObject()
+    | Host(correlation, operation, arguments) ->
+        writer.WriteStartObject()
+        writer.WriteString("kind", "Capability")
+        writer.WriteString("correlationId", correlation)
+        writer.WriteString("capability", host.Id)
+        writer.WriteNumber("version", host.Version)
+        writer.WritePropertyName "request"
+        writer.WriteStartObject()
+        writer.WriteString("operation", operation)
+        arguments |> List.iter (fun (name, value) -> writer.WriteString(name, value))
+        writer.WriteEndObject()
         writer.WriteEndObject()
     | StorageGet(correlation, key) ->
         writer.WriteStartObject()
@@ -467,7 +552,7 @@ let render (session: Session) (out: Request list) (handshake: Answer option) =
 
         match handshake with
         | None -> ()
-        | Some(Accepted(minor, contract, printing, packs)) ->
+        | Some(Accepted(minor, contract, printing, packs, hosting)) ->
             writer.WritePropertyName "handshake"
             writer.WriteStartObject()
             writer.WriteString("kind", "Accepted")
@@ -483,6 +568,7 @@ let render (session: Session) (out: Request list) (handshake: Answer option) =
             if printing then writeOffer writer print
             if packs.Files then writeOffer writer files
             if packs.Store then writeOffer writer store
+            if hosting then writeOffer writer host
             writer.WriteEndArray()
             writer.WriteEndObject()
         | Some(Rejected reason) ->
@@ -497,22 +583,63 @@ let render (session: Session) (out: Request list) (handshake: Answer option) =
 
         writer.WriteEndObject())
 
-let private step (ctx: Ctx) (session: Session) (inbound: Inbound) =
+/// Who acts: the signed-in person, or the one person of local books.
+let private actorOf (env: Env) (model: Model) =
+    match model.SignIn with
+    | SignedInAs person -> person.ActorId
+    | _ -> env.LocalActor
+
+let private step (env: Env) (now: DateTimeOffset) (session: Session) (inbound: Inbound) =
     let run msg (s: Session) =
-        let model, effects = update ctx msg s.Model
+        let model, effects = update { Now = now; Actor = actorOf env s.Model } msg s.Model
+
+        // Sign-in effects go to Fides' client; its browser calls come back
+        // through the bridge (`settle`).
+        effects
+        |> List.iter (function
+            | BeginIdentity(config, query) -> env.Identity.Begin config query
+            | StartSignIn kept -> env.Identity.SignIn kept
+            | EndSignIn -> env.Identity.SignOut()
+            | _ -> ())
+
         requests { s with Model = model } effects
+
+    /// Hands the kernel's answer to the operation waiting on it.
+    let answerBridge (s: Session) correlation answer =
+        env.Bridge.Answer correlation answer |> ignore
+        s, [], None
+
+    /// The bridge's browser calls become requests and the operations that
+    /// finished become engine messages, until nothing more happens at once.
+    let rec settle (s: Session, out: Request list) =
+        match env.Bridge.Drain() with
+        | Error failure -> raise failure
+        | Ok([], []) -> s, out
+        | Ok(calls, messages) ->
+            let made, immediate =
+                calls
+                |> List.fold
+                    (fun (made, immediate) (id, call) ->
+                        match bridgeRequest s.Hosting id call with
+                        | Ok request -> made @ [ request ], immediate
+                        | Error answer -> made, immediate @ [ (id, answer) ])
+                    ([], [])
+
+            immediate |> List.iter (fun (id, answer) -> env.Bridge.Answer id answer |> ignore)
+            let s, more = messages |> List.fold (fun (s, acc) msg -> let s, next = run msg s in s, acc @ next) (s, [])
+            settle (s, out @ made @ more)
 
     let next, out, handshake =
         match inbound with
         | Initialize(offer, page) ->
             let answered = offer |> Option.map answer
 
-            let printing, packs =
+            let printing, packs, hosting =
                 match answered with
-                | Some(Accepted(_, _, p, packs)) -> p, packs
-                | _ -> false, { Files = false; Store = false }
+                | Some(Accepted(_, _, p, packs, hosting)) -> p, packs, hosting
+                | _ -> false, { Files = false; Store = false }, false
 
-            let started, first = run (Started page) { session with Printing = printing }
+            let started, first = run (Started page) { session with Printing = printing; Hosting = hosting }
             let s, more = run (PacksNegotiated packs) started
             s, first @ more, answered
         | LocationChanged page ->
@@ -523,6 +650,7 @@ let private step (ctx: Ctx) (session: Session) (inbound: Inbound) =
             | Some Copying ->
                 let s, out = run (LinkCopied copied) { session with Pending = session.Pending.Remove correlation }
                 s, out, None
+            | _ when env.Bridge.Waits correlation -> answerBridge session correlation Bridge.Done
             | _ -> session, [], None
         | Event(name, key, value) ->
             let s, out = run (message name key value) session
@@ -546,13 +674,42 @@ let private step (ctx: Ctx) (session: Session) (inbound: Inbound) =
 
                 let s, out = run (Saved ok) { session with Pending = session.Pending.Remove correlation }
                 s, out, None
+            | _ when env.Bridge.Waits correlation ->
+                answerBridge
+                    session
+                    correlation
+                    (match outcome with
+                     | StorageValue value -> Bridge.Read value
+                     | StorageFailed _ -> Bridge.Read None)
             | _ -> session, [], None
         | HttpResult(correlation, result) ->
             match session.Pending.TryFind correlation with
             | Some Configuring ->
-                let s, out = run (ConfigurationRead result) { session with Pending = session.Pending.Remove correlation }
+                let read =
+                    match result with
+                    | Bridge.Responded(status, body) when status >= 200 && status < 300 -> Ok body
+                    | Bridge.Responded(status, _) -> Error $"HTTP {status}"
+                    | Bridge.Unreachable reason
+                    | Bridge.Unknown reason -> Error reason
+
+                let s, out = run (ConfigurationRead read) { session with Pending = session.Pending.Remove correlation }
                 s, out, None
+            | _ when env.Bridge.Waits correlation -> answerBridge session correlation (Bridge.Http result)
             | _ -> session, [], None
+        | CapabilityResult(correlation, capability, outcome) when capability = host.Id && env.Bridge.Waits correlation ->
+            let path = "$.result.outcome"
+
+            let answer =
+                match required "kind" path asString outcome with
+                | "Completed" ->
+                    let result = required "result" path asObject outcome
+
+                    match required "kind" $"{path}.result" asString result with
+                    | "Value" -> Bridge.Read(optional "value" $"{path}.result" asString result)
+                    | _ -> Bridge.Done
+                | _ -> Bridge.Missing
+
+            answerBridge session correlation answer
         | CapabilityResult(correlation, _, outcome) ->
             let rest = { session with Pending = session.Pending.Remove correlation }
             let path = "$.result.outcome"
@@ -616,18 +773,24 @@ let private step (ctx: Ctx) (session: Session) (inbound: Inbound) =
                 let s, out = run (PdfPicked picked) session
                 s, out, None
             | _ -> session, [], None
+        | CapabilityFact(capability, fact) when capability = host.Id ->
+            match required "kind" "$.fact" asString fact with
+            | "Broadcast" -> env.Identity.Receive(required "message" "$.fact" asString fact)
+            | _ -> ()
+
+            session, [], None
         | CapabilityFact _ -> session, [], None
         | Ignored -> session, [], None
 
+    let next, out = settle (next, out)
     next, render next out handshake
 
 /// Handles one kernel message under the Aegis boundary. A fault leaves the
 /// model as it was and is shown until the next message.
-let handle (aegis: AegisConfig) (now: unit -> DateTimeOffset) (actor: string) (session: Session) (messageJson: string) =
+let handle (aegis: AegisConfig) (env: Env) (session: Session) (messageJson: string) =
     let cleared = { session with Fault = None }
-    let ctx = { Now = now (); Actor = actor }
 
-    match capture aegis "Summa.Web.Accounting.dispatch" (fun () -> step ctx cleared (decode messageJson)) with
+    match capture aegis "Summa.Web.Accounting.dispatch" (fun () -> step env (env.Now()) cleared (decode messageJson)) with
     | Ok result -> result
     | Result.Error fault ->
         let faulted = { session with Fault = Some fault }

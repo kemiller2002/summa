@@ -44,6 +44,32 @@
   </div>
 </template>
 
+<!-- Sign-in (WI-0035): Fides' client signs the person in with GitHub. Summa
+     never sees a password or a token; the actor is GitHub's numeric id. -->
+<template data-if="isRestoringSession">
+  <main class="summa-gate" id="main" aria-busy="true"><p>Checking who is signed in…</p></main>
+</template>
+
+<template data-if="needsSignIn">
+  <main class="summa-gate ef-stack" id="main" aria-labelledby="sign-in-title">
+    <h1 id="sign-in-title">Sign in to Summa</h1>
+    <p>These books are kept on GitHub. Sign in with your GitHub account to open them.</p>
+    <div role="status" aria-live="polite">
+      <template data-if="hasSignInNotice"><p class="summa-notice" id="sign-in-notice" data-text="signInNotice"></p></template>
+    </div>
+    <label class="summa-check"><input type="checkbox" id="keep-sign-in" data-event="keepSignInToggled" data-on="change" data-bind-checked="keepInTab" /> Keep me signed in while this tab is open</label>
+    <button type="button" class="ef-button" id="sign-in" data-event="signInRequested" data-bind-disabled="isLeavingForProvider">Sign in with GitHub</button>
+  </main>
+</template>
+
+<template data-if="awaitsGitHubStore">
+  <main class="summa-gate ef-stack" id="main" aria-labelledby="signed-in-title">
+    <h1 id="signed-in-title">Signed in as <span id="signed-in-login" data-text="signedInLogin"></span></h1>
+    <p>This build of Summa cannot open books kept on GitHub yet.</p>
+    <button type="button" class="ef-button" data-variant="secondary" id="sign-out" data-event="signOutRequested">Sign out</button>
+  </main>
+</template>
+
 <template data-if="isLoading">
   <main class="summa-gate" id="main" aria-busy="true"><p>Opening the books…</p></main>
 </template>
@@ -73,6 +99,9 @@
       <!-- Every view is a link (WI-0041): this copies the address of the one shown. -->
       <button type="button" class="ef-button" data-variant="secondary" id="copy-link" data-event="linkCopyRequested">Copy link</button>
       <a class="ef-button summa-new" id="new-invoice" href="#/invoices/new">New invoice</a>
+      <template data-if="isSignedIn">
+        <button type="button" class="ef-button" data-variant="secondary" id="header-sign-out" data-event="signOutRequested">Sign out <span data-text="signedInLogin"></span></button>
+      </template>
     </div>
   </header>
 
