@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T23:00:33.000Z",
+  "updatedAt": "2026-10-08T23:28:34.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1849,6 +1849,55 @@
         }
       },
       "completedAt": "2026-10-08T23:00:33.000Z"
+    },
+    {
+      "id": "WI-0043",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Engine/Accounting.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Application/AccountingWire.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/SignInTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/sign-in.spec.js"
+        }
+      ],
+      "updatedAt": "2026-10-08T23:28:34.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261008T231225908Z-26468e34"
+      ],
+      "latestCheckpoint": {
+        "id": "2bd94391c5b87cb206ef440f",
+        "recordedAt": "2026-10-08T23:28:32.000Z",
+        "executionId": "EXE-20261008T231225908Z-26468e34",
+        "repository": "summa",
+        "branch": "feat/wi-0043-return-after-sign-in",
+        "commit": "868cd088730c476fadcb0b3d941e35765ff4c0c2",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/wi-0043-return-after-sign-in",
+        "remoteCommit": "868cd088730c476fadcb0b3d941e35765ff4c0c2",
+        "summary": "Return target kept in the tab across the GitHub round trip and resumed after sign-in",
+        "nextAction": "Complete WI-0043 and merge after CI",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-08T23:28:34.000Z"
     }
   ]
 }

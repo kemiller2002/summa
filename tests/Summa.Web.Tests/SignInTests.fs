@@ -13,6 +13,7 @@ open Xunit
 open Summa.Web.Engine.Common
 open Summa.Web.Engine.Accounting
 open Summa.Web.Application
+module Routes = Summa.Web.Engine.Routes
 
 module Wire = Summa.Web.Application.AccountingWire
 
@@ -65,7 +66,8 @@ let ``books on GitHub ask who is signed in first, and show nothing to anyone bef
     // Session-only retention is the default; the person may keep it for the tab.
     Assert.Equal("False", value "keepInTab" model)
     let model, effects = run [ KeepSignInToggled; SignInRequested ] model
-    Assert.Equal<AppEffect list>([ StartSignIn ThisTab ], effects)
+    // Where to return is kept in this tab before leaving for GitHub (WI-0043).
+    Assert.Equal<AppEffect list>([ KeepReturnTarget(Some "/invoices/INV-0001"); StartSignIn ThisTab ], effects)
     Assert.Equal("True", value "isLeavingForProvider" model)
     // A second press while the first is under way does nothing.
     Assert.Empty(run [ SignInRequested ] model |> snd)
@@ -130,6 +132,47 @@ let ``a location without a way to sign in is not a usable deployment`` () =
     let model, effects = run [ Started(page "" ""); ConfigurationRead(Ok without) ] initial
     Assert.Equal("True", value "isMisconfigured" model)
     Assert.DoesNotContain(effects, (function BeginIdentity _ -> true | _ -> false))
+
+// ---- Returning after sign-in (WI-0043, SUM-LINK-008) -----------------------------------
+
+let private signedInAsOctocat = IdentityChanged(IdentitySignedIn("github", "583231", "octocat"))
+
+[<Fact>]
+let ``back from GitHub, the person goes where the link pointed, in place of sign-in`` () =
+    let model, effects = opened "" "?code=abc&state=xyz"
+    Assert.Contains(ReadReturnTarget, effects)
+    Assert.Equal(AwaitingTarget, model.Return)
+
+    // Signed in before the kept target is read: wait for it.
+    let model, effects = run [ signedInAsOctocat ] model
+    Assert.Empty(effects)
+    let model, effects = run [ ReturnTargetRead(Some "/customers?q=acme") ] model
+    Assert.Equal(Routes.Customers { Routes.allCustomers with Search = Some "acme" }, model.Place)
+    Assert.Equal(Some "/customers?q=acme", model.Router.Current)
+    Assert.Equal<AppEffect list>([ Navigate(Limen.Routing.NavigationEffect.Replace "/customers?q=acme"); KeepReturnTarget None ], effects)
+    Assert.Equal(NotReturning, model.Return)
+
+    // The other order: the target is read first, then the identity arrives.
+    let model, _ = opened "" "?code=abc&state=xyz" |> fst |> run [ ReturnTargetRead(Some "/invoices/INV-0042") ]
+    let model, effects = run [ signedInAsOctocat ] model
+    Assert.Equal(Some "/invoices/INV-0042", model.Router.Current)
+    Assert.Contains(KeepReturnTarget None, effects)
+
+[<Fact>]
+let ``a kept target that is not one of Summa's own places goes home`` () =
+    for foreign in [ Some "//evil.example/x"; Some "https://evil.example/"; Some "/sign-in?returnTo=%2F"; Some "javascript:alert(1)"; None ] do
+        let model, _ = opened "" "?code=abc&state=xyz" |> fst |> run [ ReturnTargetRead foreign; signedInAsOctocat ]
+        Assert.Equal(Routes.Home, model.Place)
+        Assert.Equal(Some "/", model.Router.Current)
+
+[<Fact>]
+let ``a page not returning from GitHub reads no kept target`` () =
+    let model, effects = opened "#/payments" ""
+    Assert.DoesNotContain(ReadReturnTarget, effects)
+    let model, _ = run [ signedInAsOctocat ] model
+    Assert.Equal(Some "/payments", model.Router.Current)
+    // A stray answer later changes nothing.
+    Assert.Equal(model.Place, (run [ ReturnTargetRead(Some "/customers") ] model |> fst).Place)
 
 // ---- The real Fides client through the Limen boundary ---------------------------------
 
@@ -340,6 +383,14 @@ let ``a person signs in with GitHub, and Summa acts as the identity GitHub resol
         | Ok token -> Assert.Equal(("Authorization", $"Bearer {accessToken}"), Arca.AccessToken.authorization token)
         | Error reason -> failwith $"{reason}"
     | None -> failwith "no token provider"
+
+[<Fact>]
+let ``the link asked for before sign-in is where the page comes back to, and the tab forgets it`` () =
+    let browser = Browser()
+    let page, _ = signIn browser false
+    Assert.Equal(Some "/invoices", page.Session.Model.Router.Current)
+    Assert.True(page.Session.Model.Place = Summa.Web.Engine.Routes.Invoices Summa.Web.Engine.Routes.allInvoices)
+    Assert.False(browser.Tab.ContainsKey Wire.ReturnKey)
 
 [<Fact>]
 let ``the token is never shown, and with this-page retention it is never stored`` () =

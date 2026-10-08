@@ -55,10 +55,6 @@ let callbackChange (outcome: CallbackOutcome) : IdentityChange =
     | CompletedSignIn identity -> changeOfIdentity identity
     | other -> IdentitySignedOut(Some(CallbackOutcome.code other))
 
-/// Whether a page was opened with the provider's callback.
-let isCallback (query: (string * string) list) =
-    query |> List.exists (fun (name, _) -> name = "state" || name = "code" || name = "error")
-
 let private retention =
     function
     | ThisPage -> MemoryOnly

@@ -2,7 +2,7 @@
 id: DF-SUMMA-2026-0013
 title: Sign-in through Fides' client in the accounting application
 status: accepted
-version: 1.0.0
+version: 1.1.0
 created: 2026-10-08
 updated: 2026-10-08
 owners:
@@ -27,13 +27,23 @@ provenance:
         model: unknown
         runtime: claude-code
       reason: "Decide how the accounting application signs people in with GitHub through Fides (WI-0035)"
+    EXE-20261008T231225908Z-26468e34:
+      operations: [modified]
+      at: 2026-10-08T23:21:06.000Z
+      actor:
+        kind: agent
+        id: anthropic/claude-code
+        provider: anthropic
+        model: unknown
+        runtime: claude-code
+      reason: "Carry the return target across the round trip to GitHub (WI-0043)"
 ---
 
 # DF-SUMMA-2026-0013 — Sign-in through Fides' client in the accounting application
 
 - **Date:** 2026-10-08
 - **Status:** accepted
-- **Work item:** WI-0035
+- **Work items:** WI-0035, WI-0043 (1.1.0)
 
 ## Context
 
@@ -86,7 +96,20 @@ Fides is not deployed yet, so nothing about it may be hard-coded.
 5. **Tokens stay in Fides.** Summa never reads one. The GitHub store
    (WI-0037) will receive `Fides.Arca.TokenBridge.ofClient`, a token
    provider, never a token.
-6. **A location requires an identity.** A deployment that names a GitHub
+6. **The return target survives the round trip to GitHub (1.1.0, WI-0043).**
+   GitHub sends the person back to the registered redirect address, which
+   has no fragment.
+   - Before leaving, the engine keeps the sign-in page's `returnTo` in this
+     tab's session storage (`summa.returnTo`, through `summa.host`). It
+     is a relative location, never a token.
+   - A page that comes back with the callback reads it. Once both the
+     identity and the target are known, in either order, the engine
+     resumes there through `Routes.resume`: checked again against what
+     the person may see, replacing sign-in in history, and sending anything
+     foreign home. Then the tab forgets it.
+   - A page that is not returning reads nothing: its own address says
+     where to go.
+7. **A location requires an identity.** A deployment that names a GitHub
    location but no way to sign in is misconfigured. Its
    Content-Security-Policy must allow the exchange's origin.
 
@@ -100,8 +123,6 @@ Fides is not deployed yet, so nothing about it may be hard-coded.
 - Signed in, the page says it cannot open books on GitHub yet. The GitHub
   store (WI-0037) opens them, with the roster's capabilities in place of
   `viewerOf`'s interim "everything".
-- The return target survives a sign-in that stays on the page. Carrying it
-  across the round trip to GitHub is WI-0043.
 - The real end-to-end check against a deployed Fides is WI-0036.
 
 ## Revisit when
