@@ -17,9 +17,18 @@ let private run (msgs: Msg list) (model: Model) =
 
 let private localConfig = """{"environment":"local","environmentName":"local development"}"""
 
-let private configured () = run [ Started; ConfigurationRead(Ok localConfig) ] initial |> fst
+/// The page's address with a fragment, as the kernel reports it.
+let address (hash: string) : Limen.Routing.PageLocation =
+    { Origin = "https://summa.example"
+      Path = "/app/"
+      Query = ""
+      Hash = hash }
 
-let private started () = run [ Started; ConfigurationRead(Ok localConfig); Loaded None ] initial |> fst
+let private home = address ""
+
+let private configured () = run [ Started home; ConfigurationRead(Ok localConfig) ] initial |> fst
+
+let private started () = run [ Started home; ConfigurationRead(Ok localConfig); Loaded None ] initial |> fst
 
 let private value (name: string) (model: Model) =
     match view model |> List.tryFind (fun (n, _) -> n = name) with
@@ -35,7 +44,7 @@ let private items (name: string) (model: Model) =
 
 let private customer (model: Model) =
     run
-        [ Navigate "customers"
+        [ LocationChanged(address "#/customers")
           CustomerNameChanged "ABC Corp"
           CustomerAddressChanged "1 Main Street"
           CustomerEmailChanged "ap@abc.example"
@@ -45,13 +54,13 @@ let private customer (model: Model) =
     |> fst
 
 let private drafted (model: Model) =
-    let withDraft = run [ NewInvoice; DraftCustomerChanged "CUST-0001" ] model |> fst
+    let withDraft = run [ LocationChanged(address "#/invoices/new"); DraftCustomerChanged "CUST-0001" ] model |> fst
     let key = withDraft.Draft.Lines.Head.Key
     run [ LineDescriptionChanged(key, "Assessment"); LineHoursChanged(key, "34.5"); LineRateChanged(key, "175.00") ] withDraft |> fst
 
 [<Fact>]
 let ``starting reads the deployment, then asks the browser for its books; an empty browser starts new ones`` () =
-    let configuring, first = update ctx Started initial
+    let configuring, first = update ctx (Started home) initial
     Assert.Equal<AppEffect list>([ LoadConfiguration ], first)
     Assert.Equal("True", value "isConfiguring" configuring)
     let loading, effects = update ctx (ConfigurationRead(Ok localConfig)) configuring
@@ -75,13 +84,19 @@ let ``the invoicing flow runs through Summa's domain commands`` () =
     Assert.Equal("6,037.50 USD", value "draftTotal" model)
     Assert.Equal("True", value "cannotIssue" model)
     let reviewed, effects = run [ DraftSubmitted ] model
-    Assert.Equal<AppEffect list>([ SaveBooks(match effects with [ SaveBooks s ] -> s | _ -> "") ], effects)
+    // Saved, the new invoice is its draft: the address is replaced, not pushed.
+    Assert.Equal<AppEffect list>(
+        [ SaveBooks(match effects with SaveBooks s :: _ -> s | _ -> "")
+          Navigate(Limen.Routing.NavigationEffect.Replace "/drafts/D-0001") ],
+        effects
+    )
     Assert.Equal("False", value "cannotIssue" reviewed)
-    let issued = run [ DraftIssued ] reviewed |> fst
-    Assert.Equal("invoice", routeName issued.Route)
+    let issued, issuing = run [ DraftIssued ] reviewed
+    Assert.Equal(Summa.Web.Engine.Routes.Invoice("INV-0001", Summa.Web.Engine.Routes.Document), issued.Place)
+    Assert.Contains(Navigate(Limen.Routing.NavigationEffect.Push "/invoices/INV-0001"), issuing)
     Assert.Equal("6,037.50 USD", value "docTotal" issued)
     Assert.Equal("Unpaid", value "detailStatus" issued)
-    let paid = run [ PaymentAmountChanged "6037.50"; PaymentRecorded ] issued |> fst
+    let paid = run [ InvoiceTabChosen "payments"; PaymentAmountChanged "6037.50"; PaymentRecorded ] issued |> fst
     Assert.Equal("Paid", value "detailStatus" paid)
     Assert.Equal("False", value "canRecordPayment" paid)
     Assert.Equal("0.00 USD", value "totalOutstanding" paid)
@@ -89,7 +104,7 @@ let ``the invoicing flow runs through Summa's domain commands`` () =
 [<Fact>]
 let ``a draft that is not ready lists its blockers and is kept as a draft`` () =
     let model = started () |> customer
-    let noAddress = run [ Navigate "settings"; CompanyAddressChanged ""; CompanySaved ] model |> fst
+    let noAddress = run [ LocationChanged(address "#/settings"); CompanyAddressChanged ""; CompanySaved ] model |> fst
     let blocked = run [ DraftSubmitted ] (drafted noAddress) |> fst
     Assert.Equal("True", value "hasBlockers" blocked)
     Assert.Equal("1", value "draftCount" blocked)
@@ -99,11 +114,11 @@ let ``a draft that is not ready lists its blockers and is kept as a draft`` () =
 [<Fact>]
 let ``bad input is refused with a message, never a guess`` () =
     let model = started () |> customer
-    let noRate = run [ NewInvoice; DraftCustomerChanged "CUST-0001" ] model |> fst
+    let noRate = run [ LocationChanged(address "#/invoices/new"); DraftCustomerChanged "CUST-0001" ] model |> fst
     let key = noRate.Draft.Lines.Head.Key
     let refused = run [ LineDescriptionChanged(key, "Work"); LineRateChanged(key, "abc"); DraftSubmitted ] noRate |> fst
     Assert.Equal("'Work' needs a description, a quantity and a rate such as 150.00", value "error" refused)
-    let noName = run [ Navigate "customers"; CustomerAdded ] model |> fst
+    let noName = run [ LocationChanged(address "#/customers"); CustomerAdded ] model |> fst
     Assert.Equal("A customer needs a name.", value "error" noName)
 
 [<Fact>]
@@ -133,7 +148,7 @@ let private aegis = Summa.Web.Application.Boundary.configure [ (Aegis.Sinks.Coll
 let private handshake (withPrint: bool) =
     let print = if withPrint then """{"id":"summa.print","version":1,"fingerprint":"summa.print/1: print"}""" else ""
 
-    """{"kind":"Initialize","handshake":{"protocol":{"major":1,"minor":4},"contract":{"unit":"limen.core","version":1,"fingerprint":"sha256:2d5e16b7111fc78a319706b9927e4523cfcc519b7a2c9352ca8283ba32d6b71c"},"capabilities":["""
+    """{"kind":"Initialize","location":{"origin":"https://summa.example","path":"/app/","query":"","hash":""},"handshake":{"protocol":{"major":1,"minor":4},"contract":{"unit":"limen.core","version":1,"fingerprint":"sha256:2d5e16b7111fc78a319706b9927e4523cfcc519b7a2c9352ca8283ba32d6b71c"},"capabilities":["""
     + print
     + "]}}"
 
@@ -202,7 +217,7 @@ let ``a malformed kernel message is an operational fault, and the model is kept`
 
 [<Fact>]
 let ``a configuration that cannot be used stops the page with the reason`` () =
-    let configuring = update ctx Started initial |> fst
+    let configuring = update ctx (Started home) initial |> fst
     let unreadable = update ctx (ConfigurationRead(Error "HTTP 404")) configuring |> fst
     Assert.Equal("True", value "isMisconfigured" unreadable)
     Assert.Equal("False", value "isReady" unreadable)

@@ -171,6 +171,29 @@ let start (books: Books) =
 let liveAllocations (r: Receivables) =
     r.Allocations |> List.filter (fun a -> not (r.Reversals.ContainsKey a.PaymentId))
 
+/// The receivables as they stood at the end of `date`: invoices issued by
+/// then, payments received by then (with their allocations), and the
+/// deposits, credit memos, applications, refunds, reversals, write-offs and
+/// voids dated by then. Every derived figure of the result (outstanding,
+/// status, aging) is the figure as of that date.
+let asOf (date: DateOnly) (r: Receivables) =
+    let by (d: DateOnly) = d <= date
+    let invoices = r.Books.Invoices |> Map.filter (fun _ i -> by i.IssueDate)
+    let payments = r.Payments |> Map.filter (fun _ p -> by p.DateReceived)
+    let issued id = invoices.ContainsKey id
+
+    { r with
+        Books = { r.Books with Invoices = invoices }
+        Payments = payments
+        Allocations = r.Allocations |> List.filter (fun a -> payments.ContainsKey a.PaymentId && issued a.InvoiceId)
+        Deposits = r.Deposits |> Map.filter (fun _ d -> by d.DateReceived)
+        CreditMemos = r.CreditMemos |> Map.filter (fun _ m -> by m.IssueDate)
+        Applications = r.Applications |> List.filter (fun a -> by a.Date && issued a.InvoiceId)
+        Refunds = r.Refunds |> Map.filter (fun _ f -> by f.Date)
+        Reversals = r.Reversals |> Map.filter (fun _ v -> by v.Date)
+        WriteOffs = r.WriteOffs |> Map.filter (fun _ w -> by w.Date && issued w.InvoiceId)
+        Voids = r.Voids |> Map.filter (fun _ v -> by v.Date && issued v.InvoiceId) }
+
 let private allocatedTo (r: Receivables) (pick: Allocation -> bool) (currency: string) =
     liveAllocations r |> List.filter pick |> List.map _.Amount |> sum currency
 

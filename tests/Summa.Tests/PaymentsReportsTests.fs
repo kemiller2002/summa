@@ -113,6 +113,26 @@ let ``overdue is orthogonal to status and aging uses the outstanding amount`` ()
     Assert.Equal(usd 500000L, (row (DateOnly(2027, 3, 1))).Total)
 
 [<Fact>]
+let ``receivables as of a date leave out what happened later`` () =
+    let r =
+        receivables ()
+        |> recordPayment context (payment "PAY-1" 105000L) |> ok // received 2026-10-20
+        |> allocate context (allocation "AL-1" "PAY-1" "INV-001" 105000L) |> ok
+    let invoice = invoiceOf r
+    let before = asOf (DateOnly(2026, 10, 19)) r
+    Assert.Equal(usd 605000L, outstanding before invoice)
+    Assert.Equal(Issued, status before invoice)
+    Assert.Empty before.Payments
+    let on = asOf (DateOnly(2026, 10, 20)) r
+    Assert.Equal(usd 500000L, outstanding on invoice)
+    Assert.Equal(usd 500000L, (aging "USD" (DateOnly(2026, 10, 20)) on |> List.exactlyOne).Total)
+    // Before the invoice was issued there was nothing to collect.
+    let earlier = asOf (invoice.IssueDate.AddDays -1) r
+    Assert.Empty earlier.Books.Invoices
+    Assert.Empty earlier.Allocations
+    Assert.Empty(aging "USD" (invoice.IssueDate.AddDays -1) earlier)
+
+[<Fact>]
 let ``the general ledger runs a balance and the exports are CSV`` () =
     let r =
         receivables ()

@@ -411,8 +411,10 @@
             "runtime": "claude-code"
           },
           "at": "2026-10-08T19:49:22.488Z",
+          "last": "2026-10-08T20:28:13.593Z",
           "operations": [
-            "created"
+            "created",
+            "modified"
           ],
           "reason": "Decide how Summa meets the deep-linking requirement before Limen 0.9.0 ships"
         }
@@ -436,7 +438,7 @@
     ],
     "title": "Deep links through Limen.Routing, vendored until Limen 0.9.0",
     "updated": "2026-10-08",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   {
     "created": "2026-10-05",

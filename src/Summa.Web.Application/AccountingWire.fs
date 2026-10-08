@@ -26,14 +26,27 @@ let print =
 /// Every event app/index.html may send, so a test can hold the page to it.
 let events: Map<string, string -> string -> Msg> =
     Map.ofList
-        [ "navigate", (fun key _ -> Navigate key)
+        [ "linkCopyRequested", (fun _ _ -> LinkCopyRequested)
+          "invoiceSearchChanged", (fun _ value -> InvoiceSearchChanged value)
+          "invoiceStatusToggled", (fun key _ -> InvoiceStatusToggled key)
+          "invoiceCustomerChosen", (fun _ value -> InvoiceCustomerChosen value)
+          "invoiceFromChanged", (fun _ value -> InvoiceFromChanged value)
+          "invoiceToChanged", (fun _ value -> InvoiceToChanged value)
+          "invoiceOverdueToggled", (fun _ _ -> InvoiceOverdueToggled)
+          "invoiceSortChosen", (fun _ value -> InvoiceSortChosen value)
+          "invoiceFiltersCleared", (fun _ _ -> InvoiceFiltersCleared)
+          "customerSearchChanged", (fun _ value -> CustomerSearchChanged value)
+          "customerSortChosen", (fun _ value -> CustomerSortChosen value)
+          "customerInactiveToggled", (fun _ _ -> CustomerInactiveToggled)
+          "receivablesAsOfChanged", (fun _ value -> ReceivablesAsOfChanged value)
+          "receivablesCustomerChosen", (fun _ value -> ReceivablesCustomerChosen value)
+          "invoiceTabChosen", (fun key _ -> InvoiceTabChosen key)
           "customerNameChanged", (fun _ value -> CustomerNameChanged value)
           "customerBillingNameChanged", (fun _ value -> CustomerBillingNameChanged value)
           "customerAddressChanged", (fun _ value -> CustomerAddressChanged value)
           "customerEmailChanged", (fun _ value -> CustomerEmailChanged value)
           "customerTermsChanged", (fun _ value -> CustomerTermsChanged value)
           "customerAdded", (fun _ _ -> CustomerAdded)
-          "newInvoice", (fun _ _ -> NewInvoice)
           "draftCustomerChanged", (fun _ value -> DraftCustomerChanged value)
           "lineDescriptionChanged", (fun key value -> LineDescriptionChanged(key, value))
           "lineHoursChanged", (fun key value -> LineHoursChanged(key, value))
@@ -44,8 +57,6 @@ let events: Map<string, string -> string -> Msg> =
           "draftNotesChanged", (fun _ value -> DraftNotesChanged value)
           "draftSubmitted", (fun _ _ -> DraftSubmitted)
           "draftIssued", (fun _ _ -> DraftIssued)
-          "draftOpened", (fun key _ -> DraftOpened key)
-          "invoiceOpened", (fun key _ -> InvoiceOpened key)
           "printRequested", (fun _ _ -> PrintRequested)
           "paymentAmountChanged", (fun _ value -> PaymentAmountChanged value)
           "paymentDateChanged", (fun _ value -> PaymentDateChanged value)
@@ -74,7 +85,9 @@ type StorageOutcome =
 
 [<NoComparison; NoEquality>]
 type Inbound =
-    | Initialize of handshake: JsonNode option
+    | Initialize of handshake: JsonNode option * location: Limen.Routing.PageLocation
+    | LocationChanged of Limen.Routing.PageLocation
+    | ClipboardResult of correlation: string * copied: bool
     | Event of name: string * key: string option * value: string option
     | StorageResult of correlation: string * StorageOutcome
     | CapabilityResult of correlation: string * capability: string * completed: bool
@@ -115,20 +128,36 @@ let private effectResult (node: JsonNode) =
     | "CapabilityResult" ->
         let outcome = required "outcome" path asObject node
         CapabilityResult(correlation, required "capability" path asString node, required "kind" $"{path}.outcome" asString outcome = "Completed")
-    // The engine requests no Clipboard or Navigation effects.
+    | "ClipboardResult" ->
+        let outcome = required "outcome" path asObject node
+        ClipboardResult(correlation, required "kind" $"{path}.outcome" asString outcome = "Success")
+    // A push or replace either applied or, refused, leaves the address as it
+    // was: the engine's own state already says where the person is.
+    | "NavigationResult" -> Ignored
     | other -> raise (MalformedInput($"{path}.kind", $"a result for an effect the engine requested, not '{other}'"))
+
+/// The page's address as the kernel reports it ({origin, path, query, hash}).
+let private location (message: JsonNode) =
+    let node = required "location" "$" asObject message
+    let field name = required name "$.location" asString node
+
+    ({ Origin = field "origin"
+       Path = field "path"
+       Query = field "query"
+       Hash = field "hash" }
+    : Limen.Routing.PageLocation)
 
 let decode (messageJson: string) =
     let message = parse messageJson |> asObject "$"
 
     match required "kind" "$" asString message with
-    | "Initialize" -> Initialize(tryField "handshake" message)
+    | "Initialize" -> Initialize(tryField "handshake" message, location message)
+    | "LocationChanged" -> LocationChanged(location message)
     | "Event" ->
         let event = required "event" "$" asObject message
         Event(required "name" "$.event" asString event, optional "key" "$.event" asString event, optional "value" "$.event" asString event)
     | "EffectResult" -> effectResult (required "result" "$" asObject message)
-    | "CapabilityFact"
-    | "LocationChanged" -> Ignored
+    | "CapabilityFact" -> Ignored
     | other -> raise (MalformedInput("$.kind", $"a known message kind, not '{other}'"))
 
 // ---- The handshake ---------------------------------------------------------------------------------
@@ -169,6 +198,7 @@ type Purpose =
     | Loading
     | Saving
     | Printing
+    | Copying
 
 [<NoComparison; NoEquality>]
 type Session =
@@ -191,6 +221,8 @@ type Request =
     | StorageGet of correlation: string * key: string
     | StorageSet of correlation: string * key: string * value: string
     | Print of correlation: string
+    | Navigation of correlation: string * operation: string * url: string
+    | Clipboard of correlation: string * text: string
 
 let private requests (session: Session) (effects: AppEffect list) =
     effects
@@ -204,7 +236,15 @@ let private requests (session: Session) (effects: AppEffect list) =
             | LoadBooks -> { s with Pending = s.Pending.Add(correlation, Loading) }, out @ [ StorageGet(correlation, StorageKey) ]
             | SaveBooks snapshot -> { s with Pending = s.Pending.Add(correlation, Saving) }, out @ [ StorageSet(correlation, StorageKey, snapshot) ]
             | PrintPage when s.Printing -> { s with Pending = s.Pending.Add(correlation, Printing) }, out @ [ Print correlation ]
-            | PrintPage -> s, out)
+            | PrintPage -> s, out
+            | Navigate effect ->
+                let operation, location =
+                    match effect with
+                    | Limen.Routing.NavigationEffect.Push location -> "push", location
+                    | Limen.Routing.NavigationEffect.Replace location -> "replace", location
+
+                s, out @ [ Navigation(correlation, operation, Limen.Routing.Location.href Summa.Web.Engine.Routes.mode location) ]
+            | CopyText text -> { s with Pending = s.Pending.Add(correlation, Copying) }, out @ [ Clipboard(correlation, text) ])
         (session, [])
 
 let private writeRequest (writer: Utf8JsonWriter) =
@@ -242,6 +282,20 @@ let private writeRequest (writer: Utf8JsonWriter) =
         writer.WriteStartObject()
         writer.WriteString("action", "print")
         writer.WriteEndObject()
+        writer.WriteEndObject()
+    | Navigation(correlation, operation, url) ->
+        writer.WriteStartObject()
+        writer.WriteString("kind", "Navigation")
+        writer.WriteString("operation", operation)
+        writer.WriteString("correlationId", correlation)
+        writer.WriteString("url", url)
+        writer.WriteEndObject()
+    | Clipboard(correlation, text) ->
+        writer.WriteStartObject()
+        writer.WriteString("kind", "Clipboard")
+        writer.WriteString("operation", "writeText")
+        writer.WriteString("correlationId", correlation)
+        writer.WriteString("text", text)
         writer.WriteEndObject()
 
 let render (session: Session) (out: Request list) (handshake: Answer option) =
@@ -299,7 +353,7 @@ let private step (ctx: Ctx) (session: Session) (inbound: Inbound) =
 
     let next, out, handshake =
         match inbound with
-        | Initialize offer ->
+        | Initialize(offer, page) ->
             let answered = offer |> Option.map answer
 
             let printing =
@@ -307,8 +361,17 @@ let private step (ctx: Ctx) (session: Session) (inbound: Inbound) =
                 | Some(Accepted(_, _, p)) -> p
                 | _ -> false
 
-            let s, out = run Started { session with Printing = printing }
+            let s, out = run (Started page) { session with Printing = printing }
             s, out, answered
+        | LocationChanged page ->
+            let s, out = run (Msg.LocationChanged page) session
+            s, out, None
+        | ClipboardResult(correlation, copied) ->
+            match session.Pending.TryFind correlation with
+            | Some Copying ->
+                let s, out = run (LinkCopied copied) { session with Pending = session.Pending.Remove correlation }
+                s, out, None
+            | _ -> session, [], None
         | Event(name, key, value) ->
             let s, out = run (message name key value) session
             s, out, None
