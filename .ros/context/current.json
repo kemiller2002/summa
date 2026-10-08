@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T21:53:25.000Z",
+  "updatedAt": "2026-10-08T22:11:45.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1553,33 +1553,55 @@
     {
       "id": "WI-0030",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-08T18:46:55.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Engine/Accounting.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Application/AccountingWire.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "app/index.html"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/AttentionTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/attention.spec.js"
+        }
+      ],
+      "updatedAt": "2026-10-08T22:11:45.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T184655871Z-69753eb4"
       ],
       "latestCheckpoint": {
-        "id": "6ae14c587dc3cee9761a639e",
-        "recordedAt": "2026-10-08T21:37:33.000Z",
+        "id": "0144bb7c556fe3b37e7d92e1",
+        "recordedAt": "2026-10-08T22:11:43.000Z",
         "executionId": "EXE-20261008T184655871Z-69753eb4",
         "repository": "summa",
-        "branch": "feat/wi-0030-slice4",
-        "commit": "3d1caa05b23530f35e1edfd3224e52eca08bf29c",
+        "branch": "feat/wi-0030-slice5",
+        "commit": "46c0f3bd0473af782c2cc6b9266bb6e240689158",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0030-slice4",
-        "remoteCommit": "3d1caa05b23530f35e1edfd3224e52eca08bf29c",
-        "summary": "Slice 4: invoice PDFs stored per environment through the files and store packs, artifact store configuration and isolation, pre-issue preview, multipage print check",
-        "nextAction": "Slice 5: follow-up, the unallocated payments inbox, the CPA workspace and the work queue",
+        "remoteBranch": "feat/wi-0030-slice5",
+        "remoteCommit": "46c0f3bd0473af782c2cc6b9266bb6e240689158",
+        "summary": "Slice 5: work queue, follow-up, payments inbox and CPA workspace; the application's screens are complete",
+        "nextAction": "Complete WI-0030; WI-0044 carries the v0.4 requirements still open",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
         }
-      }
+      },
+      "completedAt": "2026-10-08T22:11:45.000Z"
     },
     {
       "id": "WI-0039",
