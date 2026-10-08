@@ -22,6 +22,7 @@
     <Compile Include="Lifecycle.fs" />
     <Compile Include="ChronaImport.fs" />
     <Compile Include="Reports.fs" />
+    <Compile Include="Periods.fs" />
   </ItemGroup>
 
   <ItemGroup>
