@@ -1,8 +1,8 @@
 ---
 id: DF-SUMMA-2026-0010
-title: Deep links through Limen.Routing, vendored until Limen 0.9.0
+title: Deep links through Limen.Routing
 status: accepted
-version: 1.1.0
+version: 1.2.0
 created: 2026-10-08
 updated: 2026-10-08
 owners:
@@ -29,9 +29,19 @@ provenance:
         model: unknown
         runtime: claude-code
       reason: "Decide how Summa meets the deep-linking requirement before Limen 0.9.0 ships"
+    EXE-20261008T214640906Z-b2269183:
+      operations: [modified]
+      at: 2026-10-08T21:46:41.662Z
+      actor:
+        kind: agent
+        id: anthropic/claude-code
+        provider: anthropic
+        model: unknown
+        runtime: claude-code
+      reason: "Record the switch from the vendored router to the Limen 0.9.0 package (WI-0042)"
 ---
 
-# DF-SUMMA-2026-0010 — Deep links through Limen.Routing, vendored until Limen 0.9.0
+# DF-SUMMA-2026-0010 — Deep links through Limen.Routing
 
 - **Date:** 2026-10-08
 - **Status:** accepted
@@ -48,7 +58,13 @@ moving to the package later is mechanical.
 
 ## Decisions
 
-1. **Vendor the library unchanged rather than re-implement it.**
+1. **Vendor the library unchanged rather than re-implement it.** *Amended
+   in 1.2.0:* Limen 0.9.0 shipped, and Summa now references the
+   `EchelonFoundry.Limen.Routing` 0.9.0 package. Conditor installs it from the
+   release assets of `limen-fsharp` 0.9.0, proven against the Registry digest
+   (echelon-current 1.11.0). The vendored copy and `UPSTREAM.json` are gone
+   (WI-0042). The route tests passed unchanged against the package, and the
+   inventory is byte-identical. Its history:
    - `vendor/Limen.Routing/Routing.fs` is the upstream file at limen#101's
      head (`e935da7`), byte for byte. `UPSTREAM.json` pins its git blob and
      SHA-256, and a test fails if the file changes.
@@ -112,4 +128,5 @@ moving to the package later is mechanical.
 - WI-0030 builds each screen against its place: links are `href`s from
   `Routes.href`, the engine adopts `Initialize` and `LocationChanged`
   locations, and asks for Navigation (push or replace) and Clipboard effects.
-- A follow-up after Limen 0.9.0 replaces the vendored copy with the package.
+- WI-0042 replaced the vendored copy with the package. `.echelon/routes.json`
+  is also validated against Limen's `contract/routes.schema.json`.

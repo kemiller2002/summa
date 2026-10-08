@@ -5,7 +5,6 @@ module Summa.Web.Tests.RoutesTests
 
 open System
 open System.IO
-open System.Security.Cryptography
 open System.Text.Json
 open Xunit
 open Limen.Routing
@@ -330,11 +329,19 @@ let ``the inventory is echelon.routes v1 in hash mode with sign-in and not-found
     Assert.Equal("not-found", root.GetProperty("notFound").GetString())
     Assert.EndsWith("}\n", inventory ())
 
-// ---- The vendored library (DF-SUMMA-2026-0010) --------------------------------------------------------
+// ---- The inventory's schema (Limen 0.9.0 contract/routes.schema.json) --------------------------------
+
+/// Built once: the schema's $id is registered globally, and may not be registered twice.
+let private routesSchema =
+    lazy (Json.Schema.JsonSchema.FromText(readRepoFile "node_modules/@echelon-foundry/limen/contract/routes.schema.json"))
+
+let private validates (document: string) =
+    use parsed = JsonDocument.Parse document
+    routesSchema.Value.Evaluate(parsed.RootElement, Json.Schema.EvaluationOptions(OutputFormat = Json.Schema.OutputFormat.List)).IsValid
 
 [<Fact>]
-let ``the vendored Limen.Routing is byte-for-byte the pinned upstream file`` () =
-    use lock = JsonDocument.Parse(readRepoFile "vendor/Limen.Routing/UPSTREAM.json")
-    let expected = lock.RootElement.GetProperty("sha256").GetString()
-    let actual = SHA256.HashData(File.ReadAllBytes(repoFile "vendor/Limen.Routing/Routing.fs")) |> Convert.ToHexStringLower
-    Assert.Equal(expected, actual)
+let ``the committed route inventory is valid against Limen's echelon.routes v1 schema`` () =
+    Assert.True(validates (readRepoFile ".echelon/routes.json"))
+    // The schema is not vacuous: a route with no pattern, or another schema, fails it.
+    Assert.False(validates ((readRepoFile ".echelon/routes.json").Replace("\"pattern\": \"/invoices/{id:string}\",", "")))
+    Assert.False(validates ((readRepoFile ".echelon/routes.json").Replace("echelon.routes/v1", "echelon.routes/v2")))
