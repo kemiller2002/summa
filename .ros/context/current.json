@@ -1767,7 +1767,27 @@
       "updatedAt": "2026-10-08T22:18:37.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T221837840Z-607ce088"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "00944f8b34f1fd14ccb0b7a8",
+        "recordedAt": "2026-10-08T22:37:18.000Z",
+        "executionId": "EXE-20261008T221837840Z-607ce088",
+        "repository": "summa",
+        "branch": "feat/wi-0037-manifest-accounts",
+        "commit": "4e9d73166b40840650416ecdf27db38044efb131",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/wi-0037-manifest-accounts",
+        "remoteCommit": "4e9d73166b40840650416ecdf27db38044efb131",
+        "summary": "Part 1: organization manifest schema 2 names the credit, deposit and bad-debt accounts; tested migration for local and stored books (DF-SUMMA-2026-0012)",
+        "nextAction": "Part 2: GitHub store through Arca's GitHub provider with Fides tokens, start-up from manifests offering the migration, offline queue",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      }
     }
   ]
 }
