@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T07:49:53.000Z",
+  "updatedAt": "2026-10-08T07:47:18.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -796,38 +796,42 @@
       "evidence": [
         {
           "type": "implementation",
-          "path": ".github/workflows/build.yml"
+          "path": "docs/requirements/backlog-plan.md"
+        },
+        {
+          "type": "implementation",
+          "path": "docs/requirements/SUMMA-DATA-LOCATION.md"
         },
         {
           "type": "tests",
-          "path": ".github/workflows/build.yml"
+          "path": "tests/Summa.Tests/GapAnalysisTests.fs"
         }
       ],
-      "updatedAt": "2026-10-08T07:49:53.000Z",
+      "updatedAt": "2026-10-08T07:47:18.000Z",
       "telemetryExecutionIds": [
-        "EXE-20261008T073734302Z-8d451fce"
+        "EXE-20261008T074602101Z-3aa35119"
       ],
       "latestCheckpoint": {
-        "id": "0d5b299eebd263fc6663df97",
-        "recordedAt": "2026-10-08T07:49:52.000Z",
-        "executionId": "EXE-20261008T073734302Z-8d451fce",
+        "id": "559e52c670d7d8edf6f75c17",
+        "recordedAt": "2026-10-08T07:47:16.000Z",
+        "executionId": "EXE-20261008T074602101Z-3aa35119",
         "repository": "summa",
-        "branch": "fix/ci-browser-install-hang",
-        "commit": "f9da94c489b4b0e44c618855c74afa23ed23b1e5",
+        "branch": "plan/requirements-backlog-slices",
+        "commit": "51079b0313614a679ea64164c8f9c445a7d0459f",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "fix/ci-browser-install-hang",
-        "remoteCommit": "f9da94c489b4b0e44c618855c74afa23ed23b1e5",
-        "summary": "Chromium install no longer runs apt on the normal path: browser cached by the lockfile's Playwright version, OS libraries proved offline with ldd, bounded fallback, 20-minute job ceiling. First push green (push and pull_request Build runs, 8 browser tests, cache saved).",
-        "nextAction": "Complete the work item, push the Praxis state for the second green CI run, then merge",
+        "remoteBranch": "plan/requirements-backlog-slices",
+        "remoteCommit": "51079b0313614a679ea64164c8f9c445a7d0459f",
+        "summary": "15 ordered slices captured, data-location requirement and decision recorded, traceability test passing",
+        "nextAction": "Open PR, get CI green, merge",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
         }
       },
-      "completedAt": "2026-10-08T07:49:53.000Z"
+      "completedAt": "2026-10-08T07:47:18.000Z"
     }
   ]
 }

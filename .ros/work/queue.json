@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 17,
+  "nextSeq": 32,
   "items": [
     {
       "id": "WI-0001",
@@ -354,16 +354,407 @@
     },
     {
       "id": "WI-0016",
-      "title": "Fix the browser-suite CI hang: Chromium install blocks indefinitely in an unbounded apt-get update run by playwright install --with-deps",
-      "description": null,
+      "title": "Capture the remaining Summa requirements as dependency-ordered backlog slices; add SUM-DATALOC-001 and record the 2026-10-08 decisions",
+      "description": "Turn every missing or partial row of docs/requirements/implementation-gap-analysis.md into deliverable slices ordered by dependency, with storage and sign-in slices declaring their dependency on Arca and Fides. Add SUM-DATALOC-001..005 and decision DF-SUMMA-2026-0001 (Summa owns the Chrona-to-Summa contract as a versioned package, build order, storage through Arca, no Strata, no at-rest encryption for now). Add a test that fails when a non-tested row is not named by an open work item.",
       "tags": [
-        "ci,playwright,reliability"
+        "planning",
+        "requirements"
       ],
       "priority": "high",
       "status": "complete",
       "attachments": [],
-      "createdAt": "2026-10-08T07:37:33.473Z",
-      "updatedAt": "2026-10-08T07:49:53.000Z",
+      "createdAt": "2026-10-08T07:46:01.000Z",
+      "updatedAt": "2026-10-08T07:47:18.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0017",
+      "title": "Summa 01: publish the Chrona-to-Summa contract as a small versioned contracts package (pure F# types and JSON codec), released through Summa's release workflow and registered in echelon-registry",
+      "description": "User decision 2026-10-08: the application that ACCEPTS the data owns the contract, so Summa owns the Chrona-to-Summa contract. Build order is Chrona first, then Summa; this item is pulled forward because Chrona's integration item consumes it. A separate packable project (for example EchelonFoundry.Summa.Contracts): pure F# types for the publishable time projection (source application, source id and revision, organization, project, exact and billable minutes, policy id and version, publication id) and the feedback messages (InvoicedExternally, AdjustmentRequired), plus a canonical JSON codec with explicit contract version and golden vectors. No dependency on Summa internals. Release it through Summa's release workflow with the nuget-library release contract, and add it to echelon-registry so Chrona pins it through conditor.json. Requirements: SUM0-024, SUM0-025, SUM0-026, SUM1-017, SUM2-031, INV-CHR, INV-CONTRACT, INV-SOURCE; Chrona CHX-170, CHX-180.",
+      "tags": [
+        "summa",
+        "order:01",
+        "contracts",
+        "chrona",
+        "package"
+      ],
+      "priority": "high",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T07:46:02.675Z",
+      "updatedAt": "2026-10-08T07:46:02.675Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0018",
+      "title": "Summa 02: configurable data location, Summa-owned namespace, application and organization manifests (SUM-DATALOC-001, SUM0-005..011, SUM0-033, SUM0-043)",
+      "description": "Depends on arca slice 2 (data location, ARCA-LOC) and arca slice 3 (record format, ARCA-REC). New requirement SUM-DATALOC-001 (docs/requirements/SUMMA-DATA-LOCATION.md, user decision 2026-10-08): the data repository is configured per deployment, never hard-coded; Summa creates and owns its namespace (apps/summa/...) and never assumes it is alone in the repository; Summa's financial data must be separable under different permissions from other applications such as Chrona, which means its own repository, because GitHub permissions are per repository; no at-rest encryption for now. Plus app.json, organization.json, organization isolation and storage location (repository, base path, organization path), deterministic discovery and path safety.",
+      "tags": [
+        "summa",
+        "order:02",
+        "data-location",
+        "depends:arca"
+      ],
+      "priority": "high",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T07:46:02.981Z",
+      "updatedAt": "2026-10-08T07:46:02.981Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0019",
+      "title": "Summa 03: GitHub sign-in through Fides, token handling, principals and capability authorization (SUM0-003, SUM0-004, SUM0-022, SUM0-023, SUM2-029, SUM3-012..015)",
+      "description": "Depends on fides slice 7 (WASM client and Arca token provider, FID-CLI) and arca slice 5 (token-provider port, ARCA-AUTH). Sign in through Fides. Tokens never reach files, records, logs, exports or audit. Human/Agent/Service principals with actor identity on every command, and agent actions never recorded as human. Capability-based Summa authorization separate from GitHub authentication. Human approval boundaries.",
+      "tags": [
+        "summa",
+        "order:03",
+        "auth",
+        "depends:fides",
+        "depends:arca"
+      ],
+      "priority": "high",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T07:46:03.313Z",
+      "updatedAt": "2026-10-08T07:46:03.313Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0020",
+      "title": "Summa 04: authoritative financial storage on Arca - one record per file, command-to-commit, optimistic concurrency, no silent rebase (SUM0-002, SUM0-012..021, SUM0-027, SUM0-028, SUM0-044..046, SUM3-001, SUM3-003, SUM3-005, SUM0-034, SUM1-019 remainder)",
+      "description": "Depends on WI-0018, WI-0019, arca slice 6 (GitHub adapter, ARCA-API/OUT) and arca slice 8 (integrity, ARCA-INT). Persist the Summa.Ledger, invoice and payment records through Arca as canonical JSON, one financial object or event per file at deterministic paths. One financial command is one commit (for example 'summa: issue invoice INV-2026-0042'). Commands carry the expected repository state; when HEAD moves they are revalidated, never silently rebased. Draft records are mutable and posted ones immutable. Corrections are compensating records. No physical deletion of financial records. Git history is evidence only. Storage avoids the scale traps of SUM0-034, and idempotency (SUM1-019) extends to storage retries through Arca idempotency keys.",
+      "tags": [
+        "summa",
+        "order:04",
+        "storage",
+        "depends:arca"
+      ],
+      "priority": "high",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T07:46:03.619Z",
+      "updatedAt": "2026-10-08T07:46:03.619Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0021",
+      "title": "Summa 05: integrity and tamper detection, schema versioning and migration safety, integrity before availability (SUM0-029..032, SUM0-047, SUM3-004, SUM3-009, SUM3-010, SUM3-019)",
+      "description": "Depends on WI-0020. Validate manually modified data (schema, identity, references, accounting invariants, hashes, organization boundaries, version). Detect modification of posted records. Explicit versioned migrations that preserve financial meaning. Refuse a command when state cannot be proven valid. Monitor invariant violations.",
+      "tags": [
+        "summa",
+        "order:05",
+        "integrity",
+        "versioning"
+      ],
+      "priority": "high",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T07:46:03.920Z",
+      "updatedAt": "2026-10-08T07:46:03.920Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0022",
+      "title": "Summa 06: rebuildable runtime index, reconciliation jobs, failure recovery, backup and restore drills (SUM0-014, SUM0-015, SUM3-002, SUM3-006..008, SUM3-020, SUM3-044)",
+      "description": "Depends on WI-0020 and arca slice 10 (derived indexes and migration, ARCA-MIG). Projections (trial balance, AR aging, dashboards, search) are rebuildable and never authoritative. Stale projections are detected. Reconciliation jobs, encrypted backups (SUM3-024: transport and backups encrypted; application-level at-rest encryption is deferred by user decision 2026-10-08, and the repository is protected by repository permissions), restore testing, recovery objectives and drills.",
+      "tags": [
+        "summa",
+        "order:06",
+        "derived-state",
+        "recovery"
+      ],
+      "priority": "high",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T07:46:04.225Z",
+      "updatedAt": "2026-10-08T07:46:04.225Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0023",
+      "title": "Summa 07: environment isolation, staging, environment visibility and scoped configuration (SUM0-038..042, SUM3-036..041)",
+      "description": "Depends on WI-0018. Separate locations and credentials per environment (Arca's per-deployment location), a visible non-production banner, business configuration without deployment, configuration scoped by application, environment, organization and user, health checks, safe startup, deployment safety, rollback, and synthetic test data.",
+      "tags": [
+        "summa",
+        "order:07",
+        "environments"
+      ],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T07:46:04.574Z",
+      "updatedAt": "2026-10-08T07:46:04.574Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0024",
+      "title": "Summa 08: v0.2 receivables edge cases - multi-invoice payments, overpayments, deposits, corrections, voids, credit memos, refunds, bounced payments, write-offs, discounts, terms and late status (SUM2-003..013, SUM2-018, SUM2-019, SUM2-025, SUM2-027)",
+      "description": "Depends on WI-0020. Pure domain plus storage, all with compensating records and audit. Duplicate detection and date semantics.",
+      "tags": [
+        "summa",
+        "order:08",
+        "receivables",
+        "corrections"
+      ],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T07:46:04.874Z",
+      "updatedAt": "2026-10-08T07:46:04.874Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0025",
+      "title": "Summa 09: billing models - hourly from Chrona, fixed-price, milestone and reimbursable expenses (SUM2-014..017, INV-RATE, INV-TERM, INV-CHR)",
+      "description": "Depends on WI-0017 and WI-0024. Hourly billing consumes approved Chrona projections through the WI-0017 contract.",
+      "tags": [
+        "summa",
+        "order:09",
+        "billing-models",
+        "chrona"
+      ],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T07:46:05.184Z",
+      "updatedAt": "2026-10-08T07:46:05.184Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0026",
+      "title": "Summa 10: opening balances, CPA adjustments, year-end closing, cash versus accrual reporting (SUM2-021..024)",
+      "description": "Depends on WI-0020.",
+      "tags": [
+        "summa",
+        "order:10",
+        "periods",
+        "accounting"
+      ],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T07:46:05.507Z",
+      "updatedAt": "2026-10-08T07:46:05.507Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0027",
+      "title": "Summa 11: invoice generation - document model, numbering, draft/issue/revise/correct/adjust/deliver lifecycle, rendered with Folio (SUM1-007, SUM0-037, SUM3-030, INV-DOC, INV-NUM, INV-ISS, INV-STATE, INV-DRAFT, INV-REV, INV-COR, INV-ADJ, INV-DEL, INV-PAYINST)",
+      "description": "Depends on WI-0024 and WI-0025. Invoice documents and PDFs through Folio (every app except Helix uses Folio). Issued content stays reproducible. Large binaries stay outside the repository (artifact references, SUM0-035, SUM0-036).",
+      "tags": [
+        "summa",
+        "order:11",
+        "invoices",
+        "folio"
+      ],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T07:46:05.811Z",
+      "updatedAt": "2026-10-08T07:46:05.811Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0028",
+      "title": "Summa 12: audit provenance, audit immutability and agent execution safety (SUM1-018, SUM2-028, SUM2-030, SUM3-021, INV-AUD, INV-AGENT, SUM4-042..045, SUM0-048, SUM0-049)",
+      "description": "Depends on WI-0019 and WI-0020. Audit events are immutable records with actor kind, execution id and correlation id. Agents use domain commands only, with explanation, human override and no autonomous financial surprises. Agents never edit authoritative files directly (SUM0-048) and read only the context they need (SUM0-049).",
+      "tags": [
+        "summa",
+        "order:12",
+        "audit",
+        "agents"
+      ],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T07:46:06.134Z",
+      "updatedAt": "2026-10-08T07:46:06.134Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0029",
+      "title": "Summa 13: operational safety - API contracts, observability, structured logging, correlation ids, sensitive data and secrets, import/export safety, deterministic calculations, time zones, outages and idempotent integrations, retention (SUM3-011, SUM3-016..018, SUM3-022..029, SUM3-031..035, INV-OPS, INV-FAIL, INV-SEC, INV-PERF, INV-EXP, INV-FX, INV-INTL, INV-ACC, INV-REC, INV-SET, INV-DATA, INV-CON, INV-ARCH)",
+      "description": "Depends on WI-0020.",
+      "tags": [
+        "summa",
+        "order:13",
+        "operations"
+      ],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T07:46:06.438Z",
+      "updatedAt": "2026-10-08T07:46:06.438Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0030",
+      "title": "Summa 14: v0.4 product UI on Limen/Forma - dashboard, invoices, receivables, payments, follow-up, ledger, reports, period close, CPA workspace, work queue (SUM4-001..041, INV-UI, INV-A11Y)",
+      "description": "Depends on WI-0027 and WI-0028. Domain-state-driven UI, keyboard, responsive and accessible.",
+      "tags": [
+        "summa",
+        "order:14",
+        "ui",
+        "limen",
+        "forma"
+      ],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T07:46:06.816Z",
+      "updatedAt": "2026-10-08T07:46:06.816Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0031",
+      "title": "Summa 15: data export and escape hatch, v0.2 scenario tests, property, invariant and failure-injection tests (SUM1-020, SUM2-032, SUM3-042, SUM3-043, SUM0-001, SUM0-050)",
+      "description": "Depends on WI-0022, WI-0027 and WI-0029. Includes a verification that Requirement Set 0 precedence (SUM0-050) holds across the later sets.",
+      "tags": [
+        "summa",
+        "order:15",
+        "quality"
+      ],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T07:46:07.151Z",
+      "updatedAt": "2026-10-08T07:46:07.151Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
