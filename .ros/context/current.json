@@ -1559,7 +1559,27 @@
       "updatedAt": "2026-10-08T18:46:55.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T184655871Z-69753eb4"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "58a497de7f34228108a5b613",
+        "recordedAt": "2026-10-08T18:47:50.000Z",
+        "executionId": "EXE-20261008T184655871Z-69753eb4",
+        "repository": "summa",
+        "branch": "feat/wi-0030-app",
+        "commit": "a8347836a5d881be84d48dc7f251b7ae0a4420d1",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa.git"
+        },
+        "remoteBranch": "feat/wi-0030-app",
+        "remoteCommit": "a8347836a5d881be84d48dc7f251b7ae0a4420d1",
+        "summary": "Slice 1: the accounting application with the first vertical slice in the browser, books in browser storage",
+        "nextAction": "Slice 2: pre-issue preview, payments inbox, follow-up, ledger and reports workspaces, period close, CPA workspace, work queue, PDF artifacts, environment banners from configuration",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      }
     }
   ]
 }
