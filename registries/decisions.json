@@ -279,8 +279,10 @@
             "runtime": "claude-code"
           },
           "at": "2026-10-08T17:46:20.342Z",
+          "last": "2026-10-08T18:08:46.732Z",
           "operations": [
-            "created"
+            "created",
+            "modified"
           ],
           "reason": "Choose how invoice documents, artifacts, numbering and issuance work"
         }
@@ -303,7 +305,7 @@
     ],
     "title": "Invoice documents, artifacts, numbering and the issue command",
     "updated": "2026-10-08",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   {
     "created": "2026-10-05",

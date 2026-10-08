@@ -68,7 +68,7 @@ type InvoiceDocument =
       Lines: DocumentLine list
       Subtotal: Money
       Discounts: (string * Money) list
-      Adjustments: Money list
+      Adjustments: (string * Money) list
       Total: Money
       /// What is due at issue: the total. Credits and payments applied
       /// later are receivables, not part of the issued document.
@@ -99,7 +99,7 @@ let ofInvoice (invoice: IssuedInvoice) : InvoiceDocument =
               Source = l.Source })
       Subtotal = invoice.Subtotal
       Discounts = invoice.Discounts |> List.map (fun d -> d.Label, discountOn invoice.Subtotal d.Rule)
-      Adjustments = invoice.Adjustments
+      Adjustments = invoice.Adjustments |> List.map (fun a -> a.Label, a.Amount)
       Total = invoice.Total
       AmountDue = invoice.Total
       Template = invoice.Template }
@@ -164,8 +164,8 @@ let private renderV1 (doc: InvoiceDocument) =
         [ yield $"<tr><th scope=\"row\">Subtotal</th><td class=\"summa-number\">{amountText doc.Subtotal}</td></tr>"
           for label, amount in doc.Discounts do
               yield $"<tr><th scope=\"row\">Discount: {escape label}</th><td class=\"summa-number\">-{amountText amount}</td></tr>"
-          for amount in doc.Adjustments do
-              yield $"<tr><th scope=\"row\">Adjustment</th><td class=\"summa-number\">{amountText amount}</td></tr>"
+          for label, amount in doc.Adjustments do
+              yield $"<tr><th scope=\"row\">{escape label}</th><td class=\"summa-number\">{amountText amount}</td></tr>"
           yield $"<tr><th scope=\"row\">Total</th><td class=\"summa-number\">{moneyText doc.Total}</td></tr>"
           yield $"<tr class=\"summa-due\"><th scope=\"row\">Amount due</th><td class=\"summa-number\">{moneyText doc.AmountDue}</td></tr>" ]
         |> String.concat ""
@@ -181,7 +181,12 @@ let private renderV1 (doc: InvoiceDocument) =
         if String.IsNullOrWhiteSpace doc.Issuer.PaymentInstructions then
             ""
         else
-            $"<section aria-labelledby=\"summa-payment\"><h2 id=\"summa-payment\">Payment instructions</h2><p>{multiline doc.Issuer.PaymentInstructions}</p></section>"
+            let methods =
+                match doc.Issuer.PaymentMethods with
+                | [] -> ""
+                | found -> "<p>Accepted: " + escape (String.Join(", ", found)) + "</p>"
+
+            $"<section aria-labelledby=\"summa-payment\"><h2 id=\"summa-payment\">Payment instructions</h2>{methods}<p>{multiline doc.Issuer.PaymentInstructions}</p></section>"
 
     let notes =
         match doc.Details.CustomerNotes with
@@ -292,6 +297,13 @@ let toJson (doc: InvoiceDocument) =
         writeOptional w "taxId" doc.Issuer.TaxId
         w.WriteString("email", doc.Issuer.Email)
         w.WriteString("paymentInstructions", doc.Issuer.PaymentInstructions)
+        w.WriteStartArray "paymentMethods"
+
+        for m in doc.Issuer.PaymentMethods do
+            w.WriteStringValue m
+
+        w.WriteEndArray()
+        writeOptional w "paymentProfile" doc.Issuer.PaymentProfile
         w.WriteEndObject()
         w.WriteStartObject "customer"
         w.WriteString("customerId", doc.Customer.CustomerId)
@@ -340,8 +352,9 @@ let toJson (doc: InvoiceDocument) =
         w.WriteEndArray()
         w.WriteStartArray "adjustments"
 
-        for amount in doc.Adjustments do
+        for label, amount in doc.Adjustments do
             w.WriteStartObject()
+            w.WriteString("label", label)
             writeMoney w "amount" amount
             w.WriteEndObject()
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 40,
+  "nextSeq": 41,
   "items": [
     {
       "id": "WI-0001",
@@ -717,7 +717,7 @@
     {
       "id": "WI-0030",
       "title": "Summa 14: v0.4 product UI on Limen/Forma - dashboard, invoices, receivables, payments, follow-up, ledger, reports, period close, CPA workspace, work queue (SUM4-001..041, INV-UI, INV-A11Y)",
-      "description": "Depends on WI-0027 and WI-0028. Domain-state-driven UI, keyboard, responsive and accessible. Also SUM0-040 remainder: every page shows Environments.banner for non-production environments.",
+      "description": "Depends on WI-0027 and WI-0028. Domain-state-driven UI, keyboard, responsive and accessible. Also SUM0-040 remainder: every page shows Environments.banner for non-production environments. Remainders after WI-0027: produce each invoice's PDF through Folio printing from the issued HTML and record it with Issuance.recordPdf, and check multipage behaviour in a browser (INV-DOC-005, INV-DOC-011); render credit memos as customer documents through Folio (INV-COR-008); configure each environment's artifact storage in deployment configuration and enforce its isolation (SUM0-038).",
       "tags": [
         "summa",
         "order:14",
@@ -729,7 +729,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:06.816Z",
-      "updatedAt": "2026-10-08T16:16:54.000Z",
+      "updatedAt": "2026-10-08T18:08:36.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -895,7 +895,7 @@
     {
       "id": "WI-0037",
       "title": "Summa 04b: the application's store on GitHub - Arca's GitHub provider with the Fides token provider, start-up from the manifests, the offline queue on localStorage and conflict resolution in the interface (SUM0-002, SUM0-007, SUM0-018, SUM0-019)",
-      "description": "Follows WI-0020 (provider-neutral command-to-commit in Summa.Storage.Commands) and WI-0035 (sign-in). Copy Chrona WI-0032/WI-0033/WI-0035: the application's store port runs Summa.Storage.Commands.execute over GitHubStorage.provider (Limen Http effects, Fides.Arca token provider, never a token), opens Summa's and the organization's namespaces through their manifests on start-up (SUM0-007, SUM0-033) and refuses a public production repository; financial commands commit directly to the configured data branch (SUM0-018) while schema and storage-format changes stay in reviewed code (SUM0-019, Arca migrations); offline writes queue on localStorage through Arca's OfflineQueue (OfflinePolicy.QueueWrites) and are sent in order on reconnect, a blocked entry reloaded, revalidated and revised or abandoned; conflicts and outside edits are shown, never resolved silently. Proven against Arca's fake GitHub and in a browser suite. Also SUM3-009 remainder: start-up checks Compatibility.access and fails safely when the data is incompatible. Also SUM3-038 remainder: drain or persist the offline queue before shutdown so no operation is left halfway.",
+      "description": "Follows WI-0020 (provider-neutral command-to-commit in Summa.Storage.Commands) and WI-0035 (sign-in). Copy Chrona WI-0032/WI-0033/WI-0035: the application's store port runs Summa.Storage.Commands.execute over GitHubStorage.provider (Limen Http effects, Fides.Arca token provider, never a token), opens Summa's and the organization's namespaces through their manifests on start-up (SUM0-007, SUM0-033) and refuses a public production repository; financial commands commit directly to the configured data branch (SUM0-018) while schema and storage-format changes stay in reviewed code (SUM0-019, Arca migrations); offline writes queue on localStorage through Arca's OfflineQueue (OfflinePolicy.QueueWrites) and are sent in order on reconnect, a blocked entry reloaded, revalidated and revised or abandoned; conflicts and outside edits are shown, never resolved silently. Proven against Arca's fake GitHub and in a browser suite. Also SUM3-009 remainder: start-up checks Compatibility.access and fails safely when the data is incompatible. Also SUM3-038 remainder: drain or persist the offline queue before shutdown so no operation is left halfway. Remainder after WI-0027: drafts survive refresh, navigation, connection loss and session interruption through the offline queue (INV-DRAFT-003).",
       "tags": [
         "summa",
         "order:04",
@@ -907,7 +907,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T15:51:52.000Z",
-      "updatedAt": "2026-10-08T16:16:54.000Z",
+      "updatedAt": "2026-10-08T18:08:36.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -957,6 +957,30 @@
       "attachments": [],
       "createdAt": "2026-10-08T17:27:24.000Z",
       "updatedAt": "2026-10-08T17:27:24.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0040",
+      "title": "Summa 11b: explicit tax model room (INV-ADJ-005)",
+      "description": "Remainder of INV-ADJ after WI-0027. Tax calculation stays deferred, but the model must leave room for taxable and non-taxable lines, tax category or code, customer tax-exempt status, jurisdiction, tax rate source, tax amount, tax-inclusive or tax-exclusive pricing, and tax evidence or reference. Summa must not infer tax obligations from incomplete data. WI-0027 already supports an explicit Tax adjustment posted to a named liability account.",
+      "tags": [
+        "invoicing",
+        "tax"
+      ],
+      "priority": "low",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T18:08:35.000Z",
+      "updatedAt": "2026-10-08T18:08:35.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

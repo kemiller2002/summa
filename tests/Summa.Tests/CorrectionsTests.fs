@@ -123,7 +123,7 @@ let ``discounts are explicit, never a changed price, and post deterministically`
         [ { consulting 10000L 15000L with Discount = Some(Percent 1000) }
           { consulting 2000L 10001L with Description = "Workshop"; Discount = Some(Fixed(usd 2000L)) } ]
 
-    let draft = { draftFor lines with Discounts = [ { Label = "Loyalty"; Rule = Percent 500 }; { Label = "Promotion"; Rule = Fixed(usd 5000L) } ] }
+    let draft = { draftFor lines with Discounts = [ { Label = "Loyalty"; Rule = Percent 500; Reason = None }; { Label = "Promotion"; Rule = Fixed(usd 5000L); Reason = None } ] }
     // Lines: 1,500.00 - 150.00 = 1,350.00 and 200.02 - 20.00 = 180.02.
     Assert.Equal(usd 153002L, subtotal draft)
     // 5% of 1,530.02 is 76.501, rounded half away from zero to 76.50.
@@ -148,12 +148,12 @@ let ``discounts are explicit, never a changed price, and post deterministically`
 
 [<Fact>]
 let ``impossible discounts are refused`` () =
-    let tooMuch = { draftFor [ { consulting 1000L 10000L with Discount = Some(Percent 10001) } ] with Discounts = [ { Label = "All of it"; Rule = Fixed(usd 20000L) } ] }
+    let tooMuch = { draftFor [ { consulting 1000L 10000L with Discount = Some(Percent 10001) } ] with Discounts = [ { Label = "All of it"; Rule = Fixed(usd 20000L); Reason = None } ] }
     let problems = issue context request (withDraft tooMuch) |> refused
     Assert.Contains(InvalidDiscount "'Architecture assessment': a percentage must be 0.01% to 100%", problems)
     let overLine = draftFor [ { consulting 1000L 10000L with Discount = Some(Fixed(usd 10001L)) } ]
     Assert.Contains(InvalidDiscount "'Architecture assessment': the discount is larger than the line", issue context request (withDraft overLine) |> refused)
-    let overInvoice = { draftFor [ consulting 1000L 10000L ] with Discounts = [ { Label = "Too generous"; Rule = Fixed(usd 10001L) } ] }
+    let overInvoice = { draftFor [ consulting 1000L 10000L ] with Discounts = [ { Label = "Too generous"; Rule = Fixed(usd 10001L); Reason = None } ] }
     Assert.Contains(InvalidDiscount "the invoice discounts are larger than the subtotal", issue context request (withDraft overInvoice) |> refused)
 
 [<Fact>]

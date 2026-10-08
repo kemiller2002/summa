@@ -61,13 +61,75 @@ let private ofInvoiceProblem =
     | InvalidEngagement why -> [ blocker "invalid-engagement" $"The engagement is invalid: {why}." "Choose an engagement of this customer." ]
     | StaleDraft current -> [ blocker "stale-version" $"The draft changed; it is now version {current}." "Review the current version." ]
     | NegativeLine line -> [ blocker "negative-line" $"'{line}' has a negative quantity or price." "Use a credit memo or a discount instead of a negative line." ]
+    | InvalidAdjustment why -> [ blocker "invalid-adjustment" $"An adjustment is invalid: {why}." "Correct the adjustment." ]
 
 /// A context for checks that are never committed.
 let private dryRun = { Who = "readiness"; When = DateTimeOffset.UnixEpoch; Source = "summa"; CorrelationId = None }
 
+// ---- Payment instructions profiles (INV-PAYINST) -----------------------------------
+
+/// The newest version of a payment profile.
+let latestProfile (books: Books) (profileId: string) =
+    books.PaymentProfiles |> Map.toList |> List.map snd |> List.filter (fun p -> p.Id = profileId) |> List.sortBy _.Version |> List.tryLast
+
+/// Whether text holds something that must not be stored in ordinary
+/// records: a credential, or a full account number (nine or more digits in
+/// a row). Masked references such as "account ending 6789" are fine
+/// (INV-PAYINST-002).
+let holdsSecret (text: string) =
+    let longestDigits =
+        text |> Seq.fold (fun (run, best) c -> if Char.IsAsciiDigit c then run + 1, max best (run + 1) else 0, best) (0, 0) |> snd
+
+    longestDigits >= 9
+    || text.Split([| ' '; '\n'; '\t' |], StringSplitOptions.RemoveEmptyEntries) |> Array.exists Summa.Contracts.ChronaBilling.V1.Validate.looksLikeCredential
+
+/// Saves a new version of a payment profile; earlier versions stay as they
+/// were, so issued invoices keep what they showed (INV-PAYINST-003).
+let savePaymentProfile (context: Context) (profile: PaymentProfile) (books: Books) =
+    let version = (latestProfile books profile.Id |> Option.map _.Version |> Option.defaultValue 0) + 1
+
+    let problems =
+        [ if String.IsNullOrWhiteSpace profile.Instructions then "the instructions are empty"
+          if holdsSecret profile.Instructions || profile.Methods |> List.exists holdsSecret then
+              "the instructions hold a credential or a full account number; show a masked reference instead" ]
+
+    match latestProfile books profile.Id with
+    | Some latest when { latest with Version = 0 } = { profile with Version = 0 } -> Ok books
+    | _ when not problems.IsEmpty -> Error problems
+    | _ ->
+        let saved = { profile with Version = version }
+
+        Ok
+            { books with
+                PaymentProfiles = books.PaymentProfiles.Add($"{saved.Id}@{saved.Version}", saved)
+                Ledger = audit context "payment-profile-saved" $"{saved.Id}@{saved.Version}" books.Ledger }
+
+/// The request with the customer's payment profile, when it has one, in
+/// place of the organization's instructions.
+let private resolvePayment (r: Receivables) (request: IssueRequest) =
+    let profileId =
+        r.Books.Drafts.TryFind request.DraftId
+        |> Option.bind (fun d -> r.Books.Customers.TryFind d.CustomerId)
+        |> Option.bind _.PaymentProfileId
+
+    match profileId with
+    | None -> Ok request
+    | Some id ->
+        match latestProfile r.Books id with
+        | Some p ->
+            Ok
+                { request with
+                    Issuer =
+                        { request.Issuer with
+                            PaymentInstructions = p.Instructions
+                            PaymentMethods = p.Methods
+                            PaymentProfile = Some $"{p.Id}@{p.Version}" } }
+        | None -> Error [ blocker "unknown-payment-profile" $"Payment profile {id} does not exist." "Create the profile or clear it on the customer." ]
+
 /// What issuing the draft would produce, without committing anything.
 let private attempt (context: Context) (request: IssueRequest) (r: Receivables) =
-    issue context request r.Books |> Result.mapError (List.collect ofInvoiceProblem)
+    resolvePayment r request
+    |> Result.bind (fun resolved -> issue context resolved r.Books |> Result.mapError (List.collect ofInvoiceProblem))
 
 /// Every reason the draft cannot be issued now, in a stable order
 /// (INV-DRAFT-006). Empty when it is ready.
@@ -118,6 +180,8 @@ let preview (r: Receivables) (request: IssueRequest) =
 /// where each line came from, and who changed the draft and when.
 type Review =
     { Lines: (string * LineSource) list
+      /// What an agent or integration assumed (INV-REV-003).
+      Assumptions: string list
       Changes: AuditRecord list
       Version: int }
 
@@ -125,6 +189,7 @@ let review (r: Receivables) (draftId: string) =
     r.Books.Drafts.TryFind draftId
     |> Option.map (fun draft ->
         { Lines = draft.Lines |> List.map (fun l -> l.Description, l.Source)
+          Assumptions = draft.Assumptions
           Changes = r.Books.Ledger.Audit |> List.filter (fun a -> a.Subject = draftId)
           Version = draft.Version })
 

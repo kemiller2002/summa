@@ -2,7 +2,7 @@
 id: DF-SUMMA-2026-0007
 title: Invoice documents, artifacts, numbering and the issue command
 status: accepted
-version: 1.0.0
+version: 1.1.0
 created: 2026-10-08
 updated: 2026-10-08
 owners:
@@ -17,8 +17,9 @@ tags: [invoicing, documents, folio, artifacts, numbering]
 provenance:
   contributions:
     EXE-20261008T172746682Z-be397865:
-      operations: [created]
+      operations: [created, modified]
       at: 2026-10-08T17:46:20.342Z
+      last: 2026-10-08T18:08:46.732Z
       actor:
         kind: agent
         id: anthropic/claude-code
@@ -67,3 +68,16 @@ provenance:
    - Submitting for review checks readiness. Every blocker has a code, an explanation and a resolution. A change after submission returns the draft to Editing.
    - Issuing requires the submitted version. The person issuing, holding `IssueInvoice`, is the approval. The invoice records who issued it, when, which draft version and the correlation id. An agent can only prepare the issue (INV-REV-005).
 6. **Defaults come from the organization manifest.** The prefix, the default terms, the issuer and payment instructions, and the receivables account (resolved from its code) fill the issue request.
+7. **Delivery is a record of attempts.**
+   - Each attempt keeps its recipients, channel, policy, message template, outcome, provider reference and what it retries.
+   - Outcomes only move forward: queued, sent to provider, provider accepted, delivered. Delivered is recorded only when the provider confirms it.
+   - A failure or bounce is final for its attempt and goes on the attention list. A resend is a new attempt.
+   - Attaching the PDF waits until the PDF is generated; a link does not.
+8. **Disputes and collection are follow-up state.** One mutable record per invoice holds them. It never changes the invoice, its balance or the ledger.
+9. **Payment instructions are versioned profiles.**
+   - A customer may name a profile; otherwise the organization's instructions apply.
+   - A profile holding a credential, or a run of nine or more digits (a full account number), is refused when saved and is an integrity failure if found stored. Masked references such as "account ending 6789" are expected.
+10. **Adjustments are typed and positive.**
+    - Surcharges and fees add to revenue.
+    - A tax is a person-entered amount posted to a named liability account. Summa never calculates or infers tax; the fuller tax model is WI-0040.
+    - Reductions are discounts or credit memos.

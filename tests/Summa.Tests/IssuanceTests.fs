@@ -54,7 +54,7 @@ let ``issue needs the reviewed version, and a change sends the draft back to edi
     let reviewed = submitForReview context request r |> ok
     Assert.Equal(SubmittedForReview 1, reviewed.Books.Drafts["D-1"].Review)
     // A change after review returns it to Editing at a new version.
-    let edited = { reviewed with Books = saveDraft context { reviewed.Books.Drafts["D-1"] with Adjustments = [ usd 500L ] } reviewed.Books |> ok }
+    let edited = { reviewed with Books = saveDraft context { reviewed.Books.Drafts["D-1"] with Adjustments = [ { Kind = Fee; Label = "Processing fee"; Amount = usd 500L } ] } reviewed.Books |> ok }
     Assert.Equal((Editing, 2), (edited.Books.Drafts["D-1"].Review, edited.Books.Drafts["D-1"].Version))
     Assert.Equal<string list>([ "not-reviewed" ], issueInvoice context { request with ExpectedVersion = Some 1 } edited |> refused |> codes)
     let again = submitForReview context request edited |> ok
@@ -69,7 +69,7 @@ let ``issuing commits the invoice, its snapshots, approval and artifacts togethe
     let approver = { context with Who = "github:7"; When = DateTimeOffset(2026, 10, 8, 15, 30, 0, TimeSpan.Zero); CorrelationId = Some "corr-9" }
     let issued, invoice = issueInvoice approver request (submitted ()) |> ok
     Assert.Equal("EF-2026-0001", invoice.Number)
-    Assert.Equal({ By = "github:7"; At = approver.When; DraftVersion = 1; CorrelationId = Some "corr-9" }, invoice.Approval)
+    Assert.Equal({ By = "github:7"; At = approver.When; DraftVersion = 1; CorrelationId = Some "corr-9"; Reason = None }, invoice.Approval)
     Assert.Equal("ABC Corp Accounts Payable", invoice.Customer.BillingName)
     Assert.Equal(Documents.currentTemplate, invoice.Template)
     Assert.Equal(Some "PO-7781", invoice.Details.PurchaseOrder)

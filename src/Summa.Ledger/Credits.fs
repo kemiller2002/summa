@@ -37,6 +37,7 @@ type CreditProblem =
     /// A credit from this payment was already applied or refunded; undo that first.
     | CreditInUse of creditId: string
     | ReasonRequired
+    | InvalidCreditLines of string
     | NotARevenueAccount of string
     | IdReused of string
     | Posting of Problem list
@@ -132,6 +133,14 @@ let issueCreditMemo (context: Context) (accounts: ReceivableAccounts) (memo: Cre
               match memo.InvoiceId |> Option.map (fun id -> id, r.Books.Invoices.TryFind id) with
               | Some(id, None) -> UnknownInvoiceFor id
               | Some(_, Some invoice) when invoice.CustomerId <> memo.CustomerId -> WrongCustomer
+              | Some(_, Some invoice) when not memo.Lines.IsEmpty ->
+                  // A partial credit names the lines it credits and never
+                  // credits more than they charged (INV-COR-009).
+                  if memo.Lines |> List.exists (fun i -> i < 0 || i >= invoice.Lines.Length) || memo.Lines |> List.distinct |> List.length <> memo.Lines.Length then
+                      InvalidCreditLines "a credited line does not exist or is named twice"
+                  elif memo.Amount > (memo.Lines |> List.map (fun i -> lineAmount invoice.Lines[i]) |> sum invoice.Currency) then
+                      InvalidCreditLines "the credit is more than the credited lines charged"
+              | None when not memo.Lines.IsEmpty -> InvalidCreditLines "credited lines need the invoice they belong to"
               | _ -> ()
               match r.Books.Ledger.Accounts.TryFind memo.RevenueAccountId with
               | Some a when a.Type = Revenue -> ()

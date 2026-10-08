@@ -87,6 +87,8 @@ let correctingDraft (draftId: string) (invoice: IssuedInvoice) : DraftInvoice =
       Corrects = Some invoice.InvoiceId
       EngagementId = invoice.EngagementId
       Details = noDetails
+      Assumptions = []
+      Recipients = None
       Version = 0
       Review = Editing }
 
