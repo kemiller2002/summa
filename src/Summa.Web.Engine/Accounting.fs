@@ -76,6 +76,14 @@ type PaymentForm =
       Method: string
       Reference: string }
 
+/// A credit memo raised against the invoice shown, and applied to it.
+type CreditForm = { Amount: string; Reason: string }
+
+type EngagementForm =
+    { CustomerId: string
+      Name: string
+      FixedFee: string }
+
 type CompanyForm =
     { LegalName: string
       Address: string
@@ -111,6 +119,8 @@ type Model =
       Draft: DraftForm
       Payment: PaymentForm
       Company: CompanyForm
+      Credit: CreditForm
+      Engagement: EngagementForm
       Blockers: Issuance.Blocker list
       Notice: string option
       Error: string option
@@ -150,6 +160,8 @@ let initial =
       Draft = draft
       Payment = { InvoiceId = ""; Amount = ""; Date = ""; Method = "ach"; Reference = "" }
       Company = { LegalName = ""; Address = ""; Email = ""; PaymentInstructions = "" }
+      Credit = { Amount = ""; Reason = "" }
+      Engagement = { CustomerId = ""; Name = ""; FixedFee = "" }
       Blockers = []
       Notice = None
       Error = None
@@ -213,6 +225,23 @@ type Msg =
     | CompanyPaymentChanged of string
     | CompanySaved
     | ResetConfirmed
+    | CreditAmountChanged of string
+    | CreditReasonChanged of string
+    | CreditMemoIssued
+    | PaymentSearchChanged of string
+    | PaymentCustomerChosen of string
+    | PaymentFromChanged of string
+    | PaymentToChanged of string
+    | PaymentUnappliedToggled
+    | PaymentSortChosen of string
+    | PaymentFiltersCleared
+    | CustomerTabChosen of string
+    | CreditMemosCustomerChosen of string
+    | EngagementsCustomerChosen of string
+    | EngagementCustomerChanged of string
+    | EngagementNameChanged of string
+    | EngagementFeeChanged of string
+    | EngagementAdded
 
 type AppEffect =
     | LoadConfiguration
@@ -374,7 +403,9 @@ let private navigation (effect: Limen.Routing.NavigationEffect option) = effect 
 let private enter (place: Routes.Place) (model: Model) =
     match place with
     | Routes.Invoice(invoiceId, _) when model.Payment.InvoiceId <> invoiceId ->
-        { model with Payment = { model.Payment with InvoiceId = invoiceId; Amount = ""; Reference = ""; Date = "" } }
+        { model with
+            Payment = { model.Payment with InvoiceId = invoiceId; Amount = ""; Reference = ""; Date = "" }
+            Credit = { Amount = ""; Reason = "" } }
     | Routes.Draft draftId when model.Draft.DraftId <> Some draftId ->
         match model.Books |> Option.bind (fun b -> b.Books.Drafts.TryFind draftId) with
         | Some draft ->
@@ -447,6 +478,11 @@ let private customerList (model: Model) =
     | _ -> Routes.allCustomers
 
 let private nonEmpty (text: string) = if text.Trim() = "" then None else Some(text.Trim())
+
+let private paymentList (model: Model) =
+    match model.Place with
+    | Routes.Payments list -> list
+    | _ -> Routes.allPayments
 
 // ---- Update ----------------------------------------------------------------------------
 
@@ -750,6 +786,106 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
             | [] -> save { model with Manifest = Some changed; Notice = Some "Company details saved. New invoices will use them."; Error = None }
             | problems -> { model with Error = Some(problems |> List.map Diagnostics.describe |> String.concat "; ") }, []
         | None -> model, []
+    | CreditAmountChanged v -> { model with Credit = { model.Credit with Amount = v } }, []
+    | CreditReasonChanged v -> { model with Credit = { model.Credit with Reason = v } }, []
+    | CreditMemoIssued ->
+        match model.Place, model.Manifest, model.Books, parseAmount model.Credit.Amount with
+        | Routes.Invoice(invoiceId, _), Some manifest, Some current, Some amount when model.Credit.Reason.Trim() <> "" ->
+            let memoId = nextId "CM" current.CreditMemos.ContainsKey
+
+            let issued, effects =
+                command model $"Credit memo {memoId} issued and applied." (fun books ->
+                    match books.Books.Invoices.TryFind invoiceId with
+                    | None -> Error "Open the invoice the credit is for."
+                    | Some invoice ->
+                        let accounts = LocalSnapshot.receivableAccounts manifest books.Books.Ledger
+                        let entry prefix = nextId prefix books.Books.Ledger.Entries.ContainsKey
+
+                        let memo: CreditMemo =
+                            { Id = memoId
+                              CustomerId = invoice.CustomerId
+                              InvoiceId = Some invoiceId
+                              Amount = amount
+                              RevenueAccountId = Organization.accountByCode books.Books.Ledger manifest.Accounting.RevenueAccount
+                              Reason = model.Credit.Reason.Trim()
+                              IssueDate = today ctx
+                              JournalEntryId = entry "JE-CM"
+                              Lines = [] }
+
+                        let application: Credits.ApplicationRequest =
+                            { ApplicationId = nextId "AP" (fun id -> books.Applications |> List.exists (fun a -> a.Id = id))
+                              Source = FromCreditMemo memoId
+                              InvoiceId = invoiceId
+                              Amount = amount
+                              Date = today ctx
+                              JournalEntryId = entry "JE-AP" }
+
+                        Credits.issueCreditMemo (context ctx) accounts memo books
+                        |> Result.bind (Credits.apply (context ctx) accounts application)
+                        |> Result.mapError (fun problems ->
+                            match problems with
+                            | [ Credits.ExceedsOutstandingBalance owed ] -> $"That is more than the {Documents.moneyText owed} still owed."
+                            | _ -> describe problems))
+
+            (if issued.Error.IsNone then { issued with Credit = { Amount = ""; Reason = "" } } else issued), effects
+        | Routes.Invoice _, _, _, None -> { model with Error = Some "Enter the amount to credit, such as 150.00."; Notice = None }, []
+        | Routes.Invoice _, _, _, Some _ -> { model with Error = Some "A credit memo needs a reason the customer will read."; Notice = None }, []
+        | _ -> model, []
+    | PaymentSearchChanged v -> refineTo (Routes.Payments { paymentList model with Search = nonEmpty v }) model
+    | PaymentCustomerChosen v -> refineTo (Routes.Payments { paymentList model with Customer = nonEmpty v }) model
+    | PaymentFromChanged v -> refineTo (Routes.Payments { paymentList model with From = parseDate v }) model
+    | PaymentToChanged v -> refineTo (Routes.Payments { paymentList model with To = parseDate v }) model
+    | PaymentUnappliedToggled -> refineTo (Routes.Payments { paymentList model with Unapplied = not (paymentList model).Unapplied }) model
+    | PaymentSortChosen v ->
+        match Routes.paymentSortOf v with
+        | Some sort -> refineTo (Routes.Payments { paymentList model with Sort = sort }) model
+        | None -> model, []
+    | PaymentFiltersCleared -> refineTo (Routes.Payments Routes.allPayments) model
+    | CustomerTabChosen v ->
+        match model.Place, Routes.customerTabOf v with
+        | Routes.Customer(customerId, _), Some tab -> refineTo (Routes.Customer(customerId, tab)) model
+        | _ -> model, []
+    | CreditMemosCustomerChosen v -> refineTo (Routes.CreditMemos(nonEmpty v)) model
+    | EngagementsCustomerChosen v -> refineTo (Routes.Engagements(nonEmpty v)) model
+    | EngagementCustomerChanged v -> { model with Engagement = { model.Engagement with CustomerId = v } }, []
+    | EngagementNameChanged v -> { model with Engagement = { model.Engagement with Name = v } }, []
+    | EngagementFeeChanged v -> { model with Engagement = { model.Engagement with FixedFee = v } }, []
+    | EngagementAdded ->
+        let form = model.Engagement
+
+        let fee =
+            match form.FixedFee.Trim() with
+            | "" -> Ok None
+            | text -> parseAmount text |> Option.map (Some >> Ok) |> Option.defaultValue (Error "A fixed fee is an amount such as 5000.00, or empty for hourly work.")
+
+        match fee, model.Books with
+        | Error why, _ -> { model with Error = Some why; Notice = None }, []
+        | Ok _, _ when form.CustomerId = "" -> { model with Error = Some "Choose the customer the engagement is with."; Notice = None }, []
+        | Ok _, _ when form.Name.Trim() = "" -> { model with Error = Some "An engagement needs a name."; Notice = None }, []
+        | Ok fixedFee, Some current ->
+            let engagementId = nextId "ENG" current.Books.Engagements.ContainsKey
+
+            let added, effects =
+                command model $"Engagement {form.Name.Trim()} added." (fun books ->
+                    let engagement: Engagement =
+                        { Id = engagementId
+                          CustomerId = form.CustomerId
+                          Name = form.Name.Trim()
+                          Currency = "USD"
+                          FixedFee = fixedFee
+                          Milestones = []
+                          Terms = None }
+
+                    Billing.saveEngagement (context ctx) engagement books.Books
+                    |> Result.map (fun saved -> { books with Books = saved })
+                    |> Result.mapError describe)
+
+            if added.Error.IsNone then
+                let moved, more = goTo (Routes.Engagement engagementId) { added with Engagement = { CustomerId = ""; Name = ""; FixedFee = "" } }
+                moved, effects @ more
+            else
+                added, effects
+        | Ok _, None -> model, []
     | ResetConfirmed ->
         // Only offered when the stored books fail their checks.
         match model.Storage with
@@ -838,13 +974,17 @@ let screen (model: Model) =
         | Routes.Settings as place -> Showing place
         | Routes.SignIn _
         | Routes.NotFound -> Missing
-        | Routes.Customer _ -> Unbuilt "Customer"
+        | Routes.Customer(id, _) when not (holds (fun b -> b.Books.Customers) id) -> Missing
+        | Routes.Payment id when not (holds (fun b -> b.Payments) id) -> Missing
+        | Routes.CreditMemo id when not (holds (fun b -> b.CreditMemos) id) -> Missing
+        | Routes.Engagement id when not (holds (fun b -> b.Books.Engagements) id) -> Missing
+        | Routes.Customer _
         | Routes.Payments _
-        | Routes.Payment _ -> Unbuilt "Payments"
+        | Routes.Payment _
         | Routes.CreditMemos _
-        | Routes.CreditMemo _ -> Unbuilt "Credit memos"
+        | Routes.CreditMemo _
         | Routes.Engagements _
-        | Routes.Engagement _ -> Unbuilt "Engagements"
+        | Routes.Engagement _ as place -> Showing place
         | Routes.Periods _
         | Routes.Period _ -> Unbuilt "Accounting periods"
         | Routes.Ledger _
@@ -879,6 +1019,362 @@ let banner (model: Model) =
     | _ -> None
 
 /// The named values app/index.html binds to.
+/// A select's customer options, each saying whether it is the one chosen.
+/// The kernel cannot set a select's value before its options exist, so on
+/// a link that names a customer the chosen option carries `selected` itself.
+let private customerChoices (books: Receivables option) (activeOnly: bool) (chosen: string option) =
+    books
+    |> Option.map (fun b ->
+        b.Books.Customers
+        |> Map.toList
+        |> List.map snd
+        |> List.filter (fun c -> not activeOnly || c.Active)
+        |> List.sortBy _.Name
+        |> List.map (fun c -> [ "value", Text c.Id; "label", Text c.Name; "selected", Flag(Some c.Id = chosen) ]))
+    |> Option.defaultValue []
+
+let private methodText =
+    function
+    | Ach -> "ACH"
+    | Check -> "Check"
+    | Wire -> "Wire"
+    | CreditCard -> "Card"
+    | PaymentMethod.Cash -> "Cash"
+    | PaymentMethod.Other -> "Other"
+
+let private customerHref id = Text(Routes.href (Routes.Customer(id, Routes.CustomerInvoices)))
+let private invoiceHref id = Text(Routes.href (Routes.Invoice(id, Routes.Document)))
+let private dateCell (d: DateOnly) = Text(Documents.dateText d)
+
+/// A tab bar's items: each tab's value, label and whether it is selected.
+let private tabs (current: 'a) (text: 'a -> string) (labels: ('a * string) list) =
+    Items(labels |> List.map (fun (t, label) -> [ "value", Text(text t); "label", Text label; "selected", Text(if t = current then "true" else "false") ]))
+
+/// The payments, customer, credit memo and engagement screens (WI-0030
+/// slice 2), each opened from its link (WI-0043).
+let private placeValues (model: Model) (shown: Screen) : View =
+    let books = model.Books
+    let value' name (v: Scalar) = name, Value v
+    let itemsOf (rows: (string * Scalar) list list) = Items rows
+    let on (pick: Routes.Place -> bool) = match shown with Showing place -> pick place | _ -> false
+    let nameOf (b: Receivables) id = customerName b id
+
+    // ---- Payments
+    let paymentFilters =
+        match model.Place with
+        | Routes.Payments list -> list
+        | _ -> Routes.allPayments
+
+    let allPaymentsList = books |> Option.map (fun b -> b.Payments |> Map.toList |> List.map snd) |> Option.defaultValue []
+
+    let listedPayments =
+        books
+        |> Option.map (fun b ->
+            allPaymentsList
+            |> List.filter (fun p ->
+                containsText paymentFilters.Search [ p.Reference; p.Id; nameOf b p.CustomerId ]
+                && paymentFilters.Customer |> Option.forall ((=) p.CustomerId)
+                && paymentFilters.From |> Option.forall (fun d -> p.DateReceived >= d)
+                && paymentFilters.To |> Option.forall (fun d -> p.DateReceived <= d)
+                && (not paymentFilters.Unapplied || (unallocated b p).Minor > 0L))
+            |> List.sortBy (fun p -> p.DateReceived, p.Id)
+            |> fun rows -> if paymentFilters.Sort = Routes.NewestPayment then List.rev rows else rows
+            |> List.map (fun p ->
+                [ "id", Text p.Id
+                  "href", Text(Routes.href (Routes.Payment p.Id))
+                  "date", dateCell p.DateReceived
+                  "customer", Text(nameOf b p.CustomerId)
+                  "customerHref", customerHref p.CustomerId
+                  "method", Text(methodText p.Method)
+                  "reference", Text(if p.Reference = "" then "-" else p.Reference)
+                  "amount", money p.Amount
+                  "unapplied", money (unallocated b p) ]))
+        |> Option.defaultValue []
+
+    let payment =
+        match shown, books with
+        | Showing(Routes.Payment id), Some b -> b.Payments.TryFind id |> Option.map (fun p -> b, p)
+        | _ -> None
+
+    let payText (f: Receivables -> Payment -> string) = Value(Text(payment |> Option.map (fun (b, p) -> f b p) |> Option.defaultValue ""))
+
+    // ---- One customer
+    let customer =
+        match shown, books with
+        | Showing(Routes.Customer(id, tab)), Some b -> b.Books.Customers.TryFind id |> Option.map (fun c -> b, c, tab)
+        | _ -> None
+
+    let custText (f: Receivables -> Customer -> string) = Value(Text(customer |> Option.map (fun (b, c, _) -> f b c) |> Option.defaultValue ""))
+    let customerTab = customer |> Option.map (fun (_, _, t) -> t) |> Option.defaultValue Routes.CustomerInvoices
+
+    let custInvoices =
+        customer
+        |> Option.map (fun (b, c, _) ->
+            b.Books.Invoices
+            |> Map.toList
+            |> List.map snd
+            |> List.filter (fun i -> i.CustomerId = c.Id)
+            |> List.sortByDescending (fun i -> i.IssueDate, i.Number)
+            |> List.map (fun i ->
+                [ "id", Text i.InvoiceId
+                  "href", invoiceHref i.InvoiceId
+                  "number", Text i.Number
+                  "issueDate", dateCell i.IssueDate
+                  "status", Text(statusText (status b i))
+                  "outstanding", money (outstanding b i) ]))
+        |> Option.defaultValue []
+
+    let custPayments =
+        customer
+        |> Option.map (fun (b, c, _) ->
+            b.Payments
+            |> Map.toList
+            |> List.map snd
+            |> List.filter (fun p -> p.CustomerId = c.Id)
+            |> List.sortByDescending (fun p -> p.DateReceived, p.Id)
+            |> List.map (fun p ->
+                [ "id", Text p.Id
+                  "href", Text(Routes.href (Routes.Payment p.Id))
+                  "date", dateCell p.DateReceived
+                  "reference", Text(if p.Reference = "" then "-" else p.Reference)
+                  "amount", money p.Amount ]))
+        |> Option.defaultValue []
+
+    // ---- Credit memos
+    let memoCustomer =
+        match model.Place with
+        | Routes.CreditMemos customerId -> customerId
+        | _ -> None
+
+    let memoRows (b: Receivables) (memos: CreditMemo list) =
+        memos
+        |> List.sortByDescending (fun m -> m.IssueDate, m.Id)
+        |> List.map (fun m ->
+            let invoice = m.InvoiceId |> Option.bind b.Books.Invoices.TryFind
+
+            [ "id", Text m.Id
+              "href", Text(Routes.href (Routes.CreditMemo m.Id))
+              "date", dateCell m.IssueDate
+              "customer", Text(nameOf b m.CustomerId)
+              "customerHref", customerHref m.CustomerId
+              "invoice", Text(invoice |> Option.map _.Number |> Option.defaultValue "-")
+              "invoiceHref", Text(invoice |> Option.map (fun i -> Routes.href (Routes.Invoice(i.InvoiceId, Routes.Document))) |> Option.defaultValue "#/")
+              "reason", Text m.Reason
+              "amount", money m.Amount
+              "remaining", money (Credits.remaining b (FromCreditMemo m.Id) |> Option.defaultValue (zero m.Amount.Currency)) ])
+
+    let listedMemos =
+        books
+        |> Option.map (fun b -> b.CreditMemos |> Map.toList |> List.map snd |> List.filter (fun m -> memoCustomer |> Option.forall ((=) m.CustomerId)) |> memoRows b)
+        |> Option.defaultValue []
+
+    let custCredits =
+        customer
+        |> Option.map (fun (b, c, _) -> b.CreditMemos |> Map.toList |> List.map snd |> List.filter (fun m -> m.CustomerId = c.Id) |> memoRows b)
+        |> Option.defaultValue []
+
+    let memo =
+        match shown, books with
+        | Showing(Routes.CreditMemo id), Some b -> b.CreditMemos.TryFind id |> Option.map (fun m -> b, m, CreditMemoDocuments.ofCreditMemo b id |> Result.toOption)
+        | _ -> None
+
+    let memoDoc = memo |> Option.bind (fun (_, _, doc) -> doc)
+    let docText (f: CreditMemoDocuments.CreditMemoDocument -> string) = Value(Text(memoDoc |> Option.map f |> Option.defaultValue ""))
+    let memoText (f: Receivables -> CreditMemo -> string) = Value(Text(memo |> Option.map (fun (b, m, _) -> f b m) |> Option.defaultValue ""))
+
+    // ---- Engagements
+    let engagementCustomer =
+        match model.Place with
+        | Routes.Engagements customerId -> customerId
+        | _ -> None
+
+    let feeText (e: Engagement) = e.FixedFee |> Option.map Documents.moneyText |> Option.defaultValue "Hourly"
+
+    let listedEngagements =
+        books
+        |> Option.map (fun b ->
+            b.Books.Engagements
+            |> Map.toList
+            |> List.map snd
+            |> List.filter (fun e -> engagementCustomer |> Option.forall ((=) e.CustomerId))
+            |> List.sortBy (fun e -> nameOf b e.CustomerId, e.Name)
+            |> List.map (fun e ->
+                [ "id", Text e.Id
+                  "href", Text(Routes.href (Routes.Engagement e.Id))
+                  "name", Text e.Name
+                  "customer", Text(nameOf b e.CustomerId)
+                  "customerHref", customerHref e.CustomerId
+                  "fee", Text(feeText e) ]))
+        |> Option.defaultValue []
+
+    let engagement =
+        match shown, books with
+        | Showing(Routes.Engagement id), Some b -> b.Books.Engagements.TryFind id |> Option.map (fun e -> b, e)
+        | _ -> None
+
+    let engText (f: Receivables -> Engagement -> string) = Value(Text(engagement |> Option.map (fun (b, e) -> f b e) |> Option.defaultValue ""))
+
+    [ "onPayments", Value(Flag(on (function Routes.Payments _ -> true | _ -> false)))
+      "onPayment", Value(Flag(on (function Routes.Payment _ -> true | _ -> false)))
+      "onCustomer", Value(Flag(on (function Routes.Customer _ -> true | _ -> false)))
+      "onCreditMemos", Value(Flag(on (function Routes.CreditMemos _ -> true | _ -> false)))
+      "onCreditMemo", Value(Flag(on (function Routes.CreditMemo _ -> true | _ -> false)))
+      "onEngagements", Value(Flag(on (function Routes.Engagements _ -> true | _ -> false)))
+      "onEngagement", Value(Flag(on (function Routes.Engagement _ -> true | _ -> false)))
+      "paymentCustomerOptions", itemsOf (customerChoices books false paymentFilters.Customer)
+      "memoCustomerOptions", itemsOf (customerChoices books false memoCustomer)
+      "engagementsCustomerOptions", itemsOf (customerChoices books false engagementCustomer)
+      "engagementFormCustomerOptions", itemsOf (customerChoices books true (nonEmpty model.Engagement.CustomerId))
+      // Payments
+      "hasPayments", Value(Flag(not allPaymentsList.IsEmpty))
+      "hasListedPayments", Value(Flag(not listedPayments.IsEmpty))
+      "noListedPayments", Value(Flag(not allPaymentsList.IsEmpty && listedPayments.IsEmpty))
+      "paymentCountText", Value(Text $"{listedPayments.Length} of {allPaymentsList.Length} payments")
+      "payments", itemsOf listedPayments
+      "paymentSearch", Value(Text(paymentFilters.Search |> Option.defaultValue ""))
+      "paymentCustomer", Value(Text(paymentFilters.Customer |> Option.defaultValue ""))
+      "paymentFrom", Value(Text(dateInput paymentFilters.From))
+      "paymentTo", Value(Text(dateInput paymentFilters.To))
+      "paymentUnapplied", Value(Flag paymentFilters.Unapplied)
+      "paymentSort", Value(Text(Routes.paymentSortText paymentFilters.Sort))
+      "isPaymentFiltered", Value(Flag(paymentFilters <> Routes.allPayments))
+      // One payment
+      "payId", payText (fun _ p -> p.Id)
+      "payDate", payText (fun _ p -> Documents.dateText p.DateReceived)
+      "payCustomer", payText (fun b p -> nameOf b p.CustomerId)
+      "payCustomerHref", payText (fun _ p -> Routes.href (Routes.Customer(p.CustomerId, Routes.CustomerInvoices)))
+      "payMethod", payText (fun _ p -> methodText p.Method)
+      "payReference", payText (fun _ p -> if p.Reference = "" then "-" else p.Reference)
+      "payAmount", payText (fun _ p -> Documents.moneyText p.Amount)
+      "payUnapplied", payText (fun b p -> Documents.moneyText (unallocated b p))
+      "payReversed", Value(Flag(payment |> Option.exists (fun (b, p) -> b.Reversals.ContainsKey p.Id)))
+      "payAllocations",
+      itemsOf (
+          payment
+          |> Option.map (fun (b, p) ->
+              b.Allocations
+              |> List.filter (fun a -> a.PaymentId = p.Id)
+              |> List.map (fun (a: Allocation) ->
+                  [ "key", Text a.Id
+                    "invoice", Text(b.Books.Invoices.TryFind a.InvoiceId |> Option.map _.Number |> Option.defaultValue a.InvoiceId)
+                    "href", invoiceHref a.InvoiceId
+                    "amount", money a.Amount ]))
+          |> Option.defaultValue []
+      )
+      // One customer
+      "custName", custText (fun _ c -> c.Name)
+      "custBillingName", custText (fun _ c -> c.BillingName)
+      "custEmail", custText (fun _ c -> if c.Email = "" then "-" else c.Email)
+      "custAddress", custText (fun _ c -> c.BillingAddress)
+      "custTerms", custText (fun _ c -> termsLabel c.DefaultTerms)
+      "custBalance",
+      custText (fun b c -> b.Books.Invoices |> Map.toList |> List.map snd |> List.filter (fun i -> i.CustomerId = c.Id) |> List.map (outstanding b) |> sum "USD" |> Documents.moneyText)
+      "custCredit", custText (fun b c -> Credits.available b c.Id |> List.map snd |> sum "USD" |> Documents.moneyText)
+      "custNewInvoiceHref", custText (fun _ c -> Routes.href (Routes.NewInvoice(Some c.Id)))
+      "custStatus", custText (fun _ c -> if c.Active then "Active" else "Inactive")
+      "customerTabs",
+      tabs customerTab Routes.customerTabText [ Routes.CustomerInvoices, "Invoices"; Routes.CustomerPayments, "Payments"; Routes.CustomerCredits, "Credit memos" ]
+      "onCustInvoicesTab", Value(Flag(customerTab = Routes.CustomerInvoices))
+      "onCustPaymentsTab", Value(Flag(customerTab = Routes.CustomerPayments))
+      "onCustCreditsTab", Value(Flag(customerTab = Routes.CustomerCredits))
+      "custInvoices", itemsOf custInvoices
+      "hasCustInvoices", Value(Flag(not custInvoices.IsEmpty))
+      "custPayments", itemsOf custPayments
+      "hasCustPayments", Value(Flag(not custPayments.IsEmpty))
+      "custCredits", itemsOf custCredits
+      "hasCustCredits", Value(Flag(not custCredits.IsEmpty))
+      // Credit memos
+      "creditMemos", itemsOf listedMemos
+      "hasCreditMemos", Value(Flag(not listedMemos.IsEmpty))
+      "memoCustomer", Value(Text(memoCustomer |> Option.defaultValue ""))
+      // One credit memo, as its Folio document
+      "cmHasDocument", Value(Flag memoDoc.IsSome)
+      "cmNoDocument", Value(Flag(memo.IsSome && memoDoc.IsNone))
+      "cmId", memoText (fun _ m -> m.Id)
+      "cmIssuer", docText _.Issuer.LegalName
+      "cmIssuerAddress", docText _.Issuer.Address
+      "cmCustomer", docText _.Customer.BillingName
+      "cmCustomerAddress", docText _.Customer.BillingAddress
+      "cmIssueDate", memoText (fun _ m -> Documents.dateText m.IssueDate)
+      "cmInvoice", docText (fun d -> fst d.Credits)
+      "cmInvoiceDate", docText (fun d -> Documents.dateText (snd d.Credits))
+      "cmInvoiceHref", memoText (fun _ m -> m.InvoiceId |> Option.map (fun id -> Routes.href (Routes.Invoice(id, Routes.Document))) |> Option.defaultValue "#/")
+      "cmReason", memoText (fun _ m -> m.Reason)
+      "cmAmount", memoText (fun _ m -> Documents.moneyText m.Amount)
+      "cmRemaining", memoText (fun b m -> Credits.remaining b (FromCreditMemo m.Id) |> Option.map Documents.moneyText |> Option.defaultValue "")
+      "cmHasLines", Value(Flag(memoDoc |> Option.exists (fun d -> not d.Lines.IsEmpty)))
+      "cmLines",
+      itemsOf (
+          memoDoc
+          |> Option.map (fun d ->
+              d.Lines
+              |> List.mapi (fun i l ->
+                  [ "key", Text(string i)
+                    "description", Text l.Description
+                    "quantity", Text(Documents.quantityText l.QuantityThousandths)
+                    "amount", Text(Documents.amountText l.Amount) ]))
+          |> Option.defaultValue []
+      )
+      "cmApplications",
+      itemsOf (
+          memo
+          |> Option.map (fun (b, m, _) ->
+              b.Applications
+              |> List.filter (fun a -> a.Source = FromCreditMemo m.Id)
+              |> List.map (fun a ->
+                  [ "key", Text a.Id
+                    "invoice", Text(b.Books.Invoices.TryFind a.InvoiceId |> Option.map _.Number |> Option.defaultValue a.InvoiceId)
+                    "href", invoiceHref a.InvoiceId
+                    "date", dateCell a.Date
+                    "amount", money a.Amount ]))
+          |> Option.defaultValue []
+      )
+      // Credit on the invoice shown
+      "creditAmount", Value(Text model.Credit.Amount)
+      "creditReason", Value(Text model.Credit.Reason)
+      // Engagements
+      "engagements", itemsOf listedEngagements
+      "hasEngagements", Value(Flag(not listedEngagements.IsEmpty))
+      "engagementCustomer", Value(Text(engagementCustomer |> Option.defaultValue ""))
+      "engagementFormCustomer", Value(Text model.Engagement.CustomerId)
+      "engagementFormName", Value(Text model.Engagement.Name)
+      "engagementFormFee", Value(Text model.Engagement.FixedFee)
+      "engName", engText (fun _ e -> e.Name)
+      "engCustomer", engText (fun b e -> nameOf b e.CustomerId)
+      "engCustomerHref", engText (fun _ e -> Routes.href (Routes.Customer(e.CustomerId, Routes.CustomerInvoices)))
+      "engFee", engText (fun _ e -> feeText e)
+      "engTerms", engText (fun _ e -> termsLabel e.Terms)
+      "engNewInvoiceHref", engText (fun _ e -> Routes.href (Routes.NewInvoice(Some e.CustomerId)))
+      "engMilestones",
+      itemsOf (
+          engagement
+          |> Option.map (fun (_, e) ->
+              e.Milestones
+              |> List.map (fun m ->
+                  [ "key", Text m.Id
+                    "label", Text m.Label
+                    "amount", Text(Billing.milestoneAmount e m |> Option.map Documents.moneyText |> Option.defaultValue "Share of an unset fee")
+                    "state", Text(m.CompletedOn |> Option.map (fun d -> "Completed " + Documents.dateText d) |> Option.defaultValue "Open") ]))
+          |> Option.defaultValue []
+      )
+      "engHasMilestones", Value(Flag(engagement |> Option.exists (fun (_, e) -> not e.Milestones.IsEmpty)))
+      "engInvoices",
+      itemsOf (
+          engagement
+          |> Option.map (fun (b, e) ->
+              b.Books.Invoices
+              |> Map.toList
+              |> List.map snd
+              |> List.filter (fun i -> i.EngagementId = Some e.Id)
+              |> List.map (fun i ->
+                  [ "id", Text i.InvoiceId
+                    "href", invoiceHref i.InvoiceId
+                    "number", Text i.Number
+                    "issueDate", dateCell i.IssueDate
+                    "total", money i.Total ]))
+          |> Option.defaultValue []
+      ) ]
+
 let view (model: Model) : View =
     let books = model.Books
     let zeroUsd = zero "USD"
@@ -1022,6 +1518,25 @@ let view (model: Model) : View =
                         "amount", Text(Documents.amountText l.Amount) ]))
               |> Option.defaultValue []
           )
+          "detailCustomer", text (detail |> Option.map (fun (_, i) -> i.Customer.Name) |> Option.defaultValue "")
+          "detailCustomerHref",
+          text (detail |> Option.map (fun (_, i) -> Routes.href (Routes.Customer(i.CustomerId, Routes.CustomerInvoices))) |> Option.defaultValue "")
+          "detailCredits",
+          Items(
+              detail
+              |> Option.map (fun (b, i) ->
+                  b.Applications
+                  |> List.filter (fun a -> a.InvoiceId = i.InvoiceId)
+                  |> List.map (fun a ->
+                      let source, href =
+                          match a.Source with
+                          | FromCreditMemo id -> $"Credit memo {id}", Routes.href (Routes.CreditMemo id)
+                          | FromCredit id -> $"Customer credit {id}", Routes.href (Routes.Customer(i.CustomerId, Routes.CustomerCredits))
+                          | FromDeposit id -> $"Deposit {id}", Routes.href (Routes.Customer(i.CustomerId, Routes.CustomerCredits))
+
+                      [ "key", Text a.Id; "source", Text source; "href", Text href; "date", Text(Documents.dateText a.Date); "amount", money a.Amount ]))
+              |> Option.defaultValue []
+          )
           "detailStatus",
           text (detail |> Option.map (fun (b, i) -> statusText (status b i)) |> Option.defaultValue "")
           "detailOutstanding", text (detail |> Option.map (fun (b, i) -> Documents.moneyText (outstanding b i)) |> Option.defaultValue "")
@@ -1156,6 +1671,9 @@ let view (model: Model) : View =
           [ "home", "Home", Routes.Home
             "invoices", "Invoices", Routes.Invoices Routes.allInvoices
             "customers", "Customers", Routes.Customers Routes.allCustomers
+            "engagements", "Engagements", Routes.Engagements None
+            "payments", "Payments", Routes.Payments Routes.allPayments
+            "credit-memos", "Credit memos", Routes.CreditMemos None
             "receivables", "Receivables", Routes.Receivables(None, None)
             "settings", "Settings", Routes.Settings ]
           |> List.map (fun (id, label, place) ->
@@ -1168,6 +1686,12 @@ let view (model: Model) : View =
                   | Routes.Draft _ -> "invoices"
                   | Routes.Customers _
                   | Routes.Customer _ -> "customers"
+                  | Routes.Engagements _
+                  | Routes.Engagement _ -> "engagements"
+                  | Routes.Payments _
+                  | Routes.Payment _ -> "payments"
+                  | Routes.CreditMemos _
+                  | Routes.CreditMemo _ -> "credit-memos"
                   | Routes.Receivables _ -> "receivables"
                   | Routes.Settings -> "settings"
                   | _ -> ""
@@ -1231,6 +1755,7 @@ let view (model: Model) : View =
                 "name", Text c.Name
                 "email", Text c.Email
                 "terms", Text(termsLabel c.DefaultTerms)
+                "href", Text(Routes.href (Routes.Customer(c.Id, Routes.CustomerInvoices)))
                 "invoicesHref", Text(Routes.href (Routes.Invoices { Routes.allInvoices with Customer = Some c.Id }))
                 "balance", money balance ])
       )
@@ -1251,18 +1776,7 @@ let view (model: Model) : View =
                 "hours", Text l.Hours
                 "rate", Text l.Rate ])
       )
-      "customerOptions",
-      Items(
-          books
-          |> Option.map (fun b ->
-              b.Books.Customers
-              |> Map.toList
-              |> List.map snd
-              |> List.filter _.Active
-              |> List.sortBy _.Name
-              |> List.map (fun c -> [ "value", Text c.Id; "label", Text c.Name ]))
-          |> Option.defaultValue []
-      )
+      "customerOptions", Items(customerChoices books true (nonEmpty model.Draft.CustomerId))
       "hasBlockers", flag (not model.Blockers.IsEmpty)
       "blockers",
       Items(
@@ -1291,17 +1805,8 @@ let view (model: Model) : View =
           [ "unpaid", "Unpaid"; "partly-paid", "Partly paid"; "paid", "Paid"; "written-off", "Written off"; "voided", "Voided" ]
           |> List.map (fun (value, label) -> [ "value", Text value; "label", Text label; "checked", Flag(filters.Status.Contains value) ])
       )
-      "customerFilterOptions",
-      Items(
-          books
-          |> Option.map (fun b ->
-              b.Books.Customers
-              |> Map.toList
-              |> List.map snd
-              |> List.sortBy _.Name
-              |> List.map (fun c -> [ "value", Text c.Id; "label", Text c.Name ]))
-          |> Option.defaultValue []
-      )
+      "invoiceCustomerOptions", Items(customerChoices books false filters.Customer)
+      "receivablesCustomerOptions", Items(customerChoices books false receivablesCustomer)
       // Payment
       "paymentAmount", text model.Payment.Amount
       "paymentDate", text model.Payment.Date
@@ -1331,3 +1836,4 @@ let view (model: Model) : View =
       "companyEmail", text model.Company.Email
       "companyPayment", text model.Company.PaymentInstructions ]
     @ detailValues
+    @ placeValues model shown

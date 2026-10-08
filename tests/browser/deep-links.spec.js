@@ -63,13 +63,16 @@ test("filters, sort and search are in the address and survive a reload", async (
   await expect(page).toHaveURL(/#\/invoices\?q=acme$/);
   await page.selectOption("#invoice-sort", "number");
   await page.locator('.invoice-status[data-status="unpaid"]').check();
-  await expect(page).toHaveURL(/#\/invoices\?q=acme&status=unpaid&sort=number$/);
+  await page.selectOption("#invoice-customer", "CUST-0001");
+  await expect(page).toHaveURL(/#\/invoices\?q=acme&status=unpaid&customer=CUST-0001&sort=number$/);
   await expect(page.locator("#invoices-table tbody tr")).toHaveCount(1);
 
   await page.reload();
   await running(page);
   await expect(page.locator("#invoice-search")).toHaveValue("acme");
   await expect(page.locator("#invoice-sort")).toHaveValue("number");
+  // A select whose options come from the books still shows the linked choice.
+  await expect(page.locator("#invoice-customer")).toHaveValue("CUST-0001");
   await expect(page.locator('.invoice-status[data-status="unpaid"]')).toBeChecked();
   await expect(page.locator("#invoices-table tbody tr")).toHaveCount(1);
   await expect(page.locator("#invoice-count-text")).toHaveText("1 of 2 invoices");

@@ -2,7 +2,7 @@
 id: DF-SUMMA-2026-0009
 title: The accounting application and its local books
 status: accepted
-version: 1.0.0
+version: 1.1.0
 created: 2026-10-08
 updated: 2026-10-08
 owners:
@@ -17,8 +17,9 @@ tags: [web, limen, forma, folio, storage]
 provenance:
   contributions:
     EXE-20261008T184655871Z-69753eb4:
-      operations: [created]
+      operations: [created, modified]
       at: 2026-10-08T18:46:56.261Z
+      last: 2026-10-08T20:50:53.501Z
       actor:
         kind: agent
         id: anthropic/claude-code
@@ -50,3 +51,20 @@ The product UI (v0.4) needs a page that works before sign-in (WI-0035) and the G
 3. **A new browser starts demo books.** These have the default chart and demo company details, so the first invoice can be issued at once. The company details can be edited in Settings.
 4. **Printing** uses Summa's `summa.print` capability pack, which opens the browser's print dialog for the invoice's Folio document. This is Folio's portable profile (P0), as DF-SUMMA-2026-0007 records. Recording the resulting PDF as an artifact follows with the artifact store.
 5. **Every value and event is held to the engine.** A binding test checks both directions, and the browser suite drives the real page.
+6. **A credit memo is issued from the invoice it corrects** (slice 2).
+   - Issuing and applying it to that invoice is one transition: if applying
+     fails (more than is owed), nothing is issued.
+   - Its customer document (`CreditMemoDocuments`, template
+     `summa.credit-memo` 1.0.0) takes its parties from the credited
+     invoice's issued snapshot, so it is reproduced from the records alone.
+   - A memo with no invoice has no issued snapshot of its parties, and so no
+     document. The application does not issue one; the domain still allows it.
+7. **Local books name their credit accounts by the default chart.** The
+   manifest names cash, receivables and revenue, but not customer credits,
+   deposits or bad debt. `LocalSnapshot.receivableAccounts` uses the default
+   chart's 2100, 2200 and 6500, which every local organization starts with.
+   Books on GitHub (WI-0037) need the manifest to name them.
+8. **A select whose options come from the books marks its chosen option.**
+   The kernel cannot set a select's value before its options exist. Each
+   option therefore carries `selected`, so a link that names a customer
+   opens with that customer chosen.

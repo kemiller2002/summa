@@ -178,6 +178,37 @@ let ``a partial credit names the lines it credits and never more than they charg
     Assert.Equal<Credits.CreditProblem list>([ Credits.InvalidCreditLines "a credited line does not exist or is named twice" ], Credits.issueCreditMemo context accounts { memo with Lines = [ 2 ] } r |> refused)
 
 [<Fact>]
+let ``a credit memo's document names the invoice and lines it credits, from the records alone`` () =
+    let r, _ = issuedWith (draftFor [ consulting 34500L 17500L; { consulting 2000L 9000L with Description = "Workshop" } ]) request
+    let memo: CreditMemo = { Id = "CM-1"; CustomerId = abc.Id; InvoiceId = Some "INV-001"; Amount = usd 18000L; RevenueAccountId = "revenue"; Reason = "Workshop cancelled"; IssueDate = DateOnly(2026, 10, 9); JournalEntryId = "JE-CM-1"; Lines = [ 1 ] }
+    let credited = Credits.issueCreditMemo context accounts memo r |> ok
+    let invoice = credited.Books.Invoices["INV-001"]
+
+    match CreditMemoDocuments.ofCreditMemo credited "CM-1" with
+    | Error problem -> failwith $"%A{problem}"
+    | Ok doc ->
+        Assert.Equal((invoice.Number, invoice.IssueDate), doc.Credits)
+        Assert.Equal(invoice.Issuer, doc.Issuer)
+        Assert.Equal(invoice.Customer, doc.Customer)
+        Assert.Equal<string list>([ "Workshop" ], doc.Lines |> List.map _.Description)
+        Assert.Equal(usd 18000L, doc.Amount)
+
+        match CreditMemoDocuments.render doc with
+        | Error why -> failwith why
+        | Ok html ->
+            Assert.Contains("<ef-print-document>", html)
+            Assert.Contains($"Credits invoice</dt><dd>{invoice.Number}", html)
+            Assert.Contains("180.00 USD", html)
+            // The same records render the same document: it is reproducible.
+            Assert.Equal(Ok html, CreditMemoDocuments.render doc)
+
+        Assert.Equal(Error "template summa.credit-memo 9.9.9 is not available", CreditMemoDocuments.render { doc with Template = { doc.Template with Version = "9.9.9" } })
+
+    Assert.Equal(Error(CreditMemoDocuments.UnknownMemo "CM-9"), CreditMemoDocuments.ofCreditMemo credited "CM-9")
+    let unattached = Credits.issueCreditMemo context accounts { memo with Id = "CM-2"; InvoiceId = None; Lines = []; JournalEntryId = "JE-CM-2" } credited |> ok
+    Assert.Equal(Error(CreditMemoDocuments.NoInvoice "CM-2"), CreditMemoDocuments.ofCreditMemo unattached "CM-2")
+
+[<Fact>]
 let ``adjustments are typed and positive; a tax posts to its own liability account`` () =
     let taxed =
         { draftFor [ consulting 10000L 10000L ] with

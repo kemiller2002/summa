@@ -53,6 +53,19 @@ let defaultChart =
           Type = kind
           Active = true })
 
+/// The accounts a local organization's receivable commands post to: the
+/// manifest's cash and receivables, and the default chart's customer
+/// credits, deposits and bad debt. The manifest does not name those yet;
+/// books on GitHub (WI-0037) need it to.
+let receivableAccounts (manifest: Organization.OrganizationManifest) (ledger: Ledger) : Summa.Ledger.Credits.ReceivableAccounts =
+    let byCode = Organization.accountByCode ledger
+
+    { Cash = byCode manifest.Accounting.CashAccount
+      Receivable = byCode manifest.Accounting.ReceivablesAccount
+      CustomerCredits = byCode "2100"
+      CustomerDeposits = byCode "2200"
+      BadDebt = byCode "6500" }
+
 /// A new local organization: its manifest and books with the default chart.
 let start (context: Context) (displayName: string) (company: Organization.CompanyInformation) (paymentInstructions: string) =
     let created = Organization.create OrganizationId displayName "local" "USD" "UTC" context.When

@@ -16,6 +16,7 @@
     <Compile Include="Documents.fs" />
     <Compile Include="Payments.fs" />
     <Compile Include="Credits.fs" />
+    <Compile Include="CreditMemoDocuments.fs" />
     <Compile Include="Corrections.fs" />
     <Compile Include="Billing.fs" />
     <Compile Include="Issuance.fs" />
