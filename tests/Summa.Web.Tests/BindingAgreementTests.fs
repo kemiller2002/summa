@@ -160,6 +160,27 @@ module private Accounting =
           view (visit "#/credit-memos/CM-0001")
           view (visit "#/engagements")
           view (visit "#/engagements/ENG-0001")
+          view (visit "#/ledger")
+          view (visit "#/ledger?account=1100&from=2026-01-01")
+          view (visit "#/ledger/entries/JE-INV-0001")
+          view (visit "#/reports")
+          view (visit "#/reports/trial-balance")
+          view (visit "#/reports/income-statement?basis=cash")
+          view (visit "#/reports/balance-sheet")
+          view (visit "#/periods")
+          view (visit "#/periods/2026-10")
+          view (step (visit "#/periods/2026-10") PeriodClosed)
+          // A payment recorded but not applied blocks the month's close.
+          view (
+              let unapplied: Summa.Ledger.Payments.Payment =
+                  { Id = "PAY-0009"; CustomerId = "CUST-0001"; DateReceived = System.DateOnly(2026, 10, 7); Amount = Summa.Ledger.Money.usd 100L; Method = Summa.Ledger.Payments.Ach; Reference = ""; Memo = None }
+
+              let context: Summa.Ledger.Ledger.Context = { Who = "test"; When = ctx.Now; Source = "test"; CorrelationId = None }
+
+              match Summa.Ledger.Payments.recordPayment context unapplied full.Books.Value with
+              | Ok books -> step { full with Books = Some books } (go "#/periods/2026-10")
+              | Error e -> failwith $"%A{e}"
+          )
           view (step paid (LinkCopied false))
           view untrustworthy
           view misconfigured

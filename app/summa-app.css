@@ -400,6 +400,21 @@ a.summa-new {
   font-variant-numeric: tabular-nums;
 }
 
+.summa-checks {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+
+.summa-checks li[data-tone="attention"] strong {
+  color: var(--ef-color-text-danger, #b42318);
+}
+
+.summa-report-list {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  line-height: 2;
+}
+
 /* Print only the invoice: Folio's print.css lays out the document. */
 @media print {
   .summa-banner,

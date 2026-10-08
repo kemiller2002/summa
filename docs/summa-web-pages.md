@@ -17,7 +17,9 @@ documents describe.
 `app/` is Summa's accounting application: customers (each with their
 invoices, payments and credit memos), engagements, invoices with readiness,
 review and issue, the issued invoice and its credit memos as Folio
-documents, payments, and receivables as of any date. It is a third Limen page with its own engine
+documents, payments, receivables as of any date, the general ledger and
+its journal entries, the trial balance, balance sheet and income statement
+(accrual or cash), and accounting periods with their close checklist. It is a third Limen page with its own engine
 (`src/Summa.Web.Engine/Accounting.fs`, `src/Summa.Web.Application/AccountingWire.fs`)
 and WASM export (`DispatchAccounting`). The engine decides only through Summa's domain commands
 ([`DF-SUMMA-2026-0009`](../research/decisions/DF-SUMMA-2026-0009--the-accounting-application-and-its-local-books.md)).
