@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Who may do what in Summa (WI-0019; SUM0-003, SUM0-022, SUM0-023,
+    SUM2-029, SUM3-012..015): principals, capabilities, organization rosters,
+    approval gates and the actor every financial command carries. Pure, with
+    no dependencies: authentication (GitHub through Fides) says who someone
+    is; this says what they may do.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Access.fs" />
+    <Compile Include="Actor.fs" />
+  </ItemGroup>
+
+</Project>

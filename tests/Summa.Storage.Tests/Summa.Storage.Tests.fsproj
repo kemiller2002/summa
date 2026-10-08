@@ -11,6 +11,8 @@
     <Compile Include="Support.fs" />
     <Compile Include="DeploymentTests.fs" />
     <Compile Include="StorageTests.fs" />
+    <Compile Include="AccessTests.fs" />
+    <Compile Include="GovernanceTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 35,
+  "nextSeq": 37,
   "items": [
     {
       "id": "WI-0001",
@@ -441,10 +441,10 @@
         "depends:arca"
       ],
       "priority": "high",
-      "status": "captured",
+      "status": "ready",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:03.313Z",
-      "updatedAt": "2026-10-08T14:56:43.000Z",
+      "updatedAt": "2026-10-08T15:35:20.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -459,7 +459,7 @@
     {
       "id": "WI-0020",
       "title": "Summa 04: authoritative financial storage on Arca - one record per file, command-to-commit, optimistic concurrency, no silent rebase (SUM0-002, SUM0-012..021, SUM0-027, SUM0-028, SUM0-044..046, SUM3-001, SUM3-003, SUM3-005, SUM0-034, SUM1-019 remainder)",
-      "description": "Depends on WI-0018, WI-0019, arca slice 6 (GitHub adapter, ARCA-API/OUT) and arca slice 8 (integrity, ARCA-INT). Persist the Summa.Ledger, invoice and payment records through Arca as canonical JSON, one financial object or event per file at deterministic paths. One financial command is one commit (for example 'summa: issue invoice INV-2026-0042'). Commands carry the expected repository state; when HEAD moves they are revalidated, never silently rebased. Draft records are mutable and posted ones immutable. Corrections are compensating records. No physical deletion of financial records. Git history is evidence only. Storage avoids the scale traps of SUM0-034, and idempotency (SUM1-019) extends to storage retries through Arca idempotency keys. Also the WI-0018 remainders, applied to every financial write against GitHub: SUM0-005..009, SUM0-011 and SUM0-043 (Summa.Storage namespaces, application and organization manifests).",
+      "description": "Depends on WI-0018, WI-0019, arca slice 6 (GitHub adapter, ARCA-API/OUT) and arca slice 8 (integrity, ARCA-INT). Persist the Summa.Ledger, invoice and payment records through Arca as canonical JSON, one financial object or event per file at deterministic paths. One financial command is one commit (for example 'summa: issue invoice INV-2026-0042'). Commands carry the expected repository state; when HEAD moves they are revalidated, never silently rebased. Draft records are mutable and posted ones immutable. Corrections are compensating records. No physical deletion of financial records. Git history is evidence only. Storage avoids the scale traps of SUM0-034, and idempotency (SUM1-019) extends to storage retries through Arca idempotency keys. Also the WI-0018 remainders, applied to every financial write against GitHub: SUM0-005..009, SUM0-011 and SUM0-043 (Summa.Storage namespaces, application and organization manifests). Also the WI-0019 remainders: every financial command authorizes through Summa.Access (capability and approval gate) before it commits, and carries and records its Actor (SUM0-023, SUM3-013, SUM3-014).",
       "tags": [
         "summa",
         "order:04",
@@ -470,7 +470,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:03.619Z",
-      "updatedAt": "2026-10-08T15:30:25.000Z",
+      "updatedAt": "2026-10-08T15:39:26.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -830,6 +830,57 @@
       "attachments": [],
       "createdAt": "2026-10-08T14:59:16.000Z",
       "updatedAt": "2026-10-08T15:01:29.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0035",
+      "title": "Summa 03b: sign in with GitHub through Fides 0.2.0 in the application - Identity port over Limen requests, session actor github:<id>, token provider to Arca, never a token in state (SUM0-003, SUM0-004, SUM3-012)",
+      "description": "Follows WI-0019 (domain: principals, capabilities, approval gates, rosters, bootstrap administrators). Copy Chrona WI-0029 (DF-CHRONA-2026-0004): run Fides' own client inside the Limen request/reply loop (exchange over Http, device/tab storage, leave for GitHub, address-bar tidy, cross-tab messages); the actor is github:<numeric subject>, the login only a display name; Arca gets Fides.Arca's token provider, never a token; sign-in states and retention in the engine; SignInTests run the real Fides client against a fake exchange. Anonymous financial mutation impossible (SUM3-012); tokens never in files, records, logs, exports or audit (SUM0-004). Needs the application shell; may land with WI-0030's first page.",
+      "tags": [
+        "summa",
+        "order:03",
+        "auth",
+        "depends:fides"
+      ],
+      "priority": "high",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T15:39:11.000Z",
+      "updatedAt": "2026-10-08T15:39:11.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0036",
+      "title": "Real end-to-end sign-in and storage check against the user's Fides deployment and a Summa data repository",
+      "description": "Blocked on the user's deployment: no AWS account, domain or GitHub App exists yet, so Fides is deployed nowhere. When it exists: put the exchange origin, application id, GitHub App client id and redirect URI in summa.deployment.json (docs/deployment-configuration.md), point location at a private Summa data repository, list a bootstrap administrator's GitHub numeric id, then sign in, found the organization, issue an invoice, record a payment, sign out, and confirm every commit landed in <basePath>/summa with no token anywhere in the repository. Until then all tests use Arca's in-memory provider and fake Fides exchanges.",
+      "tags": [
+        "summa",
+        "e2e",
+        "blocked-on:deployment"
+      ],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T15:39:11.000Z",
+      "updatedAt": "2026-10-08T15:39:11.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
