@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The Chrona-to-Summa contract (DF-SUMMA-2026-0001, WI-0017): pure F#
+    types, a canonical JSON codec, validation and golden vectors. It depends
+    on nothing but FSharp.Core and the BCL, and on no Summa internals, so the
+    application that publishes the data (Chrona) can pin it through
+    conditor.json without taking Summa with it.
+
+    <Version> is the package version and the release version: the contracts
+    release workflow publishes `contracts-v<Version>` when it changes on main.
+    The wire contract has its own version (`ChronaBilling.V1.Contract`).
+  -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <IsPackable>true</IsPackable>
+    <PackageId>EchelonFoundry.Summa.Contracts</PackageId>
+    <Authors>Echelon Foundry</Authors>
+    <Description>The Chrona-to-Summa billing contract, owned by Summa as the receiving application: F# types for billable time Chrona publishes and the feedback Summa returns, a canonical JSON codec, boundary validation and golden vectors. No I/O, no dependencies beyond FSharp.Core.</Description>
+    <PackageTags>echelon;summa;chrona;contracts;billing;fsharp</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/kemiller2002/summa</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/kemiller2002/summa</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Json.fs" />
+    <Compile Include="Decoding.fs" />
+    <Compile Include="ChronaBilling.fs" />
+    <Compile Include="ChronaBillingValidation.fs" />
+    <Compile Include="ChronaBillingCodec.fs" />
+    <Compile Include="GoldenVectors.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="vectors/**/*.json" LogicalName="vectors/%(RecursiveDir)%(Filename)%(Extension)" />
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

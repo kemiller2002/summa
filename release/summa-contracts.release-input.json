@@ -1,0 +1,27 @@
+{
+  "schema": "echelon.release-input/v1",
+  "systemId": "summa-contracts",
+  "distributionClass": "nuget-library",
+  "executable": null,
+  "compatibilityAliases": [],
+  "provides": [],
+  "distribution": {
+    "mechanism": "github-release",
+    "package": null,
+    "url": null
+  },
+  "artifacts": [
+    {
+      "name": "EchelonFoundry.Summa.Contracts.{version}.nupkg",
+      "purpose": "package",
+      "platform": null,
+      "mediaType": "application/zip"
+    },
+    {
+      "name": "checksums.txt",
+      "purpose": "checksums",
+      "platform": null,
+      "mediaType": "text/plain"
+    }
+  ]
+}
