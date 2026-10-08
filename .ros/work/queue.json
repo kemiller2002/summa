@@ -388,10 +388,10 @@
         "package"
       ],
       "priority": "high",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:02.675Z",
-      "updatedAt": "2026-10-08T15:03:39.000Z",
+      "updatedAt": "2026-10-08T15:26:15.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -414,10 +414,10 @@
         "depends:arca"
       ],
       "priority": "high",
-      "status": "captured",
+      "status": "ready",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:02.981Z",
-      "updatedAt": "2026-10-08T07:46:02.981Z",
+      "updatedAt": "2026-10-08T15:16:53.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
