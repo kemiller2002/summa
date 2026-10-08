@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T15:54:56.000Z",
+  "updatedAt": "2026-10-08T15:59:18.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1194,13 +1194,51 @@
     {
       "id": "WI-0021",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-08T15:54:56.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Invariants.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Verification.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Compatibility.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Storage.Tests/IntegrityTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-08T15:59:18.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T155457050Z-d5f09a25"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "644f4a3ee107975223386c5d",
+        "recordedAt": "2026-10-08T15:59:17.000Z",
+        "executionId": "EXE-20261008T155457050Z-d5f09a25",
+        "repository": "summa",
+        "branch": "feat/wi-0021-integrity",
+        "commit": "cbc6760f641ee7fb1f333bb63dfdeb4be5bd27b2",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa.git"
+        },
+        "remoteBranch": "feat/wi-0021-integrity",
+        "remoteCommit": "cbc6760f641ee7fb1f333bb63dfdeb4be5bd27b2",
+        "summary": "Invariants, outside-edit audit, schema compatibility and migration checks",
+        "nextAction": "Open and merge the PR",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-08T15:59:18.000Z"
     }
   ]
 }

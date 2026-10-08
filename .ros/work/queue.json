@@ -493,10 +493,10 @@
         "versioning"
       ],
       "priority": "high",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:03.920Z",
-      "updatedAt": "2026-10-08T15:54:56.000Z",
+      "updatedAt": "2026-10-08T15:59:18.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
