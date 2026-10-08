@@ -493,10 +493,10 @@
         "versioning"
       ],
       "priority": "high",
-      "status": "captured",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:03.920Z",
-      "updatedAt": "2026-10-08T07:46:03.920Z",
+      "updatedAt": "2026-10-08T15:59:18.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -511,7 +511,7 @@
     {
       "id": "WI-0022",
       "title": "Summa 06: rebuildable runtime index, reconciliation jobs, failure recovery, backup and restore drills (SUM0-014, SUM0-015, SUM3-002, SUM3-006..008, SUM3-020, SUM3-044)",
-      "description": "Depends on WI-0020 and arca slice 10 (derived indexes and migration, ARCA-MIG). Projections (trial balance, AR aging, dashboards, search) are rebuildable and never authoritative. Stale projections are detected. Reconciliation jobs, encrypted backups (SUM3-024: transport and backups encrypted; application-level at-rest encryption is deferred by user decision 2026-10-08, and the repository is protected by repository permissions), restore testing, recovery objectives and drills. Also SUM0-034 remainder: a command reads the whole organization folder today; the rebuildable index removes that scale trap.",
+      "description": "Depends on WI-0020 and arca slice 10 (derived indexes and migration, ARCA-MIG). Projections (trial balance, AR aging, dashboards, search) are rebuildable and never authoritative. Stale projections are detected. Reconciliation jobs, encrypted backups (SUM3-024: transport and backups encrypted; application-level at-rest encryption is deferred by user decision 2026-10-08, and the repository is protected by repository permissions), restore testing, recovery objectives and drills. Also SUM0-034 remainder: a command reads the whole organization folder today; the rebuildable index removes that scale trap. Also the WI-0021 remainders: run financial migrations through Arca migration with Verification.checkMigration before activating (SUM0-032, SUM3-010).",
       "tags": [
         "summa",
         "order:06",
@@ -522,7 +522,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:04.225Z",
-      "updatedAt": "2026-10-08T15:51:52.000Z",
+      "updatedAt": "2026-10-08T15:58:51.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -895,7 +895,7 @@
     {
       "id": "WI-0037",
       "title": "Summa 04b: the application's store on GitHub - Arca's GitHub provider with the Fides token provider, start-up from the manifests, the offline queue on localStorage and conflict resolution in the interface (SUM0-002, SUM0-007, SUM0-018, SUM0-019)",
-      "description": "Follows WI-0020 (provider-neutral command-to-commit in Summa.Storage.Commands) and WI-0035 (sign-in). Copy Chrona WI-0032/WI-0033/WI-0035: the application's store port runs Summa.Storage.Commands.execute over GitHubStorage.provider (Limen Http effects, Fides.Arca token provider, never a token), opens Summa's and the organization's namespaces through their manifests on start-up (SUM0-007, SUM0-033) and refuses a public production repository; financial commands commit directly to the configured data branch (SUM0-018) while schema and storage-format changes stay in reviewed code (SUM0-019, Arca migrations); offline writes queue on localStorage through Arca's OfflineQueue (OfflinePolicy.QueueWrites) and are sent in order on reconnect, a blocked entry reloaded, revalidated and revised or abandoned; conflicts and outside edits are shown, never resolved silently. Proven against Arca's fake GitHub and in a browser suite.",
+      "description": "Follows WI-0020 (provider-neutral command-to-commit in Summa.Storage.Commands) and WI-0035 (sign-in). Copy Chrona WI-0032/WI-0033/WI-0035: the application's store port runs Summa.Storage.Commands.execute over GitHubStorage.provider (Limen Http effects, Fides.Arca token provider, never a token), opens Summa's and the organization's namespaces through their manifests on start-up (SUM0-007, SUM0-033) and refuses a public production repository; financial commands commit directly to the configured data branch (SUM0-018) while schema and storage-format changes stay in reviewed code (SUM0-019, Arca migrations); offline writes queue on localStorage through Arca's OfflineQueue (OfflinePolicy.QueueWrites) and are sent in order on reconnect, a blocked entry reloaded, revalidated and revised or abandoned; conflicts and outside edits are shown, never resolved silently. Proven against Arca's fake GitHub and in a browser suite. Also SUM3-009 remainder: start-up checks Compatibility.access and fails safely when the data is incompatible.",
       "tags": [
         "summa",
         "order:04",
@@ -907,7 +907,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T15:51:52.000Z",
-      "updatedAt": "2026-10-08T15:51:52.000Z",
+      "updatedAt": "2026-10-08T15:58:51.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
