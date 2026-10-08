@@ -72,14 +72,30 @@ let private project (record: Record) : (string * Json) list =
             | Some m -> m
             | None -> Json.Null
 
-        [ $"allocation:{id}", Json.objectOf [ "invoice", Json.String(text body "invoiceId"); "amount", Json.Number(number amount "minor") ] ]
+        [ $"allocation:{id}",
+          Json.objectOf
+              [ "invoice", Json.String(text body "invoiceId")
+                "payment", Json.String(text body "paymentId")
+                "amount", Json.Number(number amount "minor") ] ]
+    | "summa.application"
+    | "summa.write-off" ->
+        let amount =
+            match Json.field "amount" body with
+            | Some m -> m
+            | None -> Json.Null
+
+        [ $"settlement:{id}", Json.objectOf [ "invoice", Json.String(text body "invoiceId"); "amount", Json.Number(number amount "minor") ] ]
+    | "summa.payment-reversal" -> [ "reversal:" + text body "paymentId", Json.Bool true ]
     | _ -> []
 
 /// The index definition. Change `Version` whenever `project` changes.
 let definition: IndexDefinition =
     { Name = segment
-      Version = 1
-      Sources = schemas |> List.filter (fun s -> List.contains (RecordType.value s.Type) [ "summa.entry"; "summa.invoice"; "summa.allocation" ])
+      Version = 2
+      Sources =
+        schemas
+        |> List.filter (fun s ->
+            List.contains (RecordType.value s.Type) [ "summa.entry"; "summa.invoice"; "summa.allocation"; "summa.application"; "summa.write-off"; "summa.payment-reversal" ])
       Project = project }
 
 /// Each account's balance (debits minus credits, in minor units) per currency.
@@ -92,9 +108,14 @@ let balances (index: DerivedIndex) : Map<string * string, int64> =
 
 /// Each invoice's outstanding amount, in minor units.
 let outstanding (index: DerivedIndex) : Map<string, int64> =
+    let reversed =
+        index.Entries |> List.filter (fun (key, _) -> key.StartsWith "reversal:") |> List.map (fun (key, _) -> key.Substring "reversal:".Length) |> Set.ofList
+
     let allocated =
         index.Entries
-        |> List.filter (fun (key, _) -> key.StartsWith "allocation:")
+        |> List.filter (fun (key, v) ->
+            (key.StartsWith "allocation:" && not (reversed.Contains(text v "payment")))
+            || key.StartsWith "settlement:")
         |> List.groupBy (fun (_, v) -> text v "invoice")
         |> List.map (fun (invoice, rows) -> invoice, rows |> List.sumBy (fun (_, v) -> int64 (number v "amount")))
         |> Map.ofList

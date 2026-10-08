@@ -52,6 +52,13 @@ let obligationType = recordType "summa.obligation"
 let paymentType = recordType "summa.payment"
 let allocationType = recordType "summa.allocation"
 let auditType = recordType "summa.audit"
+let creditType = recordType "summa.credit"
+let depositType = recordType "summa.deposit"
+let creditMemoType = recordType "summa.credit-memo"
+let applicationType = recordType "summa.application"
+let refundType = recordType "summa.refund"
+let reversalType = recordType "summa.payment-reversal"
+let writeOffType = recordType "summa.write-off"
 
 /// Every financial record type, with its mutability and whether a record of
 /// it may ever be deleted.
@@ -66,7 +73,14 @@ let types: (RecordType * Mutability * bool) list =
       obligationType, Mutability.Mutable, false
       paymentType, Mutability.Immutable, false
       allocationType, Mutability.Immutable, false
-      auditType, Mutability.Immutable, false ]
+      auditType, Mutability.Immutable, false
+      creditType, Mutability.Immutable, false
+      depositType, Mutability.Immutable, false
+      creditMemoType, Mutability.Immutable, false
+      applicationType, Mutability.Immutable, false
+      refundType, Mutability.Immutable, false
+      reversalType, Mutability.Immutable, false
+      writeOffType, Mutability.Immutable, false ]
 
 /// Schema support for every financial record type: version 1 throughout.
 let schemas =
@@ -252,6 +266,26 @@ let private methodOf =
     | "other" -> Ok PaymentMethod.Other
     | other -> Error $"'{other}' is not a payment method"
 
+let private source =
+    function
+    | FromCredit id -> Json.objectOf [ "kind", Json.String "credit"; "id", Json.String id ]
+    | FromDeposit id -> Json.objectOf [ "kind", Json.String "deposit"; "id", Json.String id ]
+    | FromCreditMemo id -> Json.objectOf [ "kind", Json.String "credit-memo"; "id", Json.String id ]
+
+let private sourceOf (value: Json) : Decoded<CreditSource> =
+    decode {
+        do! closed [ "id"; "kind" ] value
+        let! id = text "id" value
+
+        return!
+            text "kind" value
+            |> Result.bind (function
+                | "credit" -> Ok(FromCredit id)
+                | "deposit" -> Ok(FromDeposit id)
+                | "credit-memo" -> Ok(FromCreditMemo id)
+                | other -> Error $"'{other}' is not a credit source")
+    }
+
 // ---- Records ----------------------------------------------------------------
 
 /// One record to store: its key and body.
@@ -413,6 +447,72 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                     "invoiceId", Json.String a.InvoiceId
                     "amount", money a.Amount
                     "journalEntryId", Json.String a.JournalEntryId ]
+          for KeyValue(_, c) in r.Credits ->
+              keyOf creditType [] c.Id,
+              Json.objectOf
+                  [ "id", Json.String c.Id
+                    "customerId", Json.String c.CustomerId
+                    "sourcePaymentId", Json.String c.SourcePaymentId
+                    "amount", money c.Amount
+                    "date", Json.String(dateText c.Date)
+                    "journalEntryId", Json.String c.JournalEntryId ]
+          for KeyValue(_, d) in r.Deposits ->
+              keyOf depositType [ $"{d.DateReceived.Year:D4}" ] d.Id,
+              Json.objectOf
+                  [ "id", Json.String d.Id
+                    "customerId", Json.String d.CustomerId
+                    "dateReceived", Json.String(dateText d.DateReceived)
+                    "amount", money d.Amount
+                    "method", Json.String(methodName d.Method)
+                    "reference", Json.String d.Reference
+                    "journalEntryId", Json.String d.JournalEntryId ]
+          for KeyValue(_, m) in r.CreditMemos ->
+              keyOf creditMemoType [ $"{m.IssueDate.Year:D4}" ] m.Id,
+              Json.objectOf
+                  [ "id", Json.String m.Id
+                    "customerId", Json.String m.CustomerId
+                    "invoiceId", optionalString m.InvoiceId
+                    "amount", money m.Amount
+                    "revenueAccountId", Json.String m.RevenueAccountId
+                    "reason", Json.String m.Reason
+                    "issueDate", Json.String(dateText m.IssueDate)
+                    "journalEntryId", Json.String m.JournalEntryId ]
+          for a in r.Applications ->
+              keyOf applicationType [] a.Id,
+              Json.objectOf
+                  [ "id", Json.String a.Id
+                    "source", source a.Source
+                    "invoiceId", Json.String a.InvoiceId
+                    "amount", money a.Amount
+                    "date", Json.String(dateText a.Date)
+                    "journalEntryId", Json.String a.JournalEntryId ]
+          for KeyValue(_, f) in r.Refunds ->
+              keyOf refundType [ $"{f.Date.Year:D4}" ] f.Id,
+              Json.objectOf
+                  [ "id", Json.String f.Id
+                    "customerId", Json.String f.CustomerId
+                    "source", source f.Source
+                    "amount", money f.Amount
+                    "date", Json.String(dateText f.Date)
+                    "method", Json.String(methodName f.Method)
+                    "reference", Json.String f.Reference
+                    "journalEntryId", Json.String f.JournalEntryId ]
+          for KeyValue(_, v) in r.Reversals ->
+              keyOf reversalType [] v.PaymentId,
+              Json.objectOf
+                  [ "paymentId", Json.String v.PaymentId
+                    "reason", Json.String v.Reason
+                    "date", Json.String(dateText v.Date)
+                    "journalEntryIds", Json.Array(v.JournalEntryIds |> List.map Json.String) ]
+          for KeyValue(_, w) in r.WriteOffs ->
+              keyOf writeOffType [] w.Id,
+              Json.objectOf
+                  [ "id", Json.String w.Id
+                    "invoiceId", Json.String w.InvoiceId
+                    "amount", money w.Amount
+                    "reason", Json.String w.Reason
+                    "date", Json.String(dateText w.Date)
+                    "journalEntryId", Json.String w.JournalEntryId ]
           for id, a in auditIds ledger.Audit -> keyOf auditType (yearMonth (DateOnly.FromDateTime a.When.UtcDateTime)) id, auditBody a ]
 
     match records |> List.choose (fun (k, _) -> match k with Error d -> Some d | Ok _ -> None) with
@@ -457,6 +557,13 @@ type private Part =
     | PaymentPart of Payment
     | AllocationPart of Allocation
     | AuditPart of AuditRecord
+    | CreditPart of CustomerCredit
+    | DepositPart of Deposit
+    | CreditMemoPart of CreditMemo
+    | ApplicationPart of Application
+    | RefundPart of Refund
+    | ReversalPart of PaymentReversal
+    | WriteOffPart of WriteOff
 
 let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
     match RecordType.value t with
@@ -696,6 +803,149 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                       CorrelationId = correlation
                       Subject = subject }
         }
+    | "summa.credit" ->
+        decode {
+            do! closed [ "amount"; "customerId"; "date"; "id"; "journalEntryId"; "sourcePaymentId" ] b
+            let! id = text "id" b
+            let! customer = text "customerId" b
+            let! payment = text "sourcePaymentId" b
+            let! amount = moneyField "amount" b
+            let! date = date "date" b
+            let! entry = text "journalEntryId" b
+
+            return
+                CreditPart
+                    { Id = id
+                      CustomerId = customer
+                      SourcePaymentId = payment
+                      Amount = amount
+                      Date = date
+                      JournalEntryId = entry }
+        }
+    | "summa.deposit" ->
+        decode {
+            do! closed [ "amount"; "customerId"; "dateReceived"; "id"; "journalEntryId"; "method"; "reference" ] b
+            let! id = text "id" b
+            let! customer = text "customerId" b
+            let! received = date "dateReceived" b
+            let! amount = moneyField "amount" b
+            let! method = text "method" b |> Result.bind methodOf
+            let! reference = text "reference" b
+            let! entry = text "journalEntryId" b
+
+            return
+                DepositPart
+                    { Id = id
+                      CustomerId = customer
+                      DateReceived = received
+                      Amount = amount
+                      Method = method
+                      Reference = reference
+                      JournalEntryId = entry }
+        }
+    | "summa.credit-memo" ->
+        decode {
+            do! closed [ "amount"; "customerId"; "id"; "invoiceId"; "issueDate"; "journalEntryId"; "reason"; "revenueAccountId" ] b
+            let! id = text "id" b
+            let! customer = text "customerId" b
+            let! invoice = optionalText "invoiceId" b
+            let! amount = moneyField "amount" b
+            let! revenue = text "revenueAccountId" b
+            let! reason = text "reason" b
+            let! issued = date "issueDate" b
+            let! entry = text "journalEntryId" b
+
+            return
+                CreditMemoPart
+                    { Id = id
+                      CustomerId = customer
+                      InvoiceId = invoice
+                      Amount = amount
+                      RevenueAccountId = revenue
+                      Reason = reason
+                      IssueDate = issued
+                      JournalEntryId = entry }
+        }
+    | "summa.application" ->
+        decode {
+            do! closed [ "amount"; "date"; "id"; "invoiceId"; "journalEntryId"; "source" ] b
+            let! id = text "id" b
+            let! from = field "source" b |> Result.bind sourceOf
+            let! invoice = text "invoiceId" b
+            let! amount = moneyField "amount" b
+            let! date = date "date" b
+            let! entry = text "journalEntryId" b
+
+            return
+                ApplicationPart
+                    { Id = id
+                      Source = from
+                      InvoiceId = invoice
+                      Amount = amount
+                      Date = date
+                      JournalEntryId = entry }
+        }
+    | "summa.refund" ->
+        decode {
+            do! closed [ "amount"; "customerId"; "date"; "id"; "journalEntryId"; "method"; "reference"; "source" ] b
+            let! id = text "id" b
+            let! customer = text "customerId" b
+            let! from = field "source" b |> Result.bind sourceOf
+            let! amount = moneyField "amount" b
+            let! date = date "date" b
+            let! method = text "method" b |> Result.bind methodOf
+            let! reference = text "reference" b
+            let! entry = text "journalEntryId" b
+
+            return
+                RefundPart
+                    { Id = id
+                      CustomerId = customer
+                      Source = from
+                      Amount = amount
+                      Date = date
+                      Method = method
+                      Reference = reference
+                      JournalEntryId = entry }
+        }
+    | "summa.payment-reversal" ->
+        decode {
+            do! closed [ "date"; "journalEntryIds"; "paymentId"; "reason" ] b
+            let! payment = text "paymentId" b
+            let! reason = text "reason" b
+            let! date = date "date" b
+
+            let! ids =
+                list "journalEntryIds" (function
+                    | Json.String s -> Ok s
+                    | _ -> Error "'journalEntryIds' holds something other than text") b
+
+            return
+                ReversalPart
+                    { PaymentId = payment
+                      Reason = reason
+                      Date = date
+                      JournalEntryIds = ids }
+        }
+    | "summa.write-off" ->
+        decode {
+            do! closed [ "amount"; "date"; "id"; "invoiceId"; "journalEntryId"; "reason" ] b
+            let! id = text "id" b
+            let! invoice = text "invoiceId" b
+            let! amount = moneyField "amount" b
+            let! reason = text "reason" b
+            let! date = date "date" b
+            let! entry = text "journalEntryId" b
+
+            return
+                WriteOffPart
+                    { Id = id
+                      InvoiceId = invoice
+                      Amount = amount
+                      Reason = reason
+                      Date = date
+                      JournalEntryId = entry }
+        }
     | other -> Error $"'{other}' is not a financial record type"
 
 /// A financial object as read: path text and revision.
@@ -747,7 +997,14 @@ let private assemble (parts: Part list) : Receivables =
 
     { Books = books
       Payments = parts |> List.choose (function PaymentPart p -> Some(p.Id, p) | _ -> None) |> Map.ofList
-      Allocations = parts |> List.choose (function AllocationPart a -> Some a | _ -> None) |> List.sortBy _.Id }
+      Allocations = parts |> List.choose (function AllocationPart a -> Some a | _ -> None) |> List.sortBy _.Id
+      Credits = parts |> List.choose (function CreditPart c -> Some(c.Id, c) | _ -> None) |> Map.ofList
+      Deposits = parts |> List.choose (function DepositPart d -> Some(d.Id, d) | _ -> None) |> Map.ofList
+      CreditMemos = parts |> List.choose (function CreditMemoPart m -> Some(m.Id, m) | _ -> None) |> Map.ofList
+      Applications = parts |> List.choose (function ApplicationPart a -> Some a | _ -> None) |> List.sortBy _.Id
+      Refunds = parts |> List.choose (function RefundPart f -> Some(f.Id, f) | _ -> None) |> Map.ofList
+      Reversals = parts |> List.choose (function ReversalPart v -> Some(v.PaymentId, v) | _ -> None) |> Map.ofList
+      WriteOffs = parts |> List.choose (function WriteOffPart w -> Some(w.Id, w) | _ -> None) |> Map.ofList }
 
 /// Cross-record rules that make the books trustworthy (`Invariants`), plus
 /// what only the stored form can show: an idempotency key used twice.

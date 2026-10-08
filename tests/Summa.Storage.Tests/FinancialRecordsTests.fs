@@ -10,6 +10,7 @@ open Summa.Ledger.Payments
 open Summa.Ledger.Reports
 open Summa.Storage
 open Summa.Storage.FinancialRecords
+open Summa.Ledger.Money
 open Summa.Storage.Tests.Books
 
 let private stored (r: Receivables) =
@@ -102,3 +103,28 @@ let ``stored content is untrusted: tampering, misplacement and broken books are 
     // An unknown field (for example a token someone added) is refused.
     let extra = replace "records/summa.customer/CUST-ABC.json" (fun c -> c.Replace("\"active\":true", "\"active\":true,\"token\":\"x\""))
     Assert.NotEmpty (load extra).Problems
+
+[<Fact>]
+let ``every v0.2 receivables record round-trips and the books stay sound`` () =
+    let original = withCredits ()
+    Assert.Empty(Invariants.check original)
+    let loaded = load (stored original)
+    Assert.Empty loaded.Problems
+    let r = loaded.State
+    Assert.True((original.Credits = r.Credits))
+    Assert.True((original.Deposits = r.Deposits))
+    Assert.True((original.CreditMemos = r.CreditMemos))
+    Assert.True((original.Refunds = r.Refunds))
+    Assert.True((original.Reversals = r.Reversals))
+    Assert.True((original.WriteOffs = r.WriteOffs))
+    Assert.True((Set.ofList original.Applications = Set.ofList r.Applications))
+    Assert.Equal(Some(usd 6000L), Summa.Ledger.Credits.remaining r (FromCredit "CR-1"))
+    let paths = stored original |> List.map (fun o -> RelativePath.render o.Path) |> Set.ofList
+
+    for expected in
+        [ "records/summa.credit/CR-1.json"
+          "records/summa.deposit/2026/DEP-1.json"
+          "records/summa.credit-memo/2026/CM-1.json"
+          "records/summa.refund/2026/RF-1.json"
+          "records/summa.payment-reversal/PAY-3.json" ] do
+        Assert.Contains(expected, paths)

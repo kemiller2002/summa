@@ -11,6 +11,7 @@
     <Compile Include="Ledger.fs" />
     <Compile Include="Invoicing.fs" />
     <Compile Include="Payments.fs" />
+    <Compile Include="Credits.fs" />
     <Compile Include="Reports.fs" />
   </ItemGroup>
 

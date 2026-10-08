@@ -13,6 +13,7 @@
     <Compile Include="LedgerTests.fs" />
     <Compile Include="InvoicingTests.fs" />
     <Compile Include="PaymentsReportsTests.fs" />
+    <Compile Include="CreditsTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
