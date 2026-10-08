@@ -23,6 +23,7 @@
     <Compile Include="ScreensTests.fs" />
     <Compile Include="BooksTests.fs" />
     <Compile Include="PdfTests.fs" />
+    <Compile Include="AttentionTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

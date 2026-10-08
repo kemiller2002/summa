@@ -84,6 +84,14 @@ type EngagementForm =
       Name: string
       FixedFee: string }
 
+/// A payment received on account, before it is applied (v0.4 §13).
+type ReceiptForm =
+    { CustomerId: string
+      Amount: string
+      Date: string
+      Method: string
+      Reference: string }
+
 type CompanyForm =
     { LegalName: string
       Address: string
@@ -158,6 +166,9 @@ type Model =
       Engagement: EngagementForm
       Packs: Packs
       Artifacts: ArtifactStore
+      /// The reason or resolution typed on an invoice's follow-up.
+      FollowUpNote: string
+      Receipt: ReceiptForm
       Pdf: PdfWork
       Blockers: Issuance.Blocker list
       Notice: string option
@@ -202,6 +213,8 @@ let initial =
       Engagement = { CustomerId = ""; Name = ""; FixedFee = "" }
       Packs = { Files = false; Store = false }
       Artifacts = StoreClosed
+      FollowUpNote = ""
+      Receipt = { CustomerId = ""; Amount = ""; Date = ""; Method = "ach"; Reference = "" }
       Pdf = PdfIdle
       Blockers = []
       Notice = None
@@ -307,6 +320,25 @@ type Msg =
     | PdfDownloadRequested
     /// The stored PDF's bytes (base64), or None when this browser no longer has them.
     | PdfFetched of Result<string option, string>
+    | FollowUpShowChosen of string
+    /// A reminder was sent for this invoice, by whatever means.
+    | ReminderRecorded of invoiceId: string
+    | FollowUpNoteChanged of string
+    | DisputeMarked
+    | DisputeSettled
+    | InboxCustomerChosen of string
+    /// Apply the payment's unapplied amount to its customer's open invoices, oldest due first.
+    | InboxApplied of paymentId: string
+    /// Keep the payment's unapplied amount as the customer's credit.
+    | InboxCredited of paymentId: string
+    | ReceiptCustomerChanged of string
+    | ReceiptAmountChanged of string
+    | ReceiptDateChanged of string
+    | ReceiptMethodChanged of string
+    | ReceiptReferenceChanged of string
+    | ReceiptRecorded
+    /// trial-balance or journal, as CSV for the year shown.
+    | CpaExportRequested of string
 
 type AppEffect =
     | LoadConfiguration
@@ -589,6 +621,52 @@ let periodBlockers (r: Receivables) (year: int, month: int) =
       | 0 -> ()
       | 1 -> "One payment received this month is not fully applied."
       | n -> $"{n} payments received this month are not fully applied." ]
+
+let private methodOf =
+    function
+    | "check" -> Check
+    | "wire" -> Wire
+    | "credit-card" -> CreditCard
+    | "cash" -> PaymentMethod.Cash
+    | "other" -> PaymentMethod.Other
+    | _ -> Ach
+
+/// An invoice's open balance and how far past due it is.
+let private openInvoices (today: DateOnly) (r: Receivables) =
+    r.Books.Invoices
+    |> Map.toList
+    |> List.map snd
+    |> List.filter (fun i -> (outstanding r i).Minor > 0L)
+    |> List.sortBy (fun i -> i.DueDate, i.Number)
+
+/// Everything that needs someone's attention (v0.4 §31), each with where to act.
+let workItems (today: DateOnly) (r: Receivables) =
+    let invoice id = Routes.href (Routes.Invoice(id, Routes.InvoicePayments))
+    let number id = r.Books.Invoices.TryFind id |> Option.map _.Number |> Option.defaultValue id
+
+    [ for KeyValue(id, d) in r.Books.Drafts do
+          match d.Review with
+          | SubmittedForReview _ -> "Ready to issue", $"Draft {id} is reviewed and ready to issue.", Routes.href (Routes.Draft id)
+          | Editing -> "Draft", $"Draft {id} is not yet submitted for review.", Routes.href (Routes.Draft id)
+      for i in openInvoices today r do
+          match (Lifecycle.followUp r i.InvoiceId).Dispute with
+          | Disputed(reason, _) -> "Disputed", $"Invoice {i.Number} is disputed: {reason}", invoice i.InvoiceId
+          | _ when isOverdue today r i -> "Overdue", $"Invoice {i.Number} is overdue by {today.DayNumber - i.DueDate.DayNumber} days.", invoice i.InvoiceId
+          | _ -> ()
+      for KeyValue(_, p) in r.Payments do
+          if (unallocated r p).Minor > 0L then
+              "Unapplied payment", $"Payment {p.Id} has {Documents.moneyText (unallocated r p)} not yet applied.", Routes.href (Routes.Inbox(Some p.CustomerId))
+      for id, why in Lifecycle.attention r do
+          "Delivery", $"Invoice {number id}: {why}.", invoice id
+      for KeyValue(id, a) in r.Books.Artifacts do
+          if a.Kind = Sources.InvoicePdf && a.Status = Sources.Pending then
+              "PDF", $"Invoice {number a.InvoiceId} has no stored PDF yet.", Routes.href (Routes.Invoice(a.InvoiceId, Routes.Document))
+      let lastMonth = DateOnly(today.Year, today.Month, 1).AddMonths -1
+
+      let lastMonthName = lastMonth.ToString("MMMM yyyy", CultureInfo.InvariantCulture)
+
+      if r.Books.Ledger.Periods.TryFind((lastMonth.Year, lastMonth.Month)) |> Option.defaultValue PeriodState.Open = PeriodState.Open then
+          "Period", $"{lastMonthName} is still open.", Routes.href (Routes.Period(lastMonth.Year, lastMonth.Month)) ]
 
 // ---- Update ----------------------------------------------------------------------------
 
@@ -1113,6 +1191,135 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
             []
         | PdfFetching _, Error why -> { model with Pdf = PdfIdle; Error = Some $"The PDF could not be read back ({why})." }, []
         | _ -> model, []
+    | FollowUpShowChosen v ->
+        match Routes.followUpOf v with
+        | Some view -> refineTo (Routes.FollowUp view) model
+        | None -> model, []
+    | ReminderRecorded key ->
+        // From a follow-up row the key names the invoice; on an invoice's own page, it is the one shown.
+        let invoiceId =
+            match key, model.Place with
+            | "", Routes.Invoice(id, _) -> id
+            | id, _ -> id
+
+        command model "Reminder recorded." (fun books ->
+            let times =
+                match (Lifecycle.followUp books invoiceId).Collection with
+                | Reminded n -> n + 1
+                | _ -> 1
+
+            Lifecycle.setCollection (context ctx) invoiceId (Reminded times) books |> Result.mapError describe)
+    | FollowUpNoteChanged v -> { model with FollowUpNote = v }, []
+    | DisputeMarked
+    | DisputeSettled ->
+        match model.Place with
+        | Routes.Invoice(invoiceId, _) when model.FollowUpNote.Trim() = "" ->
+            { model with Error = Some(if msg = DisputeMarked then "Say what the customer disputes." else "Say how the dispute was resolved."); Notice = None }, []
+        | Routes.Invoice(invoiceId, _) ->
+            let note = model.FollowUpNote.Trim()
+
+            let changed, effects =
+                command model (if msg = DisputeMarked then "Dispute recorded. The invoice and the books are unchanged." else "Dispute resolved.") (fun books ->
+                    (if msg = DisputeMarked then Lifecycle.dispute else Lifecycle.resolveDispute) (context ctx) invoiceId note (today ctx) books
+                    |> Result.mapError describe)
+
+            (if changed.Error.IsNone then { changed with FollowUpNote = "" } else changed), effects
+        | _ -> model, []
+    | InboxCustomerChosen v -> refineTo (Routes.Inbox(nonEmpty v)) model
+    | InboxApplied paymentId ->
+        match model.Manifest with
+        | Some manifest ->
+            command model $"Payment {paymentId} applied." (fun books ->
+                match books.Payments.TryFind paymentId with
+                | None -> Error $"There is no payment {paymentId}."
+                | Some payment ->
+                    let invoices = openInvoices (today ctx) books |> List.filter (fun i -> i.CustomerId = payment.CustomerId)
+
+                    // Oldest due first, each up to what it still owes, until the payment is used.
+                    let requests, _ =
+                        invoices
+                        |> List.fold
+                            (fun (requests, left: Money) (i: IssuedInvoice) ->
+                                let owed = outstanding books i
+                                let amount = if left.Minor < owed.Minor then left else owed
+
+                                if amount.Minor <= 0L then
+                                    requests, left
+                                else
+                                    let request: AllocationRequest =
+                                        { AllocationId = nextId "AL" (fun id -> books.Allocations |> List.exists (fun a -> a.Id = id) || requests |> List.exists (fun (r: AllocationRequest) -> r.AllocationId = id))
+                                          PaymentId = payment.Id
+                                          InvoiceId = i.InvoiceId
+                                          Amount = amount
+                                          JournalEntryId = nextId "JE-PAY" (fun id -> books.Books.Ledger.Entries.ContainsKey id || requests |> List.exists (fun (r: AllocationRequest) -> r.JournalEntryId = id))
+                                          CashAccountId = Organization.accountByCode books.Books.Ledger manifest.Accounting.CashAccount
+                                          ReceivableAccountId = Organization.accountByCode books.Books.Ledger manifest.Accounting.ReceivablesAccount }
+
+                                    requests @ [ request ], subtract left amount)
+                            ([], unallocated books payment)
+
+                    if requests.IsEmpty then Error $"{(books.Books.Customers.TryFind payment.CustomerId |> Option.map _.Name |> Option.defaultValue payment.CustomerId)} has no open invoice to apply it to. Keep it as credit instead."
+                    else Credits.allocateAcross (context ctx) requests books |> Result.mapError describe)
+        | None -> model, []
+    | InboxCredited paymentId ->
+        match model.Manifest with
+        | Some manifest ->
+            command model $"Payment {paymentId} kept as the customer's credit." (fun books ->
+                let request: Credits.CreditRequest =
+                    { CreditId = nextId "CR" books.Credits.ContainsKey
+                      PaymentId = paymentId
+                      Date = today ctx
+                      JournalEntryId = nextId "JE-CR" books.Books.Ledger.Entries.ContainsKey }
+
+                Credits.creditUnapplied (context ctx) (LocalSnapshot.receivableAccounts manifest books.Books.Ledger) request books |> Result.mapError describe)
+        | None -> model, []
+    | ReceiptCustomerChanged v -> { model with Receipt = { model.Receipt with CustomerId = v } }, []
+    | ReceiptAmountChanged v -> { model with Receipt = { model.Receipt with Amount = v } }, []
+    | ReceiptDateChanged v -> { model with Receipt = { model.Receipt with Date = v } }, []
+    | ReceiptMethodChanged v -> { model with Receipt = { model.Receipt with Method = v } }, []
+    | ReceiptReferenceChanged v -> { model with Receipt = { model.Receipt with Reference = v } }, []
+    | ReceiptRecorded ->
+        let form = model.Receipt
+        let received = if form.Date.Trim() = "" then Some(today ctx) else parseDate form.Date
+
+        match parseAmount form.Amount, received with
+        | _, _ when form.CustomerId = "" -> { model with Error = Some "Choose who paid."; Notice = None }, []
+        | None, _ -> { model with Error = Some "Enter the amount received, such as 1250.00."; Notice = None }, []
+        | _, None -> { model with Error = Some "Enter the date received as YYYY-MM-DD."; Notice = None }, []
+        | Some amount, Some date ->
+            let recorded, effects =
+                command model "Payment recorded. Apply it, or keep it as credit." (fun books ->
+                    let payment =
+                        { Id = nextId "PAY" books.Payments.ContainsKey
+                          CustomerId = form.CustomerId
+                          DateReceived = date
+                          Amount = amount
+                          Method = methodOf form.Method
+                          Reference = form.Reference.Trim()
+                          Memo = None }
+
+                    recordPayment (context ctx) payment books |> Result.mapError describe)
+
+            (if recorded.Error.IsNone then { recorded with Receipt = { recorded.Receipt with Amount = ""; Reference = ""; Date = "" } } else recorded), effects
+    | CpaExportRequested kind ->
+        match model.Books, model.Packs.Files with
+        | Some books, true ->
+            let year =
+                match model.Place with
+                | Routes.Cpa(Some year) -> year
+                | _ -> (today ctx).Year
+
+            let yearEnd = DateOnly(year, 12, 31)
+            let ledger = books.Books.Ledger
+            let base64 (text: string) = Convert.ToBase64String(Text.Encoding.UTF8.GetBytes text)
+
+            match kind with
+            | "trial-balance" -> model, [ OfferDownload($"trial-balance-{year}.csv", "text/csv", base64 (Reports.trialBalanceCsv (Reports.trialBalance "USD" yearEnd ledger))) ]
+            | "journal" ->
+                let ofYear = { ledger with Journal = ledger.Journal |> List.filter (fun id -> ledger.Entries[id].Date.Year = year) }
+                model, [ OfferDownload($"journal-{year}.csv", "text/csv", base64 (Reports.journalCsv ofYear)) ]
+            | _ -> model, []
+        | _ -> { model with Error = Some "This browser cannot offer downloads here." }, []
     | ResetConfirmed ->
         // Only offered when the stored books fail their checks.
         match model.Storage with
@@ -1219,7 +1426,11 @@ let screen (model: Model) =
         | Routes.Reports
         | Routes.TrialBalance _
         | Routes.IncomeStatement _
-        | Routes.BalanceSheet _ as place -> Showing place
+        | Routes.BalanceSheet _
+        | Routes.Work
+        | Routes.FollowUp _
+        | Routes.Inbox _
+        | Routes.Cpa _ as place -> Showing place
 
 let private statusKey =
     function
@@ -1959,6 +2170,173 @@ let private bookValues (model: Model) (shown: Screen) : View =
       "canLockPeriod", flagOf (periodState = Some PeriodState.Closed)
       "canReopenPeriod", flagOf (periodState = Some PeriodState.Closed || periodState = Some PeriodState.Locked) ]
 
+let private collectionText =
+    function
+    | NoFollowUp -> "No follow-up yet"
+    | Reminded 1 -> "Reminded once"
+    | Reminded n -> $"Reminded {n} times"
+    | Escalated note -> $"Escalated: {note}"
+    | OnHold reason -> $"On hold: {reason}"
+
+let private disputeText =
+    function
+    | NotDisputed -> ""
+    | Disputed(reason, on) -> $"Disputed on {Documents.dateText on}: {reason}"
+    | DisputeResolved(resolution, on) -> $"Dispute resolved on {Documents.dateText on}: {resolution}"
+
+/// The work queue, follow-up, payments inbox and CPA workspace (WI-0030
+/// slice 5), each at its own address.
+let private attentionValues (model: Model) (shown: Screen) : View =
+    let books = model.Books
+    let today = model.Today
+    let flagOf b = Value(Flag b)
+    let textOf (t: string) = Value(Text t)
+
+    let placeIs (pick: Routes.Place -> bool) =
+        flagOf (
+            match shown with
+            | Showing place -> pick place
+            | _ -> false
+        )
+
+    let work = books |> Option.map (workItems today) |> Option.defaultValue []
+
+    // Follow-up
+    let view =
+        match model.Place with
+        | Routes.FollowUp view -> view
+        | _ -> Routes.OverdueInvoices
+
+    let followRows =
+        books
+        |> Option.map (fun b ->
+            openInvoices today b
+            |> List.filter (fun i ->
+                match view, (Lifecycle.followUp b i.InvoiceId).Dispute with
+                | Routes.OverdueInvoices, _ -> isOverdue today b i
+                | Routes.DisputedInvoices, Disputed _ -> true
+                | Routes.DisputedInvoices, _ -> false
+                | Routes.AllOpenInvoices, _ -> true)
+            |> List.map (fun i ->
+                let follow = Lifecycle.followUp b i.InvoiceId
+
+                [ "id", Text i.InvoiceId
+                  "href", Text(Routes.href (Routes.Invoice(i.InvoiceId, Routes.InvoicePayments)))
+                  "number", Text i.Number
+                  "customer", Text i.Customer.Name
+                  "dueDate", Text(Documents.dateText i.DueDate)
+                  "late", Text(if i.DueDate < today then $"{today.DayNumber - i.DueDate.DayNumber} days" else "Not due")
+                  "outstanding", Text(Documents.moneyText (outstanding b i))
+                  "collection", Text(collectionText follow.Collection)
+                  "dispute", Text(disputeText follow.Dispute) ]))
+        |> Option.defaultValue []
+
+    // Inbox
+    let inboxCustomer =
+        match model.Place with
+        | Routes.Inbox customerId -> customerId
+        | _ -> None
+
+    let inboxRows =
+        books
+        |> Option.map (fun b ->
+            b.Payments
+            |> Map.toList
+            |> List.map snd
+            |> List.filter (fun p -> (unallocated b p).Minor > 0L && inboxCustomer |> Option.forall ((=) p.CustomerId))
+            |> List.sortBy (fun p -> p.DateReceived, p.Id)
+            |> List.map (fun p ->
+                let openFor = openInvoices today b |> List.filter (fun i -> i.CustomerId = p.CustomerId)
+
+                [ "id", Text p.Id
+                  "href", Text(Routes.href (Routes.Payment p.Id))
+                  "date", Text(Documents.dateText p.DateReceived)
+                  "customer", Text(b.Books.Customers.TryFind p.CustomerId |> Option.map _.Name |> Option.defaultValue p.CustomerId)
+                  "reference", Text(if p.Reference = "" then "-" else p.Reference)
+                  "unapplied", Text(Documents.moneyText (unallocated b p))
+                  "openInvoices", Text(match openFor.Length with 0 -> "No open invoices" | 1 -> "1 open invoice" | n -> $"{n} open invoices")
+                  "noApply", Flag openFor.IsEmpty ]))
+        |> Option.defaultValue []
+
+    // CPA workspace
+    let year =
+        match model.Place with
+        | Routes.Cpa(Some year) -> year
+        | _ -> today.Year
+
+    let yearStart, yearEnd = DateOnly(year, 1, 1), DateOnly(year, 12, 31)
+
+    let adjustments =
+        books
+        |> Option.map (fun b ->
+            let l = b.Books.Ledger
+
+            l.Journal
+            |> List.map (fun id -> l.Entries[id])
+            |> List.filter (fun e -> e.Date.Year = year)
+            |> List.choose (fun e ->
+                match Periods.kindOf e with
+                | Periods.Adjusting(kind, _) -> Some(e, Periods.adjustingName kind)
+                | Periods.OpeningBalance _ -> Some(e, "Opening balances")
+                | Periods.YearEndClose _ -> Some(e, "Year-end close")
+                | _ -> None)
+            |> List.map (fun (e, kind) ->
+                [ "key", Text e.Id
+                  "href", Text(Routes.href (Routes.JournalEntry e.Id))
+                  "date", Text(Documents.dateText e.Date)
+                  "kind", Text kind
+                  "description", Text e.Description ]))
+        |> Option.defaultValue []
+
+    let closedMonths =
+        books |> Option.map (fun b -> [ 1..12 ] |> List.filter (fun m -> b.Books.Ledger.Periods.TryFind((year, m)) |> Option.exists ((<>) PeriodState.Open)) |> List.length) |> Option.defaultValue 0
+
+    [ "onWork", placeIs ((=) Routes.Work)
+      "onFollowUp", placeIs (function Routes.FollowUp _ -> true | _ -> false)
+      "onInbox", placeIs (function Routes.Inbox _ -> true | _ -> false)
+      "onCpa", placeIs (function Routes.Cpa _ -> true | _ -> false)
+      // Work queue
+      "workItems",
+      Items(work |> List.mapi (fun i (kind, what, href) -> [ "key", Text(string i); "kind", Text kind; "text", Text what; "href", Text href ]))
+      "hasWork", flagOf (not work.IsEmpty)
+      "noWork", flagOf work.IsEmpty
+      "workCount", textOf (string work.Length)
+      "followUpHref", textOf (Routes.href (Routes.FollowUp Routes.OverdueInvoices))
+      "inboxHref", textOf (Routes.href (Routes.Inbox None))
+      "cpaHref", textOf (Routes.href (Routes.Cpa None))
+      // Follow-up
+      "followUpTabs", tabs view Routes.followUpText [ Routes.OverdueInvoices, "Overdue"; Routes.DisputedInvoices, "Disputed"; Routes.AllOpenInvoices, "All open" ]
+      "followRows", Items followRows
+      "hasFollowRows", flagOf (not followRows.IsEmpty)
+      "noFollowRows", flagOf followRows.IsEmpty
+      // Inbox
+      "inboxRows", Items inboxRows
+      "hasInboxRows", flagOf (not inboxRows.IsEmpty)
+      "noInboxRows", flagOf inboxRows.IsEmpty
+      "inboxCustomer", textOf (inboxCustomer |> Option.defaultValue "")
+      "inboxCustomerOptions", Items(customerChoices books false inboxCustomer)
+      "receiptCustomerOptions", Items(customerChoices books true (nonEmpty model.Receipt.CustomerId))
+      "receiptCustomer", textOf model.Receipt.CustomerId
+      "receiptAmount", textOf model.Receipt.Amount
+      "receiptDate", textOf model.Receipt.Date
+      "receiptMethod", textOf model.Receipt.Method
+      "receiptReference", textOf model.Receipt.Reference
+      // CPA workspace
+      "cpaYear", textOf (string year)
+      "cpaPreviousHref", textOf (Routes.href (Routes.Cpa(Some(year - 1))))
+      "cpaNextHref", textOf (Routes.href (Routes.Cpa(Some(year + 1))))
+      "cpaTrialHref", textOf (Routes.href (Routes.TrialBalance(Some yearEnd)))
+      "cpaIncomeHref", textOf (Routes.href (Routes.IncomeStatement(Some yearStart, Some yearEnd, Routes.Accrual)))
+      "cpaCashIncomeHref", textOf (Routes.href (Routes.IncomeStatement(Some yearStart, Some yearEnd, Routes.Cash)))
+      "cpaSheetHref", textOf (Routes.href (Routes.BalanceSheet(Some yearEnd)))
+      "cpaLedgerHref", textOf (Routes.href (Routes.Ledger(None, Some yearStart, Some yearEnd)))
+      "cpaPeriodsHref", textOf (Routes.href (Routes.Periods(Some year)))
+      "cpaAgingHref", textOf (Routes.href (Routes.Receivables(Some yearEnd, None)))
+      "cpaClosedMonths", textOf $"{closedMonths} of 12 months closed"
+      "cpaAdjustments", Items adjustments
+      "hasCpaAdjustments", flagOf (not adjustments.IsEmpty)
+      "canExport", flagOf model.Packs.Files ]
+
 let view (model: Model) : View =
     let books = model.Books
     let zeroUsd = zero "USD"
@@ -2138,6 +2516,13 @@ let view (model: Model) : View =
                      | _ -> false
                  | _ -> false
           )
+          "fuCollection", text (detail |> Option.map (fun (b, i) -> collectionText (Lifecycle.followUp b i.InvoiceId).Collection) |> Option.defaultValue "")
+          "fuDispute", text (detail |> Option.map (fun (b, i) -> disputeText (Lifecycle.followUp b i.InvoiceId).Dispute) |> Option.defaultValue "")
+          "fuDisputed",
+          flag (detail |> Option.exists (fun (b, i) -> match (Lifecycle.followUp b i.InvoiceId).Dispute with Disputed _ -> true | _ -> false))
+          "fuNotDisputed",
+          flag (detail |> Option.exists (fun (b, i) -> match (Lifecycle.followUp b i.InvoiceId).Dispute with Disputed _ -> false | _ -> true))
+          "fuNote", text model.FollowUpNote
           "detailEntryId", text (detail |> Option.map (fun (_, i) -> i.JournalEntryId) |> Option.defaultValue "")
           "detailEntryHref", text (detail |> Option.map (fun (_, i) -> Routes.href (Routes.JournalEntry i.JournalEntryId)) |> Option.defaultValue "")
           "detailCustomer", text (detail |> Option.map (fun (_, i) -> i.Customer.Name) |> Option.defaultValue "")
@@ -2289,6 +2674,7 @@ let view (model: Model) : View =
       "navigation",
       Items(
           [ "home", "Home", Routes.Home
+            "work", "Work", Routes.Work
             "invoices", "Invoices", Routes.Invoices Routes.allInvoices
             "customers", "Customers", Routes.Customers Routes.allCustomers
             "engagements", "Engagements", Routes.Engagements None
@@ -2303,6 +2689,10 @@ let view (model: Model) : View =
               let section =
                   match model.Place with
                   | Routes.Home -> "home"
+                  | Routes.Work -> "work"
+                  | Routes.FollowUp _ -> "receivables"
+                  | Routes.Inbox _ -> "payments"
+                  | Routes.Cpa _ -> "reports"
                   | Routes.Invoices _
                   | Routes.Invoice _
                   | Routes.NewInvoice _
@@ -2501,3 +2891,4 @@ let view (model: Model) : View =
     @ detailValues
     @ placeValues model shown
     @ bookValues model shown
+    @ attentionValues model shown

@@ -12,7 +12,7 @@ open Summa.Web.Engine.Routes
 open Summa.Web.Tests.Support
 
 let private everyone =
-    Member(set [ "ViewFinancials"; "CreateDraftInvoice"; "ManageSettings" ])
+    Member(set [ "ViewFinancials"; "CreateDraftInvoice"; "ManageSettings"; "AllocatePayment"; "ExportData" ])
 
 let private parsed location = parse everyone location
 
@@ -82,7 +82,14 @@ let private samples =
       IncomeStatement(None, None, Accrual)
       IncomeStatement(Some(DateOnly(2026, 1, 1)), Some(DateOnly(2026, 9, 30)), Cash)
       BalanceSheet(Some(DateOnly(2026, 9, 30)))
-      Settings ]
+      Settings
+      Work
+      FollowUp OverdueInvoices
+      FollowUp DisputedInvoices
+      Inbox None
+      Inbox(Some "CUST-0001")
+      Cpa None
+      Cpa(Some 2026) ]
 
 [<Fact>]
 let ``every place has a route`` () =

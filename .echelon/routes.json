@@ -676,6 +676,87 @@
         "ManageSettings"
       ],
       "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "work",
+      "params": [],
+      "pattern": "/work",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "follow-up",
+      "params": [
+        {
+          "default": "overdue",
+          "in": "query",
+          "name": "show",
+          "required": false,
+          "type": "enum",
+          "values": [
+            "overdue",
+            "disputed",
+            "all"
+          ]
+        }
+      ],
+      "pattern": "/follow-up",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "inbox",
+      "params": [
+        {
+          "default": null,
+          "in": "query",
+          "name": "customer",
+          "required": false,
+          "type": "string",
+          "values": null
+        }
+      ],
+      "pattern": "/inbox",
+      "requires": [
+        "ViewFinancials",
+        "AllocatePayment"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "cpa",
+      "params": [
+        {
+          "default": null,
+          "in": "query",
+          "name": "year",
+          "required": false,
+          "type": "int",
+          "values": null
+        }
+      ],
+      "pattern": "/cpa",
+      "requires": [
+        "ViewFinancials",
+        "ExportData"
+      ],
+      "returnTarget": true
     }
   ],
   "schema": "echelon.routes/v1",
