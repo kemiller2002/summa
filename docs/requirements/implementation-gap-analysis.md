@@ -16,6 +16,7 @@ invoice-generation requirements by family:
 | `SUM0-NNN` | `summa-requirement-set-0.txt` §0.NNN |
 | `SUM1-NNN` to `SUM4-NNN` | `summa-v0.1` to `summa-v0.4-requirements.txt` §NNN (subsections included) |
 | `INV-<FAMILY>` | every `INV-<FAMILY>-NNN` in `summa-invoice-generation-requirements.txt` |
+| `SUM-LINK-NNN` | `docs/requirements/SUMMA-DEEP-LINKING.md` (the user's deep-linking requirement of 2026-10-08, added with baseline `missing`) |
 
 Each row is `tested` (every normative statement implemented and tested),
 `partial` (some, with a note saying which), or `missing`. Domain rules that
@@ -53,7 +54,7 @@ UI and the invoice document requirements remain open (`later`).
 
 | Corpus | Rows | Baseline tested | Baseline partial | Baseline missing |
 |---|---:|---:|---:|---:|
-| Summa requirements | 223 | 0 | 1 | 222 |
+| Summa requirements | 235 | 0 | 1 | 234 |
 
 ## Rows
 
@@ -282,9 +283,21 @@ UI and the invoice document requirements remain open (`later`).
 | INV-STATE | missing | tested | **Invoice generation INV-STATE-001 to INV-STATE-008 (8 requirements).** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. **WI-0027:** `Lifecycle.view` keeps these dimensions separate: preparation, settlement, timing, delivery, dispute and collection (001). Preparation runs proposal, draft, review, issued, voided (002). Settlement and timing are derived (003, 004). Delivery comes from attempts, and a failure never touches the issue (005). Dispute and collection are follow-up state that leaves the invoice and ledger alone (006, 007). `actions` and `draftActions` are derived, and a test checks them against what the commands allow in every state (008) (`LifecycleTests`). | WI-0027 |
 | INV-TERM | missing | tested | **Invoice generation INV-TERM-001 to INV-TERM-005 (5 requirements).** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. **WI-0025:** due on receipt, Net n and a custom date are supported (001). Precedence is invoice, then engagement, then customer, then organization (002). The terms used and their source are kept on the invoice (003). Due dates are `DateOnly` arithmetic, independent of locale and time zone (004). No business-day rules exist, so none are inferred (005) (`CorrectionsTests`, `BillingTests`). | WI-0025 |
 | INV-UI | missing | partial | **Invoice generation INV-UI-001 to INV-UI-012 (12 requirements).** Not implemented: the existing code is the project-administration hub and backlog pages, with no financial domain. **WI-0030:** slice 1: a fast primary flow (001), inline totals (004), line editing (005) and keyboard operation (009) (`app.spec.js`). Still to do: smart defaults, source-linked lines, a preview toggle, mobile review, unsaved and conflicting changes, and domain-driven actions throughout. | WI-0030 |
+| SUM-LINK-001 | missing | partial | **Every view has a location.** **WI-0041:** `Routes.Place` names every listed place and the table gives each a route (`every place has a route`, `every sample place survives format then parse`). Still to do: the application opens, links and refines its screens through the codec (WI-0030). | WI-0041 |
+| SUM-LINK-002 | missing | partial | **A copied link opens the same view.** **WI-0041:** list filters, sort, search, date ranges, tabs and report basis are typed parameters; 1,000 generated places, unicode and reserved characters included, survive format then parse. Still to do: the application opens, links and refines its screens through the codec (WI-0030). | WI-0041 |
+| SUM-LINK-003 | missing | partial | **One canonical location per view.** **WI-0041:** declared parameters in order, defaults omitted, sets sorted and unique, `%20` with uppercase hex; adopting a non-canonical location answers a replace with its canonical form. Still to do: the application opens, links and refines its screens through the codec (WI-0030). | WI-0041 |
+| SUM-LINK-004 | missing | tested | **Nothing sensitive in a location.** **WI-0041:** the table refuses credential names when defined (Limen LCP-109), and `RoutesTests` fails if any parameter could carry an amount, a balance, a rate, a credential or an account number: free text is only a search or an opaque id. | WI-0041 |
+| SUM-LINK-005 | missing | partial | **Static hosting.** **WI-0041:** hash mode, relative `#/...` links and `Link.share` keeping the page's own path (no base href). Still to do: the Pages deployment opened at a deep link in the browser suite (WI-0030). | WI-0041 |
+| SUM-LINK-006 | missing | partial | **History follows places.** **WI-0041:** `navigate` pushes, `refine` replaces, and the current place does nothing (`RoutesTests`). Still to do: the application opens, links and refines its screens through the codec (WI-0030). | WI-0041 |
+| SUM-LINK-007 | missing | partial | **Bad locations say so.** **WI-0041:** unknown places are NotFound, wrong types Invalid with the parameter named, malformed or oversized locations Malformed, missing capabilities NotPermitted. Still to do: the pages for each outcome, and a record id the books do not hold (WI-0030). | WI-0041 |
+| SUM-LINK-008 | missing | partial | **Deep links survive sign-in.** **WI-0041:** signed out, a deep link resolves to `/sign-in?returnTo=<canonical>`; `resume` returns there after re-checking capabilities and sends anything else home. Still to do: sign-in in the application (WI-0035). | WI-0041 |
+| SUM-LINK-009 | missing | partial | **Copy link.** **WI-0041:** `Routes.share` gives the absolute URL of a place's canonical location. Still to do: the control and the Clipboard effect (WI-0030). | WI-0041 |
+| SUM-LINK-010 | missing | tested | **One shared router.** **WI-0041:** Summa routes through `Limen.Routing` itself, vendored byte-for-byte from limen#101 (`vendor/Limen.Routing/UPSTREAM.json`, a SHA-256 test), so moving to the 0.9.0 package is a reference change (DF-SUMMA-2026-0010). | WI-0041 |
+| SUM-LINK-011 | missing | tested | **Route inventory.** **WI-0041:** `.echelon/routes.json` is `Inventory.render` of the table (`echelon.routes/v1`); `RoutesTests` fails when the committed file differs. | WI-0041 |
+| SUM-LINK-012 | missing | partial | **The engine decides.** **WI-0041:** routing is pure engine code (`Summa.Web.Engine.Routes`). Still to do: the engine adopting `Initialize` and `LocationChanged` locations and asking for Navigation and Clipboard effects (WI-0030). | WI-0041 |
 
 ## Coverage after this programme
 
 | Corpus | Rows | Current tested | Current partial | Current missing |
 |---|---:|---:|---:|---:|
-| Summa requirements | 223 | 107 | 40 | 76 |
+| Summa requirements | 235 | 110 | 49 | 76 |

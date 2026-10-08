@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Limen.Routing, vendored byte-for-byte from kemiller2002/limen#101 until
+       Limen 0.9.0 publishes it (DF-SUMMA-2026-0010, UPSTREAM.json). Do not
+       edit Routing.fs: VendoredRoutingTests holds it to the pinned upstream
+       blob. When 0.9.0 ships, delete this folder and reference the package;
+       the namespace and every function Summa calls are the package's own. -->
+  <PropertyGroup>
+    <!-- Upstream's own settings (warning level 5, warnings as errors). The
+         repository adds nullable checking and XML documentation, which the
+         upstream file was not written against. -->
+    <Nullable>disable</Nullable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <OtherFlags>$(OtherFlags) --warnon:1182 --warnaserror:25</OtherFlags>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Routing.fs" />
+  </ItemGroup>
+</Project>

@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 41,
+  "nextSeq": 43,
   "items": [
     {
       "id": "WI-0001",
@@ -981,6 +981,48 @@
       "attachments": [],
       "createdAt": "2026-10-08T18:08:35.000Z",
       "updatedAt": "2026-10-08T18:08:35.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0041",
+      "title": "Summa 14c: deep links - every navigable view, list filter, sort, search and date range in the URL (hash routes on static Pages, opaque ids only, not-found and not-permitted views, return after sign-in, Copy link), with the route model and codec matching Limen 0.9.0's Limen.Routing (SUM-LINK-001..012)",
+      "description": null,
+      "tags": [],
+      "priority": "high",
+      "status": "ready",
+      "attachments": [],
+      "createdAt": "2026-10-08T19:42:22.824Z",
+      "updatedAt": "2026-10-08T19:42:34.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0042",
+      "title": "Summa 14d: replace the vendored Limen.Routing (vendor/Limen.Routing, DF-SUMMA-2026-0010) with the Limen 0.9.0 package once it is released",
+      "description": null,
+      "tags": [],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T19:49:23.119Z",
+      "updatedAt": "2026-10-08T19:49:23.119Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

@@ -18,6 +18,7 @@
     <Compile Include="FoundationsConformanceTests.fs" />
     <Compile Include="AccountingTests.fs" />
     <Compile Include="BindingAgreementTests.fs" />
+    <Compile Include="RoutesTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

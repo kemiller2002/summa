@@ -1,0 +1,683 @@
+{
+  "home": "home",
+  "legacy": [],
+  "mode": "hash",
+  "notFound": "not-found",
+  "routes": [
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "home",
+      "params": [],
+      "pattern": "/",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [],
+      "name": "sign-in",
+      "params": [
+        {
+          "default": null,
+          "in": "query",
+          "name": "returnTo",
+          "required": false,
+          "type": "string",
+          "values": null
+        }
+      ],
+      "pattern": "/sign-in",
+      "requires": [],
+      "returnTarget": false
+    },
+    {
+      "guards": [],
+      "name": "not-found",
+      "params": [],
+      "pattern": "/not-found",
+      "requires": [],
+      "returnTarget": false
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "customers",
+      "params": [
+        {
+          "default": null,
+          "in": "query",
+          "name": "q",
+          "required": false,
+          "type": "string",
+          "values": null
+        },
+        {
+          "default": false,
+          "in": "query",
+          "name": "inactive",
+          "required": false,
+          "type": "bool",
+          "values": null
+        },
+        {
+          "default": "name",
+          "in": "query",
+          "name": "sort",
+          "required": false,
+          "type": "enum",
+          "values": [
+            "name",
+            "balance"
+          ]
+        }
+      ],
+      "pattern": "/customers",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "customer",
+      "params": [
+        {
+          "default": null,
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string",
+          "values": null
+        },
+        {
+          "default": "invoices",
+          "in": "query",
+          "name": "tab",
+          "required": false,
+          "type": "enum",
+          "values": [
+            "invoices",
+            "payments",
+            "credits"
+          ]
+        }
+      ],
+      "pattern": "/customers/{id:string}",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "invoices",
+      "params": [
+        {
+          "default": null,
+          "in": "query",
+          "name": "q",
+          "required": false,
+          "type": "string",
+          "values": null
+        },
+        {
+          "default": null,
+          "in": "query",
+          "name": "status",
+          "required": false,
+          "type": "set",
+          "values": [
+            "unpaid",
+            "partly-paid",
+            "paid",
+            "written-off",
+            "voided"
+          ]
+        },
+        {
+          "default": null,
+          "in": "query",
+          "name": "customer",
+          "required": false,
+          "type": "string",
+          "values": null
+        },
+        {
+          "default": null,
+          "in": "query",
+          "name": "from",
+          "required": false,
+          "type": "date",
+          "values": null
+        },
+        {
+          "default": null,
+          "in": "query",
+          "name": "to",
+          "required": false,
+          "type": "date",
+          "values": null
+        },
+        {
+          "default": false,
+          "in": "query",
+          "name": "overdue",
+          "required": false,
+          "type": "bool",
+          "values": null
+        },
+        {
+          "default": "newest",
+          "in": "query",
+          "name": "sort",
+          "required": false,
+          "type": "enum",
+          "values": [
+            "newest",
+            "oldest",
+            "due",
+            "number",
+            "customer"
+          ]
+        }
+      ],
+      "pattern": "/invoices",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "invoice-new",
+      "params": [
+        {
+          "default": null,
+          "in": "query",
+          "name": "customer",
+          "required": false,
+          "type": "string",
+          "values": null
+        }
+      ],
+      "pattern": "/invoices/new",
+      "requires": [
+        "ViewFinancials",
+        "CreateDraftInvoice"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "invoice",
+      "params": [
+        {
+          "default": null,
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string",
+          "values": null
+        },
+        {
+          "default": "document",
+          "in": "query",
+          "name": "tab",
+          "required": false,
+          "type": "enum",
+          "values": [
+            "document",
+            "payments",
+            "history"
+          ]
+        }
+      ],
+      "pattern": "/invoices/{id:string}",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "draft",
+      "params": [
+        {
+          "default": null,
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string",
+          "values": null
+        }
+      ],
+      "pattern": "/drafts/{id:string}",
+      "requires": [
+        "ViewFinancials",
+        "CreateDraftInvoice"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "payments",
+      "params": [
+        {
+          "default": null,
+          "in": "query",
+          "name": "q",
+          "required": false,
+          "type": "string",
+          "values": null
+        },
+        {
+          "default": null,
+          "in": "query",
+          "name": "customer",
+          "required": false,
+          "type": "string",
+          "values": null
+        },
+        {
+          "default": null,
+          "in": "query",
+          "name": "from",
+          "required": false,
+          "type": "date",
+          "values": null
+        },
+        {
+          "default": null,
+          "in": "query",
+          "name": "to",
+          "required": false,
+          "type": "date",
+          "values": null
+        },
+        {
+          "default": false,
+          "in": "query",
+          "name": "unapplied",
+          "required": false,
+          "type": "bool",
+          "values": null
+        },
+        {
+          "default": "newest",
+          "in": "query",
+          "name": "sort",
+          "required": false,
+          "type": "enum",
+          "values": [
+            "newest",
+            "oldest"
+          ]
+        }
+      ],
+      "pattern": "/payments",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "payment",
+      "params": [
+        {
+          "default": null,
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string",
+          "values": null
+        }
+      ],
+      "pattern": "/payments/{id:string}",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "credit-memos",
+      "params": [
+        {
+          "default": null,
+          "in": "query",
+          "name": "customer",
+          "required": false,
+          "type": "string",
+          "values": null
+        }
+      ],
+      "pattern": "/credit-memos",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "credit-memo",
+      "params": [
+        {
+          "default": null,
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string",
+          "values": null
+        }
+      ],
+      "pattern": "/credit-memos/{id:string}",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "engagements",
+      "params": [
+        {
+          "default": null,
+          "in": "query",
+          "name": "customer",
+          "required": false,
+          "type": "string",
+          "values": null
+        }
+      ],
+      "pattern": "/engagements",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "engagement",
+      "params": [
+        {
+          "default": null,
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string",
+          "values": null
+        }
+      ],
+      "pattern": "/engagements/{id:string}",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "receivables",
+      "params": [
+        {
+          "default": null,
+          "in": "query",
+          "name": "asOf",
+          "required": false,
+          "type": "date",
+          "values": null
+        },
+        {
+          "default": null,
+          "in": "query",
+          "name": "customer",
+          "required": false,
+          "type": "string",
+          "values": null
+        }
+      ],
+      "pattern": "/receivables",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "periods",
+      "params": [
+        {
+          "default": null,
+          "in": "query",
+          "name": "year",
+          "required": false,
+          "type": "int",
+          "values": null
+        }
+      ],
+      "pattern": "/periods",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "period",
+      "params": [
+        {
+          "default": null,
+          "in": "path",
+          "name": "period",
+          "required": true,
+          "type": "month",
+          "values": null
+        }
+      ],
+      "pattern": "/periods/{period:month}",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "ledger",
+      "params": [
+        {
+          "default": null,
+          "in": "query",
+          "name": "account",
+          "required": false,
+          "type": "string",
+          "values": null
+        },
+        {
+          "default": null,
+          "in": "query",
+          "name": "from",
+          "required": false,
+          "type": "date",
+          "values": null
+        },
+        {
+          "default": null,
+          "in": "query",
+          "name": "to",
+          "required": false,
+          "type": "date",
+          "values": null
+        }
+      ],
+      "pattern": "/ledger",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "journal-entry",
+      "params": [
+        {
+          "default": null,
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string",
+          "values": null
+        }
+      ],
+      "pattern": "/ledger/entries/{id:string}",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "reports",
+      "params": [],
+      "pattern": "/reports",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "trial-balance",
+      "params": [
+        {
+          "default": null,
+          "in": "query",
+          "name": "asOf",
+          "required": false,
+          "type": "date",
+          "values": null
+        }
+      ],
+      "pattern": "/reports/trial-balance",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "income-statement",
+      "params": [
+        {
+          "default": null,
+          "in": "query",
+          "name": "from",
+          "required": false,
+          "type": "date",
+          "values": null
+        },
+        {
+          "default": null,
+          "in": "query",
+          "name": "to",
+          "required": false,
+          "type": "date",
+          "values": null
+        },
+        {
+          "default": "accrual",
+          "in": "query",
+          "name": "basis",
+          "required": false,
+          "type": "enum",
+          "values": [
+            "accrual",
+            "cash"
+          ]
+        }
+      ],
+      "pattern": "/reports/income-statement",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "balance-sheet",
+      "params": [
+        {
+          "default": null,
+          "in": "query",
+          "name": "asOf",
+          "required": false,
+          "type": "date",
+          "values": null
+        }
+      ],
+      "pattern": "/reports/balance-sheet",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "settings",
+      "params": [],
+      "pattern": "/settings",
+      "requires": [
+        "ViewFinancials",
+        "ManageSettings"
+      ],
+      "returnTarget": true
+    }
+  ],
+  "schema": "echelon.routes/v1",
+  "signIn": "sign-in"
+}

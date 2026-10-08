@@ -1,0 +1,12 @@
+{
+  "decision": "DF-SUMMA-2026-0010",
+  "file": "Routing.fs",
+  "gitBlob": "79417fdf157386f17634c3ca399b4506989cde3c",
+  "license": "MIT",
+  "path": "libraries/fsharp/Limen.Routing/Routing.fs",
+  "pullRequest": "https://github.com/kemiller2002/limen/pull/101",
+  "replaceWith": "the Limen.Routing package of Limen 0.9.0",
+  "repository": "kemiller2002/limen",
+  "revision": "e935da7d3160bc0c5f402b6c0e034771159aa363",
+  "sha256": "c7fc955063b2b4490d1fbcc29aa7302e2f16f0310609d45dd0679c32ba664338"
+}
