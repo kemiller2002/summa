@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 37,
+  "nextSeq": 38,
   "items": [
     {
       "id": "WI-0001",
@@ -467,10 +467,10 @@
         "depends:arca"
       ],
       "priority": "high",
-      "status": "captured",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:03.619Z",
-      "updatedAt": "2026-10-08T15:39:26.000Z",
+      "updatedAt": "2026-10-08T15:53:27.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -511,7 +511,7 @@
     {
       "id": "WI-0022",
       "title": "Summa 06: rebuildable runtime index, reconciliation jobs, failure recovery, backup and restore drills (SUM0-014, SUM0-015, SUM3-002, SUM3-006..008, SUM3-020, SUM3-044)",
-      "description": "Depends on WI-0020 and arca slice 10 (derived indexes and migration, ARCA-MIG). Projections (trial balance, AR aging, dashboards, search) are rebuildable and never authoritative. Stale projections are detected. Reconciliation jobs, encrypted backups (SUM3-024: transport and backups encrypted; application-level at-rest encryption is deferred by user decision 2026-10-08, and the repository is protected by repository permissions), restore testing, recovery objectives and drills.",
+      "description": "Depends on WI-0020 and arca slice 10 (derived indexes and migration, ARCA-MIG). Projections (trial balance, AR aging, dashboards, search) are rebuildable and never authoritative. Stale projections are detected. Reconciliation jobs, encrypted backups (SUM3-024: transport and backups encrypted; application-level at-rest encryption is deferred by user decision 2026-10-08, and the repository is protected by repository permissions), restore testing, recovery objectives and drills. Also SUM0-034 remainder: a command reads the whole organization folder today; the rebuildable index removes that scale trap.",
       "tags": [
         "summa",
         "order:06",
@@ -522,7 +522,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:04.225Z",
-      "updatedAt": "2026-10-08T07:46:04.225Z",
+      "updatedAt": "2026-10-08T15:51:52.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -640,7 +640,7 @@
     {
       "id": "WI-0027",
       "title": "Summa 11: invoice generation - document model, numbering, draft/issue/revise/correct/adjust/deliver lifecycle, rendered with Folio (SUM1-007, SUM0-037, SUM3-030, INV-DOC, INV-NUM, INV-ISS, INV-STATE, INV-DRAFT, INV-REV, INV-COR, INV-ADJ, INV-DEL, INV-PAYINST)",
-      "description": "Depends on WI-0024 and WI-0025. Invoice documents and PDFs through Folio (every app except Helix uses Folio). Issued content stays reproducible. Large binaries stay outside the repository (artifact references, SUM0-035, SUM0-036). Also INV-PROV-004 (docs/requirements/SUMMA-PROVENANCE.md): grouped lines keep each source origin as lineage.",
+      "description": "Depends on WI-0024 and WI-0025. Invoice documents and PDFs through Folio (every app except Helix uses Folio). Issued content stays reproducible. Large binaries stay outside the repository (artifact references, SUM0-035, SUM0-036). Also INV-PROV-004 (docs/requirements/SUMMA-PROVENANCE.md): grouped lines keep each source origin as lineage. Also SUM0-011 remainder: invoicing and posting read their defaults (number prefix, terms, default accounts) from the organization manifest.",
       "tags": [
         "summa",
         "order:11",
@@ -651,7 +651,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:05.811Z",
-      "updatedAt": "2026-10-08T14:56:43.000Z",
+      "updatedAt": "2026-10-08T15:51:53.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -666,7 +666,7 @@
     {
       "id": "WI-0028",
       "title": "Summa 12: audit provenance, audit immutability and agent execution safety (SUM1-018, SUM2-028, SUM2-030, SUM3-021, INV-AUD, INV-AGENT, SUM4-042..045, SUM0-048, SUM0-049)",
-      "description": "Depends on WI-0019 and WI-0020. Audit events are immutable records with actor kind, execution id and correlation id. Agents use domain commands only, with explanation, human override and no autonomous financial surprises. Agents never edit authoritative files directly (SUM0-048) and read only the context they need (SUM0-049). Also INV-PROV-001, INV-PROV-002, INV-PROV-006, INV-PROV-007 and INV-PROV-008 (docs/requirements/SUMMA-PROVENANCE.md): Praxis-compatible actors, opaque execution ids, both contributions kept when a human changes an agent proposal.",
+      "description": "Depends on WI-0019 and WI-0020. Audit events are immutable records with actor kind, execution id and correlation id. Agents use domain commands only, with explanation, human override and no autonomous financial surprises. Agents never edit authoritative files directly (SUM0-048) and read only the context they need (SUM0-049). Also INV-PROV-001, INV-PROV-002, INV-PROV-006, INV-PROV-007 and INV-PROV-008 (docs/requirements/SUMMA-PROVENANCE.md): Praxis-compatible actors, opaque execution ids, both contributions kept when a human changes an agent proposal. Also SUM0-023 and SUM3-014 remainders: audit events carry the full Summa.Access Actor (kind, agent identity, execution and correlation), not only the actor id the ledger records today.",
       "tags": [
         "summa",
         "order:12",
@@ -677,7 +677,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:06.134Z",
-      "updatedAt": "2026-10-08T14:56:44.000Z",
+      "updatedAt": "2026-10-08T15:51:53.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -881,6 +881,33 @@
       "attachments": [],
       "createdAt": "2026-10-08T15:39:11.000Z",
       "updatedAt": "2026-10-08T15:39:11.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0037",
+      "title": "Summa 04b: the application's store on GitHub - Arca's GitHub provider with the Fides token provider, start-up from the manifests, the offline queue on localStorage and conflict resolution in the interface (SUM0-002, SUM0-007, SUM0-018, SUM0-019)",
+      "description": "Follows WI-0020 (provider-neutral command-to-commit in Summa.Storage.Commands) and WI-0035 (sign-in). Copy Chrona WI-0032/WI-0033/WI-0035: the application's store port runs Summa.Storage.Commands.execute over GitHubStorage.provider (Limen Http effects, Fides.Arca token provider, never a token), opens Summa's and the organization's namespaces through their manifests on start-up (SUM0-007, SUM0-033) and refuses a public production repository; financial commands commit directly to the configured data branch (SUM0-018) while schema and storage-format changes stay in reviewed code (SUM0-019, Arca migrations); offline writes queue on localStorage through Arca's OfflineQueue (OfflinePolicy.QueueWrites) and are sent in order on reconnect, a blocked entry reloaded, revalidated and revised or abandoned; conflicts and outside edits are shown, never resolved silently. Proven against Arca's fake GitHub and in a browser suite.",
+      "tags": [
+        "summa",
+        "order:04",
+        "storage",
+        "depends:arca",
+        "depends:fides"
+      ],
+      "priority": "high",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T15:51:52.000Z",
+      "updatedAt": "2026-10-08T15:51:52.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

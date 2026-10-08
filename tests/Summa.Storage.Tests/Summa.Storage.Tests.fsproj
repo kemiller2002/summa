@@ -13,6 +13,9 @@
     <Compile Include="StorageTests.fs" />
     <Compile Include="AccessTests.fs" />
     <Compile Include="GovernanceTests.fs" />
+    <Compile Include="Books.fs" />
+    <Compile Include="FinancialRecordsTests.fs" />
+    <Compile Include="CommandTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
