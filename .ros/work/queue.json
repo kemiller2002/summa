@@ -544,10 +544,10 @@
         "environments"
       ],
       "priority": "medium",
-      "status": "captured",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:04.574Z",
-      "updatedAt": "2026-10-08T07:46:04.574Z",
+      "updatedAt": "2026-10-08T16:17:48.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -640,7 +640,7 @@
     {
       "id": "WI-0027",
       "title": "Summa 11: invoice generation - document model, numbering, draft/issue/revise/correct/adjust/deliver lifecycle, rendered with Folio (SUM1-007, SUM0-037, SUM3-030, INV-DOC, INV-NUM, INV-ISS, INV-STATE, INV-DRAFT, INV-REV, INV-COR, INV-ADJ, INV-DEL, INV-PAYINST)",
-      "description": "Depends on WI-0024 and WI-0025. Invoice documents and PDFs through Folio (every app except Helix uses Folio). Issued content stays reproducible. Large binaries stay outside the repository (artifact references, SUM0-035, SUM0-036). Also INV-PROV-004 (docs/requirements/SUMMA-PROVENANCE.md): grouped lines keep each source origin as lineage. Also SUM0-011 remainder: invoicing and posting read their defaults (number prefix, terms, default accounts) from the organization manifest.",
+      "description": "Depends on WI-0024 and WI-0025. Invoice documents and PDFs through Folio (every app except Helix uses Folio). Issued content stays reproducible. Large binaries stay outside the repository (artifact references, SUM0-035, SUM0-036). Also INV-PROV-004 (docs/requirements/SUMMA-PROVENANCE.md): grouped lines keep each source origin as lineage. Also SUM0-011 remainder: invoicing and posting read their defaults (number prefix, terms, default accounts) from the organization manifest. Also SUM0-038 remainder: artifact storage is configured per environment.",
       "tags": [
         "summa",
         "order:11",
@@ -651,7 +651,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:05.811Z",
-      "updatedAt": "2026-10-08T15:51:53.000Z",
+      "updatedAt": "2026-10-08T16:16:53.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -717,7 +717,7 @@
     {
       "id": "WI-0030",
       "title": "Summa 14: v0.4 product UI on Limen/Forma - dashboard, invoices, receivables, payments, follow-up, ledger, reports, period close, CPA workspace, work queue (SUM4-001..041, INV-UI, INV-A11Y)",
-      "description": "Depends on WI-0027 and WI-0028. Domain-state-driven UI, keyboard, responsive and accessible.",
+      "description": "Depends on WI-0027 and WI-0028. Domain-state-driven UI, keyboard, responsive and accessible. Also SUM0-040 remainder: every page shows Environments.banner for non-production environments.",
       "tags": [
         "summa",
         "order:14",
@@ -729,7 +729,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:06.816Z",
-      "updatedAt": "2026-10-08T07:46:06.816Z",
+      "updatedAt": "2026-10-08T16:16:54.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -870,7 +870,7 @@
     {
       "id": "WI-0036",
       "title": "Real end-to-end sign-in and storage check against the user's Fides deployment and a Summa data repository",
-      "description": "Blocked on the user's deployment: no AWS account, domain or GitHub App exists yet, so Fides is deployed nowhere. When it exists: put the exchange origin, application id, GitHub App client id and redirect URI in summa.deployment.json (docs/deployment-configuration.md), point location at a private Summa data repository, list a bootstrap administrator's GitHub numeric id, then sign in, found the organization, issue an invoice, record a payment, sign out, and confirm every commit landed in <basePath>/summa with no token anywhere in the repository. Until then all tests use Arca's in-memory provider and fake Fides exchanges. Also SUM3-044: run the recovery drill (docs/operations/recovery.md) once against the production-like deployment before real books are trusted to Summa.",
+      "description": "Blocked on the user's deployment: no AWS account, domain or GitHub App exists yet, so Fides is deployed nowhere. When it exists: put the exchange origin, application id, GitHub App client id and redirect URI in summa.deployment.json (docs/deployment-configuration.md), point location at a private Summa data repository, list a bootstrap administrator's GitHub numeric id, then sign in, found the organization, issue an invoice, record a payment, sign out, and confirm every commit landed in <basePath>/summa with no token anywhere in the repository. Until then all tests use Arca's in-memory provider and fake Fides exchanges. Also SUM3-044: run the recovery drill (docs/operations/recovery.md) once against the production-like deployment before real books are trusted to Summa. Also SUM0-039: stand up a synthetic staging environment that exercises storage, sign-in, commands, concurrency, migrations, invoices, payments, reports and backup.",
       "tags": [
         "summa",
         "e2e",
@@ -880,7 +880,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T15:39:11.000Z",
-      "updatedAt": "2026-10-08T16:07:55.000Z",
+      "updatedAt": "2026-10-08T16:16:54.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -895,7 +895,7 @@
     {
       "id": "WI-0037",
       "title": "Summa 04b: the application's store on GitHub - Arca's GitHub provider with the Fides token provider, start-up from the manifests, the offline queue on localStorage and conflict resolution in the interface (SUM0-002, SUM0-007, SUM0-018, SUM0-019)",
-      "description": "Follows WI-0020 (provider-neutral command-to-commit in Summa.Storage.Commands) and WI-0035 (sign-in). Copy Chrona WI-0032/WI-0033/WI-0035: the application's store port runs Summa.Storage.Commands.execute over GitHubStorage.provider (Limen Http effects, Fides.Arca token provider, never a token), opens Summa's and the organization's namespaces through their manifests on start-up (SUM0-007, SUM0-033) and refuses a public production repository; financial commands commit directly to the configured data branch (SUM0-018) while schema and storage-format changes stay in reviewed code (SUM0-019, Arca migrations); offline writes queue on localStorage through Arca's OfflineQueue (OfflinePolicy.QueueWrites) and are sent in order on reconnect, a blocked entry reloaded, revalidated and revised or abandoned; conflicts and outside edits are shown, never resolved silently. Proven against Arca's fake GitHub and in a browser suite. Also SUM3-009 remainder: start-up checks Compatibility.access and fails safely when the data is incompatible.",
+      "description": "Follows WI-0020 (provider-neutral command-to-commit in Summa.Storage.Commands) and WI-0035 (sign-in). Copy Chrona WI-0032/WI-0033/WI-0035: the application's store port runs Summa.Storage.Commands.execute over GitHubStorage.provider (Limen Http effects, Fides.Arca token provider, never a token), opens Summa's and the organization's namespaces through their manifests on start-up (SUM0-007, SUM0-033) and refuses a public production repository; financial commands commit directly to the configured data branch (SUM0-018) while schema and storage-format changes stay in reviewed code (SUM0-019, Arca migrations); offline writes queue on localStorage through Arca's OfflineQueue (OfflinePolicy.QueueWrites) and are sent in order on reconnect, a blocked entry reloaded, revalidated and revised or abandoned; conflicts and outside edits are shown, never resolved silently. Proven against Arca's fake GitHub and in a browser suite. Also SUM3-009 remainder: start-up checks Compatibility.access and fails safely when the data is incompatible. Also SUM3-038 remainder: drain or persist the offline queue before shutdown so no operation is left halfway.",
       "tags": [
         "summa",
         "order:04",
@@ -907,7 +907,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T15:51:52.000Z",
-      "updatedAt": "2026-10-08T15:58:51.000Z",
+      "updatedAt": "2026-10-08T16:16:54.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -922,7 +922,7 @@
     {
       "id": "WI-0038",
       "title": "Summa 06b: financial schema migrations - run a record-schema change as an explicit, versioned migration through Arca, checked by Verification.checkMigration before it is activated (SUM0-032, SUM3-010)",
-      "description": "WI-0021 built the safety checks (identity or lineage, trial balance unless a declared correction, invariants after) and WI-0022 the backup and restore. This item runs a migration end to end: open the folder read-only, transform the books, check, write the new schema versions and the manifest's recordSchemas through Arca's Migration (validate, copy, verify, activate, retire), with a backup taken first and the reconciliation run before and after.",
+      "description": "WI-0021 built the safety checks (identity or lineage, trial balance unless a declared correction, invariants after) and WI-0022 the backup and restore. This item runs a migration end to end: open the folder read-only, transform the books, check, write the new schema versions and the manifest's recordSchemas through Arca's Migration (validate, copy, verify, activate, retire), with a backup taken first and the reconciliation run before and after. Also SUM3-039: every migration states its rollback before it runs (keep the pre-migration backup and the old schema readable until the new one is verified).",
       "tags": [
         "summa",
         "order:06",
@@ -932,7 +932,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T16:07:53.000Z",
-      "updatedAt": "2026-10-08T16:07:53.000Z",
+      "updatedAt": "2026-10-08T16:16:55.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

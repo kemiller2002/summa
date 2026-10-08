@@ -27,6 +27,9 @@
     <Compile Include="Compatibility.fs" />
     <Compile Include="Commands.fs" />
     <Compile Include="Verification.fs" />
+    <Compile Include="Environments.fs" />
+    <Compile Include="Settings.fs" />
+    <Compile Include="Health.fs" />
   </ItemGroup>
 
   <ItemGroup>

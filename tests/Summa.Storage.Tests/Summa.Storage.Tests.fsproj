@@ -18,6 +18,7 @@
     <Compile Include="CommandTests.fs" />
     <Compile Include="IntegrityTests.fs" />
     <Compile Include="RecoveryTests.fs" />
+    <Compile Include="EnvironmentTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
