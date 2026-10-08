@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T15:01:29.000Z",
+  "updatedAt": "2026-10-08T15:03:39.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -998,6 +998,37 @@
         }
       },
       "completedAt": "2026-10-08T15:01:29.000Z"
+    },
+    {
+      "id": "WI-0017",
+      "type": "task",
+      "state": "active",
+      "semanticState": "active",
+      "evidence": [],
+      "updatedAt": "2026-10-08T15:03:39.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261008T150340202Z-1bdf96a1"
+      ],
+      "latestCheckpoint": {
+        "id": "b9aa80c91a13a5533c3ef800",
+        "recordedAt": "2026-10-08T15:14:04.000Z",
+        "executionId": "EXE-20261008T150340202Z-1bdf96a1",
+        "repository": "summa",
+        "branch": "feat/wi-0017-contracts",
+        "commit": "a2e2be89291383620d3a17f34ee7bde12387a9f1",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa.git"
+        },
+        "remoteBranch": "feat/wi-0017-contracts",
+        "remoteCommit": "a2e2be89291383620d3a17f34ee7bde12387a9f1",
+        "summary": "Contracts package, codec, vectors, tests and release workflow committed",
+        "nextAction": "Merge, let contracts-release publish contracts-v0.1.0, record it in echelon-registry, then complete WI-0017",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      }
     }
   ]
 }

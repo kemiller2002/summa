@@ -388,10 +388,10 @@
         "package"
       ],
       "priority": "high",
-      "status": "captured",
+      "status": "ready",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:02.675Z",
-      "updatedAt": "2026-10-08T14:56:43.000Z",
+      "updatedAt": "2026-10-08T15:03:39.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -588,7 +588,7 @@
     {
       "id": "WI-0025",
       "title": "Summa 09: billing models - hourly from Chrona, fixed-price, milestone and reimbursable expenses (SUM2-014..017, INV-RATE, INV-TERM, INV-CHR)",
-      "description": "Depends on WI-0017 and WI-0024. Hourly billing consumes approved Chrona projections through the WI-0017 contract. Also INV-PROV-003, INV-PROV-004 and INV-PROV-005 (docs/requirements/SUMMA-PROVENANCE.md): imported sources keep their origin, grouping keeps each source origin, and import never needs Praxis or Chrona to be reachable.",
+      "description": "Depends on WI-0017 and WI-0024. Hourly billing consumes approved Chrona projections through the WI-0017 contract. Also INV-PROV-003, INV-PROV-004 and INV-PROV-005 (docs/requirements/SUMMA-PROVENANCE.md): imported sources keep their origin, grouping keeps each source origin, and import never needs Praxis or Chrona to be reachable. Remainders after WI-0017 released the contract: Summa-side cross-application references and ownership (SUM0-024, SUM0-025, SUM0-026), the proposal-and-review flow of v0.1 section 17 (SUM1-017) and source snapshots (INV-SOURCE), consuming EchelonFoundry.Summa.Contracts publications and returning its feedback.",
       "tags": [
         "summa",
         "order:09",
@@ -599,7 +599,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:05.184Z",
-      "updatedAt": "2026-10-08T14:56:43.000Z",
+      "updatedAt": "2026-10-08T15:12:46.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -692,7 +692,7 @@
     {
       "id": "WI-0029",
       "title": "Summa 13: operational safety - API contracts, observability, structured logging, correlation ids, sensitive data and secrets, import/export safety, deterministic calculations, time zones, outages and idempotent integrations, retention (SUM3-011, SUM3-016..018, SUM3-022..029, SUM3-031..035, INV-OPS, INV-FAIL, INV-SEC, INV-PERF, INV-EXP, INV-FX, INV-INTL, INV-ACC, INV-REC, INV-SET, INV-DATA, INV-CON, INV-ARCH)",
-      "description": "Depends on WI-0020.",
+      "description": "Depends on WI-0020. Also the integration-boundary remainders after WI-0017: domain operations over CRUD (SUM2-031) and versioned invoice schema and command contracts (INV-CONTRACT).",
       "tags": [
         "summa",
         "order:13",
@@ -702,7 +702,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:06.438Z",
-      "updatedAt": "2026-10-08T07:46:06.438Z",
+      "updatedAt": "2026-10-08T15:12:46.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
