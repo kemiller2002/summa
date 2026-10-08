@@ -15,7 +15,11 @@ let private ctx = { Now = DateTimeOffset(2026, 10, 7, 9, 0, 0, TimeSpan.Zero); A
 let private run (msgs: Msg list) (model: Model) =
     msgs |> List.fold (fun (m, effects) msg -> let next, more = update ctx msg m in next, effects @ more) (model, [])
 
-let private started () = run [ Started; Loaded None ] initial |> fst
+let private localConfig = """{"environment":"local","environmentName":"local development"}"""
+
+let private configured () = run [ Started; ConfigurationRead(Ok localConfig) ] initial |> fst
+
+let private started () = run [ Started; ConfigurationRead(Ok localConfig); Loaded None ] initial |> fst
 
 let private value (name: string) (model: Model) =
     match view model |> List.tryFind (fun (n, _) -> n = name) with
@@ -46,17 +50,21 @@ let private drafted (model: Model) =
     run [ LineDescriptionChanged(key, "Assessment"); LineHoursChanged(key, "34.5"); LineRateChanged(key, "175.00") ] withDraft |> fst
 
 [<Fact>]
-let ``starting asks the browser for its books, and an empty browser starts new ones and saves them`` () =
-    let loading, effects = update ctx Started initial
+let ``starting reads the deployment, then asks the browser for its books; an empty browser starts new ones`` () =
+    let configuring, first = update ctx Started initial
+    Assert.Equal<AppEffect list>([ LoadConfiguration ], first)
+    Assert.Equal("True", value "isConfiguring" configuring)
+    let loading, effects = update ctx (ConfigurationRead(Ok localConfig)) configuring
     Assert.Equal<AppEffect list>([ LoadBooks ], effects)
     Assert.Equal("True", value "isLoading" loading)
+    Assert.Equal("SUMMA · LOCAL · local development · books are kept only in this browser", value "environmentBanner" loading)
     let fresh, saved = update ctx (Loaded None) loading
     Assert.Equal("True", value "isReady" fresh)
 
     match saved with
     | [ SaveBooks snapshot ] ->
         // What was saved restores to the same books.
-        let restored, _ = update ctx (Loaded(Some snapshot)) initial
+        let restored, _ = update ctx (Loaded(Some snapshot)) loading
         Assert.Equal("True", value "isReady" restored)
         Assert.Equal(fresh.Books.Value.Books.Ledger.Accounts.Count, restored.Books.Value.Books.Ledger.Accounts.Count)
     | other -> failwith $"%A{other}"
@@ -109,14 +117,14 @@ let ``books that fail their checks are refused, and only then can they be replac
 
     let tampered = snapshot.Replace("\\u0022minor\\u0022:603750", "\\u0022minor\\u0022:603751")
     Assert.NotEqual<string>(snapshot, tampered)
-    let refused = update ctx (Loaded(Some tampered)) initial |> fst
+    let refused = update ctx (Loaded(Some tampered)) (configured ()) |> fst
     Assert.Equal("True", value "isUntrustworthy" refused)
     Assert.NotEmpty(items "storageProblems" refused)
     Assert.Equal("False", value "isReady" refused)
     // Resetting is offered only for untrustworthy books.
     Assert.Equal("True", value "isReady" (update ctx ResetConfirmed refused |> fst))
     Assert.Equal(model.Books.Value.Books.Invoices.Count, (update ctx ResetConfirmed model |> fst).Books.Value.Books.Invoices.Count)
-    Assert.Equal("True", value "isUntrustworthy" (update ctx (Loaded(Some "not json")) initial |> fst))
+    Assert.Equal("True", value "isUntrustworthy" (update ctx (Loaded(Some "not json")) (configured ()) |> fst))
 
 // ---- The wire ---------------------------------------------------------------------------
 
@@ -155,6 +163,14 @@ let ``the wire accepts Limen Core, selects the print pack when offered, and asks
     let session, reply = send Wire.initial (handshake true)
     Assert.Equal("Accepted", str [ "handshake"; "kind" ] reply)
     Assert.Equal("summa.print", str [ "handshake"; "capabilities"; 0; "id" ] reply)
+    Assert.Equal("Http", str [ "effects"; 0; "kind" ] reply)
+    Assert.Equal(ConfigurationUrl, str [ "effects"; 0; "url" ] reply)
+    let configured =
+        """{"kind":"EffectResult","result":{"kind":"HttpResult","correlationId":"""
+        + "\"" + str [ "effects"; 0; "correlationId" ] reply + "\""
+        + ""","outcome":{"kind":"Success","status":200,"body":{"environment":"local","environmentName":"test"}}}}"""
+
+    let session, reply = send session configured
     Assert.Equal("Storage", str [ "effects"; 0; "kind" ] reply)
     Assert.Equal("get", str [ "effects"; 0; "operation" ] reply)
     Assert.Equal(StorageKey, str [ "effects"; 0; "key" ] reply)
@@ -183,3 +199,17 @@ let ``a malformed kernel message is an operational fault, and the model is kept`
     let faulted, reply = send session """{"kind":"Mystery"}"""
     Assert.True(bool' [ "view"; "hasOperationalFault" ] reply)
     Assert.Equal(session.Model.Storage, faulted.Model.Storage)
+
+[<Fact>]
+let ``a configuration that cannot be used stops the page with the reason`` () =
+    let configuring = update ctx Started initial |> fst
+    let unreadable = update ctx (ConfigurationRead(Error "HTTP 404")) configuring |> fst
+    Assert.Equal("True", value "isMisconfigured" unreadable)
+    Assert.Equal("False", value "isReady" unreadable)
+    Assert.Equal("The deployment's configuration could not be read (HTTP 404).", value "misconfiguration" unreadable)
+    let invalid, effects = update ctx (ConfigurationRead(Ok """{"environment":"moon","environmentName":"x"}""")) configuring
+    Assert.Empty(effects)
+    Assert.Equal("True", value "isMisconfigured" invalid)
+    let production = update ctx (ConfigurationRead(Ok """{"environment":"production","environmentName":"production"}""")) configuring |> fst
+    // Production shows no banner.
+    Assert.Equal("False", value "hasBanner" production)

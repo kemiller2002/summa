@@ -60,3 +60,37 @@ and decided.
 **Use a repository that belongs to Summa alone.** GitHub permissions apply
 per repository, so a dedicated repository is the only way to keep Summa's
 data separate from Chrona's and other applications' (SUM-DATALOC-004).
+
+## Where the accounting application reads it
+
+The accounting application (`app/`) reads `summa.deployment.json` beside its
+page when it starts (`app/summa.deployment.json` in this repository: a local
+development deployment). A document that cannot be read or used stops the
+page with the reason, and nothing runs. Every environment other than
+production shows its banner on every screen (SUM0-040,
+`Environments.banner`). A deployment without a `location` keeps its books
+in the browser (DF-SUMMA-2026-0009). This build cannot yet open a
+`location` on GitHub; that needs sign-in (WI-0035) and the GitHub store
+(WI-0037), and until then the page says so and stops.
+
+## Deployment: GitHub Pages
+
+`.github/workflows/pages.yml` publishes the accounting application to GitHub
+Pages (summa.echelonfoundry.com) as a public demo (WI-0039):
+
+- `deploy/pages/site.json` names the page (`app`), the deployment
+  configuration that replaces `app/summa.deployment.json`, and the
+  Content-Security-Policy meta tag the page carries: same origin only, with
+  `'wasm-unsafe-eval'` for the WebAssembly engine, and no inline script or
+  style.
+- `deploy/pages/summa.deployment.json` is a `local` environment named
+  `demo (GitHub Pages)`, with no `identity` and no `location`. The demo banner
+  is the page's own environment banner, and each visitor's books stay in
+  their browser. The workflow refuses a Pages deployment that signs in or
+  names a data location.
+- `tools/pages/assemble-site.mjs` copies the page and what it loads at
+  their repository paths, so relative addresses work at any base path. The
+  site root redirects to `app/`. The backlog and hub tools (`web/`,
+  `web-hub/`) need the local server's `/api/*` and are never published.
+- Pull requests build, assemble and verify the site. Only a push to `main`
+  deploys it.

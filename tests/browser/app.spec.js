@@ -28,7 +28,7 @@ async function draftInvoice(page, customerId, lines) {
 }
 
 test("a new browser starts its own books, marked as a local demo", async ({ app: { page } }) => {
-  await expect(page.locator("[data-pages-banner]")).toHaveText("Local demo: these books are kept only in this browser.");
+  await expect(page.locator("[data-pages-banner]")).toHaveText("SUMMA · LOCAL · local development · books are kept only in this browser");
   await expect(page.locator("#notice")).toHaveText("A new set of books was started in this browser.");
   await expect(page.locator("#total-outstanding")).toHaveText("0.00 USD");
   await expect(nav(page, "Home")).toHaveAttribute("aria-current", "page");

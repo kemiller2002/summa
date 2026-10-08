@@ -17,7 +17,20 @@
      readiness, issue, payments and totals are Summa's domain commands. -->
 <a class="ef-skip-link" href="#main">Skip to content</a>
 
-<p class="summa-banner" role="note" data-pages-banner data-text="environmentBanner"></p>
+<template data-if="hasBanner">
+  <p class="summa-banner" role="note" data-pages-banner data-text="environmentBanner"></p>
+</template>
+
+<template data-if="isConfiguring">
+  <main class="summa-gate" id="main" aria-busy="true"><p>Opening Summa…</p></main>
+</template>
+
+<template data-if="isMisconfigured">
+  <main class="summa-gate ef-stack" id="main">
+    <h1>This deployment is not set up correctly.</h1>
+    <p role="alert" id="misconfiguration" data-text="misconfiguration"></p>
+  </main>
+</template>
 
 <template data-if="hasOperationalFault">
   <div class="ef-fault ef-fault--inline operational-fault" id="operational-fault" data-ef-intent="inline" data-ef-severity="error" role="alert" aria-labelledby="operational-fault-title">

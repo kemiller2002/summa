@@ -28,6 +28,20 @@ open Summa.Web.Engine.Common
 [<Literal>]
 let StorageKey = "summa.local.books"
 
+/// The deployment's configuration document, beside the page (SUM0-037,
+/// docs/deployment-configuration.md). A deployment replaces the
+/// repository's copy.
+[<Literal>]
+let ConfigurationUrl = "./summa.deployment.json"
+
+/// Where the page stands with its deployment's configuration.
+[<NoComparison; NoEquality>]
+type Configuration =
+    | Configuring
+    | Configured of Deployment.DeploymentConfig
+    /// The configuration cannot be used; nothing runs.
+    | Misconfigured of reason: string
+
 type Route =
     | Dashboard
     | Customers
@@ -97,7 +111,8 @@ type Storage =
 
 [<NoComparison; NoEquality>]
 type Model =
-    { Storage: Storage
+    { Configuration: Configuration
+      Storage: Storage
       Manifest: Organization.OrganizationManifest option
       Books: Receivables option
       Route: Route
@@ -131,7 +146,8 @@ let private emptyDraft counter =
 let initial =
     let draft, counter = emptyDraft 0
 
-    { Storage = Loading
+    { Configuration = Configuring
+      Storage = Loading
       Manifest = None
       Books = None
       Route = Dashboard
@@ -151,6 +167,8 @@ type Ctx = { Now: DateTimeOffset; Actor: string }
 
 type Msg =
     | Started
+    /// The configuration document's text, or why it could not be read.
+    | ConfigurationRead of Result<string, string>
     /// The stored snapshot, or None when this browser has none yet.
     | Loaded of string option
     | Saved of ok: bool
@@ -188,6 +206,7 @@ type Msg =
     | ResetConfirmed
 
 type AppEffect =
+    | LoadConfiguration
     | LoadBooks
     | SaveBooks of snapshot: string
     | PrintPage
@@ -343,7 +362,19 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
     let model = { model with Today = today ctx }
 
     match msg with
-    | Started -> { model with Storage = Loading }, [ LoadBooks ]
+    | Started -> { model with Configuration = Configuring; Storage = Loading }, [ LoadConfiguration ]
+    | ConfigurationRead(Error why) ->
+        { model with Configuration = Misconfigured $"The deployment's configuration could not be read ({why})." }, []
+    | ConfigurationRead(Ok document) ->
+        match Deployment.parse document with
+        | Error problem -> { model with Configuration = Misconfigured(Diagnostics.describe problem) }, []
+        | Ok config when config.Location.IsSome ->
+            // Books on GitHub need sign-in and the GitHub store (WI-0035, WI-0037).
+            { model with
+                Configuration =
+                    Misconfigured "This deployment names a data location on GitHub, which this build cannot open yet: it keeps books only in the browser." },
+            []
+        | Ok config -> { model with Configuration = Configured config }, [ LoadBooks ]
     | Loaded None ->
         let company: Organization.CompanyInformation =
             { LegalName = "Demo Consulting LLC"
@@ -629,6 +660,15 @@ let private bucketText =
     | Days61To90 -> "61-90 days"
     | Over90 -> "Over 90 days"
 
+/// The environment banner (SUM0-040): every non-production environment
+/// shows it, and a deployment that keeps books in the browser says so.
+let banner (model: Model) =
+    match model.Configuration with
+    | Configured config ->
+        Environments.banner config
+        |> Option.map (fun b -> if config.Location.IsNone then b + " · books are kept only in this browser" else b)
+    | _ -> None
+
 /// The named values app/index.html binds to.
 let view (model: Model) : View =
     let books = model.Books
@@ -753,13 +793,19 @@ let view (model: Model) : View =
     let aging =
         books |> Option.map (aging "USD" model.Today) |> Option.defaultValue []
 
-    [ "isLoading", flag (model.Storage = Loading)
-      "isReady", flag (model.Storage = Ready)
+    let configured =
+        match model.Configuration with
+        | Configured _ -> true
+        | _ -> false
+
+    [ "isLoading", flag (configured && model.Storage = Loading)
+      "isReady", flag (configured && model.Storage = Ready)
       "isUntrustworthy",
       flag (
-          match model.Storage with
-          | Untrustworthy _ -> true
-          | _ -> false
+          configured
+          && match model.Storage with
+             | Untrustworthy _ -> true
+             | _ -> false
       )
       "storageProblems",
       Items(
@@ -768,7 +814,11 @@ let view (model: Model) : View =
           | _ -> []
       )
       "organizationName", text (model.Manifest |> Option.map _.DisplayName |> Option.defaultValue "Summa")
-      "environmentBanner", text "Local demo: these books are kept only in this browser."
+      "isConfiguring", flag (match model.Configuration with Configuring -> true | _ -> false)
+      "isMisconfigured", flag (match model.Configuration with Misconfigured _ -> true | _ -> false)
+      "misconfiguration", text (match model.Configuration with Misconfigured why -> why | _ -> "")
+      "hasBanner", flag (banner model).IsSome
+      "environmentBanner", text (banner model |> Option.defaultValue "")
       "hasNotice", flag model.Notice.IsSome
       "notice", text (model.Notice |> Option.defaultValue "")
       "hasError", flag model.Error.IsSome

@@ -953,10 +953,10 @@
         "pages"
       ],
       "priority": "medium",
-      "status": "captured",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T17:27:24.000Z",
-      "updatedAt": "2026-10-08T17:27:24.000Z",
+      "updatedAt": "2026-10-08T18:58:04.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

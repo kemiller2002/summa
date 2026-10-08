@@ -78,6 +78,7 @@ type Inbound =
     | Event of name: string * key: string option * value: string option
     | StorageResult of correlation: string * StorageOutcome
     | CapabilityResult of correlation: string * capability: string * completed: bool
+    | HttpResult of correlation: string * Result<string, string>
     | Ignored
 
 let private effectResult (node: JsonNode) =
@@ -92,10 +93,29 @@ let private effectResult (node: JsonNode) =
         | "Success" -> StorageResult(correlation, StorageValue(optional "value" $"{path}.outcome" asString outcome))
         | "Failure" -> StorageResult(correlation, StorageFailed(required "reason" $"{path}.outcome" asString outcome))
         | other -> raise (MalformedInput($"{path}.outcome.kind", $"a known Storage outcome, not '{other}'"))
+    | "HttpResult" ->
+        let outcome = required "outcome" path asObject node
+        let at = $"{path}.outcome"
+
+        let result =
+            match required "kind" at asString outcome with
+            | "Success" ->
+                let status = required "status" at asInt outcome
+
+                match tryField "body" outcome with
+                | Some body when status >= 200 && status < 300 ->
+                    match body with
+                    | :? JsonValue as v when v.GetValueKind() = JsonValueKind.String -> Ok(v.GetValue<string>())
+                    | other -> Ok(other.ToJsonString())
+                | _ -> Error $"HTTP {status}"
+            | "Failure" -> Error(required "reason" at asString outcome)
+            | other -> Error other
+
+        HttpResult(correlation, result)
     | "CapabilityResult" ->
         let outcome = required "outcome" path asObject node
         CapabilityResult(correlation, required "capability" path asString node, required "kind" $"{path}.outcome" asString outcome = "Completed")
-    // The engine requests no Http, Clipboard or Navigation effects.
+    // The engine requests no Clipboard or Navigation effects.
     | other -> raise (MalformedInput($"{path}.kind", $"a result for an effect the engine requested, not '{other}'"))
 
 let decode (messageJson: string) =
@@ -145,6 +165,7 @@ let answer (offer: JsonNode) =
 // ---- Session ---------------------------------------------------------------------------------------
 
 type Purpose =
+    | Configuring
     | Loading
     | Saving
     | Printing
@@ -166,6 +187,7 @@ let initial =
 
 [<NoComparison; NoEquality>]
 type Request =
+    | HttpGet of correlation: string * url: string
     | StorageGet of correlation: string * key: string
     | StorageSet of correlation: string * key: string * value: string
     | Print of correlation: string
@@ -178,6 +200,7 @@ let private requests (session: Session) (effects: AppEffect list) =
             let s = { s with Sequence = s.Sequence + 1 }
 
             match effect with
+            | LoadConfiguration -> { s with Pending = s.Pending.Add(correlation, Configuring) }, out @ [ HttpGet(correlation, ConfigurationUrl) ]
             | LoadBooks -> { s with Pending = s.Pending.Add(correlation, Loading) }, out @ [ StorageGet(correlation, StorageKey) ]
             | SaveBooks snapshot -> { s with Pending = s.Pending.Add(correlation, Saving) }, out @ [ StorageSet(correlation, StorageKey, snapshot) ]
             | PrintPage when s.Printing -> { s with Pending = s.Pending.Add(correlation, Printing) }, out @ [ Print correlation ]
@@ -186,6 +209,14 @@ let private requests (session: Session) (effects: AppEffect list) =
 
 let private writeRequest (writer: Utf8JsonWriter) =
     function
+    | HttpGet(correlation, url) ->
+        writer.WriteStartObject()
+        writer.WriteString("kind", "Http")
+        writer.WriteString("correlationId", correlation)
+        writer.WriteString("method", "GET")
+        writer.WriteString("url", url)
+        writer.WriteNumber("timeoutMs", RequestTimeoutMs)
+        writer.WriteEndObject()
     | StorageGet(correlation, key) ->
         writer.WriteStartObject()
         writer.WriteString("kind", "Storage")
@@ -299,6 +330,12 @@ let private step (ctx: Ctx) (session: Session) (inbound: Inbound) =
                     | StorageFailed _ -> false
 
                 let s, out = run (Saved ok) { session with Pending = session.Pending.Remove correlation }
+                s, out, None
+            | _ -> session, [], None
+        | HttpResult(correlation, result) ->
+            match session.Pending.TryFind correlation with
+            | Some Configuring ->
+                let s, out = run (ConfigurationRead result) { session with Pending = session.Pending.Remove correlation }
                 s, out, None
             | _ -> session, [], None
         | CapabilityResult(correlation, _, _) -> { session with Pending = session.Pending.Remove correlation }, [], None

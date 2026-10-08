@@ -92,7 +92,8 @@ module private Accounting =
     let views =
         let ctx = { Now = System.DateTimeOffset(2026, 10, 7, 9, 0, 0, System.TimeSpan.Zero); Actor = "local-person" }
         let step model msg = update ctx msg model |> fst
-        let started = [ Started; Loaded None ] |> List.fold step initial
+        let configured = [ Started; ConfigurationRead(Ok """{"environment":"local","environmentName":"test"}""") ] |> List.fold step initial
+        let started = step configured (Loaded None)
 
         let withCustomer =
             [ Navigate "customers"; CustomerNameChanged "ABC"; CustomerAddressChanged "1 Main"; CustomerTermsChanged "0"; CustomerAdded ]
@@ -106,7 +107,8 @@ module private Accounting =
         let fixedUp = [ Navigate "settings"; CompanyAddressChanged "1 Way"; CompanySaved; DraftOpened "D-0001"; DraftSubmitted; DraftIssued ] |> List.fold step blocked
         let paid = [ PaymentAmountChanged "50"; PaymentRecorded ] |> List.fold step fixedUp
         let late = { paid with Today = System.DateOnly(2027, 6, 1) }
-        let untrustworthy = step initial (Loaded(Some "{}"))
+        let untrustworthy = step configured (Loaded(Some "{}"))
+        let misconfigured = [ Started; ConfigurationRead(Error "HTTP 404") ] |> List.fold step initial
         let extra = [ "canPrint", Value(Flag true) ]
 
         [ view started @ extra
@@ -114,7 +116,9 @@ module private Accounting =
           view paid
           view late
           view { late with Route = Receivables }
-          view untrustworthy ]
+          view untrustworthy
+          view misconfigured
+          view (step initial Started) ]
 
 let private agree (page: string) (views: View list) (events: Set<string>) =
     let html = readRepoFile $"{page}/index.html"
