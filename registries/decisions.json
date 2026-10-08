@@ -373,6 +373,20 @@
             "modified"
           ],
           "reason": "Choose how the accounting application runs before sign-in and the GitHub store"
+        },
+        "EXE-20261008T221837840Z-607ce088": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-08T22:34:00.000Z",
+          "operations": [
+            "modified"
+          ],
+          "reason": "Retire the default-chart shortcut for credit, deposit and bad-debt accounts (WI-0037)"
         }
       }
     },
@@ -393,7 +407,7 @@
     ],
     "title": "The accounting application and its local books",
     "updated": "2026-10-08",
-    "version": "1.3.0"
+    "version": "1.4.0"
   },
   {
     "created": "2026-10-08",
@@ -498,6 +512,50 @@
       "limen"
     ],
     "title": "Invoice PDFs in the application and an artifact store per environment",
+    "updated": "2026-10-08",
+    "version": "1.0.0"
+  },
+  {
+    "created": "2026-10-08",
+    "id": "DF-SUMMA-2026-0012",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0012--organization-manifest-schema-2-and-its-migration.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261008T221837840Z-607ce088": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-08T22:34:00.000Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Record the credit, deposit and bad-debt accounts in the organization manifest, with a tested migration (WI-0037)"
+        }
+      }
+    },
+    "related_documents": [
+      "research/decisions/DF-SUMMA-2026-0009--the-accounting-application-and-its-local-books.md",
+      "docs/requirements/implementation-gap-analysis.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "storage",
+      "schema",
+      "migration",
+      "manifest",
+      "arca"
+    ],
+    "title": "The organization manifest names its credit, deposit and bad-debt accounts (schema 2)",
     "updated": "2026-10-08",
     "version": "1.0.0"
   },

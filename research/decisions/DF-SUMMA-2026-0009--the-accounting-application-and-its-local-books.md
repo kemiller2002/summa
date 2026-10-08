@@ -2,7 +2,7 @@
 id: DF-SUMMA-2026-0009
 title: The accounting application and its local books
 status: accepted
-version: 1.3.0
+version: 1.4.0
 created: 2026-10-08
 updated: 2026-10-08
 owners:
@@ -27,6 +27,16 @@ provenance:
         model: unknown
         runtime: claude-code
       reason: "Choose how the accounting application runs before sign-in and the GitHub store"
+    EXE-20261008T221837840Z-607ce088:
+      operations: [modified]
+      at: 2026-10-08T22:34:00.000Z
+      actor:
+        kind: agent
+        id: anthropic/claude-code
+        provider: anthropic
+        model: unknown
+        runtime: claude-code
+      reason: "Retire the default-chart shortcut for credit, deposit and bad-debt accounts (WI-0037)"
 ---
 
 # DF-SUMMA-2026-0009 — The accounting application and its local books
@@ -59,11 +69,11 @@ The product UI (v0.4) needs a page that works before sign-in (WI-0035) and the G
      invoice's issued snapshot, so it is reproduced from the records alone.
    - A memo with no invoice has no issued snapshot of its parties, and so no
      document. The application does not issue one; the domain still allows it.
-7. **Local books name their credit accounts by the default chart.** The
-   manifest names cash, receivables and revenue, but not customer credits,
-   deposits or bad debt. `LocalSnapshot.receivableAccounts` uses the default
-   chart's 2100, 2200 and 6500, which every local organization starts with.
-   Books on GitHub (WI-0037) need the manifest to name them.
+7. **Retired (1.4.0, DF-SUMMA-2026-0012).** Local books once named their
+   credit, deposit and bad-debt accounts by the default chart
+   (`LocalSnapshot.receivableAccounts`). The organization manifest now names
+   them (schema 2), for local books and books on GitHub alike; older local
+   books are migrated as they are read.
 8. **A select whose options come from the books marks its chosen option.**
    The kernel cannot set a select's value before its options exist. Each
    option therefore carries `selected`, so a link that names a customer

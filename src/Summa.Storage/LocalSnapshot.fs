@@ -53,19 +53,6 @@ let defaultChart =
           Type = kind
           Active = true })
 
-/// The accounts a local organization's receivable commands post to: the
-/// manifest's cash and receivables, and the default chart's customer
-/// credits, deposits and bad debt. The manifest does not name those yet;
-/// books on GitHub (WI-0037) need it to.
-let receivableAccounts (manifest: Organization.OrganizationManifest) (ledger: Ledger) : Summa.Ledger.Credits.ReceivableAccounts =
-    let byCode = Organization.accountByCode ledger
-
-    { Cash = byCode manifest.Accounting.CashAccount
-      Receivable = byCode manifest.Accounting.ReceivablesAccount
-      CustomerCredits = byCode "2100"
-      CustomerDeposits = byCode "2200"
-      BadDebt = byCode "6500" }
-
 /// A new local organization: its manifest and books with the default chart.
 let start (context: Context) (displayName: string) (company: Organization.CompanyInformation) (paymentInstructions: string) =
     let created = Organization.create OrganizationId displayName "local" "USD" "UTC" context.When
@@ -119,7 +106,10 @@ type Restored =
     { Manifest: Organization.OrganizationManifest
       Books: Receivables
       /// Integrity problems; the books must not be used when there are any.
-      Problems: Diagnostic list }
+      Problems: Diagnostic list
+      /// The manifest was at an older schema and was migrated as it was
+      /// read (`Migrations.currentManifest`); save the snapshot again.
+      Migrated: bool }
 
 /// Reads a snapshot back. A snapshot that is not one at all is an error;
 /// one whose records fail checks is restored with its problems listed.
@@ -143,17 +133,17 @@ let decode (text: string) : Result<Restored, string> =
             | None ->
                 let manifestText = m.GetString() |> Option.ofObj |> Option.defaultValue ""
 
-                Organization.path OrganizationId
-                |> Result.mapError Diagnostics.describe
-                |> Result.bind (fun path ->
-                    Organization.decode OrganizationId { Path = path; Content = manifestText; Revision = Revision "local:manifest" }
-                    |> Result.mapError Diagnostics.describe)
-                |> Result.map (fun manifest ->
-                    let loaded = FinancialRecords.load (objects |> List.choose Result.toOption)
+                let loaded = FinancialRecords.load (objects |> List.choose Result.toOption)
 
+                Organization.path OrganizationId
+                |> Result.bind (fun path -> Organization.decodeStored OrganizationId { Path = path; Content = manifestText; Revision = Revision "local:manifest" })
+                |> Result.bind (Migrations.currentManifest loaded.State.Books.Ledger)
+                |> Result.mapError Diagnostics.describe
+                |> Result.map (fun (manifest, migrated) ->
                     { Manifest = manifest
                       Books = loaded.State
-                      Problems = loaded.Problems })
+                      Problems = loaded.Problems
+                      Migrated = migrated })
         | _ -> Error $"this is not a version {Version} Summa snapshot"
     with :? JsonException as e ->
         Error $"the snapshot is not JSON ({e.Message})"

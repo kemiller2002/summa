@@ -49,7 +49,7 @@ let ``the application manifest names Summa, its versions and where organizations
         Assert.Equal("summa", manifest.ApplicationId)
         Assert.Equal(Organization.StorageVersion, manifest.StorageVersion)
         Assert.Equal("datasets", manifest.OrganizationsPath)
-        Assert.Equal(Some 1, manifest.RecordSchemas.TryFind "summa.organization")
+        Assert.Equal(Some Organization.schema.Current, manifest.RecordSchemas.TryFind "summa.organization")
         Assert.Equal(Some 1, manifest.RecordSchemas.TryFind "summa.application")
         Assert.Equal(Application.ApplicationVersion, manifest.MinimumApplicationVersion)
     | ReadOutcome.Absent -> failwith "no application manifest"

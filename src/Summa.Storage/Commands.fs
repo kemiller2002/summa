@@ -230,9 +230,9 @@ let compatibility (provider: StorageProvider) (ns: Namespace) : Async<Result<Com
             | Error failure, _
             | _, Error failure -> return Error(StorageFailed failure)
             | Ok arcaFound, Ok(ReadOutcome.Found organizationFound) ->
-                match Storage.openNamespace ns arcaFound, Organization.decode organizationId organizationFound with
+                match Storage.openNamespace ns arcaFound, Organization.decodeStored organizationId organizationFound with
                 | Ok manifest, Ok organization ->
-                    return Ok(Compatibility.access (Organization.schema :: MemberRecord.schema :: FinancialRecords.schemas) organization manifest)
+                    return Ok(Compatibility.storedAccess (Organization.schema :: MemberRecord.schema :: FinancialRecords.schemas) organization manifest)
                 | Error problems, _ -> return Error(Untrustworthy problems)
                 | _, Error problem -> return Error(Untrustworthy [ problem ])
             | Ok _, Ok ReadOutcome.Absent -> return Error(Untrustworthy [ NamespaceNotInitialized(RelativePath.render ns.Root) ])

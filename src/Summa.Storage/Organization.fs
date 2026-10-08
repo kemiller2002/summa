@@ -42,12 +42,20 @@ type CompanyInformation =
       TaxId: string option
       Email: string }
 
-/// The default accounts postings use (v0.1 §1, §3, §11).
+/// The default accounts postings use (v0.1 §1, §3, §11), by account code.
+/// Schema 2 adds the liabilities and expense that credits, deposits and
+/// write-offs post to (v0.2 §4, §5, §12).
 type AccountingDefaults =
     { Basis: AccountingBasis
       ReceivablesAccount: string
       RevenueAccount: string
-      CashAccount: string }
+      CashAccount: string
+      /// Liability: customer credits from overpayments and credit memos.
+      CustomerCreditsAccount: string
+      /// Liability: customer deposits and retainers.
+      CustomerDepositsAccount: string
+      /// Expense: receivables written off.
+      BadDebtAccount: string }
 
 type OrganizationManifest =
     { /// Immutable. It names the organization's folder.
@@ -80,10 +88,12 @@ let private recordType text =
 let manifestType = recordType "summa.organization"
 
 /// The organization manifest's schema versions this Summa reads and writes.
+/// Schema 1 named no credit, deposit or bad-debt accounts; it is read only
+/// to migrate it (`Migrations.organizationV2`).
 let schema =
     { Type = manifestType
       OldestReadable = 1
-      Current = 1 }
+      Current = 2 }
 
 let private validSlug (slug: string) =
     not (String.IsNullOrEmpty slug)
@@ -107,7 +117,8 @@ let validateIdentity (id: string) (displayName: string) (slug: string) (currency
 
 /// A new organization's manifest with Summa's defaults: calendar fiscal year,
 /// `INV` numbering, 30-day terms, accrual basis and the default chart's
-/// receivables (1100), revenue (4000) and cash (1000) accounts.
+/// receivables (1100), revenue (4000), cash (1000), customer credits (2100),
+/// customer deposits (2200) and bad debt (6500) accounts.
 let create (organizationId: string) (displayName: string) (slug: string) (currency: string) (zone: string) (createdAt: DateTimeOffset) =
     { OrganizationId = organizationId
       Slug = slug
@@ -130,7 +141,10 @@ let create (organizationId: string) (displayName: string) (slug: string) (curren
         { Basis = Accrual
           ReceivablesAccount = "1100"
           RevenueAccount = "4000"
-          CashAccount = "1000" } }
+          CashAccount = "1000"
+          CustomerCreditsAccount = "2100"
+          CustomerDepositsAccount = "2200"
+          BadDebtAccount = "6500" } }
 
 /// Every reason a manifest cannot be stored; empty when it can.
 let problems (manifest: OrganizationManifest) =
@@ -149,7 +163,15 @@ let problems (manifest: OrganizationManifest) =
           InvalidOrganizationManifest "the company's legal name is required"
       if manifest.Invoices.DefaultTermsDays < 0 || manifest.Invoices.DefaultTermsDays > 365 then
           InvalidOrganizationManifest "default payment terms must be 0 to 365 days"
-      if [ manifest.Accounting.ReceivablesAccount; manifest.Accounting.RevenueAccount; manifest.Accounting.CashAccount ] |> List.exists blank then
+      if
+          [ manifest.Accounting.ReceivablesAccount
+            manifest.Accounting.RevenueAccount
+            manifest.Accounting.CashAccount
+            manifest.Accounting.CustomerCreditsAccount
+            manifest.Accounting.CustomerDepositsAccount
+            manifest.Accounting.BadDebtAccount ]
+          |> List.exists blank
+      then
           InvalidOrganizationManifest "every default account is required" ]
 
 let private basisWire =
@@ -184,7 +206,10 @@ let body (manifest: OrganizationManifest) =
               [ "basis", Json.String(basisWire manifest.Accounting.Basis)
                 "receivablesAccount", Json.String manifest.Accounting.ReceivablesAccount
                 "revenueAccount", Json.String manifest.Accounting.RevenueAccount
-                "cashAccount", Json.String manifest.Accounting.CashAccount ] ]
+                "cashAccount", Json.String manifest.Accounting.CashAccount
+                "customerCreditsAccount", Json.String manifest.Accounting.CustomerCreditsAccount
+                "customerDepositsAccount", Json.String manifest.Accounting.CustomerDepositsAccount
+                "badDebtAccount", Json.String manifest.Accounting.BadDebtAccount ] ]
 
 let private recordId (organizationId: string) =
     RecordId.create organizationId |> Result.mapError (fun _ -> InvalidOrganizationId organizationId)
@@ -286,18 +311,37 @@ let ofBody (value: Json) : Result<OrganizationManifest, string> =
                     | _, _, _, Error e -> Error e)
 
             let accounting =
-                section "accounting" [ "basis"; "cashAccount"; "receivablesAccount"; "revenueAccount" ] (fun a ->
-                    match Codec.text "basis" a |> Result.bind basisOf, Codec.text "receivablesAccount" a, Codec.text "revenueAccount" a, Codec.text "cashAccount" a with
-                    | Ok basis, Ok receivables, Ok revenue, Ok cash ->
-                        Ok
-                            { Basis = basis
-                              ReceivablesAccount = receivables
-                              RevenueAccount = revenue
-                              CashAccount = cash }
-                    | Error e, _, _, _
-                    | _, Error e, _, _
-                    | _, _, Error e, _
-                    | _, _, _, Error e -> Error e)
+                section
+                    "accounting"
+                    [ "badDebtAccount"; "basis"; "cashAccount"; "customerCreditsAccount"; "customerDepositsAccount"; "receivablesAccount"; "revenueAccount" ]
+                    (fun a ->
+                        let code name = Codec.text name a
+
+                        match
+                            Codec.text "basis" a |> Result.bind basisOf,
+                            code "receivablesAccount",
+                            code "revenueAccount",
+                            code "cashAccount",
+                            code "customerCreditsAccount",
+                            code "customerDepositsAccount",
+                            code "badDebtAccount"
+                        with
+                        | Ok basis, Ok receivables, Ok revenue, Ok cash, Ok credits, Ok deposits, Ok badDebt ->
+                            Ok
+                                { Basis = basis
+                                  ReceivablesAccount = receivables
+                                  RevenueAccount = revenue
+                                  CashAccount = cash
+                                  CustomerCreditsAccount = credits
+                                  CustomerDepositsAccount = deposits
+                                  BadDebtAccount = badDebt }
+                        | Error e, _, _, _, _, _, _
+                        | _, Error e, _, _, _, _, _
+                        | _, _, Error e, _, _, _, _
+                        | _, _, _, Error e, _, _, _
+                        | _, _, _, _, Error e, _, _
+                        | _, _, _, _, _, Error e, _
+                        | _, _, _, _, _, _, Error e -> Error e)
 
             match fiscal, company, invoices, accounting with
             | Ok fiscal, Ok company, Ok invoices, Ok accounting ->
@@ -339,11 +383,19 @@ let describeIntegrity =
     | IntegrityFailure.HashMismatch _ -> "the record changed since it was read"
     | IntegrityFailure.ImmutableChanged _ -> "an immutable record changed"
 
+/// A stored manifest, as the schema it was written at.
+[<NoComparison>]
+type StoredManifest =
+    | CurrentManifest of OrganizationManifest
+    /// An older schema, readable only to migrate it (`Migrations.organizationV2`).
+    | NeedsMigration of schemaVersion: int * body: Json
+
 /// The manifest stored at `stored`, checked as the manifest of
 /// `organizationId`: a canonical record of the right type, id and readable
-/// schema version (Arca's integrity checks), at the path that id names, whose
-/// body is a valid manifest of that organization.
-let decode (organizationId: string) (stored: StoredObject) : Result<OrganizationManifest, Diagnostic> =
+/// schema version (Arca's integrity checks), at the path that id names. A
+/// current one must be a valid manifest of that organization; an older one
+/// is handed back as it is, to migrate.
+let decodeStored (organizationId: string) (stored: StoredObject) : Result<StoredManifest, Diagnostic> =
     let where = RelativePath.render stored.Path
 
     recordId organizationId
@@ -359,13 +411,25 @@ let decode (organizationId: string) (stored: StoredObject) : Result<Organization
             Integrity.validate key schema Record.DefaultMaxBytes stored
             |> Result.mapError (describeIntegrity >> fun detail -> InvalidStoredRecord(where, detail))
             |> Result.bind (fun valid ->
-                ofBody valid.Record.Body
-                |> Result.mapError (fun detail -> InvalidStoredRecord(where, detail))
-                |> Result.bind (fun manifest ->
-                    if manifest.OrganizationId = organizationId then
-                        Ok manifest
-                    else
-                        Error(InvalidStoredRecord(where, $"the manifest belongs to '{manifest.OrganizationId}'")))))
+                if valid.Record.SchemaVersion < schema.Current then
+                    Ok(NeedsMigration(valid.Record.SchemaVersion, valid.Record.Body))
+                else
+                    ofBody valid.Record.Body
+                    |> Result.mapError (fun detail -> InvalidStoredRecord(where, detail))
+                    |> Result.bind (fun manifest ->
+                        if manifest.OrganizationId = organizationId then
+                            Ok(CurrentManifest manifest)
+                        else
+                            Error(InvalidStoredRecord(where, $"the manifest belongs to '{manifest.OrganizationId}'")))))
+
+/// The current manifest stored at `stored`. One at an older schema is not
+/// used until it is migrated (SUM0-031, SUM3-010).
+let decode (organizationId: string) (stored: StoredObject) : Result<OrganizationManifest, Diagnostic> =
+    decodeStored organizationId stored
+    |> Result.bind (function
+        | CurrentManifest manifest -> Ok manifest
+        | NeedsMigration(version, _) ->
+            Error(IncompatibleSchema(RecordType.value manifestType, $"schema {version} is older than {schema.Current}; migrate before using it")))
 
 // ---- What issuing reads from the manifest (SUM0-011) ----------------------------------
 
@@ -394,6 +458,17 @@ let systemTerms (manifest: OrganizationManifest) =
 /// no account has it, so issuing reports it as an invalid account.
 let accountByCode (ledger: Summa.Ledger.Ledger.Ledger) (code: string) =
     ledger.Accounts |> Map.tryFindKey (fun _ a -> a.Code = code) |> Option.defaultValue code
+
+/// The accounts the organization's receivable commands (credits, deposits,
+/// applications, refunds, write-offs) post to, as its manifest names them.
+let receivableAccounts (manifest: OrganizationManifest) (ledger: Summa.Ledger.Ledger.Ledger) : Summa.Ledger.Credits.ReceivableAccounts =
+    let byCode = accountByCode ledger
+
+    { Cash = byCode manifest.Accounting.CashAccount
+      Receivable = byCode manifest.Accounting.ReceivablesAccount
+      CustomerCredits = byCode manifest.Accounting.CustomerCreditsAccount
+      CustomerDeposits = byCode manifest.Accounting.CustomerDepositsAccount
+      BadDebt = byCode manifest.Accounting.BadDebtAccount }
 
 /// An issue request with the organization's defaults filled in; the caller
 /// supplies the draft, the date and the ids of what issuing creates.

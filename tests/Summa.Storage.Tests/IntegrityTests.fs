@@ -129,7 +129,7 @@ let ``schema versions decide whether this Summa may read and write`` () =
           Application = Application.id
           StorageSchema = Manifest.StorageSchema
           ProviderContract = StorageContract.Version
-          RecordSchemas = Map.ofList [ "summa.organization", 1; "summa.entry", version ]
+          RecordSchemas = Map.ofList [ "summa.organization", Organization.schema.Current; "summa.entry", version ]
           CreatedBy = { Kind = ActorKind.Human; Id = ActorId.create "github:1" |> Support.ok }
           CreatedAt = at
           Location = (bindingOf production).Location
@@ -146,7 +146,7 @@ let ``schema versions decide whether this Summa may read and write`` () =
 let ``commands refuse a folder written by a newer Summa`` () =
     let store, ns = populated ()
     let path = "arca-manifest.json"
-    let newer = (contentOf store ns path).Replace("\"summa.organization\":1", "\"summa.organization\":9")
+    let newer = (contentOf store ns path).Replace("\"summa.organization\":2", "\"summa.organization\":9")
     store.WriteExternally(ns.Location, file ns path, Some newer)
 
     match run store ns RecordPayment "pay" (recordPayment ledgerContext payment) with
