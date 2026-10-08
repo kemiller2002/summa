@@ -24,6 +24,20 @@ let dueDate (issueDate: DateOnly) =
     | Net days -> issueDate.AddDays days
     | CustomDate date -> date
 
+/// Where an invoice's terms came from (v0.2 §18): the invoice's own terms
+/// win over the customer's default, which wins over the system default.
+type TermsSource =
+    | InvoiceTerms
+    | CustomerTerms
+    | SystemTerms
+
+/// The terms that apply, and where they came from.
+let resolveTerms (invoiceTerms: PaymentTerms option) (customerTerms: PaymentTerms option) (systemTerms: PaymentTerms) =
+    match invoiceTerms, customerTerms with
+    | Some terms, _ -> terms, InvoiceTerms
+    | None, Some terms -> terms, CustomerTerms
+    | None, None -> systemTerms, SystemTerms
+
 /// Calculated, never stored (§9).
 let daysUntilDue (today: DateOnly) (due: DateOnly) = max 0 (due.DayNumber - today.DayNumber)
 let daysPastDue (today: DateOnly) (due: DateOnly) = max 0 (today.DayNumber - due.DayNumber)
@@ -34,8 +48,27 @@ type Customer =
       BillingName: string
       BillingAddress: string
       Email: string
-      DefaultTerms: PaymentTerms
+      /// None falls back to the system default (v0.2 §18).
+      DefaultTerms: PaymentTerms option
       Active: bool }
+
+/// An explicit discount (v0.2 §13). A discount is never a silently lowered
+/// unit price: the price stays and the discount is shown and posted.
+type Discount =
+    /// Basis points of the amount it applies to: 1000 is 10%.
+    | Percent of basisPoints: int
+    | Fixed of Money
+
+/// What a discount takes off an amount, rounded half away from zero to the
+/// minor unit, exactly.
+let discountOn (amount: Money) =
+    function
+    | Percent basisPoints ->
+        { amount with Minor = int64 (Decimal.Round(decimal amount.Minor * decimal basisPoints / 10000m, 0, MidpointRounding.AwayFromZero)) }
+    | Fixed m -> m
+
+/// A discount on the whole invoice, with the label shown on it.
+type InvoiceDiscount = { Label: string; Rule: Discount }
 
 type InvoiceLine =
     { Description: string
@@ -44,9 +77,24 @@ type InvoiceLine =
       UnitPrice: Money
       RevenueAccountId: string
       Project: string option
-      WorkItem: string option }
+      WorkItem: string option
+      /// A discount on this line only.
+      Discount: Discount option }
 
-let lineAmount (line: InvoiceLine) = extend line.QuantityThousandths line.UnitPrice
+/// Quantity times unit price, before the line's discount.
+let lineGross (line: InvoiceLine) = extend line.QuantityThousandths line.UnitPrice
+
+let lineDiscount (line: InvoiceLine) =
+    let gross = lineGross line
+    line.Discount |> Option.map (discountOn gross) |> Option.defaultValue (zero gross.Currency)
+
+/// What the line charges: gross less its own discount.
+let lineAmount (line: InvoiceLine) = subtract (lineGross line) (lineDiscount line)
+
+/// What invoice-level discounts take off a subtotal; each applies to the
+/// subtotal, never to another discount, so the order does not matter.
+let discountTotal (currency: string) (subtotal: Money) (discounts: InvoiceDiscount list) =
+    discounts |> List.map (fun d -> discountOn subtotal d.Rule) |> sum currency
 
 /// A draft may be edited freely; it has an internal id, not a number (§5).
 type DraftInvoice =
@@ -56,11 +104,17 @@ type DraftInvoice =
       Lines: InvoiceLine list
       /// Signed adjustments (a discount is negative).
       Adjustments: Money list
+      Discounts: InvoiceDiscount list
       Terms: PaymentTerms option
-      DueDate: DateOnly option }
+      DueDate: DateOnly option
+      /// The issued invoice this one corrects or reissues (v0.2 §7).
+      Corrects: string option }
 
 let subtotal (draft: DraftInvoice) = draft.Lines |> List.map lineAmount |> sum draft.Currency
-let total (draft: DraftInvoice) = add (subtotal draft) (sum draft.Currency draft.Adjustments)
+
+let total (draft: DraftInvoice) =
+    let net = subtotal draft
+    add (subtract net (discountTotal draft.Currency net draft.Discounts)) (sum draft.Currency draft.Adjustments)
 
 type IssuedInvoice =
     { InvoiceId: string
@@ -70,10 +124,16 @@ type IssuedInvoice =
       IssueDate: DateOnly
       DueDate: DateOnly
       Terms: PaymentTerms
+      /// Which terms were used, kept with the due date they produced (v0.2 §18).
+      TermsSource: TermsSource
       Lines: InvoiceLine list
+      /// The lines' amounts after their own discounts.
       Subtotal: Money
+      Discounts: InvoiceDiscount list
       Adjustments: Money list
       Total: Money
+      /// The issued invoice this one corrects or reissues (v0.2 §7).
+      Corrects: string option
       JournalEntryId: string
       ObligationId: string
       IssuedAt: DateTimeOffset
@@ -107,6 +167,11 @@ type InvoiceProblem =
     /// Issued invoices are not drafts any more; correct them by credit memo.
     | AlreadyIssued of invoiceId: string
     | LedgerProblems of Problem list
+    /// A discount that is not 0.01% to 100%, not positive, in another
+    /// currency, or larger than what it applies to.
+    | InvalidDiscount of string
+    /// A correcting invoice must name an issued invoice of the same customer.
+    | InvalidCorrection of string
 
 type Books =
     { Ledger: Ledger
@@ -162,6 +227,9 @@ type IssueRequest =
       /// None takes the next sequential number.
       NumberOverride: string option
       Prefix: string
+      /// The organization's default terms, used when neither the draft nor
+      /// the customer has terms (v0.2 §18).
+      SystemTerms: PaymentTerms
       ReceivableAccountId: string
       InvoiceId: string
       JournalEntryId: string
@@ -177,7 +245,31 @@ let private validateDraft (books: Books) (draft: DraftInvoice) =
       for line in draft.Lines do
           match books.Ledger.Accounts.TryFind line.RevenueAccountId with
           | Some a when a.Type = Revenue && a.Active -> ()
-          | _ -> InvalidRevenueAccount line.RevenueAccountId ]
+          | _ -> InvalidRevenueAccount line.RevenueAccountId
+
+          match line.Discount with
+          | Some(Percent bp) when bp < 1 || bp > 10000 -> InvalidDiscount $"'{line.Description}': a percentage must be 0.01%% to 100%%"
+          | Some(Fixed m) when m.Currency <> draft.Currency || not (isPositive m) ->
+              InvalidDiscount $"'{line.Description}': a fixed discount must be positive and in {draft.Currency}"
+          | Some _ when (lineAmount line).Minor < 0L -> InvalidDiscount $"'{line.Description}': the discount is larger than the line"
+          | _ -> ()
+      for d in draft.Discounts do
+          match d.Rule with
+          | Percent bp when bp < 1 || bp > 10000 -> InvalidDiscount $"'{d.Label}': a percentage must be 0.01%% to 100%%"
+          | Fixed m when m.Currency <> draft.Currency || not (isPositive m) -> InvalidDiscount $"'{d.Label}': a fixed discount must be positive and in {draft.Currency}"
+          | _ -> ()
+      if
+          draft.Lines |> List.forall (fun l -> (lineAmount l).Minor >= 0L)
+          && discountTotal draft.Currency (subtotal draft) draft.Discounts > subtotal draft
+      then
+          InvalidDiscount "the invoice discounts are larger than the subtotal"
+      match draft.Corrects with
+      | Some original ->
+          match books.Invoices.TryFind original with
+          | None -> InvalidCorrection $"invoice {original} is not issued"
+          | Some i when i.CustomerId <> draft.CustomerId -> InvalidCorrection $"invoice {original} is another customer's"
+          | Some _ -> ()
+      | None -> () ]
 
 /// Issues a draft: invoice, AR/revenue entry and obligation, all or none.
 /// Retrying with the same draft id returns the invoice already issued.
@@ -198,26 +290,42 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
                 Error problems
             else
                 let customer = books.Customers[draft.CustomerId]
-                let terms = draft.Terms |> Option.defaultValue customer.DefaultTerms
+                let terms, termsSource = resolveTerms draft.Terms customer.DefaultTerms request.SystemTerms
                 let due = draft.DueDate |> Option.defaultValue (dueDate request.IssueDate terms)
                 let invoiceTotal = total draft
                 let dims project = { noDimensions with Client = Some customer.Id; Project = project }
 
+                // Each line credits its revenue net of its own discount.
                 // Adjustments reduce (or add to) revenue on the first line's
-                // account, so the entry always balances to the invoice total.
+                // account; invoice discounts debit it, one line each, so the
+                // entry always balances to the invoice total and every
+                // discount stays visible in the books (v0.2 §13).
+                let net = subtotal draft
+                let firstAccount = draft.Lines.Head.RevenueAccountId
+
                 let revenueLines =
                     draft.Lines
                     |> List.mapi (fun i line ->
                         let amount = if i = 0 then add (lineAmount line) (sum draft.Currency draft.Adjustments) else lineAmount line
                         { AccountId = line.RevenueAccountId; Side = Credit amount; Memo = Some line.Description; Dimensions = dims line.Project })
-                    |> List.filter (fun l -> match l.Side with Credit m -> m.Minor <> 0L | Debit _ -> true)
+
+                let discountLines =
+                    draft.Discounts
+                    |> List.map (fun d ->
+                        { AccountId = firstAccount; Side = Debit(discountOn net d.Rule); Memo = Some $"Discount: {d.Label}"; Dimensions = dims None })
+
+                let nonZero =
+                    List.filter (fun l ->
+                        match l.Side with
+                        | Credit m
+                        | Debit m -> m.Minor <> 0L)
 
                 let entry =
                     { Date = request.IssueDate
                       Description = $"Invoice {number}"
                       Lines =
                         { AccountId = request.ReceivableAccountId; Side = Debit invoiceTotal; Memo = Some number; Dimensions = dims None }
-                        :: revenueLines
+                        :: nonZero (revenueLines @ discountLines)
                       Source = $"invoice:{number}" }
 
                 match post context $"issue:{request.DraftId}" request.JournalEntryId entry books.Ledger with
@@ -231,10 +339,13 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
                           IssueDate = request.IssueDate
                           DueDate = due
                           Terms = terms
+                          TermsSource = termsSource
                           Lines = draft.Lines
-                          Subtotal = subtotal draft
+                          Subtotal = net
+                          Discounts = draft.Discounts
                           Adjustments = draft.Adjustments
                           Total = invoiceTotal
+                          Corrects = draft.Corrects
                           JournalEntryId = posted.Id
                           ObligationId = request.ObligationId
                           IssuedAt = context.When

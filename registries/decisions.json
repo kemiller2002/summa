@@ -174,6 +174,50 @@
     "version": "1.0.0"
   },
   {
+    "created": "2026-10-08",
+    "id": "DF-SUMMA-2026-0005",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0005--discounts-voids-and-pre-release-record-schemas.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261008T161945018Z-19388ec7": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-08T16:50:13.184Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Choose how discounts, voids and corrections are posted and stored"
+        }
+      }
+    },
+    "related_documents": [
+      "docs/requirements/implementation-gap-analysis.md",
+      "research/decisions/DF-SUMMA-2026-0001--summa-owns-the-chrona-contract-and-stores-through-arca.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "ledger",
+      "invoicing",
+      "discounts",
+      "voids",
+      "schema"
+    ],
+    "title": "Discount posting, voids and pre-release record schemas",
+    "updated": "2026-10-08",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-10-05",
     "id": "DF-SUMMA-FND-2026-0001",
     "owners": [

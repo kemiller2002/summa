@@ -588,7 +588,7 @@
     {
       "id": "WI-0025",
       "title": "Summa 09: billing models - hourly from Chrona, fixed-price, milestone and reimbursable expenses (SUM2-014..017, INV-RATE, INV-TERM, INV-CHR)",
-      "description": "Depends on WI-0017 and WI-0024. Hourly billing consumes approved Chrona projections through the WI-0017 contract. Also INV-PROV-003, INV-PROV-004 and INV-PROV-005 (docs/requirements/SUMMA-PROVENANCE.md): imported sources keep their origin, grouping keeps each source origin, and import never needs Praxis or Chrona to be reachable. Remainders after WI-0017 released the contract: Summa-side cross-application references and ownership (SUM0-024, SUM0-025, SUM0-026), the proposal-and-review flow of v0.1 section 17 (SUM1-017) and source snapshots (INV-SOURCE), consuming EchelonFoundry.Summa.Contracts publications and returning its feedback.",
+      "description": "Depends on WI-0017 and WI-0024. Hourly billing consumes approved Chrona projections through the WI-0017 contract. Also INV-PROV-003, INV-PROV-004 and INV-PROV-005 (docs/requirements/SUMMA-PROVENANCE.md): imported sources keep their origin, grouping keeps each source origin, and import never needs Praxis or Chrona to be reachable. Remainders after WI-0017 released the contract: Summa-side cross-application references and ownership (SUM0-024, SUM0-025, SUM0-026), the proposal-and-review flow of v0.1 section 17 (SUM1-017) and source snapshots (INV-SOURCE), consuming EchelonFoundry.Summa.Contracts publications and returning its feedback. Also the SUM2-025 remainder after WI-0024: imported time is matched against what was already imported (by source and source id), so importing the same Chrona publication twice returns the existing result.",
       "tags": [
         "summa",
         "order:09",
@@ -599,7 +599,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:05.184Z",
-      "updatedAt": "2026-10-08T15:12:46.000Z",
+      "updatedAt": "2026-10-08T16:50:43.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

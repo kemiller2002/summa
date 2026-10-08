@@ -128,3 +128,46 @@ let ``every v0.2 receivables record round-trips and the books stay sound`` () =
           "records/summa.refund/2026/RF-1.json"
           "records/summa.payment-reversal/PAY-3.json" ] do
         Assert.Contains(expected, paths)
+
+[<Fact>]
+let ``discounts, terms sources, voids and corrections round-trip and the books stay sound`` () =
+    let original = withCorrections ()
+    Assert.Empty(Invariants.check original)
+    let loaded = load (stored original)
+    Assert.Empty loaded.Problems
+    let r = loaded.State
+    Assert.True((original.Voids = r.Voids))
+    Assert.True((original.Books.Invoices["INV-002"] = r.Books.Invoices["INV-002"]))
+    Assert.True((original.Books.Drafts = r.Books.Drafts))
+    Assert.True((original.Books.Customers = r.Books.Customers))
+    Assert.Equal(Summa.Ledger.Invoicing.SystemTerms, r.Books.Invoices["INV-002"].TermsSource)
+    Assert.Equal(Some "INV-002", r.Books.Drafts["D-3"].Corrects)
+    Assert.Equal(Voided, status r r.Books.Invoices["INV-002"])
+    Assert.Contains("records/summa.invoice-void/INV-002.json", stored original |> List.map (fun o -> RelativePath.render o.Path))
+
+[<Fact>]
+let ``a void writes new records and cancels the obligation; it never rewrites the invoice`` () =
+    let before = stored (withDiscountedInvoice ())
+    let seen = before |> List.map (fun o -> let p = RelativePath.render o.Path in p, ({ Path = p; Revision = o.Revision; Content = o.Content }: Seen)) |> Map.ofList
+    let wanted = withCorrections () |> toRecords |> Result.bind contents |> ok
+    let found = Commands.changes seen wanted |> ok
+
+    let touched =
+        found
+        |> List.map (function
+            | Change.Create(p, _) -> "create", RelativePath.render p
+            | Change.Update(p, _, _) -> "update", RelativePath.render p
+            | Change.Delete(p, _) -> "delete", RelativePath.render p)
+
+    Assert.Contains(("update", "records/summa.obligation/OBL-002.json"), touched)
+    Assert.Contains(("create", "records/summa.invoice-void/INV-002.json"), touched)
+    Assert.Contains(("create", "records/summa.entry/2026/10/JE-VOID-2.json"), touched)
+    Assert.Contains(("create", "records/summa.draft/D-3.json"), touched)
+    Assert.DoesNotContain(touched, fun (_, p) -> p.StartsWith "records/summa.invoice/")
+
+[<Fact>]
+let ``a void whose receivable is still open is an integrity failure`` () =
+    let objects = stored (withCorrections ())
+    let path = "records/summa.obligation/OBL-002.json"
+    let reopened = objects |> List.map (fun o -> if RelativePath.render o.Path = path then { o with Content = o.Content.Replace("\"cancelled\":true", "\"cancelled\":false") } else o)
+    Assert.Contains((load reopened).Problems, fun p -> (Diagnostics.describe p).Contains "its obligation is not cancelled")

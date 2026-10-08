@@ -14,6 +14,7 @@
     <Compile Include="InvoicingTests.fs" />
     <Compile Include="PaymentsReportsTests.fs" />
     <Compile Include="CreditsTests.fs" />
+    <Compile Include="CorrectionsTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -33,7 +33,7 @@ let abc =
       BillingName = "ABC Corp Accounts Payable"
       BillingAddress = "1 Main St"
       Email = "ap@abc.example"
-      DefaultTerms = Net 30
+      DefaultTerms = Some(Net 30)
       Active = true }
 
 let draft =
@@ -46,16 +46,20 @@ let draft =
             UnitPrice = usd 17500L
             RevenueAccountId = "revenue"
             Project = Some "PRJ-ARCH"
-            WorkItem = None } ]
+            WorkItem = None
+            Discount = None } ]
       Adjustments = [ usd 1250L ]
+      Discounts = []
       Terms = None
-      DueDate = None }
+      DueDate = None
+      Corrects = None }
 
 let issueRequest =
     { DraftId = "D-1"
       IssueDate = DateOnly(2026, 10, 7)
       NumberOverride = None
       Prefix = "INV"
+      SystemTerms = Net 30
       ReceivableAccountId = "ar"
       InvoiceId = "INV-001"
       JournalEntryId = "JE-000001"
@@ -123,3 +127,29 @@ let withCredits () =
     let r = Summa.Ledger.Credits.refund ledgerContext receivableAccounts { Id = "RF-1"; CustomerId = abc.Id; Source = FromCredit "CR-1"; Amount = usd 4000L; Date = day; Method = Ach; Reference = "OUT-1"; JournalEntryId = "JE-RF-1" } r |> ok
     let r = recordPayment ledgerContext { payment with Id = "PAY-3"; Amount = usd 7000L; Reference = "CHK-3"; Method = Check } r |> ok
     Summa.Ledger.Credits.reversePayment ledgerContext receivableAccounts { PaymentId = "PAY-3"; Reason = "Bounced check"; Date = day; JournalEntryPrefix = "JE-REV-3" } r |> ok
+
+/// A customer without default terms, so the system terms apply.
+let xyz = { abc with Id = "CUST-XYZ"; Name = "XYZ Ltd"; Email = "ap@xyz.example"; DefaultTerms = None }
+
+/// INV-002 for XYZ with line and invoice discounts, issued under the system
+/// terms, before it is voided.
+let withDiscountedInvoice () =
+    let r = full ()
+
+    let discounted =
+        { draft with
+            DraftId = "D-2"
+            CustomerId = xyz.Id
+            Lines = [ { draft.Lines.Head with Discount = Some(Percent 1000) } ]
+            Adjustments = []
+            Discounts = [ { Label = "Loyalty"; Rule = Fixed(usd 5000L) } ] }
+
+    let books = r.Books |> saveCustomer ledgerContext xyz |> saveDraft ledgerContext discounted |> ok
+    let second = { issueRequest with DraftId = "D-2"; InvoiceId = "INV-002"; JournalEntryId = "JE-INV-2"; ObligationId = "OBL-002"; SystemTerms = DueOnReceipt }
+    let books, _ = issue ledgerContext second books |> ok
+    { r with Books = books }
+
+/// INV-002 voided and reissued as draft D-3, which names it.
+let withCorrections () =
+    let request: Summa.Ledger.Corrections.VoidRequest = { InvoiceId = "INV-002"; Reason = "Wrong discount"; Date = DateOnly(2026, 10, 9); JournalEntryId = "JE-VOID-2" }
+    Summa.Ledger.Corrections.voidAndReissue ledgerContext request "D-3" (withDiscountedInvoice ()) |> ok |> fst

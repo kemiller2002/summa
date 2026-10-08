@@ -15,6 +15,7 @@
 /// | `summa.payment` | `summa.payment/<yyyy>/<id>` | immutable |
 /// | `summa.allocation` | `summa.allocation/<id>` | immutable |
 /// | `summa.audit` | `summa.audit/<yyyy>/<mm>/<id>` | immutable |
+/// | `summa.invoice-void` | `summa.invoice-void/<invoice id>` | immutable |
 ///
 /// Posted entries, issued invoices, payments, allocations and audit events
 /// are written once. A reversal is a new entry naming the one it reverses,
@@ -59,6 +60,7 @@ let applicationType = recordType "summa.application"
 let refundType = recordType "summa.refund"
 let reversalType = recordType "summa.payment-reversal"
 let writeOffType = recordType "summa.write-off"
+let voidType = recordType "summa.invoice-void"
 
 /// Every financial record type, with its mutability and whether a record of
 /// it may ever be deleted.
@@ -80,7 +82,8 @@ let types: (RecordType * Mutability * bool) list =
       applicationType, Mutability.Immutable, false
       refundType, Mutability.Immutable, false
       reversalType, Mutability.Immutable, false
-      writeOffType, Mutability.Immutable, false ]
+      writeOffType, Mutability.Immutable, false
+      voidType, Mutability.Immutable, false ]
 
 /// Schema support for every financial record type: version 1 throughout.
 let schemas =
@@ -189,6 +192,51 @@ let private termsOf (value: Json) : Decoded<PaymentTerms> =
         | "custom-date" -> closed [ "date"; "kind" ] value |> Result.bind (fun () -> date "date" value |> Result.map CustomDate)
         | other -> Error $"'{other}' is not a payment term")
 
+let private discount =
+    function
+    | Percent bp -> Json.objectOf [ "kind", Json.String "percent"; "basisPoints", number bp ]
+    | Fixed m -> Json.objectOf [ "kind", Json.String "fixed"; "amount", money m ]
+
+let private discountOf (value: Json) : Decoded<Discount> =
+    text "kind" value
+    |> Result.bind (function
+        | "percent" -> closed [ "basisPoints"; "kind" ] value |> Result.bind (fun () -> integer "basisPoints" value |> Result.map Percent)
+        | "fixed" -> closed [ "amount"; "kind" ] value |> Result.bind (fun () -> moneyField "amount" value |> Result.map Fixed)
+        | other -> Error $"'{other}' is not a discount")
+
+let private invoiceDiscount (d: InvoiceDiscount) =
+    Json.objectOf [ "label", Json.String d.Label; "rule", discount d.Rule ]
+
+let private invoiceDiscountOf (value: Json) : Decoded<InvoiceDiscount> =
+    decode {
+        do! closed [ "label"; "rule" ] value
+        let! label = text "label" value
+        let! rule = field "rule" value |> Result.bind discountOf
+        return { Label = label; Rule = rule }
+    }
+
+let private optionalOf (decoder: Json -> Decoded<'a>) (name: string) (value: Json) : Decoded<'a option> =
+    match Json.field name value with
+    | None
+    | Some Json.Null -> Ok None
+    | Some found -> decoder found |> Result.map Some
+
+let private optionalJson (encoder: 'a -> Json) (value: 'a option) =
+    value |> Option.map encoder |> Option.defaultValue Json.Null
+
+let private termsSourceName =
+    function
+    | InvoiceTerms -> "invoice"
+    | CustomerTerms -> "customer"
+    | SystemTerms -> "system"
+
+let private termsSourceOf =
+    function
+    | "invoice" -> Ok InvoiceTerms
+    | "customer" -> Ok CustomerTerms
+    | "system" -> Ok SystemTerms
+    | other -> Error $"'{other}' is not where terms come from"
+
 let private invoiceLine (l: InvoiceLine) =
     Json.objectOf
         [ "description", Json.String l.Description
@@ -196,17 +244,19 @@ let private invoiceLine (l: InvoiceLine) =
           "unitPrice", money l.UnitPrice
           "revenueAccountId", Json.String l.RevenueAccountId
           "project", optionalString l.Project
-          "workItem", optionalString l.WorkItem ]
+          "workItem", optionalString l.WorkItem
+          "discount", optionalJson discount l.Discount ]
 
 let private invoiceLineOf (value: Json) : Decoded<InvoiceLine> =
     decode {
-        do! closed [ "description"; "project"; "quantityThousandths"; "revenueAccountId"; "unitPrice"; "workItem" ] value
+        do! closed [ "description"; "discount"; "project"; "quantityThousandths"; "revenueAccountId"; "unitPrice"; "workItem" ] value
         let! description = text "description" value
         let! quantity = long "quantityThousandths" value
         let! price = moneyField "unitPrice" value
         let! revenue = text "revenueAccountId" value
         let! project = optionalText "project" value
         let! workItem = optionalText "workItem" value
+        let! lineDiscount = optionalOf discountOf "discount" value
 
         return
             { Description = description
@@ -214,7 +264,8 @@ let private invoiceLineOf (value: Json) : Decoded<InvoiceLine> =
               UnitPrice = price
               RevenueAccountId = revenue
               Project = project
-              WorkItem = workItem }
+              WorkItem = workItem
+              Discount = lineDiscount }
     }
 
 let private accountTypeName =
@@ -373,7 +424,7 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                     "billingName", Json.String c.BillingName
                     "billingAddress", Json.String c.BillingAddress
                     "email", Json.String c.Email
-                    "defaultTerms", terms c.DefaultTerms
+                    "defaultTerms", optionalJson terms c.DefaultTerms
                     "active", Json.Bool c.Active ]
           for KeyValue(_, d) in books.Drafts ->
               keyOf draftType [] d.DraftId,
@@ -383,8 +434,10 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                     "currency", Json.String d.Currency
                     "lines", Json.Array(List.map invoiceLine d.Lines)
                     "adjustments", Json.Array(List.map money d.Adjustments)
-                    "terms", (d.Terms |> Option.map terms |> Option.defaultValue Json.Null)
-                    "dueDate", (d.DueDate |> Option.map (dateText >> Json.String) |> Option.defaultValue Json.Null) ]
+                    "discounts", Json.Array(List.map invoiceDiscount d.Discounts)
+                    "terms", optionalJson terms d.Terms
+                    "dueDate", optionalJson (dateText >> Json.String) d.DueDate
+                    "corrects", optionalString d.Corrects ]
           for KeyValue(_, i) in books.Invoices do
               yield
                   keyOf invoiceType [ $"{i.IssueDate.Year:D4}" ] i.InvoiceId,
@@ -397,9 +450,12 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                         "issueDate", Json.String(dateText i.IssueDate)
                         "dueDate", Json.String(dateText i.DueDate)
                         "terms", terms i.Terms
+                        "termsSource", Json.String(termsSourceName i.TermsSource)
                         "lines", Json.Array(List.map invoiceLine i.Lines)
                         "subtotal", money i.Subtotal
+                        "discounts", Json.Array(List.map invoiceDiscount i.Discounts)
                         "adjustments", Json.Array(List.map money i.Adjustments)
+                        "corrects", optionalString i.Corrects
                         "total", money i.Total
                         "journalEntryId", Json.String i.JournalEntryId
                         "obligationId", Json.String i.ObligationId
@@ -513,6 +569,13 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                     "reason", Json.String w.Reason
                     "date", Json.String(dateText w.Date)
                     "journalEntryId", Json.String w.JournalEntryId ]
+          for KeyValue(_, v) in r.Voids ->
+              keyOf voidType [] v.InvoiceId,
+              Json.objectOf
+                  [ "invoiceId", Json.String v.InvoiceId
+                    "reason", Json.String v.Reason
+                    "date", Json.String(dateText v.Date)
+                    "journalEntryId", Json.String v.JournalEntryId ]
           for id, a in auditIds ledger.Audit -> keyOf auditType (yearMonth (DateOnly.FromDateTime a.When.UtcDateTime)) id, auditBody a ]
 
     match records |> List.choose (fun (k, _) -> match k with Error d -> Some d | Ok _ -> None) with
@@ -564,6 +627,7 @@ type private Part =
     | RefundPart of Refund
     | ReversalPart of PaymentReversal
     | WriteOffPart of WriteOff
+    | VoidPart of InvoiceVoid
 
 let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
     match RecordType.value t with
@@ -625,7 +689,7 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
             let! billingName = text "billingName" b
             let! address = text "billingAddress" b
             let! email = text "email" b
-            let! terms = field "defaultTerms" b |> Result.bind termsOf
+            let! terms = optionalOf termsOf "defaultTerms" b
             let! active = flag "active" b
 
             return
@@ -640,20 +704,16 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
         }
     | "summa.draft" ->
         decode {
-            do! closed [ "adjustments"; "currency"; "customerId"; "draftId"; "dueDate"; "lines"; "terms" ] b
+            do! closed [ "adjustments"; "corrects"; "currency"; "customerId"; "discounts"; "draftId"; "dueDate"; "lines"; "terms" ] b
             let! id = text "draftId" b
             let! customer = text "customerId" b
             let! currency = text "currency" b
             let! lines = list "lines" invoiceLineOf b
             let! adjustments = list "adjustments" moneyOf b
-
-            let! terms =
-                match Json.field "terms" b with
-                | None
-                | Some Json.Null -> Ok None
-                | Some t -> termsOf t |> Result.map Some
-
+            let! discounts = list "discounts" invoiceDiscountOf b
+            let! terms = optionalOf termsOf "terms" b
             let! due = optionalDate "dueDate" b
+            let! corrects = optionalText "corrects" b
 
             return
                 DraftPart
@@ -662,15 +722,17 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                       Currency = currency
                       Lines = lines
                       Adjustments = adjustments
+                      Discounts = discounts
                       Terms = terms
-                      DueDate = due }
+                      DueDate = due
+                      Corrects = corrects }
         }
     | "summa.invoice" ->
         decode {
             do!
                 closed
-                    [ "adjustments"; "currency"; "customerId"; "draftId"; "dueDate"; "invoiceId"; "issueDate"; "issuedAt"
-                      "journalEntryId"; "lines"; "number"; "obligationId"; "subtotal"; "terms"; "total" ]
+                    [ "adjustments"; "corrects"; "currency"; "customerId"; "discounts"; "draftId"; "dueDate"; "invoiceId"; "issueDate"
+                      "issuedAt"; "journalEntryId"; "lines"; "number"; "obligationId"; "subtotal"; "terms"; "termsSource"; "total" ]
                     b
 
             let! id = text "invoiceId" b
@@ -681,9 +743,12 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
             let! issueDate = date "issueDate" b
             let! dueDate = date "dueDate" b
             let! terms = field "terms" b |> Result.bind termsOf
+            let! termsSource = text "termsSource" b |> Result.bind termsSourceOf
             let! lines = list "lines" invoiceLineOf b
             let! subtotal = moneyField "subtotal" b
+            let! discounts = list "discounts" invoiceDiscountOf b
             let! adjustments = list "adjustments" moneyOf b
+            let! corrects = optionalText "corrects" b
             let! total = moneyField "total" b
             let! entry = text "journalEntryId" b
             let! obligation = text "obligationId" b
@@ -698,10 +763,13 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                       IssueDate = issueDate
                       DueDate = dueDate
                       Terms = terms
+                      TermsSource = termsSource
                       Lines = lines
                       Subtotal = subtotal
+                      Discounts = discounts
                       Adjustments = adjustments
                       Total = total
+                      Corrects = corrects
                       JournalEntryId = entry
                       ObligationId = obligation
                       IssuedAt = issuedAt
@@ -946,6 +1014,21 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                       Date = date
                       JournalEntryId = entry }
         }
+    | "summa.invoice-void" ->
+        decode {
+            do! closed [ "date"; "invoiceId"; "journalEntryId"; "reason" ] b
+            let! invoice = text "invoiceId" b
+            let! reason = text "reason" b
+            let! date = date "date" b
+            let! entry = text "journalEntryId" b
+
+            return
+                VoidPart
+                    { InvoiceId = invoice
+                      Reason = reason
+                      Date = date
+                      JournalEntryId = entry }
+        }
     | other -> Error $"'{other}' is not a financial record type"
 
 /// A financial object as read: path text and revision.
@@ -1004,7 +1087,8 @@ let private assemble (parts: Part list) : Receivables =
       Applications = parts |> List.choose (function ApplicationPart a -> Some a | _ -> None) |> List.sortBy _.Id
       Refunds = parts |> List.choose (function RefundPart f -> Some(f.Id, f) | _ -> None) |> Map.ofList
       Reversals = parts |> List.choose (function ReversalPart v -> Some(v.PaymentId, v) | _ -> None) |> Map.ofList
-      WriteOffs = parts |> List.choose (function WriteOffPart w -> Some(w.Id, w) | _ -> None) |> Map.ofList }
+      WriteOffs = parts |> List.choose (function WriteOffPart w -> Some(w.Id, w) | _ -> None) |> Map.ofList
+      Voids = parts |> List.choose (function VoidPart v -> Some(v.InvoiceId, v) | _ -> None) |> Map.ofList }
 
 /// Cross-record rules that make the books trustworthy (`Invariants`), plus
 /// what only the stored form can show: an idempotency key used twice.

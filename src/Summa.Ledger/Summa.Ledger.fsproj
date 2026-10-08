@@ -12,6 +12,7 @@
     <Compile Include="Invoicing.fs" />
     <Compile Include="Payments.fs" />
     <Compile Include="Credits.fs" />
+    <Compile Include="Corrections.fs" />
     <Compile Include="Reports.fs" />
   </ItemGroup>
 
