@@ -4,7 +4,7 @@
 |---|---|---|---|---|
 | ECHELON-UPGRADE-2026-09-21 | Modernize Summa Echelon engineering capabilities | complete | tooling, ordo, limen | high |
 | FOUNDATIONS-APPLICABILITY | FOUNDATIONS-APPLICABILITY | complete |  |  |
-| GH-4 | Prepare Summa implementation baseline | active | readiness,bootstrap | high |
+| GH-4 | Prepare Summa implementation baseline | complete | readiness,bootstrap | high |
 | LIMEN-0-7-0 | LIMEN-0-7-0 | complete |  |  |
 | LIMEN-0-7-0-APPLY | LIMEN-0-7-0-APPLY | complete |  |  |
 | LIMEN-0-7-0-FND | LIMEN-0-7-0-FND | complete |  |  |
@@ -43,3 +43,4 @@
 | WI-0030 | Summa 14: v0.4 product UI on Limen/Forma - dashboard, invoices, receivables, payments, follow-up, ledger, reports, period close, CPA workspace, work queue (SUM4-001..041, INV-UI, INV-A11Y) | captured | summa, order:14, ui, limen, forma | medium |
 | WI-0031 | Summa 15: data export and escape hatch, v0.2 scenario tests, property, invariant and failure-injection tests (SUM1-020, SUM2-032, SUM3-042, SUM3-043, SUM0-001, SUM0-050) | captured | summa, order:15, quality | medium |
 | WI-0032 | Stop the Chromium install from hanging the browser-suite CI (unbounded apt-get update in playwright install --with-deps) | complete | ci, playwright, reliability | high |
+| WI-0033 | Fold draft PRs #6 and #7 (billing provenance, INV-PROV) into the backlog as Summa-owned requirements and close them | complete | housekeeping, provenance | high |

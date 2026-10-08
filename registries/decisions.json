@@ -45,6 +45,48 @@
     "version": "1.0.0"
   },
   {
+    "created": "2026-10-08",
+    "id": "DF-SUMMA-2026-0002",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0002--fold-draft-provenance-prs-into-summa-requirements.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261008T145558830Z-61dab5d8": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-08T14:56:44.807Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Decide how the draft provenance PRs are folded and closed"
+        }
+      }
+    },
+    "related_documents": [
+      "docs/requirements/SUMMA-PROVENANCE.md",
+      "docs/requirements/backlog-plan.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "provenance",
+      "chrona",
+      "housekeeping"
+    ],
+    "title": "Fold the draft billing-provenance PRs into Summa-owned F#-neutral requirements and close them",
+    "updated": "2026-10-08",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-10-05",
     "id": "DF-SUMMA-FND-2026-0001",
     "owners": [
