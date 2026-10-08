@@ -43,3 +43,4 @@
 | WI-0030 | Summa 14: v0.4 product UI on Limen/Forma - dashboard, invoices, receivables, payments, follow-up, ledger, reports, period close, CPA workspace, work queue (SUM4-001..041, INV-UI, INV-A11Y) | captured | summa, order:14, ui, limen, forma | medium |
 | WI-0031 | Summa 15: data export and escape hatch, v0.2 scenario tests, property, invariant and failure-injection tests (SUM1-020, SUM2-032, SUM3-042, SUM3-043, SUM0-001, SUM0-050) | captured | summa, order:15, quality | medium |
 | WI-0032 | Stop the Chromium install from hanging the browser-suite CI (unbounded apt-get update in playwright install --with-deps) | complete | ci, playwright, reliability | high |
+| WI-0033 | Fold draft PRs #6 and #7 (billing provenance, INV-PROV) into the backlog as Summa-owned requirements and close them | active | housekeeping, provenance | high |

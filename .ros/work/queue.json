@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 33,
+  "nextSeq": 34,
   "items": [
     {
       "id": "WI-0001",
@@ -379,7 +379,7 @@
     {
       "id": "WI-0017",
       "title": "Summa 01: publish the Chrona-to-Summa contract as a small versioned contracts package (pure F# types and JSON codec), released through Summa's release workflow and registered in echelon-registry",
-      "description": "User decision 2026-10-08: the application that ACCEPTS the data owns the contract, so Summa owns the Chrona-to-Summa contract. Build order is Chrona first, then Summa; this item is pulled forward because Chrona's integration item consumes it. A separate packable project (for example EchelonFoundry.Summa.Contracts): pure F# types for the publishable time projection (source application, source id and revision, organization, project, exact and billable minutes, policy id and version, publication id) and the feedback messages (InvoicedExternally, AdjustmentRequired), plus a canonical JSON codec with explicit contract version and golden vectors. No dependency on Summa internals. Release it through Summa's release workflow with the nuget-library release contract, and add it to echelon-registry so Chrona pins it through conditor.json. Requirements: SUM0-024, SUM0-025, SUM0-026, SUM1-017, SUM2-031, INV-CHR, INV-CONTRACT, INV-SOURCE; Chrona CHX-170, CHX-180.",
+      "description": "User decision 2026-10-08: the application that ACCEPTS the data owns the contract, so Summa owns the Chrona-to-Summa contract. Build order is Chrona first, then Summa; this item is pulled forward because Chrona's integration item consumes it. A separate packable project (for example EchelonFoundry.Summa.Contracts): pure F# types for the publishable time projection (source application, source id and revision, organization, project, exact and billable minutes, policy id and version, publication id) and the feedback messages (InvoicedExternally, AdjustmentRequired), plus a canonical JSON codec with explicit contract version and golden vectors. No dependency on Summa internals. Release it through Summa's release workflow with the nuget-library release contract, and add it to echelon-registry so Chrona pins it through conditor.json. Requirements: SUM0-024, SUM0-025, SUM0-026, SUM1-017, SUM2-031, INV-CHR, INV-CONTRACT, INV-SOURCE; Chrona CHX-170, CHX-180. Also INV-PROV-003 and INV-PROV-008 (docs/requirements/SUMMA-PROVENANCE.md): each published source carries its origin verbatim, explicitly unknown when absent, never a credential.",
       "tags": [
         "summa",
         "order:01",
@@ -391,7 +391,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:02.675Z",
-      "updatedAt": "2026-10-08T07:46:02.675Z",
+      "updatedAt": "2026-10-08T14:56:43.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -432,7 +432,7 @@
     {
       "id": "WI-0019",
       "title": "Summa 03: GitHub sign-in through Fides, token handling, principals and capability authorization (SUM0-003, SUM0-004, SUM0-022, SUM0-023, SUM2-029, SUM3-012..015)",
-      "description": "Depends on fides slice 7 (WASM client and Arca token provider, FID-CLI) and arca slice 5 (token-provider port, ARCA-AUTH). Sign in through Fides. Tokens never reach files, records, logs, exports or audit. Human/Agent/Service principals with actor identity on every command, and agent actions never recorded as human. Capability-based Summa authorization separate from GitHub authentication. Human approval boundaries.",
+      "description": "Depends on fides slice 7 (WASM client and Arca token provider, FID-CLI) and arca slice 5 (token-provider port, ARCA-AUTH). Sign in through Fides. Tokens never reach files, records, logs, exports or audit. Human/Agent/Service principals with actor identity on every command, and agent actions never recorded as human. Capability-based Summa authorization separate from GitHub authentication. Human approval boundaries. Also INV-PROV-006 (docs/requirements/SUMMA-PROVENANCE.md): identity is provenance, not authority.",
       "tags": [
         "summa",
         "order:03",
@@ -444,7 +444,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:03.313Z",
-      "updatedAt": "2026-10-08T07:46:03.313Z",
+      "updatedAt": "2026-10-08T14:56:43.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -588,7 +588,7 @@
     {
       "id": "WI-0025",
       "title": "Summa 09: billing models - hourly from Chrona, fixed-price, milestone and reimbursable expenses (SUM2-014..017, INV-RATE, INV-TERM, INV-CHR)",
-      "description": "Depends on WI-0017 and WI-0024. Hourly billing consumes approved Chrona projections through the WI-0017 contract.",
+      "description": "Depends on WI-0017 and WI-0024. Hourly billing consumes approved Chrona projections through the WI-0017 contract. Also INV-PROV-003, INV-PROV-004 and INV-PROV-005 (docs/requirements/SUMMA-PROVENANCE.md): imported sources keep their origin, grouping keeps each source origin, and import never needs Praxis or Chrona to be reachable.",
       "tags": [
         "summa",
         "order:09",
@@ -599,7 +599,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:05.184Z",
-      "updatedAt": "2026-10-08T07:46:05.184Z",
+      "updatedAt": "2026-10-08T14:56:43.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -640,7 +640,7 @@
     {
       "id": "WI-0027",
       "title": "Summa 11: invoice generation - document model, numbering, draft/issue/revise/correct/adjust/deliver lifecycle, rendered with Folio (SUM1-007, SUM0-037, SUM3-030, INV-DOC, INV-NUM, INV-ISS, INV-STATE, INV-DRAFT, INV-REV, INV-COR, INV-ADJ, INV-DEL, INV-PAYINST)",
-      "description": "Depends on WI-0024 and WI-0025. Invoice documents and PDFs through Folio (every app except Helix uses Folio). Issued content stays reproducible. Large binaries stay outside the repository (artifact references, SUM0-035, SUM0-036).",
+      "description": "Depends on WI-0024 and WI-0025. Invoice documents and PDFs through Folio (every app except Helix uses Folio). Issued content stays reproducible. Large binaries stay outside the repository (artifact references, SUM0-035, SUM0-036). Also INV-PROV-004 (docs/requirements/SUMMA-PROVENANCE.md): grouped lines keep each source origin as lineage.",
       "tags": [
         "summa",
         "order:11",
@@ -651,7 +651,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:05.811Z",
-      "updatedAt": "2026-10-08T07:46:05.811Z",
+      "updatedAt": "2026-10-08T14:56:43.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -666,7 +666,7 @@
     {
       "id": "WI-0028",
       "title": "Summa 12: audit provenance, audit immutability and agent execution safety (SUM1-018, SUM2-028, SUM2-030, SUM3-021, INV-AUD, INV-AGENT, SUM4-042..045, SUM0-048, SUM0-049)",
-      "description": "Depends on WI-0019 and WI-0020. Audit events are immutable records with actor kind, execution id and correlation id. Agents use domain commands only, with explanation, human override and no autonomous financial surprises. Agents never edit authoritative files directly (SUM0-048) and read only the context they need (SUM0-049).",
+      "description": "Depends on WI-0019 and WI-0020. Audit events are immutable records with actor kind, execution id and correlation id. Agents use domain commands only, with explanation, human override and no autonomous financial surprises. Agents never edit authoritative files directly (SUM0-048) and read only the context they need (SUM0-049). Also INV-PROV-001, INV-PROV-002, INV-PROV-006, INV-PROV-007 and INV-PROV-008 (docs/requirements/SUMMA-PROVENANCE.md): Praxis-compatible actors, opaque execution ids, both contributions kept when a human changes an agent proposal.",
       "tags": [
         "summa",
         "order:12",
@@ -677,7 +677,7 @@
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:06.134Z",
-      "updatedAt": "2026-10-08T07:46:06.134Z",
+      "updatedAt": "2026-10-08T14:56:44.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -780,6 +780,30 @@
       "attachments": [],
       "createdAt": "2026-10-08T08:04:53.223Z",
       "updatedAt": "2026-10-08T08:13:41.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0033",
+      "title": "Fold draft PRs #6 and #7 (billing provenance, INV-PROV) into the backlog as Summa-owned requirements and close them",
+      "description": "PRs #6 and #7 are JavaScript prototypes that predate the F# domain and both number INV-PROV-001.. differently. Keep the requirement substance as docs/requirements/SUMMA-PROVENANCE.md, attach it to WI-0017 (origin lineage in the contract), WI-0025 (import keeps origin) and WI-0028 (audit actor and execution), record the decision, close both PRs with a pointer.",
+      "tags": [
+        "housekeeping",
+        "provenance"
+      ],
+      "priority": "high",
+      "status": "ready",
+      "attachments": [],
+      "createdAt": "2026-10-08T14:55:54.000Z",
+      "updatedAt": "2026-10-08T14:55:58.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

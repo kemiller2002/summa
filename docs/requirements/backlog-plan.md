@@ -21,3 +21,18 @@ Captured 2026-10-08 (WI-0016) from the missing and partial rows of [`implementat
 | 15 | WI-0031 | Summa 15: data export and escape hatch, v0.2 scenario tests, property, invariant and failure-injection tests (SUM1-020, SUM2-032, SUM3-042, SUM3-043, SUM0-001, SUM0-050) | WI-0022, WI-0027 and WI-0029 |
 
 The backlog itself lives in `.ros/work/queue.json` and is managed only through the Praxis CLI. This table is a readable snapshot from when the slices were captured.
+
+## Housekeeping (2026-10-08)
+
+- Draft PRs #6 and #7 (billing provenance) are folded into
+  [`SUMMA-PROVENANCE.md`](SUMMA-PROVENANCE.md) (INV-PROV-001..008,
+  DF-SUMMA-2026-0002); WI-0017, WI-0019, WI-0025, WI-0027 and WI-0028 name the
+  INV-PROV requirements they carry. PR #9 (CI debounce) was closed: it edited a
+  workflow that no longer exists.
+- GH-4 (implementation baseline, issue #4) is complete: the context files now
+  describe the baseline that WI-0007 and WI-0012..WI-0014 built.
+- WI-0001..WI-0003 still read `ready` in the raw `queue.json` `status` field
+  although their live records are complete (`queue.md` shows complete). They
+  were completed before Praxis started marking the backlog row complete, and
+  the CLI has no transition that corrects a completed row (abandoning would
+  misstate them), so they are left as they are.
