@@ -85,6 +85,37 @@ module private Hub =
 
         [ view page ]
 
+module private Accounting =
+    open Summa.Web.Engine.Accounting
+
+    /// The application on every screen, with every list populated.
+    let views =
+        let ctx = { Now = System.DateTimeOffset(2026, 10, 7, 9, 0, 0, System.TimeSpan.Zero); Actor = "local-person" }
+        let step model msg = update ctx msg model |> fst
+        let started = [ Started; Loaded None ] |> List.fold step initial
+
+        let withCustomer =
+            [ Navigate "customers"; CustomerNameChanged "ABC"; CustomerAddressChanged "1 Main"; CustomerTermsChanged "0"; CustomerAdded ]
+            |> List.fold step started
+
+        let opened = [ NewInvoice; DraftCustomerChanged "CUST-0001" ] |> List.fold step withCustomer
+        let key = opened.Draft.Lines.Head.Key
+        let drafted = [ LineDescriptionChanged(key, "Work"); LineRateChanged(key, "100") ] |> List.fold step opened
+
+        let blocked = [ Navigate "settings"; CompanyAddressChanged ""; CompanySaved; DraftSubmitted ] |> List.fold step drafted
+        let fixedUp = [ Navigate "settings"; CompanyAddressChanged "1 Way"; CompanySaved; DraftOpened "D-0001"; DraftSubmitted; DraftIssued ] |> List.fold step blocked
+        let paid = [ PaymentAmountChanged "50"; PaymentRecorded ] |> List.fold step fixedUp
+        let late = { paid with Today = System.DateOnly(2027, 6, 1) }
+        let untrustworthy = step initial (Loaded(Some "{}"))
+        let extra = [ "canPrint", Value(Flag true) ]
+
+        [ view started @ extra
+          view blocked
+          view paid
+          view late
+          view { late with Route = Receivables }
+          view untrustworthy ]
+
 let private agree (page: string) (views: View list) (events: Set<string>) =
     let html = readRepoFile $"{page}/index.html"
     let offered = Set.union (viewNames views) faultNames
@@ -133,3 +164,7 @@ let ``every dialog a row action opens exists on the page`` () =
 
     Assert.NotEmpty targets
     Assert.Empty(Set.difference targets dialogs)
+
+[<Fact>]
+let ``the accounting page binds only what its engine projects and sends only what it handles`` () =
+    agree "app" Accounting.views (Summa.Web.Application.AccountingWire.events |> Map.keys |> Set.ofSeq)

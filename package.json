@@ -10,7 +10,8 @@
     "test:browser": "npm run build:wasm && playwright test",
     "test": "npm run check:limen && npm run test:dotnet && npm run test:browser",
     "web": "npm run build:wasm && node tools/ros_server.mjs",
-    "hub": "npm run build:wasm && node tools/ros_hub_server.mjs"
+    "hub": "npm run build:wasm && node tools/ros_hub_server.mjs",
+    "app": "npm run build:wasm && node tools/app_server.mjs"
   },
   "dependencies": {
     "@echelon-foundry/design-system": "https://github.com/kemiller2002/forma/releases/download/v0.4.1/echelon-foundry-design-system-0.4.1.tgz",

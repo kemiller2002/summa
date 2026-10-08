@@ -1,0 +1,313 @@
+/* The accounting application's stylesheet, owned by Summa. Forma (pinned
+   @echelon-foundry/design-system) owns tokens, foundations and components;
+   Folio (pinned @echelon-foundry/print-components) owns print. Both come from
+   the installed packages, never copies. This file only lays Summa's
+   compositions out, on Forma's tokens. State cues are data-* attributes the
+   engine projects; Limen refuses style bindings. */
+@import "../node_modules/@echelon-foundry/design-system/dist/all.css";
+@import "../node_modules/@echelon-foundry/print-components/src/styles/print.css" print;
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+}
+
+.summa-banner {
+  margin: 0;
+  max-inline-size: none;
+  padding: 0.5rem 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--ef-color-text-primary, #1f2328);
+  background: color-mix(in srgb, var(--ef-color-status-warning, #b7791f) 14%, Canvas);
+  border-bottom: 2px solid var(--ef-color-status-warning, #b7791f);
+}
+
+.summa-gate {
+  max-inline-size: 40rem;
+  margin: 4rem auto;
+  padding: 0 1rem;
+}
+
+.summa-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  padding: 0.75rem clamp(1rem, 3vw, 2rem);
+  border-bottom: 1px solid var(--ef-color-border-subtle, #d0d7de);
+}
+
+.summa-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.summa-brand__mark {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border-radius: 0.5rem;
+  color: var(--ef-color-text-inverse, #fff);
+  background: var(--ef-color-action-primary, #0b5cad);
+}
+
+.summa-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  flex: 1 1 auto;
+}
+
+.summa-nav__link {
+  font: inherit;
+  padding: 0.5rem 0.75rem;
+  min-block-size: 2.75rem;
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.summa-nav__link[aria-current="page"] {
+  background: color-mix(in srgb, var(--ef-color-action-primary, #0b5cad) 12%, Canvas);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+}
+
+.summa-nav__link:focus-visible,
+.summa-link:focus-visible {
+  outline: 3px solid var(--ef-color-focus, #1f6feb);
+  outline-offset: 2px;
+}
+
+.summa-main {
+  max-inline-size: 72rem;
+  margin-inline: auto;
+  padding: clamp(1rem, 3vw, 2rem) 1rem 4rem;
+}
+
+.summa-main h1 {
+  margin: 0;
+}
+
+.summa-notice,
+.summa-error {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  border-inline-start: 4px solid var(--ef-color-status-success, #1a7f37);
+  background: color-mix(in srgb, var(--ef-color-status-success, #1a7f37) 10%, Canvas);
+}
+
+.summa-error {
+  border-inline-start-color: var(--ef-color-status-danger, #cf222e);
+  background: color-mix(in srgb, var(--ef-color-status-danger, #cf222e) 10%, Canvas);
+}
+
+.summa-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem;
+}
+
+.summa-metric {
+  padding: 1rem;
+}
+
+.summa-metric__label,
+.summa-metric__note {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.summa-metric__value {
+  margin: 0.25rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.summa-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.summa-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+}
+
+.summa-table th,
+.summa-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: start;
+  border-bottom: 1px solid var(--ef-color-border-subtle, #d0d7de);
+  vertical-align: top;
+}
+
+.summa-table caption {
+  text-align: start;
+  font-weight: 600;
+  padding-block: 0.5rem;
+}
+
+.summa-number {
+  text-align: end !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.summa-lines input {
+  inline-size: 100%;
+  min-inline-size: 5rem;
+}
+
+.summa-link {
+  font: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ef-color-text-link, #0b5cad);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.summa-total {
+  margin: 0 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.summa-blockers {
+  padding: 0.75rem 1rem;
+  border-inline-start: 4px solid var(--ef-color-status-warning, #b7791f);
+  background: color-mix(in srgb, var(--ef-color-status-warning, #b7791f) 10%, Canvas);
+}
+
+.summa-blockers h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.summa-invoice-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1.5rem;
+}
+
+.summa-invoice-head p {
+  margin: 0;
+}
+
+.summa-document {
+  display: block;
+  padding: clamp(1rem, 3vw, 2.5rem);
+  border: 1px solid var(--ef-color-border-subtle, #d0d7de);
+  border-radius: 0.5rem;
+  background: Canvas;
+}
+
+.summa-document__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.summa-document__issuer {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.summa-document__facts,
+.summa-document__totals {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+
+.summa-document__facts div,
+.summa-document__totals div {
+  display: contents;
+}
+
+.summa-document__facts dd,
+.summa-document__totals dd {
+  margin: 0;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.summa-document__totals {
+  justify-content: end;
+  margin-block: 1rem;
+}
+
+.summa-document__due dt,
+.summa-document__due dd {
+  font-weight: 700;
+}
+
+.summa-document__label {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 1rem 0 0.25rem;
+}
+
+.summa-pre {
+  white-space: pre-line;
+  margin: 0;
+}
+
+@media (max-width: 40rem) {
+  .summa-table thead {
+    display: none;
+  }
+
+  .summa-table tr {
+    display: grid;
+    padding-block: 0.5rem;
+    border-bottom: 1px solid var(--ef-color-border-subtle, #d0d7de);
+  }
+
+  .summa-table td {
+    border: 0;
+    padding: 0.125rem 0;
+    text-align: start !important;
+  }
+}
+
+/* Print only the invoice: Folio's print.css lays out the document. */
+@media print {
+  .summa-banner,
+  .summa-header,
+  .summa-messages,
+  .summa-error,
+  .summa-invoice-head,
+  .summa-screen-only {
+    display: none !important;
+  }
+
+  .summa-main {
+    padding: 0;
+    max-inline-size: none;
+  }
+
+  .summa-document {
+    border: 0;
+    padding: 0;
+  }
+}

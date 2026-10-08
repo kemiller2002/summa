@@ -2,8 +2,9 @@
 
   <!-- Limen engine: the authority side of the browser boundary for both
        Summa web pages. Pure F#: state, transitions, request descriptions and
-       view projection. No browser, network, clock or file-system access, and
-       no package dependencies beyond FSharp.Core. -->
+       view projection. No browser, network, clock or file-system access.
+       The accounting application decides through Summa's own domain
+       (Summa.Ledger) and its storage format (Summa.Storage), both pure. -->
 
   <ItemGroup>
     <Compile Include="Common.fs" />
@@ -11,6 +12,11 @@
     <Compile Include="BacklogPage.fs" />
     <Compile Include="Hub.fs" />
     <Compile Include="HubPage.fs" />
+    <Compile Include="Accounting.fs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../Summa.Ledger/Summa.Ledger.fsproj" />
+    <ProjectReference Include="../Summa.Storage/Summa.Storage.fsproj" />
+  </ItemGroup>
 </Project>

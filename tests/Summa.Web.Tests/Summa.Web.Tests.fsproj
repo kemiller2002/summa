@@ -16,6 +16,7 @@
     <Compile Include="HubPageTests.fs" />
     <Compile Include="BoundaryTests.fs" />
     <Compile Include="FoundationsConformanceTests.fs" />
+    <Compile Include="AccountingTests.fs" />
     <Compile Include="BindingAgreementTests.fs" />
   </ItemGroup>
 

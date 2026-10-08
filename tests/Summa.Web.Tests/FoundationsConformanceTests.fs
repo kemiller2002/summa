@@ -117,7 +117,8 @@ let ``nothing forks Forma or bypasses Limen's binding rules`` () =
     let sources =
         [ "web/index.html"; "web/summa.css"; "web/main.js"
           "web-hub/index.html"; "web-hub/summa.css"; "web-hub/main.js"
-          "web-kernel/page.css"; "web-kernel/limen-wasm.js" ]
+          "web-kernel/page.css"; "web-kernel/limen-wasm.js"; "web-kernel/print.js"
+          "app/index.html"; "app/summa-app.css"; "app/app.js" ]
 
     for source in sources do
         let text = readRepoFile source
@@ -159,7 +160,7 @@ let ``the Limen boundary names the F# engine and the browser kernel`` () =
     let paths (name: string) = boundary.[name].AsArray() |> Seq.map str |> Seq.toList
 
     Assert.Equal<string list>([ "src/Summa.Web.Engine"; "src/Summa.Web.Application" ], paths "engine")
-    Assert.Equal<string list>([ "src/Summa.Wasm"; "web"; "web-hub"; "web-kernel" ], paths "kernel")
+    Assert.Equal<string list>([ "src/Summa.Wasm"; "app"; "web"; "web-hub"; "web-kernel" ], paths "kernel")
 
     for path in paths "engine" @ paths "kernel" do
         Assert.True(Directory.Exists(repoFile path), path)
