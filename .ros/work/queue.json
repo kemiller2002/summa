@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 39,
+  "nextSeq": 40,
   "items": [
     {
       "id": "WI-0001",
@@ -933,6 +933,30 @@
       "attachments": [],
       "createdAt": "2026-10-08T16:07:53.000Z",
       "updatedAt": "2026-10-08T16:16:55.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0039",
+      "title": "Summa 14b: GitHub Pages deployment of the accounting app on summa.echelonfoundry.com (after WI-0030)",
+      "description": "Depends on WI-0030: do this once the accounting app has a browser page that works without the local Node server. Copy the pattern of chrona#55 and signal#36: a GitHub Pages workflow; a deploy/pages/ folder holding the Pages configuration; a demo banner on the deployed page; and a Content-Security-Policy meta tag. Pages is already enabled for kemiller2002/summa on the custom domain summa.echelonfoundry.com. Deploy only the static accounting app: the backlog and hub tools need /api/* and must not be deployed. Same rules as every change: a PR, every check green on the exact head SHA before merging.",
+      "tags": [
+        "deployment",
+        "pages"
+      ],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T17:27:24.000Z",
+      "updatedAt": "2026-10-08T17:27:24.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
