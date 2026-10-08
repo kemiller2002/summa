@@ -12,6 +12,7 @@
     <Compile Include="Replies.fs" />
     <Compile Include="BacklogWire.fs" />
     <Compile Include="HubWire.fs" />
+    <Compile Include="AccountingWire.fs" />
     <Compile Include="Runtime.fs" />
   </ItemGroup>
 

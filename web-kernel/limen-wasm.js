@@ -1,4 +1,4 @@
-// Limen kernel side - browser interop only. Shared by web/ and web-hub/.
+// Limen kernel side - browser interop only. Shared by web/, web-hub/ and app/.
 //
 // Loads the published .NET WebAssembly runtime, hands each Limen message, as
 // JSON, to one page's [JSExport] in the Summa.Wasm shim, and starts Limen's
@@ -13,6 +13,7 @@ import "../node_modules/@echelon-foundry/print-components/src/components/registe
 import { BrowserKernel } from "../node_modules/@echelon-foundry/limen/dist/kernel/browser-kernel.js";
 import { filesCapability } from "../node_modules/@echelon-foundry/limen/dist/capabilities/files/index.js";
 import { transferCapability } from "../node_modules/@echelon-foundry/limen/dist/capabilities/transfer/index.js";
+import { printCapability } from "./print.js";
 
 // Relative to this module, so it resolves the same in the checkout and over
 // HTTP (tools/web_static.mjs serves these directories at the same paths).
@@ -58,15 +59,27 @@ const diagnostics = {
   }
 };
 
+// The packs the backlog and hub pages select: user-picked files and their uploads.
+const filePacks = () => {
+  const files = filesCapability();
+  return [files, transferCapability({ files })];
+};
+
 // Starts the kernel for one page. `exportName` is that page's SummaWasm export.
 // The kernel's status is published on <html data-kernel> so a page (and its
 // browser tests) can tell "running" from a failed start.
-export async function startPage(exportName) {
-  const files = filesCapability();
+export async function startPage(exportName, capabilities = filePacks()) {
   const kernel = new BrowserKernel(new WasmEngineTransport(exportName), document, diagnostics, {
-    capabilities: [files, transferCapability({ files })],
+    capabilities,
     requireHandshake: true
   });
   await kernel.start();
   document.documentElement.dataset.kernel = kernel.status;
+}
+
+// The accounting application (app/): Limen's core effects (Storage keeps the
+// books in this browser) and Summa's print pack (./print.js), which opens
+// the browser's print dialog for the invoice's Folio document.
+export async function startApp() {
+  await startPage("DispatchAccounting", [printCapability()]);
 }

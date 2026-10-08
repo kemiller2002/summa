@@ -20,4 +20,9 @@ public partial class SummaWasm
     [JSExport]
     internal static string DispatchHub(string messageJson) =>
         Summa.Web.Application.Runtime.dispatchHub(messageJson);
+
+    /// <summary>One message for the accounting application (app/).</summary>
+    [JSExport]
+    internal static string DispatchAccounting(string messageJson) =>
+        Summa.Web.Application.Runtime.dispatchAccounting(messageJson);
 }

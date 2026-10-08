@@ -11,6 +11,7 @@ import { test as base, expect } from "@playwright/test";
 
 import { createServer as createBacklogServer } from "../../tools/ros_server.mjs";
 import { createServer as createHubServer } from "../../tools/ros_hub_server.mjs";
+import { createServer as createAppServer } from "../../tools/app_server.mjs";
 
 const REPOSITORY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -79,6 +80,16 @@ export const test = base.extend({
     await page.goto(origin);
     await expect(page.locator("html")).toHaveAttribute("data-kernel", "running");
     await use({ page, root, origin });
+    server.close();
+  },
+
+  // The accounting application: a fresh browser profile, so its books start empty.
+  app: async ({ page }, use) => {
+    const server = createAppServer();
+    const origin = await listen(server);
+    await page.goto(origin);
+    await expect(page.locator("html")).toHaveAttribute("data-kernel", "running");
+    await use({ page, origin });
     server.close();
   },
 

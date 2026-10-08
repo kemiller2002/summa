@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Summa keeps a small business's invoices, receivables and books." />
+<title>Summa</title>
+<!-- An empty icon: without it Chromium requests /favicon.ico and logs a 404. -->
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="./summa-app.css" />
+</head>
+<body>
+<!-- Structure and presentation only. Every value below is projected by the F#
+     engine (src/Summa.Web.Engine/Accounting.fs) through Limen's data-*
+     bindings, and every control sends a named event back to it. Forma owns
+     presentation, Folio the printed invoice. Nothing here decides anything:
+     readiness, issue, payments and totals are Summa's domain commands. -->
+<a class="ef-skip-link" href="#main">Skip to content</a>
+
+<p class="summa-banner" role="note" data-pages-banner data-text="environmentBanner"></p>
+
+<template data-if="hasOperationalFault">
+  <div class="ef-fault ef-fault--inline operational-fault" id="operational-fault" data-ef-intent="inline" data-ef-severity="error" role="alert" aria-labelledby="operational-fault-title">
+    <div class="ef-fault__marker" aria-hidden="true">!</div>
+    <div class="ef-fault__body">
+      <p class="ef-fault__severity">Operational error</p>
+      <p class="ef-fault__title" id="operational-fault-title"><strong data-text="operationalFaultTitle"></strong></p>
+      <p class="ef-fault__message" data-text="operationalFaultMessage"></p>
+      <p class="ef-fault-reference">Reference <code data-text="operationalFaultReference"></code></p>
+    </div>
+  </div>
+</template>
+
+<template data-if="isLoading">
+  <main class="summa-gate" id="main" aria-busy="true"><p>Opening the books…</p></main>
+</template>
+
+<template data-if="isUntrustworthy">
+  <main class="summa-gate ef-stack" id="main">
+    <h1>The books in this browser failed their checks.</h1>
+    <p>Summa does not run on books it cannot trust. These problems were found:</p>
+    <ul id="storage-problems">
+      <template data-each="storageProblems" data-key="key"><li data-text="problem"></li></template>
+    </ul>
+    <p>You can start a new, empty set of books in this browser. The damaged copy is replaced.</p>
+    <button type="button" class="ef-button" data-variant="danger" id="reset-books" data-event="resetConfirmed">Start new books</button>
+  </main>
+</template>
+
+<template data-if="isReady">
+<div class="summa-shell">
+  <header class="summa-header">
+    <p class="summa-brand"><span class="summa-brand__mark" aria-hidden="true">Σ</span><span data-text="organizationName"></span></p>
+    <nav class="summa-nav" aria-label="Primary">
+      <template data-each="navigation" data-key="id">
+        <button type="button" class="summa-nav__link" data-event="navigate" data-bind-aria-current="current" data-bind-data-route="id" data-text="label"></button>
+      </template>
+    </nav>
+    <button type="button" class="ef-button summa-new" id="new-invoice" data-event="newInvoice">New invoice</button>
+  </header>
+
+  <main class="summa-main ef-stack" id="main" tabindex="-1">
+    <div role="status" aria-live="polite" class="summa-messages">
+      <template data-if="hasNotice"><p class="summa-notice" id="notice" data-text="notice"></p></template>
+    </div>
+    <template data-if="hasError"><p class="summa-error" id="error" role="alert" data-text="error"></p></template>
+
+    <!-- Home: what needs attention first (v0.4 §1, §10). -->
+    <template data-if="onDashboard">
+      <section class="ef-stack" aria-labelledby="dashboard-title">
+        <h1 id="dashboard-title">Home</h1>
+        <div class="summa-metrics">
+          <div class="ef-surface summa-metric"><p class="summa-metric__label">Outstanding</p><p class="summa-metric__value" id="total-outstanding" data-text="totalOutstanding"></p></div>
+          <div class="ef-surface summa-metric"><p class="summa-metric__label">Overdue</p><p class="summa-metric__value" id="overdue-amount" data-text="overdueAmount"></p><p class="summa-metric__note"><span data-text="overdueCount"></span> invoices</p></div>
+          <div class="ef-surface summa-metric"><p class="summa-metric__label">Drafts</p><p class="summa-metric__value" id="draft-count" data-text="draftCount"></p></div>
+          <div class="ef-surface summa-metric"><p class="summa-metric__label">Invoices issued</p><p class="summa-metric__value" id="invoice-count" data-text="invoiceCount"></p></div>
+        </div>
+        <template data-if="hasOverdue">
+          <section class="ef-surface ef-stack" aria-labelledby="overdue-title">
+            <h2 id="overdue-title">Overdue</h2>
+            <table class="summa-table" id="overdue-table">
+              <caption class="ef-visually-hidden">Overdue invoices</caption>
+              <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Due</th><th scope="col" class="summa-number">Outstanding</th></tr></thead>
+              <tbody>
+                <template data-each="overdueInvoices" data-key="id">
+                  <tr><td><button type="button" class="summa-link" data-event="invoiceOpened" data-text="number"></button></td><td data-text="customer"></td><td data-text="dueDate"></td><td class="summa-number" data-text="outstanding"></td></tr>
+                </template>
+              </tbody>
+            </table>
+          </section>
+        </template>
+        <template data-if="hasDrafts">
+          <section class="ef-surface ef-stack" aria-labelledby="drafts-title">
+            <h2 id="drafts-title">Drafts</h2>
+            <table class="summa-table" id="drafts-table">
+              <caption class="ef-visually-hidden">Draft invoices</caption>
+              <thead><tr><th scope="col">Draft</th><th scope="col">Customer</th><th scope="col">State</th><th scope="col" class="summa-number">Total</th></tr></thead>
+              <tbody>
+                <template data-each="drafts" data-key="id">
+                  <tr><td><button type="button" class="summa-link" data-event="draftOpened" data-text="id"></button></td><td data-text="customer"></td><td data-text="state"></td><td class="summa-number" data-text="total"></td></tr>
+                </template>
+              </tbody>
+            </table>
+          </section>
+        </template>
+      </section>
+    </template>
+
+    <!-- Customers (v0.4 §3). -->
+    <template data-if="onCustomers">
+      <section class="ef-stack" aria-labelledby="customers-title">
+        <h1 id="customers-title">Customers</h1>
+        <template data-if="hasCustomers">
+          <table class="summa-table" id="customers-table">
+            <caption class="ef-visually-hidden">Customers</caption>
+            <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Terms</th><th scope="col" class="summa-number">Open balance</th></tr></thead>
+            <tbody>
+              <template data-each="customers" data-key="id">
+                <tr><td data-text="name"></td><td data-text="email"></td><td data-text="terms"></td><td class="summa-number" data-text="balance"></td></tr>
+              </template>
+            </tbody>
+          </table>
+        </template>
+        <form class="ef-surface ef-stack" id="customer-form" data-event="customerAdded" aria-labelledby="customer-form-title">
+          <h2 id="customer-form-title">Add a customer</h2>
+          <div class="summa-fields">
+            <div class="ef-field"><label class="ef-field__label" for="customer-name">Name</label>
+              <input id="customer-name" type="text" required autocomplete="organization" data-event="customerNameChanged" data-on="input" data-bind-value="customerName" /></div>
+            <div class="ef-field"><label class="ef-field__label" for="customer-billing-name">Billing name</label>
+              <input id="customer-billing-name" type="text" aria-describedby="customer-billing-note" data-event="customerBillingNameChanged" data-on="input" data-bind-value="customerBillingName" />
+              <p class="ef-field__description" id="customer-billing-note">Shown on invoices. Leave empty to use the name.</p></div>
+            <div class="ef-field"><label class="ef-field__label" for="customer-email">Billing email</label>
+              <input id="customer-email" type="email" autocomplete="email" data-event="customerEmailChanged" data-on="input" data-bind-value="customerEmail" /></div>
+            <div class="ef-field"><label class="ef-field__label" for="customer-terms">Payment terms (days)</label>
+              <input id="customer-terms" type="text" inputmode="numeric" aria-describedby="customer-terms-note" data-event="customerTermsChanged" data-on="input" data-bind-value="customerTerms" />
+              <p class="ef-field__description" id="customer-terms-note">0 for due on receipt. Leave empty for the organization's default.</p></div>
+          </div>
+          <div class="ef-field"><label class="ef-field__label" for="customer-address">Billing address</label>
+            <textarea id="customer-address" rows="3" autocomplete="street-address" data-event="customerAddressChanged" data-on="input" data-bind-value="customerAddress"></textarea></div>
+          <div class="ef-actions"><button type="submit" class="ef-button" id="add-customer">Add customer</button></div>
+        </form>
+      </section>
+    </template>
+
+    <!-- Invoice editor and review (v0.4 §4-6, INV-DRAFT, INV-REV). -->
+    <template data-if="onEditor">
+      <section class="ef-stack" aria-labelledby="editor-title">
+        <h1 id="editor-title" data-text="draftLabel"></h1>
+        <form class="ef-surface ef-stack" id="draft-form" data-event="draftSubmitted" aria-labelledby="editor-title">
+          <div class="summa-fields">
+            <div class="ef-field"><label class="ef-field__label" for="draft-customer">Customer</label>
+              <select id="draft-customer" data-event="draftCustomerChanged" data-bind-value="draftCustomer">
+                <option value="">Choose a customer</option>
+                <template data-each="customerOptions" data-key="value"><option data-bind-value="value" data-text="label"></option></template>
+              </select>
+              <p class="ef-field__description">Terms: <span id="draft-terms" data-text="draftCustomerTerms"></span></p></div>
+            <div class="ef-field"><label class="ef-field__label" for="draft-po">Purchase order</label>
+              <input id="draft-po" type="text" data-event="draftPurchaseOrderChanged" data-on="input" data-bind-value="draftPurchaseOrder" /></div>
+          </div>
+          <table class="summa-table summa-lines" id="draft-lines">
+            <caption>Lines</caption>
+            <thead><tr><th scope="col">Description</th><th scope="col">Quantity</th><th scope="col">Rate</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
+            <tbody>
+              <template data-each="draftLines" data-key="key">
+                <tr>
+                  <td><label class="ef-visually-hidden">Line <span data-text="position"></span> description<input type="text" class="line-description" data-event="lineDescriptionChanged" data-on="input" data-bind-value="description" /></label></td>
+                  <td><label class="ef-visually-hidden">Line <span data-text="position"></span> quantity<input type="text" inputmode="decimal" class="line-hours" data-event="lineHoursChanged" data-on="input" data-bind-value="hours" /></label></td>
+                  <td><label class="ef-visually-hidden">Line <span data-text="position"></span> rate<input type="text" inputmode="decimal" class="line-rate" data-event="lineRateChanged" data-on="input" data-bind-value="rate" /></label></td>
+                  <td><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="lineRemoved">Remove</button></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+          <div class="ef-actions"><button type="button" class="ef-button" data-variant="secondary" id="add-line" data-event="lineAdded">Add line</button>
+            <p class="summa-total">Total <strong id="draft-total" data-text="draftTotal"></strong></p></div>
+          <div class="ef-field"><label class="ef-field__label" for="draft-notes">Note to the customer</label>
+            <textarea id="draft-notes" rows="2" data-event="draftNotesChanged" data-on="input" data-bind-value="draftNotes"></textarea></div>
+          <template data-if="hasBlockers">
+            <section class="summa-blockers" id="blockers" aria-labelledby="blockers-title">
+              <h2 id="blockers-title">Before this can be issued</h2>
+              <ul>
+                <template data-each="blockers" data-key="key"><li><strong data-text="explanation"></strong> <span data-text="resolution"></span></li></template>
+              </ul>
+            </section>
+          </template>
+          <div class="ef-actions">
+            <button type="submit" class="ef-button" data-variant="secondary" id="review-draft">Save and review</button>
+            <button type="button" class="ef-button" id="issue-invoice" data-event="draftIssued" data-bind-disabled="cannotIssue">Issue invoice</button>
+          </div>
+        </form>
+      </section>
+    </template>
+
+    <!-- Invoices (v0.4 §8). -->
+    <template data-if="onInvoices">
+      <section class="ef-stack" aria-labelledby="invoices-title">
+        <h1 id="invoices-title">Invoices</h1>
+        <template data-if="hasInvoices">
+          <table class="summa-table" id="invoices-table">
+            <caption class="ef-visually-hidden">Issued invoices</caption>
+            <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Issued</th><th scope="col">Due</th><th scope="col">Status</th><th scope="col" class="summa-number">Total</th><th scope="col" class="summa-number">Outstanding</th></tr></thead>
+            <tbody>
+              <template data-each="invoices" data-key="id">
+                <tr>
+                  <td><button type="button" class="summa-link" data-event="invoiceOpened" data-text="number"></button></td>
+                  <td data-text="customer"></td><td data-text="issueDate"></td><td data-text="dueDate"></td>
+                  <td><span class="ef-status-lozenge" data-bind-data-state="statusTone" data-text="status"></span> <span class="summa-timing" data-text="timing"></span></td>
+                  <td class="summa-number" data-text="total"></td><td class="summa-number" data-text="outstanding"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </template>
+      </section>
+    </template>
+
+    <!-- One invoice: its Folio document, payments and actions. -->
+    <template data-if="onInvoice">
+      <template data-if="hasInvoice">
+        <section class="ef-stack" aria-labelledby="invoice-title">
+          <div class="summa-invoice-head">
+            <h1 id="invoice-title">Invoice <span data-text="docNumber"></span></h1>
+            <p><span class="ef-status-lozenge" id="invoice-status" data-text="detailStatus"></span> Outstanding <strong id="invoice-outstanding" data-text="detailOutstanding"></strong></p>
+            <template data-if="canPrint"><button type="button" class="ef-button" data-variant="secondary" id="print-invoice" data-event="printRequested">Print or save as PDF</button></template>
+          </div>
+          <ef-print-document class="summa-document" id="invoice-document">
+            <ef-print-header repeat="page"><span slot="left" data-text="docIssuer"></span><span slot="right">Invoice <span data-text="docNumber"></span></span></ef-print-header>
+            <header class="summa-document__head">
+              <div><p class="summa-document__issuer" data-text="docIssuer"></p><p class="summa-pre" data-text="docIssuerAddress"></p><p data-text="docIssuerEmail"></p></div>
+              <dl class="summa-document__facts">
+                <div><dt>Invoice number</dt><dd data-text="docNumber"></dd></div>
+                <div><dt>Issue date</dt><dd data-text="docIssueDate"></dd></div>
+                <div><dt>Due date</dt><dd data-text="docDueDate"></dd></div>
+                <div><dt>Payment terms</dt><dd data-text="docTerms"></dd></div>
+                <template data-if="docHasPurchaseOrder"><div><dt>Purchase order</dt><dd data-text="docPurchaseOrder"></dd></div></template>
+              </dl>
+            </header>
+            <section aria-label="Bill to"><h2 class="summa-document__label">Bill to</h2><p data-text="docCustomer"></p><p class="summa-pre" data-text="docCustomerAddress"></p></section>
+            <ef-print-table><table class="summa-table" id="invoice-lines">
+              <caption>Invoice lines</caption>
+              <thead><tr><th scope="col">Description</th><th scope="col" class="summa-number">Quantity</th><th scope="col" class="summa-number">Rate</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+              <tbody>
+                <template data-each="docLines" data-key="key"><tr><td data-text="description"></td><td class="summa-number" data-text="quantity"></td><td class="summa-number" data-text="rate"></td><td class="summa-number" data-text="amount"></td></tr></template>
+              </tbody>
+            </table></ef-print-table>
+            <ef-print-keep><dl class="summa-document__totals">
+              <div><dt>Subtotal</dt><dd data-text="docSubtotal"></dd></div>
+              <div class="summa-document__due"><dt>Total due</dt><dd id="invoice-total" data-text="docTotal"></dd></div>
+            </dl></ef-print-keep>
+            <section aria-label="Payment instructions"><h2 class="summa-document__label">Payment instructions</h2><p class="summa-pre" data-text="docPayment"></p></section>
+            <template data-if="docHasNotes"><section aria-label="Notes"><h2 class="summa-document__label">Notes</h2><p class="summa-pre" data-text="docNotes"></p></section></template>
+            <ef-print-footer repeat="page"><span slot="right"><ef-print-page-number format="page-of-pages"></ef-print-page-number></span></ef-print-footer>
+          </ef-print-document>
+
+          <section class="ef-surface ef-stack summa-screen-only" aria-labelledby="payments-title">
+            <h2 id="payments-title">Payments</h2>
+            <table class="summa-table" id="invoice-payments">
+              <caption class="ef-visually-hidden">Payments applied</caption>
+              <thead><tr><th scope="col">Received</th><th scope="col">Reference</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+              <tbody><template data-each="detailPayments" data-key="key"><tr><td data-text="date"></td><td data-text="reference"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
+            </table>
+            <template data-if="canRecordPayment">
+              <form class="ef-stack" id="payment-form" data-event="paymentRecorded" aria-labelledby="payment-form-title">
+                <h3 id="payment-form-title">Record a payment</h3>
+                <div class="summa-fields">
+                  <div class="ef-field"><label class="ef-field__label" for="payment-amount">Amount received</label>
+                    <input id="payment-amount" type="text" inputmode="decimal" required data-event="paymentAmountChanged" data-on="input" data-bind-value="paymentAmount" /></div>
+                  <div class="ef-field"><label class="ef-field__label" for="payment-date">Date received</label>
+                    <input id="payment-date" type="date" data-event="paymentDateChanged" data-on="input" data-bind-value="paymentDate" /></div>
+                  <div class="ef-field"><label class="ef-field__label" for="payment-method">Method</label>
+                    <select id="payment-method" data-event="paymentMethodChanged" data-bind-value="paymentMethod">
+                      <option value="ach">ACH</option><option value="check">Check</option><option value="wire">Wire</option><option value="credit-card">Card</option><option value="cash">Cash</option><option value="other">Other</option>
+                    </select></div>
+                  <div class="ef-field"><label class="ef-field__label" for="payment-reference">Reference</label>
+                    <input id="payment-reference" type="text" data-event="paymentReferenceChanged" data-on="input" data-bind-value="paymentReference" /></div>
+                </div>
+                <div class="ef-actions"><button type="submit" class="ef-button" id="record-payment">Record payment</button></div>
+              </form>
+            </template>
+          </section>
+        </section>
+      </template>
+    </template>
+
+    <!-- Receivables by age, on what is still outstanding (v0.4 §9, v0.2 §20). -->
+    <template data-if="onReceivables">
+      <section class="ef-stack" aria-labelledby="receivables-title">
+        <h1 id="receivables-title">Receivables</h1>
+        <template data-if="hasAging">
+          <table class="summa-table" id="aging-table">
+            <caption class="ef-visually-hidden">Receivables by age</caption>
+            <thead><tr><th scope="col">Customer</th><th scope="col" class="summa-number">Not yet due</th><th scope="col" class="summa-number">1-30</th><th scope="col" class="summa-number">31-60</th><th scope="col" class="summa-number">61-90</th><th scope="col" class="summa-number">Over 90</th><th scope="col" class="summa-number">Total</th></tr></thead>
+            <tbody>
+              <template data-each="aging" data-key="key">
+                <tr><td data-text="customer"></td><td class="summa-number" data-text="current"></td><td class="summa-number" data-text="days1to30"></td><td class="summa-number" data-text="days31to60"></td><td class="summa-number" data-text="days61to90"></td><td class="summa-number" data-text="over90"></td><td class="summa-number" data-text="total"></td></tr>
+              </template>
+            </tbody>
+          </table>
+        </template>
+      </section>
+    </template>
+
+    <!-- The issuer shown on new invoices. -->
+    <template data-if="onSettings">
+      <section class="ef-stack" aria-labelledby="settings-title">
+        <h1 id="settings-title">Settings</h1>
+        <form class="ef-surface ef-stack" id="company-form" data-event="companySaved" aria-labelledby="company-title">
+          <h2 id="company-title">Company on invoices</h2>
+          <div class="ef-field"><label class="ef-field__label" for="company-legal-name">Legal name</label>
+            <input id="company-legal-name" type="text" required data-event="companyLegalNameChanged" data-on="input" data-bind-value="companyLegalName" /></div>
+          <div class="ef-field"><label class="ef-field__label" for="company-address">Address</label>
+            <textarea id="company-address" rows="3" data-event="companyAddressChanged" data-on="input" data-bind-value="companyAddress"></textarea></div>
+          <div class="ef-field"><label class="ef-field__label" for="company-email">Billing email</label>
+            <input id="company-email" type="email" data-event="companyEmailChanged" data-on="input" data-bind-value="companyEmail" /></div>
+          <div class="ef-field"><label class="ef-field__label" for="company-payment">Payment instructions</label>
+            <textarea id="company-payment" rows="3" aria-describedby="company-payment-note" data-event="companyPaymentChanged" data-on="input" data-bind-value="companyPayment"></textarea>
+            <p class="ef-field__description" id="company-payment-note">Printed on invoices. Show masked account numbers only, never a full account number.</p></div>
+          <div class="ef-actions"><button type="submit" class="ef-button" id="save-company">Save</button></div>
+        </form>
+      </section>
+    </template>
+  </main>
+</div>
+</template>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

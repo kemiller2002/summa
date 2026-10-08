@@ -139,12 +139,12 @@ type Handshake =
     | Accepted of minor: int * contract: JsonNode
     | Rejected of reason: (Utf8JsonWriter -> unit)
 
-let private sameUnit (contract: Contract) (path: string) (node: JsonNode) idField =
+let sameUnit (contract: Contract) (path: string) (node: JsonNode) idField =
     required idField path asString node = contract.Id
     && required "version" path asInt node = contract.Version
     && required "fingerprint" path asString node = contract.Fingerprint
 
-let private writeOffer (writer: Utf8JsonWriter) (contract: Contract) =
+let writeOffer (writer: Utf8JsonWriter) (contract: Contract) =
     writer.WriteStartObject()
     writer.WriteString("id", contract.Id)
     writer.WriteNumber("version", contract.Version)
@@ -208,7 +208,7 @@ let private writeScalar (writer: Utf8JsonWriter) =
     | Flag flag -> writer.WriteBooleanValue flag
     | Number number -> writer.WriteNumberValue number
 
-let private writeView (writer: Utf8JsonWriter) (view: View) =
+let writeView (writer: Utf8JsonWriter) (view: View) =
     writer.WriteStartObject()
 
     for name, value in view do

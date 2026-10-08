@@ -12,6 +12,26 @@ built, styled, run or tested, this document is authoritative for Summa. The
 HTTP API, its security notes and the hub's registry model are as those
 documents describe.
 
+## The accounting application
+
+`app/` is Summa's accounting application: customers, invoices with
+readiness, review and issue, the issued invoice as its Folio document,
+payments and receivables. It is a third Limen page with its own engine
+(`src/Summa.Web.Engine/Accounting.fs`, `src/Summa.Web.Application/AccountingWire.fs`)
+and WASM export (`DispatchAccounting`). The engine decides only through Summa's domain commands
+([`DF-SUMMA-2026-0009`](../research/decisions/DF-SUMMA-2026-0009--the-accounting-application-and-its-local-books.md)).
+
+```bash
+npm run app     # http://127.0.0.1:4330
+```
+
+It needs no server API. When the deployment names no data location, the books
+live in this browser's storage. They are checked like stored data every time
+they are read, and books that fail their checks are refused. A new browser
+starts demo books. Printing opens the browser's print dialog through the
+`summa.print` pack (`web-kernel/print.js`). `tests/browser/app.spec.js`
+drives the real page.
+
 ## Running them
 
 ```bash

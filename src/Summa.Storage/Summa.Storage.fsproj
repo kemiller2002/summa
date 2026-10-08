@@ -30,6 +30,7 @@
     <Compile Include="Environments.fs" />
     <Compile Include="Settings.fs" />
     <Compile Include="Health.fs" />
+    <Compile Include="LocalSnapshot.fs" />
   </ItemGroup>
 
   <ItemGroup>

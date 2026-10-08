@@ -726,10 +726,10 @@
         "forma"
       ],
       "priority": "medium",
-      "status": "captured",
+      "status": "ready",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:06.816Z",
-      "updatedAt": "2026-10-08T18:08:36.000Z",
+      "updatedAt": "2026-10-08T18:46:54.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
