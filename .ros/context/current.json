@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T15:40:29.000Z",
+  "updatedAt": "2026-10-08T15:42:21.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1141,6 +1141,17 @@
         }
       },
       "completedAt": "2026-10-08T15:40:29.000Z"
+    },
+    {
+      "id": "WI-0020",
+      "type": "task",
+      "state": "active",
+      "semanticState": "active",
+      "evidence": [],
+      "updatedAt": "2026-10-08T15:42:21.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261008T154221634Z-4fa5b6ce"
+      ]
     }
   ]
 }

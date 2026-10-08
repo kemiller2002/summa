@@ -20,6 +20,8 @@
     <Compile Include="Storage.fs" />
     <Compile Include="MemberRecord.fs" />
     <Compile Include="Governance.fs" />
+    <Compile Include="FinancialRecords.fs" />
+    <Compile Include="Commands.fs" />
   </ItemGroup>
 
   <ItemGroup>

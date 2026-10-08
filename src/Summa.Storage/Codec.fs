@@ -61,3 +61,64 @@ let instant name value : Decoded<DateTimeOffset> =
         | _ -> Error $"'{name}' is not a UTC timestamp")
 
 let number (n: int) = Json.Number(decimal n)
+
+/// Sequencing for decoders: `decode { let! a = ... ; return ... }`.
+type DecodeBuilder() =
+    member _.Bind(value: Decoded<'a>, next: 'a -> Decoded<'b>) = Result.bind next value
+    member _.Return(value: 'a) : Decoded<'a> = Ok value
+    member _.ReturnFrom(value: Decoded<'a>) = value
+
+let decode = DecodeBuilder()
+
+/// An instant to the tick, in UTC: `yyyy-MM-ddTHH:mm:ss.fffffffZ`, so a
+/// stored instant reads back equal.
+let preciseTimestamp (at: DateTimeOffset) =
+    at.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fffffff'Z'", CultureInfo.InvariantCulture)
+
+let preciseInstant name value : Decoded<DateTimeOffset> =
+    text name value
+    |> Result.bind (fun s ->
+        match DateTimeOffset.TryParseExact(s, "yyyy-MM-dd'T'HH:mm:ss.fffffff'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal) with
+        | true, at -> Ok(at.ToUniversalTime())
+        | _ -> Error $"'{name}' is not a UTC instant")
+
+let dateText (d: DateOnly) = d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+
+let date name value : Decoded<DateOnly> =
+    text name value
+    |> Result.bind (fun s ->
+        match DateOnly.TryParseExact(s, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None) with
+        | true, d -> Ok d
+        | _ -> Error $"'{name}' is not a date")
+
+let long name value : Decoded<int64> =
+    field name value
+    |> Result.bind (function
+        | Json.Number n when n = Math.Floor n && n >= decimal Int64.MinValue && n <= decimal Int64.MaxValue -> Ok(int64 n)
+        | _ -> Error $"'{name}' is not a whole number")
+
+let flag name value : Decoded<bool> =
+    field name value
+    |> Result.bind (function
+        | Json.Bool b -> Ok b
+        | _ -> Error $"'{name}' is not true or false")
+
+let optionalDate name value : Decoded<DateOnly option> =
+    match Json.field name value with
+    | None
+    | Some Json.Null -> Ok None
+    | Some _ -> date name value |> Result.map Some
+
+let optionalInstant name value : Decoded<DateTimeOffset option> =
+    match Json.field name value with
+    | None
+    | Some Json.Null -> Ok None
+    | Some _ -> preciseInstant name value |> Result.map Some
+
+let list name (item: Json -> Decoded<'a>) value : Decoded<'a list> =
+    field name value
+    |> Result.bind (function
+        | Json.Array items -> traverse item items
+        | _ -> Error $"'{name}' is not a list")
+
+let optionalString (value: string option) = value |> Option.map Json.String |> Option.defaultValue Json.Null
