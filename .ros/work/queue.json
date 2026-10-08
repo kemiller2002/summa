@@ -800,10 +800,10 @@
         "provenance"
       ],
       "priority": "high",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T14:55:54.000Z",
-      "updatedAt": "2026-10-08T14:55:58.000Z",
+      "updatedAt": "2026-10-08T14:57:43.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

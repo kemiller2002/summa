@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T14:55:58.000Z",
+  "updatedAt": "2026-10-08T14:57:43.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -912,13 +912,43 @@
     {
       "id": "WI-0033",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-08T14:55:58.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "docs/requirements/SUMMA-PROVENANCE.md"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/GapAnalysisTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-08T14:57:43.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T145558830Z-61dab5d8"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "b9c70fdcb011deaa3068a815",
+        "recordedAt": "2026-10-08T14:57:42.000Z",
+        "executionId": "EXE-20261008T145558830Z-61dab5d8",
+        "repository": "summa",
+        "branch": "chore/housekeeping",
+        "commit": "16d5ba47e45dcd223bd2560cd4ee10f36b9524ed",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa.git"
+        },
+        "remoteBranch": "chore/housekeeping",
+        "remoteCommit": "16d5ba47e45dcd223bd2560cd4ee10f36b9524ed",
+        "summary": "INV-PROV requirements folded; work items reference them",
+        "nextAction": "Complete WI-0033, merge, close PRs #6 and #7",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-08T14:57:43.000Z"
     }
   ]
 }
