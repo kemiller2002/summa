@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T08:04:53.000Z",
+  "updatedAt": "2026-10-08T08:13:41.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -836,13 +836,43 @@
     {
       "id": "WI-0032",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-08T08:04:53.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": ".github/workflows/build.yml"
+        },
+        {
+          "type": "tests",
+          "path": ".github/workflows/build.yml"
+        }
+      ],
+      "updatedAt": "2026-10-08T08:13:41.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T080453995Z-f0a3ba6b"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "447922076a3478adb742bb35",
+        "recordedAt": "2026-10-08T08:13:40.000Z",
+        "executionId": "EXE-20261008T080453995Z-f0a3ba6b",
+        "repository": "summa",
+        "branch": "fix/ci-browser-install-hang",
+        "commit": "81e3dd1e043dbd64d7d03b9f3edfbf2620990b8b",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "fix/ci-browser-install-hang",
+        "remoteCommit": "81e3dd1e043dbd64d7d03b9f3edfbf2620990b8b",
+        "summary": "Browser-install fix merged with latest main; Chromium cached by the lockfile Playwright version, OS libraries proved offline with ldd, bounded apt fallback, 20-minute job ceiling. Green on the cache-miss and cache-hit paths and after merging main.",
+        "nextAction": "Complete, push the Praxis state for the final green run, then merge PR #24",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-08T08:13:41.000Z"
     }
   ]
 }

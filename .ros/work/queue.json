@@ -776,10 +776,10 @@
         "reliability"
       ],
       "priority": "high",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T08:04:53.223Z",
-      "updatedAt": "2026-10-08T08:04:53.000Z",
+      "updatedAt": "2026-10-08T08:13:41.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
