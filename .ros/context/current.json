@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T18:18:22.000Z",
+  "updatedAt": "2026-10-08T18:20:13.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1508,13 +1508,47 @@
     {
       "id": "WI-0026",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-08T18:18:22.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Periods.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/PeriodsTests.fs"
+        },
+        {
+          "type": "decision",
+          "path": "research/decisions/DF-SUMMA-2026-0008--opening-balances-adjustments-closing-and-cash-basis.md"
+        }
+      ],
+      "updatedAt": "2026-10-08T18:20:13.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T181823413Z-519cd941"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "09f0edbbe649c69b51fe6fd7",
+        "recordedAt": "2026-10-08T18:20:12.000Z",
+        "executionId": "EXE-20261008T181823413Z-519cd941",
+        "repository": "summa",
+        "branch": "feat/wi-0026-periods",
+        "commit": "7c848a7aa2fefb64d0aea4a81531fe2b8dfb686a",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa.git"
+        },
+        "remoteBranch": "feat/wi-0026-periods",
+        "remoteCommit": "7c848a7aa2fefb64d0aea4a81531fe2b8dfb686a",
+        "summary": "Opening balances, CPA adjustments, year-end closing and cash-basis projection",
+        "nextAction": "Open and merge the PR",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-08T18:20:13.000Z"
     }
   ]
 }
