@@ -2,7 +2,7 @@
 id: DF-SUMMA-2026-0009
 title: The accounting application and its local books
 status: accepted
-version: 1.2.0
+version: 1.3.0
 created: 2026-10-08
 updated: 2026-10-08
 owners:
@@ -19,7 +19,7 @@ provenance:
     EXE-20261008T184655871Z-69753eb4:
       operations: [created, modified]
       at: 2026-10-08T18:46:56.261Z
-      last: 2026-10-08T21:10:08.225Z
+      last: 2026-10-08T22:07:01.116Z
       actor:
         kind: agent
         id: anthropic/claude-code
@@ -84,3 +84,15 @@ The product UI (v0.4) needs a page that works before sign-in (WI-0035) and the G
 12. **Reopening a period is permitted in local books**, whose single person is
     their owner. With sign-in (WI-0035), reopening needs the `ReopenPeriod`
     capability.
+13. **The payments inbox applies oldest due first** (slice 5). A list row in
+    Limen holds only plain values, so a row cannot carry its own choice of
+    invoice. Applying a payment allocates it to the customer's open invoices,
+    oldest due first (`Credits.allocateAcross`); keeping it as credit uses
+    `creditUnapplied`. Choosing an invoice is done from the invoice itself.
+14. **Follow-up never touches the books.** Reminders and disputes go through
+    `Lifecycle.setCollection`, `dispute` and `resolveDispute`; the invoice,
+    its balance and the ledger are unchanged.
+15. **CPA exports are downloads, not stored artifacts.** The trial balance
+    and journal for a year are rendered as CSV by `Summa.Ledger.Reports` and
+    offered through the files pack; they are reproducible from the books at
+    any time.

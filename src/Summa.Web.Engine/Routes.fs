@@ -43,6 +43,12 @@ type PaymentSort =
     | NewestPayment
     | OldestPayment
 
+/// Which invoices the follow-up list shows (v0.4 §14-17).
+type FollowUpView =
+    | OverdueInvoices
+    | DisputedInvoices
+    | AllOpenInvoices
+
 /// Accrual or cash basis for the income statement (SUM2-024).
 type Basis =
     | Accrual
@@ -99,6 +105,14 @@ type Place =
     | IncomeStatement of from: DateOnly option * until: DateOnly option * Basis
     | BalanceSheet of asOf: DateOnly option
     | Settings
+    /// Everything that needs attention, in one list (v0.4 §31).
+    | Work
+    /// Overdue and disputed invoices and their follow-up (v0.4 §14-17).
+    | FollowUp of FollowUpView
+    /// Payments not fully applied (v0.4 §13).
+    | Inbox of customerId: string option
+    /// The CPA workspace for a year (v0.4 §27-28).
+    | Cpa of year: int option
 
 let allInvoices =
     { Search = None
@@ -143,6 +157,9 @@ let paymentSortText, paymentSortOf, paymentSorts =
     names [ NewestPayment, "newest"; OldestPayment, "oldest" ]
 
 let basisText, basisOf, bases = names [ Accrual, "accrual"; Cash, "cash" ]
+
+let followUpText, followUpOf, followUpViews =
+    names [ OverdueInvoices, "overdue"; DisputedInvoices, "disputed"; AllOpenInvoices, "all" ]
 
 /// The settlement states an invoice list can be filtered by (Payments.InvoiceStatus).
 let invoiceStatuses = [ "unpaid"; "partly-paid"; "paid"; "written-off"; "voided" ]
@@ -209,7 +226,11 @@ let routes: Route list =
       financial "trial-balance" "reports/trial-balance" [ date "asOf" ]
       financial "income-statement" "reports/income-statement" [ date "from"; date "to"; choice "basis" bases "accrual" ]
       financial "balance-sheet" "reports/balance-sheet" [ date "asOf" ]
-      route "settings" "settings" [] [ viewFinancials; "ManageSettings" ] ]
+      route "settings" "settings" [] [ viewFinancials; "ManageSettings" ]
+      financial "work" "work" []
+      financial "follow-up" "follow-up" [ choice "show" followUpViews "overdue" ]
+      route "inbox" "inbox" [ text "customer" ] [ viewFinancials; "AllocatePayment" ]
+      route "cpa" "cpa" [ QueryParam.optional "year" ParamType.Int ] [ viewFinancials; "ExportData" ] ]
 
 let roles =
     { Home = "home"
@@ -300,6 +321,10 @@ let toTarget (place: Place) : Target =
         target "income-statement" Map.empty [ some "from" (dateValue from); some "to" (dateValue until); Some("basis", Value.Text(basisText basis)) ]
     | BalanceSheet asOf -> target "balance-sheet" Map.empty [ some "asOf" (dateValue asOf) ]
     | Settings -> target "settings" Map.empty []
+    | Work -> target "work" Map.empty []
+    | FollowUp view -> target "follow-up" Map.empty [ Some("show", Value.Text(followUpText view)) ]
+    | Inbox customerId -> target "inbox" Map.empty [ some "customer" (textValue customerId) ]
+    | Cpa year -> target "cpa" Map.empty [ some "year" (year |> Option.map (int64 >> Value.Integer)) ]
 
 /// The typed values of a match. The table has already checked every type,
 /// so a mismatch here is a defect in this module, reported as Unmapped.
@@ -395,6 +420,14 @@ let ofMatch (matched: Match) : Result<Place, string> =
     | "income-statement" -> named basisOf "basis" |> Result.map (fun basis -> IncomeStatement(dateOf "from", dateOf "to", basis))
     | "balance-sheet" -> Ok(BalanceSheet(dateOf "asOf"))
     | "settings" -> Ok Settings
+    | "work" -> Ok Work
+    | "follow-up" -> named followUpOf "show" |> Result.map FollowUp
+    | "inbox" -> Ok(Inbox(textOf "customer"))
+    | "cpa" ->
+        match value "year" with
+        | Some(Value.Integer year) when year >= 1L && year <= 9999L -> Ok(Cpa(Some(int year)))
+        | Some _ -> Error "a year is between 1 and 9999"
+        | None -> Ok(Cpa None)
     | other -> Error $"no place is named '{other}'"
 
 let codec = RouteCodec.create table toTarget ofMatch

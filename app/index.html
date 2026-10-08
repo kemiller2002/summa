@@ -413,6 +413,19 @@
                 <div class="ef-actions"><button type="submit" class="ef-button" id="record-payment">Record payment</button></div>
               </form>
             </template>
+            <section class="ef-stack" id="invoice-follow-up" aria-labelledby="follow-up-title">
+              <h3 id="follow-up-title">Follow-up</h3>
+              <p><span id="follow-up-collection" data-text="fuCollection"></span> <span id="follow-up-dispute" data-text="fuDispute"></span></p>
+              <template data-if="canRecordPayment">
+                <div class="ef-actions"><button type="button" class="ef-button" data-variant="secondary" id="record-reminder" data-event="reminderRecorded">Record a reminder sent</button></div>
+              </template>
+              <div class="ef-field"><label class="ef-field__label" for="follow-up-note">What the customer disputes, or how it was resolved</label>
+                <input id="follow-up-note" type="text" data-event="followUpNoteChanged" data-on="input" data-bind-value="fuNote" /></div>
+              <div class="ef-actions">
+                <template data-if="fuNotDisputed"><button type="button" class="ef-button" data-variant="secondary" id="mark-disputed" data-event="disputeMarked">Mark disputed</button></template>
+                <template data-if="fuDisputed"><button type="button" class="ef-button" data-variant="secondary" id="settle-dispute" data-event="disputeSettled">Resolve the dispute</button></template>
+              </div>
+            </section>
             <h3 id="credits-title">Credits applied</h3>
             <table class="summa-table" id="invoice-credits">
               <caption class="ef-visually-hidden">Credits applied to this invoice</caption>
@@ -873,6 +886,112 @@
           <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Description</th><th scope="col" class="summa-number">Amount</th></tr></thead>
           <tbody><template data-each="periodEntries" data-key="key"><tr><td data-text="date"></td><td><a class="summa-link" data-bind-href="href" data-text="entry"></a></td><td data-text="description"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
         </table>
+      </section>
+    </template>
+
+    <!-- Everything that needs attention, in one list (v0.4 §31). -->
+    <template data-if="onWork">
+      <section class="ef-stack" aria-labelledby="work-title">
+        <h1 id="work-title">Work</h1>
+        <p><a class="summa-link" id="work-follow-up" data-bind-href="followUpHref">Follow-up</a> · <a class="summa-link" id="work-inbox" data-bind-href="inboxHref">Payments inbox</a> · <a class="summa-link" id="work-cpa" data-bind-href="cpaHref">CPA workspace</a></p>
+        <template data-if="noWork"><p id="no-work">Nothing needs attention.</p></template>
+        <template data-if="hasWork">
+          <ul class="summa-work" id="work-list">
+            <template data-each="workItems" data-key="key"><li><span class="ef-status-lozenge" data-text="kind"></span> <a class="summa-link" data-bind-href="href" data-text="text"></a></li></template>
+          </ul>
+        </template>
+      </section>
+    </template>
+
+    <!-- Overdue and disputed invoices (v0.4 §14-17). -->
+    <template data-if="onFollowUp">
+      <section class="ef-stack" aria-labelledby="follow-up-list-title">
+        <h1 id="follow-up-list-title">Follow-up</h1>
+        <div class="summa-tabs" role="group" aria-label="Which invoices">
+          <template data-each="followUpTabs" data-key="value">
+            <button type="button" class="summa-tab" data-event="followUpShowChosen" data-bind-aria-pressed="selected" data-bind-data-tab="value" data-text="label"></button>
+          </template>
+        </div>
+        <template data-if="noFollowRows"><p id="no-follow-up">No invoice here.</p></template>
+        <template data-if="hasFollowRows">
+          <table class="summa-table" id="follow-up-table">
+            <caption class="ef-visually-hidden">Invoices to follow up</caption>
+            <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Due</th><th scope="col">Late</th><th scope="col">Follow-up</th><th scope="col" class="summa-number">Outstanding</th><th scope="col"><span class="ef-visually-hidden">Actions</span></th></tr></thead>
+            <tbody><template data-each="followRows" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="customer"></td><td data-text="dueDate"></td><td data-text="late"></td><td><span data-text="collection"></span> <span data-text="dispute"></span></td><td class="summa-number" data-text="outstanding"></td><td><button type="button" class="ef-button summa-remind" data-variant="secondary" data-event="reminderRecorded">Reminder sent</button></td></tr></template></tbody>
+          </table>
+        </template>
+      </section>
+    </template>
+
+    <!-- Payments not fully applied (v0.4 §13). -->
+    <template data-if="onInbox">
+      <section class="ef-stack" aria-labelledby="inbox-title">
+        <h1 id="inbox-title">Payments inbox</h1>
+        <div class="summa-filters" role="search" aria-label="Payments inbox">
+          <div class="ef-field"><label class="ef-field__label" for="inbox-customer">Customer</label>
+            <select id="inbox-customer" data-event="inboxCustomerChosen" data-bind-value="inboxCustomer">
+              <option value="">All customers</option>
+              <template data-each="inboxCustomerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
+            </select></div>
+        </div>
+        <template data-if="noInboxRows"><p id="inbox-empty">Every payment is applied.</p></template>
+        <template data-if="hasInboxRows">
+          <table class="summa-table" id="inbox-table">
+            <caption class="ef-visually-hidden">Payments not fully applied</caption>
+            <thead><tr><th scope="col">Payment</th><th scope="col">Received</th><th scope="col">Customer</th><th scope="col">Reference</th><th scope="col" class="summa-number">Not applied</th><th scope="col">Open invoices</th><th scope="col"><span class="ef-visually-hidden">Actions</span></th></tr></thead>
+            <tbody><template data-each="inboxRows" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date"></td><td data-text="customer"></td><td data-text="reference"></td><td class="summa-number" data-text="unapplied"></td><td data-text="openInvoices"></td><td class="summa-row-actions"><button type="button" class="ef-button summa-apply" data-event="inboxApplied" data-bind-disabled="noApply">Apply to oldest invoices</button> <button type="button" class="ef-button summa-credit" data-variant="secondary" data-event="inboxCredited">Keep as credit</button></td></tr></template></tbody>
+          </table>
+        </template>
+        <form class="ef-surface ef-stack" id="receipt-form" data-event="receiptRecorded" aria-labelledby="receipt-title">
+          <h2 id="receipt-title">Record a payment received</h2>
+          <div class="summa-fields">
+            <div class="ef-field"><label class="ef-field__label" for="receipt-customer">From</label>
+              <select id="receipt-customer" data-event="receiptCustomerChanged" data-bind-value="receiptCustomer">
+                <option value="">Choose a customer</option>
+                <template data-each="receiptCustomerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
+              </select></div>
+            <div class="ef-field"><label class="ef-field__label" for="receipt-amount">Amount</label>
+              <input id="receipt-amount" type="text" inputmode="decimal" required data-event="receiptAmountChanged" data-on="input" data-bind-value="receiptAmount" /></div>
+            <div class="ef-field"><label class="ef-field__label" for="receipt-date">Received</label>
+              <input id="receipt-date" type="date" data-event="receiptDateChanged" data-on="input" data-bind-value="receiptDate" /></div>
+            <div class="ef-field"><label class="ef-field__label" for="receipt-method">Method</label>
+              <select id="receipt-method" data-event="receiptMethodChanged" data-bind-value="receiptMethod">
+                <option value="ach">ACH</option><option value="check">Check</option><option value="wire">Wire</option><option value="credit-card">Card</option><option value="cash">Cash</option><option value="other">Other</option>
+              </select></div>
+            <div class="ef-field"><label class="ef-field__label" for="receipt-reference">Reference</label>
+              <input id="receipt-reference" type="text" data-event="receiptReferenceChanged" data-on="input" data-bind-value="receiptReference" /></div>
+          </div>
+          <div class="ef-actions"><button type="submit" class="ef-button" id="record-receipt">Record payment</button></div>
+        </form>
+      </section>
+    </template>
+
+    <!-- The CPA workspace for a year (v0.4 §27-28). -->
+    <template data-if="onCpa">
+      <section class="ef-stack" aria-labelledby="cpa-title">
+        <h1 id="cpa-title">CPA workspace <span data-text="cpaYear"></span></h1>
+        <p><a class="summa-link" id="cpa-previous" data-bind-href="cpaPreviousHref">Previous year</a> · <a class="summa-link" id="cpa-next" data-bind-href="cpaNextHref">Next year</a> · <span id="cpa-closed" data-text="cpaClosedMonths"></span></p>
+        <ul class="summa-report-list">
+          <li><a class="summa-link" id="cpa-trial" data-bind-href="cpaTrialHref">Trial balance at year end</a></li>
+          <li><a class="summa-link" id="cpa-income" data-bind-href="cpaIncomeHref">Income statement, accrual</a> · <a class="summa-link" data-bind-href="cpaCashIncomeHref">cash</a></li>
+          <li><a class="summa-link" id="cpa-sheet" data-bind-href="cpaSheetHref">Balance sheet at year end</a></li>
+          <li><a class="summa-link" id="cpa-ledger" data-bind-href="cpaLedgerHref">Journal for the year</a></li>
+          <li><a class="summa-link" id="cpa-aging" data-bind-href="cpaAgingHref">Receivables aged at year end</a></li>
+          <li><a class="summa-link" id="cpa-periods" data-bind-href="cpaPeriodsHref">Periods</a></li>
+        </ul>
+        <template data-if="canExport">
+          <div class="ef-actions">
+            <button type="button" class="ef-button" data-variant="secondary" id="export-trial-balance" data-event="cpaTrialBalanceExported">Download trial balance (CSV)</button>
+            <button type="button" class="ef-button" data-variant="secondary" id="export-journal" data-event="cpaJournalExported">Download journal (CSV)</button>
+          </div>
+        </template>
+        <template data-if="hasCpaAdjustments">
+          <table class="summa-table" id="cpa-adjustments">
+            <caption>Adjusting, opening and closing entries</caption>
+            <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Kind</th><th scope="col">Description</th></tr></thead>
+            <tbody><template data-each="cpaAdjustments" data-key="key"><tr><td data-text="date"></td><td><a class="summa-link" data-bind-href="href" data-text="key"></a></td><td data-text="kind"></td><td data-text="description"></td></tr></template></tbody>
+          </table>
+        </template>
       </section>
     </template>
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 44,
+  "nextSeq": 45,
   "items": [
     {
       "id": "WI-0001",
@@ -726,10 +726,10 @@
         "forma"
       ],
       "priority": "medium",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:06.816Z",
-      "updatedAt": "2026-10-08T18:46:54.000Z",
+      "updatedAt": "2026-10-08T22:11:45.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -1044,6 +1044,27 @@
       "attachments": [],
       "createdAt": "2026-10-08T20:27:53.923Z",
       "updatedAt": "2026-10-08T20:27:53.923Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0044",
+      "title": "Summa 14f: the v0.4 product UI requirements still open after WI-0030 (SUM4-001..041, INV-UI, INV-A11Y): smart defaults and proposals in the UI, attention-first receivables, payment matching and choosing an invoice to apply, follow-up details and payment promises, ledger filters by entry type, source, project and customer, report shortcuts everywhere, the CPA package, saved views, project profitability, command palette and global search, confirmation behaviour and the remaining accessibility checks",
+      "description": null,
+      "tags": [],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-08T22:07:01.636Z",
+      "updatedAt": "2026-10-08T22:07:01.636Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
