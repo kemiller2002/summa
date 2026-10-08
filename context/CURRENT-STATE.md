@@ -5,8 +5,10 @@ implementation baseline that now exists).
 
 ## Repository status
 
-- Praxis 3.7.2, Ordo and Visual Engineering through Conditor
-  (`conditor.json`, echelon-current channel); Limen/Forma/Folio and Aegis are
+- Praxis 3.7.2, Ordo 1.5.0 and Visual Engineering 1.0.1 through Conditor
+  0.6.0 at echelon-current 1.7.0 (`conditor.json`, WI-0034); Arca 0.2.0 and
+  Fides 0.2.0 are attested release assets in `vendor/nuget`, installed and
+  proven by Conditor (`vendor/nuget/*.lock`, `NuGet.config` source mapping); Limen/Forma/Folio and Aegis are
   required foundations (`.echelon/foundations.json`).
 - Implementation baseline (issue #4) is in place:
   - Limen converged (LIMEN-0-7-0, WI-0007);
