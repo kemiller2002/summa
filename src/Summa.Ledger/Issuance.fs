@@ -198,7 +198,7 @@ let private setReview (context: Context) what (draft: DraftInvoice) (state: Draf
         Books =
             { r.Books with
                 Drafts = r.Books.Drafts.Add(draft.DraftId, { draft with Review = state })
-                Ledger = audit context what draft.DraftId r.Books.Ledger } }
+                Ledger = auditChange context what draft.DraftId (applied (Some draft.Version) []) r.Books.Ledger } }
 
 /// Submits the current version for review once nothing blocks it.
 /// Idempotent for the same version.

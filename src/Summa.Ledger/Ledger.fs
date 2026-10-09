@@ -112,6 +112,19 @@ type Provenance =
       /// Why, when the action needs a reason.
       Reason: string option }
 
+/// What a material change did to its entity (INV-AUD-002): the entity's
+/// version after it, the outcome, and the fields that changed, in words.
+/// An audit event without one is a change applied to an entity that keeps
+/// no version, with nothing more to say.
+type AuditChange =
+    { /// The entity's version after the change, where it keeps one.
+      Version: int option
+      /// `applied`: audit events record only what was committed. A refused
+      /// command changes nothing and is reported to whoever sent it.
+      Outcome: string
+      /// The fields that changed, such as `terms: Net 30 -> Net 15` or `lines`.
+      Changed: string list }
+
 type AuditRecord =
     { Who: string
       What: string
@@ -119,7 +132,8 @@ type AuditRecord =
       Source: string
       CorrelationId: string option
       Subject: string
-      Provenance: Provenance option }
+      Provenance: Provenance option
+      Change: AuditChange option }
 
 /// Who, when and through what a command arrives (§18), and where it came
 /// from beyond who.
@@ -163,7 +177,9 @@ let empty =
       Keys = Map.empty
       Audit = [] }
 
-let audit (context: Context) (what: string) (subject: string) (ledger: Ledger) =
+/// Appends an audit event for a change to `subject`, with what the change
+/// did to it when there is more to say than that it happened (INV-AUD-002).
+let auditChange (context: Context) (what: string) (subject: string) (change: AuditChange option) (ledger: Ledger) =
     { ledger with
         Audit =
             ledger.Audit
@@ -173,7 +189,24 @@ let audit (context: Context) (what: string) (subject: string) (ledger: Ledger) =
                   Source = context.Source
                   CorrelationId = context.CorrelationId
                   Subject = subject
-                  Provenance = context.Provenance } ] }
+                  Provenance = context.Provenance
+                  Change = change } ] }
+
+let audit (context: Context) (what: string) (subject: string) (ledger: Ledger) = auditChange context what subject None ledger
+
+/// An applied change: the version after it and the fields it changed.
+let applied (version: int option) (changed: string list) =
+    Some { Version = version; Outcome = "applied"; Changed = changed }
+
+/// The fields that differ between two versions of an entity, by name, with
+/// before and after where `show` gives them in words.
+let changedFields (fields: (string * ('a -> string)) list) (before: 'a) (after: 'a) =
+    fields
+    |> List.choose (fun (name, show) ->
+        let was, now = show before, show after
+        if was = now then None
+        elif was.Length <= 60 && now.Length <= 60 && not (was.Contains '\n') && not (now.Contains '\n') then Some $"{name}: {was} -> {now}"
+        else Some name)
 
 let addAccount (context: Context) (account: Account) (ledger: Ledger) =
     if ledger.Accounts |> Map.exists (fun id a -> a.Code = account.Code && id <> account.Id) then

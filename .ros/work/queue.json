@@ -699,10 +699,10 @@
         "operations"
       ],
       "priority": "medium",
-      "status": "captured",
+      "status": "ready",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:06.438Z",
-      "updatedAt": "2026-10-09T02:24:35.000Z",
+      "updatedAt": "2026-10-09T03:15:27.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

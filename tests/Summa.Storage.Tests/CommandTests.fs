@@ -371,3 +371,71 @@ let ``audit events are append-only: a command can neither rewrite nor drop one``
     match run store ns kevin ManageSettings "drop-audit" drop with
     | Error(Unstorable _) -> ()
     | other -> failwith $"%A{other}"
+
+// ---- The authorized agent interface (WI-0029, INV-AGENT-001) --------------------------------
+
+let private accounts: Summa.Ledger.Billing.BillingAccounts = { TimeRevenue = "revenue"; FeeRevenue = "revenue"; ReimbursedExpenses = "revenue" }
+
+let private withTime store ns =
+    setUp store ns |> Support.ok |> ignore
+    run store ns kevin ManageBilling "rates" (fun r -> Summa.Ledger.Billing.saveRateCard ledgerContext { Rates = [ Summa.Ledger.Sources.ForCustomer abc.Id, Summa.Ledger.Money.usd 20000L ]; Roles = Map.empty } r.Books |> Result.map (fun b -> { r with Books = b }))
+    |> Support.ok
+    |> ignore
+
+    run store ns kevin ImportSourceTime "import" (fun r -> Summa.Ledger.Billing.importTime ledgerContext (sourceTime "pub-1" "act-1" 1) r |> Result.map fst)
+    |> Support.ok
+    |> ignore
+
+[<Fact>]
+let ``an agent the roster lets propose turns a request in words into a stored proposal, and nothing more`` () =
+    let store, ns = founded ()
+    withTime store ns
+    admitAgent store ns
+    let request = "Invoice ABC Corp for all approved work from October 1 through October 31 at the contracted rate"
+
+    match execute store.Provider defaultApprovalGates ns 3 (agentRequest bot ledgerContext.When accounts "P-AG-1" request) |> Async.RunSynchronously with
+    | Ok outcome ->
+        Assert.True outcome.Receipt.IsSome
+        let proposal = outcome.State.Books.Proposals["P-AG-1"]
+        Assert.Equal(Summa.Ledger.Invoicing.Proposed, proposal.State)
+        Assert.True outcome.State.Books.Invoices.IsEmpty
+        Assert.Equal(Some "agent", proposal.Contributions.Head.Provenance |> Option.map _.ActorKind)
+        Assert.Equal(Some $"request: {request}", proposal.Contributions.Head.Provenance |> Option.bind _.Reason)
+        // Again: the same proposal, nothing committed.
+        let again = execute store.Provider defaultApprovalGates ns 3 (agentRequest bot ledgerContext.When accounts "P-AG-1" request) |> Async.RunSynchronously |> Support.ok
+        Assert.Equal(None, again.Receipt)
+    | Error failure -> failwith $"%A{failure}"
+
+[<Fact>]
+let ``the agent interface asks rather than guesses, and refuses an agent the roster does not know`` () =
+    let store, ns = founded ()
+    withTime store ns
+    admitAgent store ns
+
+    match execute store.Provider defaultApprovalGates ns 3 (agentRequest bot ledgerContext.When accounts "P-AG-2" "Invoice Acme for approved work") |> Async.RunSynchronously with
+    | Error(Rejected [ Summa.Ledger.AgentRequests.WhichCustomer("Acme", []) ]) -> ()
+    | other -> failwith $"%A{other}"
+
+    let stranger = Actor.agent "other-agent" { Provider = "x"; Model = "y"; Runtime = "z" } None "corr-9"
+
+    match execute store.Provider defaultApprovalGates ns 3 (agentRequest stranger ledgerContext.When accounts "P-AG-3" "Invoice ABC Corp for approved work") |> Async.RunSynchronously with
+    | Error(NotAuthorized _) -> ()
+    | other -> failwith $"%A{other}"
+
+[<Fact>]
+let ``what a change did is stored with its audit event and read back`` () =
+    let store, ns = founded ()
+    setUp store ns |> Support.ok |> ignore
+    run store ns kevin CreateDraftInvoice "draft" (fun r -> saveDraft ledgerContext draft r.Books |> Result.map (fun b -> { r with Books = b })) |> Support.ok |> ignore
+
+    run store ns kevin CreateDraftInvoice "draft-terms" (fun r ->
+        saveDraft ledgerContext { r.Books.Drafts[draft.DraftId] with Terms = Some(Net 15) } r.Books |> Result.map (fun b -> { r with Books = b }))
+    |> Support.ok
+    |> ignore
+
+    let objects = readAll store.Provider ns |> Async.RunSynchronously |> Support.ok
+    let loaded = FinancialRecords.load (objects |> List.filter (fun o -> match Layout.keyOf o.Path with Some k -> FinancialRecords.isFinancial k.Type | None -> false))
+    // Stored events come back in path order, not time order: find the change by what it says.
+    let changes = loaded.State.Books.Ledger.Audit |> List.filter (fun a -> a.Subject = draft.DraftId) |> List.choose _.Change
+    Assert.Contains({ Version = Some 2; Outcome = "applied"; Changed = [ "terms: default -> Net 15" ] }, changes)
+    Assert.Contains({ Version = Some 1; Outcome = "applied"; Changed = [] }, changes)

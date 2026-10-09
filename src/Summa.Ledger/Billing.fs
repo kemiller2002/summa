@@ -63,6 +63,9 @@ let private contribution (context: Context) (what: string) : Contribution =
 let private audited (context: Context) what subject (books: Books) =
     { books with Ledger = audit context what subject books.Ledger }
 
+let private auditedChange (context: Context) what subject change (books: Books) =
+    { books with Ledger = auditChange context what subject change books.Ledger }
+
 // ---- Sources and their use ----------------------------------------------------
 
 /// The keys of what a line bills: time per Chrona activity, an engagement's
@@ -160,7 +163,16 @@ let saveEngagement (context: Context) (engagement: Engagement) (books: Books) =
 
     if problems.IsEmpty then
         let what = if books.Engagements.ContainsKey engagement.Id then "engagement-changed" else "engagement-created"
-        Ok({ books with Engagements = books.Engagements.Add(engagement.Id, engagement) } |> audited context what engagement.Id)
+
+        let fields: (string * (Engagement -> string)) list =
+            [ "name", _.Name
+              "currency", _.Currency
+              "fixed fee", _.FixedFee >> Option.map Money.text >> Option.defaultValue "none"
+              "milestones", (fun e -> $"%A{e.Milestones}")
+              "terms", (fun e -> $"%A{e.Terms}") ]
+
+        let changed = books.Engagements.TryFind engagement.Id |> Option.map (fun before -> changedFields fields before engagement) |> Option.defaultValue []
+        Ok({ books with Engagements = books.Engagements.Add(engagement.Id, engagement) } |> auditedChange context what engagement.Id (applied None changed))
     else
         Error problems
 
@@ -542,9 +554,15 @@ let private openProposal (books: Books) (proposalId: string) =
     | Some p -> Error [ ProposalIs(proposalId, p.State) ]
 
 /// A proposal saved with this contribution appended (INV-AGENT-005).
-let private saveProposal context what (proposal: Proposal) (r: Receivables) =
+let private saveProposalWith context what (changed: string list) (proposal: Proposal) (r: Receivables) =
     let contributed = { proposal with Contributions = proposal.Contributions @ [ contribution context what ] }
-    { r with Books = { r.Books with Proposals = r.Books.Proposals.Add(proposal.Id, contributed) } |> audited context what proposal.Id }
+
+    { r with
+        Books =
+            { r.Books with Proposals = r.Books.Proposals.Add(proposal.Id, contributed) }
+            |> auditedChange context what proposal.Id (if changed.IsEmpty then None else applied None changed) }
+
+let private saveProposal context what (proposal: Proposal) (r: Receivables) = saveProposalWith context what [] proposal r
 
 /// A person sets a line's rate before issue, with a reason; the previous
 /// rate, the person and the time are kept (INV-RATE-004). The proposal
@@ -575,10 +593,13 @@ let overrideRate (context: Context) (proposalId: string) (index: int) (rate: Mon
                                           At = context.When } } }
                   Priced = true }
 
+            let was = if found.Priced then Money.text line.UnitPrice else "no rate"
+
             Ok(
-                saveProposal
+                saveProposalWith
                     context
                     "rate-overridden"
+                    [ $"line {index + 1} rate: {was} -> {Money.text rate}" ]
                     { p with Lines = p.Lines |> List.mapi (fun i l -> if i = index then changed else l); State = Proposed }
                     r
             ))

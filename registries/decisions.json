@@ -840,6 +840,47 @@
     "version": "1.0.0"
   },
   {
+    "created": "2026-10-09",
+    "id": "DF-SUMMA-2026-0019",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0019--agent-requests-in-words-and-audit-changes.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261009T031528777Z-d8d5aa1a": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-09T03:31:04.000Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Record the agent request interface and audit change detail (WI-0029)"
+        }
+      }
+    },
+    "related_documents": [
+      "research/decisions/DF-SUMMA-2026-0017--audit-provenance-and-agent-safety.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "agents",
+      "audit",
+      "provenance"
+    ],
+    "title": "Agent requests in words become proposals, and audit events say what a change did",
+    "updated": "2026-10-09",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-10-05",
     "id": "DF-SUMMA-FND-2026-0001",
     "owners": [

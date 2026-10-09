@@ -261,8 +261,18 @@ let ``adjusting and closing entries keep their kind through storage`` () =
 
 [<Fact>]
 let ``tax as the person recorded it is stored at schema 2, and books without tax keep their schema 1 records`` () =
-    // Books that record no tax: every record is written exactly as schema 1 wrote it.
-    Assert.All(toRecords (full ()) |> ok, fun record -> Assert.Equal(1, schemaVersionOf record))
+    // Books that record no tax: every record is written exactly as schema 1
+    // wrote it, but an audit event that says what a change did (INV-AUD-002),
+    // which schema 1 had no field for.
+    let says (record: FinancialRecord) =
+        match record.Body with
+        | Json.Object members -> members |> List.exists (fst >> (=) "change")
+        | _ -> false
+
+    let records = toRecords (full ()) |> ok
+    Assert.All(records |> List.filter (says >> not), fun record -> Assert.Equal(1, schemaVersionOf record))
+    Assert.All(records |> List.filter says, fun record -> Assert.Equal(2, schemaVersionOf record))
+    Assert.NotEmpty(records |> List.filter says)
 
     let tax: Summa.Ledger.Invoicing.TaxCharge =
         { Code = "NY-8.875"
@@ -286,6 +296,7 @@ let ``tax as the person recorded it is stored at schema 2, and books without tax
         { r with Books = { r.Books with Customers = r.Books.Customers.Add(exempt.Id, exempt); Drafts = r.Books.Drafts.Add(taxedDraft.DraftId, taxedDraft) } }
 
     let records = toRecords books |> ok
+
     let versionOf (path: string) = records |> List.find (fun r -> RelativePath.render (Layout.recordPath r.Key |> ok) = path) |> schemaVersionOf
     Assert.Equal(2, versionOf "records/summa.customer/CUST-ABC.json")
     Assert.Equal(2, versionOf "records/summa.draft/D-TAX.json")
