@@ -1103,10 +1103,10 @@
       "description": "Arca 0.4.0's OfflineQueue.revise drops the entry's AccountId, so a revised entry stops matching at sign-out (fixed in Arca 0.4.1, arca#36). Until 0.4.1 is in echelon-current, put the account back after revise, only from the account the entry recorded, with a test. Entries written before 0.4.0, or by another account, are never stamped with the current session's account, never sent as it and never auto-discarded: they are held and the signed-in person explicitly sends or discards them. Adopt Arca 0.4.1 in a follow-up once the registry records it.",
       "tags": [],
       "priority": "medium",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-09T04:17:14.000Z",
-      "updatedAt": "2026-10-09T04:17:29.000Z",
+      "updatedAt": "2026-10-09T04:32:44.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
