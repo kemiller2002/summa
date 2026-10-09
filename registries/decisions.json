@@ -795,6 +795,51 @@
     "version": "1.0.0"
   },
   {
+    "created": "2026-10-09",
+    "id": "DF-SUMMA-2026-0018",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0018--editor-drafts-tax-entry-and-proposal-review.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261009T024702576Z-bcf1e384": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-09T03:02:32.000Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Record the rest of the v0.4 interface (WI-0044)"
+        }
+      }
+    },
+    "related_documents": [
+      "research/decisions/DF-SUMMA-2026-0015--room-for-tax-without-calculating-it.md",
+      "research/decisions/DF-SUMMA-2026-0017--audit-provenance-and-agent-safety.md",
+      "research/decisions/DF-SUMMA-2026-0013--sign-in-through-fides-in-the-application.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "ui",
+      "drafts",
+      "tax",
+      "proposals",
+      "agents"
+    ],
+    "title": "Editor drafts kept in the tab, tax entered on the screens, and proposals reviewed by a person",
+    "updated": "2026-10-09",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-10-05",
     "id": "DF-SUMMA-FND-2026-0001",
     "owners": [

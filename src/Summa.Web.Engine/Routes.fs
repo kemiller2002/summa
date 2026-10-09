@@ -113,6 +113,9 @@ type Place =
     | Inbox of customerId: string option
     /// The CPA workspace for a year (v0.4 §27-28).
     | Cpa of year: int option
+    /// Invoice proposals waiting for review, an agent's among them (v0.4 §42).
+    | Proposals
+    | Proposal of proposalId: string
 
 let allInvoices =
     { Search = None
@@ -230,7 +233,9 @@ let routes: Route list =
       financial "work" "work" []
       financial "follow-up" "follow-up" [ choice "show" followUpViews "overdue" ]
       route "inbox" "inbox" [ text "customer" ] [ viewFinancials; "AllocatePayment" ]
-      route "cpa" "cpa" [ QueryParam.optional "year" ParamType.Int ] [ viewFinancials; "ExportData" ] ]
+      route "cpa" "cpa" [ QueryParam.optional "year" ParamType.Int ] [ viewFinancials; "ExportData" ]
+      financial "proposals" "proposals" []
+      financial "proposal" "proposals/{id}" [] ]
 
 let roles =
     { Home = "home"
@@ -325,6 +330,8 @@ let toTarget (place: Place) : Target =
     | FollowUp view -> target "follow-up" Map.empty [ Some("show", Value.Text(followUpText view)) ]
     | Inbox customerId -> target "inbox" Map.empty [ some "customer" (textValue customerId) ]
     | Cpa year -> target "cpa" Map.empty [ some "year" (year |> Option.map (int64 >> Value.Integer)) ]
+    | Proposals -> target "proposals" Map.empty []
+    | Proposal proposalId -> target "proposal" (id proposalId) []
 
 /// The typed values of a match. The table has already checked every type,
 /// so a mismatch here is a defect in this module, reported as Unmapped.
@@ -428,6 +435,8 @@ let ofMatch (matched: Match) : Result<Place, string> =
         | Some(Value.Integer year) when year >= 1L && year <= 9999L -> Ok(Cpa(Some(int year)))
         | Some _ -> Error "a year is between 1 and 9999"
         | None -> Ok(Cpa None)
+    | "proposals" -> Ok Proposals
+    | "proposal" -> id () |> Result.map Proposal
     | other -> Error $"no place is named '{other}'"
 
 let codec = RouteCodec.create table toTarget ofMatch

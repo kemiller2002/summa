@@ -757,6 +757,39 @@
         "ExportData"
       ],
       "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "proposals",
+      "params": [],
+      "pattern": "/proposals",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "proposal",
+      "params": [
+        {
+          "default": null,
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "type": "string",
+          "values": null
+        }
+      ],
+      "pattern": "/proposals/{id:string}",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
     }
   ],
   "schema": "echelon.routes/v1",

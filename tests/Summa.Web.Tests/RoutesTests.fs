@@ -68,6 +68,8 @@ let private samples =
       CreditMemo "CM-0001"
       Engagements None
       Engagement "ENG-0001"
+      Proposals
+      Proposal "P-1"
       Receivables(None, None)
       Receivables(Some(DateOnly(2026, 6, 30)), Some "CUST-0001")
       Periods None

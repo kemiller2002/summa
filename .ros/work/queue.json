@@ -1061,10 +1061,10 @@
       "description": "The v0.4 product UI requirements still open after WI-0030. Also the INV-DRAFT-003 and SUM4-039 remainder after WI-0037: the invoice editor's unsaved edits survive refresh and navigation (kept in this tab until saved as a draft). Also after WI-0040: record a customer's tax status and a line's taxability, and enter a tax with its details, in the screens. Also after WI-0028: SUM4-042 and SUM4-043 in the application: inspecting and approving an agent's proposal, with its explanation (Billing.explain).",
       "tags": [],
       "priority": "medium",
-      "status": "captured",
+      "status": "ready",
       "attachments": [],
       "createdAt": "2026-10-08T22:07:01.636Z",
-      "updatedAt": "2026-10-09T02:24:35.000Z",
+      "updatedAt": "2026-10-09T02:47:01.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
