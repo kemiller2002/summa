@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-08T23:28:34.000Z",
+  "updatedAt": "2026-10-09T00:48:06.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1761,33 +1761,67 @@
     {
       "id": "WI-0037",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-08T22:18:37.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Organization.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Migrations.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Workspace.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Application/Store.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Storage.Tests/MigrationTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Storage.Tests/WorkspaceTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/StoreTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/github-books.spec.js"
+        }
+      ],
+      "updatedAt": "2026-10-09T00:48:06.000Z",
       "telemetryExecutionIds": [
         "EXE-20261008T221837840Z-607ce088"
       ],
       "latestCheckpoint": {
-        "id": "8c67df8bd48edaac6c6ac60b",
-        "recordedAt": "2026-10-09T00:14:06.000Z",
+        "id": "cf2b9afd4a87ce9f94579ffa",
+        "recordedAt": "2026-10-09T00:48:05.000Z",
         "executionId": "EXE-20261008T221837840Z-607ce088",
         "repository": "summa",
-        "branch": "feat/wi-0037-github-store",
-        "commit": "c1ff25df87cca31b60732b6393eb5e7b4dec3c2e",
+        "branch": "feat/wi-0037-offline-queue",
+        "commit": "a08616e4a58d6d375e9a02308afe973ef75253c6",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0037-github-store",
-        "remoteCommit": "c1ff25df87cca31b60732b6393eb5e7b4dec3c2e",
-        "summary": "Part 2: books on GitHub through Arca's GitHub adapter; opening, setting up, confirming, migrating; each change a replayed command (DF-SUMMA-2026-0014)",
-        "nextAction": "Part 3: offline queue on localStorage, conflicts and outside edits shown, drain before shutdown, application manifest at start-up",
+        "remoteBranch": "feat/wi-0037-offline-queue",
+        "remoteCommit": "a08616e4a58d6d375e9a02308afe973ef75253c6",
+        "summary": "Part 3: offline queue on localStorage under a Web Lock, revised or given up when GitHub moved, books check against history, application manifest at start-up",
+        "nextAction": "Complete WI-0037; then WI-0040",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
         }
-      }
+      },
+      "completedAt": "2026-10-09T00:48:06.000Z"
     },
     {
       "id": "WI-0035",
