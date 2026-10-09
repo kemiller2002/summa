@@ -190,6 +190,7 @@ let ``start-up reads Summa's application manifest and refuses books that need a 
         match store.Provider.Read application Application.path |> Async.RunSynchronously |> ok with
         | ReadOutcome.Found found -> found.Content
         | ReadOutcome.Absent -> failwith "absent"
+        | ReadOutcome.Erased _ -> failwith "erased"
 
     let newer = current.Replace($"\"minimumApplicationVersion\":\"{Application.ApplicationVersion}\"", "\"minimumApplicationVersion\":\"9.0.0\"")
     Assert.NotEqual<string>(current, newer)

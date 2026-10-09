@@ -439,3 +439,65 @@ let ``what a change did is stored with its audit event and read back`` () =
     let changes = loaded.State.Books.Ledger.Audit |> List.filter (fun a -> a.Subject = draft.DraftId) |> List.choose _.Change
     Assert.Contains({ Version = Some 2; Outcome = "applied"; Changed = [ "terms: default -> Net 15" ] }, changes)
     Assert.Contains({ Version = Some 1; Outcome = "applied"; Changed = [] }, changes)
+
+// ---- Arca 0.4.0: namespace tokens and erasure (WI-0045) ---------------------------------------
+
+[<Fact>]
+let ``a commit elsewhere in the repository does not make a decided change stale`` () =
+    let store, ns = founded ()
+    setUp store ns |> Support.ok |> ignore
+    let state = store.Provider.NamespaceState ns |> Async.RunSynchronously |> Support.ok
+    let objects = readAll store.Provider ns |> Async.RunSynchronously |> Support.ok
+    let request = { Actor = kevin; Capability = CreateDraftInvoice; Summary = "draft"; IdempotencyKey = "cmd-draft-elsewhere-0001"; Transition = (fun (r: Receivables) -> saveDraft ledgerContext draft r.Books |> Result.map (fun b -> { r with Books = b })) }
+
+    let operation =
+        match decide defaultApprovalGates ns state objects request with
+        | Ok(_, Some operation) -> operation
+        | other -> failwith $"%A{other}"
+
+    // Another organization, in the same repository, commits in between.
+    let both = { production with Organizations = production.Organizations @ [ { production.Organizations.Head with Id = "org_other"; Slug = "other"; DisplayName = "Other" } ] }
+    let otherManifest = Storage.manifestFor (Deployment.organization both "org_other" |> Option.get) Support.at
+    let found = Governance.found both (bindingOf both) RepositoryVisibility.Private None (context "found-other") otherManifest { PrincipalId = "github:7"; Kind = Human; DisplayName = "someone" } |> Support.ok
+    store.Provider.Commit found |> Async.RunSynchronously |> Support.ok |> ignore
+    Assert.NotEqual(state.RepositoryToken, (store.Provider.NamespaceState ns |> Async.RunSynchronously |> Support.ok).RepositoryToken)
+
+    // Summa's change is held to its own namespace only, so it still applies.
+    Assert.True(Result.isOk (store.Provider.Commit operation |> Async.RunSynchronously))
+
+    // A change inside the namespace does make it stale.
+    let state2 = store.Provider.NamespaceState ns |> Async.RunSynchronously |> Support.ok
+    let objects2 = readAll store.Provider ns |> Async.RunSynchronously |> Support.ok
+
+    let second =
+        match decide defaultApprovalGates ns state2 objects2 { request with IdempotencyKey = "cmd-draft-elsewhere-0002"; Transition = (fun r -> saveCustomer ledgerContext { abc with Email = "new@abc.example" } r.Books |> fun b -> Ok { r with Books = b }) } with
+        | Ok(_, Some operation) -> operation
+        | other -> failwith $"%A{other}"
+
+    run store ns kevin ManageBilling "inside" (fun r -> Ok { r with Books = saveCustomer ledgerContext { abc with Email = "other@abc.example" } r.Books }) |> Support.ok |> ignore
+
+    match store.Provider.Commit second |> Async.RunSynchronously with
+    | Error(StorageFailure.StaleNamespaceToken _) -> ()
+    | other -> failwith $"%A{other}"
+
+[<Fact>]
+let ``books with an erased financial record are refused, never kept on without it`` () =
+    let store, ns = founded ()
+    setUp store ns |> Support.ok |> ignore
+    let objects = readAll store.Provider ns |> Async.RunSynchronously |> Support.ok
+
+    let audit =
+        objects
+        |> List.find (fun o -> match Layout.keyOf o.Path with Some k -> k.Type = FinancialRecords.auditType | None -> false)
+
+    let key = Layout.keyOf audit.Path |> Option.get
+    let schema = FinancialRecords.schemas |> List.find (fun s -> s.Type = key.Type)
+    let valid = Integrity.validate key schema Record.DefaultMaxBytes audit |> Support.ok
+    let request = Erasure.request audit.Path valid ledgerContext.When "test erasure" |> Support.ok
+    let meta = metadata kevin "erase" "erase-audit-0001" |> Support.ok
+    let operation = Erasure.operation ns meta [ request ] |> Support.ok
+    Erasure.commit store.Provider operation |> Async.RunSynchronously |> Support.ok |> ignore
+
+    match readAll store.Provider ns |> Async.RunSynchronously with
+    | Error(Untrustworthy [ Diagnostics.InvalidStoredRecord(_, why) ]) -> Assert.Contains("erased", why)
+    | other -> failwith $"%A{other}"

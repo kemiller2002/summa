@@ -86,6 +86,7 @@ let private contentOf (store: InMemoryStore) (ns: Namespace) (relative: string) 
     match store.Provider.Read ns (RelativePath.parse relative |> Support.ok) |> Async.RunSynchronously |> Support.ok with
     | ReadOutcome.Found o -> o.Content
     | ReadOutcome.Absent -> failwith "absent"
+    | ReadOutcome.Erased _ -> failwith "erased"
 
 [<Fact>]
 let ``a clean folder audits clean`` () =

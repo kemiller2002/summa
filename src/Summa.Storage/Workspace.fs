@@ -27,7 +27,7 @@ type Opened =
       Access: Compatibility.Access
       /// What was read, and the change token it was read at: the basis for
       /// deciding a command when the store cannot be reached.
-      Read: ChangeToken option * StoredObject list }
+      Read: NamespaceState option * StoredObject list }
 
 /// What opening found.
 [<NoComparison; NoEquality>]
@@ -125,8 +125,10 @@ let openBooks
             | _, Error failure -> return Error(Commands.StorageFailed failure)
             | Ok ReadOutcome.Absent, _ -> return Ok(NotSetUp(Governance.decide binding.Environment.Kind organization true (empty organization.Id) actorId))
             | Ok(ReadOutcome.Found _), Ok ReadOutcome.Absent -> return Ok(Unusable [ NamespaceNotInitialized(RelativePath.render ns.Root) ])
+            | Ok(ReadOutcome.Erased _), _
+            | _, Ok(ReadOutcome.Erased _) -> return Ok(Unusable [ NamespaceUnusable(RelativePath.render ns.Root, "a manifest was erased") ])
             | Ok(ReadOutcome.Found folder), Ok(ReadOutcome.Found manifest) ->
-                match! provider.ChangeToken ns with
+                match! provider.NamespaceState ns with
                 | Error failure -> return Error(Commands.StorageFailed failure)
                 | Ok token ->
                     match! Commands.readAll provider ns with
@@ -165,6 +167,7 @@ let foundingOperations
                 let applicationSetUp =
                     match found with
                     | ReadOutcome.Found _ -> Ok []
+                    | ReadOutcome.Erased _ -> Error [ NamespaceUnusable("summa", "Summa's application manifest was erased") ]
                     | ReadOutcome.Absent -> Storage.initializeApplication binding visibility None context |> Result.map List.singleton
 
                 let manifest = Storage.manifestFor organization context.At
@@ -210,6 +213,7 @@ let checkApplication (provider: StorageProvider) (binding: ApplicationBinding) :
             match! provider.Read application Application.path with
             | Error failure -> return Error(Commands.StorageFailed failure)
             | Ok ReadOutcome.Absent -> return Ok()
+            | Ok(ReadOutcome.Erased _) -> return Error(Commands.Untrustworthy [ NamespaceUnusable("summa", "Summa's application manifest was erased") ])
             | Ok(ReadOutcome.Found stored) ->
                 match Application.decode stored with
                 | Error problem -> return Error(Commands.Untrustworthy [ problem ])

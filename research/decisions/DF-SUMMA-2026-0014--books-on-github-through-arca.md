@@ -2,7 +2,7 @@
 id: DF-SUMMA-2026-0014
 title: Books on GitHub through Arca's GitHub adapter, each change a command
 status: accepted
-version: 1.1.0
+version: 1.2.0
 created: 2026-10-09
 updated: 2026-10-09
 owners:
@@ -28,6 +28,16 @@ provenance:
         runtime: claude-code
       reason: "Decide how the accounting application keeps its books on GitHub (WI-0037 part 2)"
       last: 2026-10-09T00:43:34.000Z
+    EXE-20261009T023449249Z-e60c915b:
+      operations: [modified]
+      at: 2026-10-09T04:00:36.000Z
+      actor:
+        kind: agent
+        id: anthropic/claude-code
+        provider: anthropic
+        model: unknown
+        runtime: claude-code
+      reason: "Adopt Arca 0.4.0: namespace tokens, erasure and queued entries by account (WI-0045)"
 ---
 
 # DF-SUMMA-2026-0014 — Books on GitHub through Arca's GitHub adapter, each change a command
@@ -122,6 +132,23 @@ browser: each change computes the next books and saves a snapshot.
 9. **Start-up reads Summa's application manifest** (SUM0-007,
    `Workspace.checkApplication`). Books in a folder that is not Summa's, at
    another storage version, or needing a newer Summa are refused.
+10. **Arca 0.4.0 (WI-0045): commands are held to their own namespace.**
+    - Commands read `StorageProvider.NamespaceState` and condition their
+      commit with `Operation.requireNamespaceToken` (ARCA-CON-005). A
+      commit by another organization or application elsewhere in the
+      repository no longer makes a decided change stale. A change inside
+      the organization's folder still does: `StaleNamespaceToken` is
+      decided again, like a conflict.
+    - Unsent changes are queued with `OfflineQueue.enqueueFor`, under
+      `AccountId.ofIdentity` of the account GitHub resolved. Sign-out can
+      then match them by a stable id. Offering to send, keep or discard
+      them at sign-out is recorded on WI-0044.
+    - An erased member record (ARCA-INT-005) is no longer a member.
+    - An erased financial record or manifest makes the books untrustworthy.
+      Summa never erases one, and does not keep books without it.
+    - The adoption came through Conditor 0.8.2 `upgrade --current` to
+      echelon-current 1.17.0, which moves Praxis 3.7.2 to 3.11.0 in the
+      same change. Praxis was not pinned.
 ## Consequences
 
 - `StoreTests` run the engine, wire, store port and Arca against Arca's

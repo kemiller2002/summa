@@ -641,6 +641,20 @@
             "created"
           ],
           "reason": "Decide how the accounting application keeps its books on GitHub (WI-0037 part 2)"
+        },
+        "EXE-20261009T023449249Z-e60c915b": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-09T04:00:36.000Z",
+          "operations": [
+            "modified"
+          ],
+          "reason": "Adopt Arca 0.4.0: namespace tokens, erasure and queued entries by account (WI-0045)"
         }
       }
     },
@@ -662,7 +676,7 @@
     ],
     "title": "Books on GitHub through Arca's GitHub adapter, each change a command",
     "updated": "2026-10-09",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   {
     "created": "2026-10-09",
