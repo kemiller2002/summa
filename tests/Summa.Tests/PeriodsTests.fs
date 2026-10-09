@@ -121,8 +121,8 @@ let ``cash basis is a projection: revenue when cash arrives, never a second ledg
 [<Fact>]
 let ``cash revenue splits exactly across revenue accounts and leaves tax and non-cash credits out`` () =
     let draft =
-        { draftFor [ consulting 1000L 10000L; { consulting 1000L 5000L with RevenueAccountId = "workshops"; Description = "Workshop" } ] with
-            Adjustments = [ { Kind = Tax("NY", "salestax"); Label = "Sales tax"; Amount = usd 1500L } ] }
+        { draftFor [ { consulting 1000L 10000L with Tax = Taxable "services" }; { consulting 1000L 5000L with RevenueAccountId = "workshops"; Description = "Workshop"; Tax = Taxable "services" } ] with
+            Adjustments = [ { Kind = Tax(taxCharge "NY" "salestax"); Label = "Sales tax"; Amount = usd 1500L } ] }
 
     let issuedBooks, _ = issue context request (saveDraft context draft { books with Ledger = withExtra books.Ledger } |> ok) |> ok
     // 150.00 of revenue and 15.00 of tax; 100.00 received.

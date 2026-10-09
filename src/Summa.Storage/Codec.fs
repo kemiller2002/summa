@@ -11,6 +11,17 @@ open Arca
 /// A decoded value, or one sentence saying why the input is not one.
 type Decoded<'a> = Result<'a, string>
 
+/// A member that may be absent (as a newer schema's field is in an older
+/// record): None when absent or null.
+let tryField (name: string) (value: Json) : Json option =
+    match value with
+    | Json.Object members ->
+        match members |> List.tryFind (fst >> (=) name) with
+        | Some(_, Json.Null)
+        | None -> None
+        | Some(_, found) -> Some found
+    | _ -> None
+
 let field (name: string) (value: Json) : Decoded<Json> =
     match Json.field name value with
     | Some found -> Ok found

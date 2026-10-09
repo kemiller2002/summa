@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-09T00:48:06.000Z",
+  "updatedAt": "2026-10-09T01:18:30.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1932,6 +1932,55 @@
         }
       },
       "completedAt": "2026-10-08T23:28:34.000Z"
+    },
+    {
+      "id": "WI-0040",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Invoicing.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/FinancialRecords.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/TaxTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Storage.Tests/FinancialRecordsTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-09T01:18:30.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261009T005401069Z-ca84f2de"
+      ],
+      "latestCheckpoint": {
+        "id": "c9b3ed856d23e9ea7ea30b08",
+        "recordedAt": "2026-10-09T01:18:29.000Z",
+        "executionId": "EXE-20261009T005401069Z-ca84f2de",
+        "repository": "summa",
+        "branch": "feat/wi-0040-tax-model",
+        "commit": "ec2c42c844543fbef876d0ebfd200c1dec68f84c",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/wi-0040-tax-model",
+        "remoteCommit": "ec2c42c844543fbef876d0ebfd200c1dec68f84c",
+        "summary": "Tax model room: line, customer and charge tax types; contradictions refused; inclusive posting; schema 2 only where tax is recorded (DF-SUMMA-2026-0015)",
+        "nextAction": "Complete WI-0040 and merge",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-09T01:18:30.000Z"
     }
   ]
 }

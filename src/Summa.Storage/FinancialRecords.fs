@@ -116,13 +116,20 @@ let types: (RecordType * Mutability * bool) list =
       profileType, Mutability.Immutable, false
       followUpType, Mutability.Mutable, false ]
 
-/// Schema support for every financial record type: version 1 throughout.
+/// The record types whose schema 2 records tax as the person said it
+/// (INV-ADJ-005): customers, drafts, issued invoices and proposals.
+let private taxedTypes = set [ "summa.customer"; "summa.draft"; "summa.invoice"; "summa.proposal" ]
+
+/// Schema support for every financial record type: version 1, and version 2
+/// for the types that can record tax. A record is written at version 2 only
+/// when it records tax (`schemaVersionOf`), so records without tax keep
+/// their version 1 bytes and an older Summa still reads them.
 let schemas =
     types
     |> List.map (fun (t, _, _) ->
         { Type = t
           OldestReadable = 1
-          Current = 1 })
+          Current = if taxedTypes.Contains(RecordType.value t) then 2 else 1 })
 
 let private mutabilityOf (t: RecordType) =
     types |> List.find (fun (found, _, _) -> found = t) |> fun (_, m, _) -> m
@@ -678,7 +685,20 @@ let private adjustment (a: Adjustment) =
           (match a.Kind with
            | Surcharge -> Json.objectOf [ "type", Json.String "surcharge" ]
            | Fee -> Json.objectOf [ "type", Json.String "fee" ]
-           | Tax(code, account) -> Json.objectOf [ "type", Json.String "tax"; "code", Json.String code; "accountId", Json.String account ])
+           | Tax tax ->
+               Json.objectOf (
+                   [ "type", Json.String "tax"; "code", Json.String tax.Code; "accountId", Json.String tax.AccountId ]
+                   @ (if tax = taxCharge tax.Code tax.AccountId then
+                          []
+                      else
+                          [ "taxDetails",
+                            Json.objectOf
+                                [ "jurisdiction", optionalString tax.Jurisdiction
+                                  "rateSource", optionalString tax.RateSource
+                                  "rateHundredthBasisPoints", (match tax.RateHundredthBasisPoints with Some r -> Json.Number(decimal r) | None -> Json.Null)
+                                  "evidence", optionalString tax.Evidence
+                                  "pricing", Json.String(match tax.Pricing with TaxExclusive -> "exclusive" | TaxInclusive -> "inclusive") ] ])
+               ))
           "label", Json.String a.Label
           "amount", money a.Amount ]
 
@@ -689,10 +709,33 @@ let private adjustmentKindOf (value: Json) : Decoded<AdjustmentKind> =
         | "fee" -> closed [ "type" ] value |> Result.map (fun () -> Fee)
         | "tax" ->
             decode {
-                do! closed [ "accountId"; "code"; "type" ] value
+                do! closed [ "accountId"; "code"; "taxDetails"; "type" ] value
                 let! code = text "code" value
                 let! account = text "accountId" value
-                return Tax(code, account)
+
+                let! details =
+                    match Codec.tryField "taxDetails" value with
+                    | None -> Ok(taxCharge code account)
+                    | Some d ->
+                        decode {
+                            do! closed [ "evidence"; "jurisdiction"; "pricing"; "rateHundredthBasisPoints"; "rateSource" ] d
+                            let! jurisdiction = optionalText "jurisdiction" d
+                            let! rateSource = optionalText "rateSource" d
+                            let! rate = optionalOf (fun j -> match j with Json.Number n when n = Decimal.Truncate n && n >= 0m && n <= 1000000m -> Ok(int n) | _ -> Error "a rate is a whole number of hundredths of a basis point") "rateHundredthBasisPoints" d
+                            let! evidence = optionalText "evidence" d
+                            let! pricing = text "pricing" d |> Result.bind (function "exclusive" -> Ok TaxExclusive | "inclusive" -> Ok TaxInclusive | other -> Error $"'{other}' is not exclusive or inclusive")
+
+                            return
+                                { Code = code
+                                  AccountId = account
+                                  Jurisdiction = jurisdiction
+                                  RateSource = rateSource
+                                  RateHundredthBasisPoints = rate
+                                  Evidence = evidence
+                                  Pricing = pricing }
+                        }
+
+                return Tax details
             }
         | other -> Error $"'{other}' is not an adjustment kind")
 
@@ -814,7 +857,7 @@ let private collectionOf (value: Json) : Decoded<CollectionStage> =
     }
 
 let private invoiceLine (l: InvoiceLine) =
-    Json.objectOf
+    Json.objectOf (
         [ "description", Json.String l.Description
           "quantityThousandths", Json.Number(decimal l.QuantityThousandths)
           "unitPrice", money l.UnitPrice
@@ -824,10 +867,15 @@ let private invoiceLine (l: InvoiceLine) =
           "discount", optionalJson discount l.Discount
           "source", lineSource l.Source
           "rate", optionalJson rateProvenance l.Rate ]
+        @ (match l.Tax with
+           | NotAssessed -> []
+           | Taxable category -> [ "tax", Json.objectOf [ "kind", Json.String "taxable"; "category", Json.String category ] ]
+           | NonTaxable reason -> [ "tax", Json.objectOf [ "kind", Json.String "non-taxable"; "reason", Json.String reason ] ])
+    )
 
 let private invoiceLineOf (value: Json) : Decoded<InvoiceLine> =
     decode {
-        do! closed [ "description"; "discount"; "project"; "quantityThousandths"; "rate"; "revenueAccountId"; "source"; "unitPrice"; "workItem" ] value
+        do! closed [ "description"; "discount"; "project"; "quantityThousandths"; "rate"; "revenueAccountId"; "source"; "tax"; "unitPrice"; "workItem" ] value
         let! description = text "description" value
         let! quantity = long "quantityThousandths" value
         let! price = moneyField "unitPrice" value
@@ -838,6 +886,20 @@ let private invoiceLineOf (value: Json) : Decoded<InvoiceLine> =
         let! source = field "source" value |> Result.bind lineSourceOf
         let! rate = optionalOf rateProvenanceOf "rate" value
 
+        let! tax =
+            match Codec.tryField "tax" value with
+            | None -> Ok NotAssessed
+            | Some t ->
+                decode {
+                    let! kind = text "kind" t
+
+                    return!
+                        match kind with
+                        | "taxable" -> closed [ "category"; "kind" ] t |> Result.bind (fun () -> text "category" t) |> Result.map Taxable
+                        | "non-taxable" -> closed [ "kind"; "reason" ] t |> Result.bind (fun () -> text "reason" t) |> Result.map NonTaxable
+                        | other -> Error $"'{other}' is not taxable or non-taxable"
+                }
+
         return
             { Description = description
               QuantityThousandths = quantity
@@ -847,7 +909,8 @@ let private invoiceLineOf (value: Json) : Decoded<InvoiceLine> =
               WorkItem = workItem
               Discount = lineDiscount
               Source = source
-              Rate = rate }
+              Rate = rate
+              Tax = tax }
     }
 
 let private accountTypeName =
@@ -1000,7 +1063,7 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                     "idempotencyKey", optionalString (keyFor e.Id) ]
           for KeyValue(_, c) in books.Customers ->
               keyOf customerType [] c.Id,
-              Json.objectOf
+              Json.objectOf (
                   [ "id", Json.String c.Id
                     "name", Json.String c.Name
                     "billingName", Json.String c.BillingName
@@ -1009,6 +1072,12 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                     "defaultTerms", optionalJson terms c.DefaultTerms
                     "paymentProfileId", optionalString c.PaymentProfileId
                     "active", Json.Bool c.Active ]
+                  @ (match c.Tax with
+                     | TaxNotAssessed -> []
+                     | SubjectToTax jurisdiction -> [ "tax", Json.objectOf [ "kind", Json.String "subject"; "jurisdiction", optionalString jurisdiction ] ]
+                     | TaxExempt(evidence, jurisdiction) ->
+                         [ "tax", Json.objectOf [ "kind", Json.String "exempt"; "evidence", Json.String evidence; "jurisdiction", optionalString jurisdiction ] ])
+              )
           for KeyValue(_, d) in books.Drafts ->
               keyOf draftType [] d.DraftId,
               Json.objectOf
@@ -1295,11 +1364,23 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
     | [] -> Ok(records |> List.choose (fun (k, body) -> k |> Result.toOption |> Option.map (fun key -> { Key = key; Body = body })))
     | problems -> Error problems
 
+/// The schema version a record is written at: 2 when it records tax (a
+/// `tax` or `taxDetails` anywhere in it), else 1, so a record without tax
+/// is written exactly as before.
+let schemaVersionOf (record: FinancialRecord) =
+    let rec recordsTax (value: Json) =
+        match value with
+        | Json.Object members -> members |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || recordsTax inner)
+        | Json.Array items -> items |> List.exists recordsTax
+        | _ -> false
+
+    if taxedTypes.Contains(RecordType.value record.Key.Type) && recordsTax record.Body then 2 else 1
+
 /// The canonical stored text of a record.
 let encode (record: FinancialRecord) : Result<string, Diagnostic> =
     { Id = record.Key.Id
       Type = record.Key.Type
-      SchemaVersion = 1
+      SchemaVersion = schemaVersionOf record
       Mutability = mutabilityOf record.Key.Type
       Body = record.Body }
     |> Record.encode Record.DefaultMaxBytes
@@ -1406,7 +1487,7 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
         }
     | "summa.customer" ->
         decode {
-            do! closed [ "active"; "billingAddress"; "billingName"; "defaultTerms"; "email"; "id"; "name"; "paymentProfileId" ] b
+            do! closed [ "active"; "billingAddress"; "billingName"; "defaultTerms"; "email"; "id"; "name"; "paymentProfileId"; "tax" ] b
             let! id = text "id" b
             let! name = text "name" b
             let! billingName = text "billingName" b
@@ -1415,6 +1496,24 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
             let! terms = optionalOf termsOf "defaultTerms" b
             let! profile = optionalText "paymentProfileId" b
             let! active = flag "active" b
+
+            let! tax =
+                match Codec.tryField "tax" b with
+                | None -> Ok TaxNotAssessed
+                | Some t ->
+                    decode {
+                        let! kind = text "kind" t
+                        let! jurisdiction = optionalText "jurisdiction" t
+
+                        return!
+                            match kind with
+                            | "subject" -> closed [ "jurisdiction"; "kind" ] t |> Result.map (fun () -> SubjectToTax jurisdiction)
+                            | "exempt" ->
+                                closed [ "evidence"; "jurisdiction"; "kind" ] t
+                                |> Result.bind (fun () -> text "evidence" t)
+                                |> Result.map (fun evidence -> TaxExempt(evidence, jurisdiction))
+                            | other -> Error $"'{other}' is not a tax status"
+                    }
 
             return
                 CustomerPart
@@ -1425,7 +1524,8 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                       Email = email
                       DefaultTerms = terms
                       PaymentProfileId = profile
-                      Active = active }
+                      Active = active
+                      Tax = tax }
         }
     | "summa.draft" ->
         decode {

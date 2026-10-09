@@ -977,10 +977,10 @@
         "tax"
       ],
       "priority": "low",
-      "status": "captured",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T18:08:35.000Z",
-      "updatedAt": "2026-10-08T18:08:35.000Z",
+      "updatedAt": "2026-10-09T01:18:30.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
@@ -1058,13 +1058,13 @@
     {
       "id": "WI-0044",
       "title": "Summa 14f: the v0.4 product UI requirements still open after WI-0030 (SUM4-001..041, INV-UI, INV-A11Y): smart defaults and proposals in the UI, attention-first receivables, payment matching and choosing an invoice to apply, follow-up details and payment promises, ledger filters by entry type, source, project and customer, report shortcuts everywhere, the CPA package, saved views, project profitability, command palette and global search, confirmation behaviour and the remaining accessibility checks",
-      "description": "The v0.4 product UI requirements still open after WI-0030. Also the INV-DRAFT-003 and SUM4-039 remainder after WI-0037: the invoice editor's unsaved edits survive refresh and navigation (kept in this tab until saved as a draft).",
+      "description": "The v0.4 product UI requirements still open after WI-0030. Also the INV-DRAFT-003 and SUM4-039 remainder after WI-0037: the invoice editor's unsaved edits survive refresh and navigation (kept in this tab until saved as a draft). Also after WI-0040: record a customer's tax status and a line's taxability, and enter a tax with its details, in the screens.",
       "tags": [],
       "priority": "medium",
       "status": "captured",
       "attachments": [],
       "createdAt": "2026-10-08T22:07:01.636Z",
-      "updatedAt": "2026-10-09T00:42:57.000Z",
+      "updatedAt": "2026-10-09T01:14:30.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
