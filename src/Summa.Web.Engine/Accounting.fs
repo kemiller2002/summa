@@ -252,9 +252,14 @@ type Unsent =
       /// The change that stops the others: its place in line, what it was,
       /// and why it was not sent.
       Blocked: (int64 * string * string) option
-      Note: string option }
+      Note: string option
+      /// Unsent changes this browser holds that another sign-in made, or
+      /// that were kept before Summa recorded who made them. They are held,
+      /// never sent as this person or dropped, until the person chooses
+      /// (Arca 0.4.0, LCP-070).
+      Foreign: int }
 
-let noneUnsent = { Waiting = 0; Blocked = None; Note = None }
+let noneUnsent = { Waiting = 0; Blocked = None; Note = None; Foreign = 0 }
 
 /// Checking the books on GitHub against their history (WI-0037): records
 /// edited outside Summa are shown, never trusted or put right silently.
@@ -418,6 +423,10 @@ type Msg =
     | BooksChecked of findings: string list
     /// Give up the change that stops the others.
     | AbandonUnsentRequested
+    /// Send the held changes another sign-in made, as this person.
+    | ForeignUnsentSendRequested
+    /// Discard the held changes another sign-in made.
+    | ForeignUnsentDiscardRequested
     /// The stored snapshot, or None when this browser has none yet.
     | Loaded of string option
     | Saved of ok: bool
@@ -596,6 +605,8 @@ type AppEffect =
     /// Try now to send the changes GitHub does not have yet.
     | SendUnsent
     | AbandonUnsent of sequence: int64
+    | SendForeignUnsent
+    | DiscardForeignUnsent
     /// Check every financial record against its history on GitHub.
     | CheckBooks
     /// Keep (or, with None, forget) the editor's unsaved form in this tab,
@@ -1323,6 +1334,8 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
     | CheckRequested -> model, []
     | BooksChecked findings -> { model with Check = Checked findings }, []
     // The page offers to give up only the change that is blocked.
+    | ForeignUnsentSendRequested -> model, (if model.Unsent.Foreign > 0 then [ SendForeignUnsent ] else [])
+    | ForeignUnsentDiscardRequested -> model, (if model.Unsent.Foreign > 0 then [ DiscardForeignUnsent ] else [])
     | AbandonUnsentRequested ->
         match model.Unsent.Blocked with
         | Some(sequence, _, _) -> model, [ AbandonUnsent sequence ]
@@ -3697,6 +3710,13 @@ let view (model: Model) : View =
       )
       "hasUnsentNote", flag model.Unsent.Note.IsSome
       "unsentNote", text (model.Unsent.Note |> Option.defaultValue "")
+      "hasForeignUnsent", flag (model.Unsent.Foreign > 0)
+      "foreignUnsentText",
+      text (
+          match model.Unsent.Foreign with
+          | 1 -> "1 unsent change in this browser was made by another sign-in, or before Summa recorded who made it."
+          | n -> $"{n} unsent changes in this browser were made by another sign-in, or before Summa recorded who made them."
+      )
       "hasBlockedChange", flag model.Unsent.Blocked.IsSome
       "blockedSummary", text (model.Unsent.Blocked |> Option.map (fun (_, summary, _) -> summary) |> Option.defaultValue "")
       "blockedReason", text (model.Unsent.Blocked |> Option.map (fun (_, _, why) -> why) |> Option.defaultValue "")

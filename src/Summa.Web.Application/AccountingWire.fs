@@ -163,7 +163,9 @@ let events: Map<string, string -> string -> Msg> =
           "migrateRequested", (fun _ _ -> MigrateRequested)
           "sendUnsentRequested", (fun _ _ -> SendUnsentRequested)
           "checkRequested", (fun _ _ -> CheckRequested)
-          "abandonUnsentRequested", (fun _ _ -> AbandonUnsentRequested) ]
+          "abandonUnsentRequested", (fun _ _ -> AbandonUnsentRequested)
+          "foreignUnsentSendRequested", (fun _ _ -> ForeignUnsentSendRequested)
+          "foreignUnsentDiscardRequested", (fun _ _ -> ForeignUnsentDiscardRequested) ]
 
 /// Checkboxes inside a form: their events carry whether they are checked.
 let private stateEvents = set [ "lineTaxableChanged"; "draftTaxInclusiveChanged" ]
@@ -519,6 +521,8 @@ let private requests (session: Session) (effects: AppEffect list) =
             | CommitManifest _
             | SendUnsent
             | AbandonUnsent _
+            | SendForeignUnsent
+            | DiscardForeignUnsent
             | CheckBooks -> s, out)
         (session, [])
 
@@ -781,6 +785,8 @@ let private step (env: Env) (now: DateTimeOffset) (session: Session) (inbound: I
             | CommitManifest manifest -> env.Store.CommitManifest manifest
             | SendUnsent -> env.Store.SendUnsent()
             | AbandonUnsent sequence -> env.Store.Abandon sequence
+            | SendForeignUnsent -> env.Store.SendForeign()
+            | DiscardForeignUnsent -> env.Store.DiscardForeign()
             | CheckBooks -> env.Store.Check()
             | _ -> ())
 

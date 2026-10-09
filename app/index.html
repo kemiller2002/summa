@@ -172,6 +172,16 @@
       <div class="summa-unsent ef-stack" id="unsent" role="status">
         <p id="unsent-text" data-text="unsentText"></p>
         <template data-if="hasUnsentNote"><p id="unsent-note" data-text="unsentNote"></p></template>
+        <template data-if="hasForeignUnsent">
+          <div class="ef-stack" id="foreign-unsent">
+            <p id="foreign-unsent-text" data-text="foreignUnsentText"></p>
+            <p>They are held: Summa does not send them as you or drop them without your choice.</p>
+            <div class="ef-actions">
+              <button type="button" class="ef-button" data-variant="secondary" id="send-foreign" data-event="foreignUnsentSendRequested">Send them as me</button>
+              <button type="button" class="ef-button" data-variant="danger" id="discard-foreign" data-event="foreignUnsentDiscardRequested">Discard them</button>
+            </div>
+          </div>
+        </template>
         <template data-if="hasBlockedChange">
           <div class="ef-stack" id="blocked-change">
             <p>Waiting on: <strong id="blocked-summary" data-text="blockedSummary"></strong>. <span id="blocked-reason" data-text="blockedReason"></span></p>

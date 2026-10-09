@@ -53,6 +53,10 @@ type StorePort =
       SendUnsent: unit -> unit
       /// Give up the blocked change at this place in line.
       Abandon: int64 -> unit
+      /// Send, as the signed-in person, the held changes another sign-in made.
+      SendForeign: unit -> unit
+      /// Discard the held changes another sign-in made.
+      DiscardForeign: unit -> unit
       /// Check every financial record against its history.
       Check: unit -> unit }
 
@@ -66,6 +70,8 @@ let none: StorePort =
       CommitManifest = ignore
       SendUnsent = ignore
       Abandon = ignore
+      SendForeign = ignore
+      DiscardForeign = ignore
       Check = ignore }
 
 let private methodName =
@@ -327,6 +333,37 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
 
     let summaryOf (entry: QueueEntry) = entry.Operation.Summary
 
+    /// Whether the signed-in person chose to send, as themselves, the
+    /// changes another sign-in left in this browser.
+    let mutable foreignReleased = false
+
+    /// The accounts this sign-in answers to: the one GitHub resolved, and its
+    /// actor id as an entry recorded it. Never a display name.
+    let accountsOf (ctx: Context) =
+        set
+            [ AccountId.toWire (AccountId.ofIdentity ctx.Snapshot.Identity)
+              match ActorId.create ctx.Person.ActorId with
+              | Ok actor -> AccountId.toWire (AccountId.ofActor actor)
+              | Error _ -> () ]
+
+    let isOpen (entry: QueueEntry) =
+        match entry.State with
+        | EntryState.Synchronized _
+        | EntryState.Abandoned _ -> false
+        | _ -> true
+
+    /// Unsent entries this sign-in did not make: another account's, or ones
+    /// kept before Summa recorded the account. They are never stamped with
+    /// this account, sent as it, or dropped without the person's choice.
+    let foreignEntries () =
+        match context with
+        | Some ctx ->
+            let mine = accountsOf ctx
+            queue.Entries |> List.filter (fun e -> isOpen e && not (e.Operation.AccountId |> Option.exists mine.Contains))
+        | None -> []
+
+    let held () = not foreignReleased && not (foreignEntries ()).IsEmpty
+
     let unsentView () : Unsent =
         let status = OfflineQueue.status queue
         let waiting = status.Pending + status.InFlight + status.OutcomeUnknown + status.Conflicted + status.Refused
@@ -345,7 +382,8 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
 
         { Waiting = waiting
           Blocked = blocked
-          Note = if waiting > 0 then queueNote else None }
+          Note = if waiting > 0 then queueNote else None
+          Foreign = if foreignReleased then 0 else (foreignEntries ()).Length }
 
     /// Takes this browser's unsent changes for this tab when no other tab
     /// holds them, and loads what an earlier page left (an entry that was
@@ -358,7 +396,23 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
                 queueNote <- None
 
                 match! store.Load() with
-                | Ok(Some loaded) -> queue <- OfflineQueue.recover loaded
+                | Ok(Some loaded) ->
+                    // Entries kept before Summa recorded the account (before Arca
+                    // 0.4.0, or revised under 0.4.0) take it from the actor the
+                    // entry itself recorded, and from nothing else (WI-0046).
+                    let stamped =
+                        { loaded with
+                            Entries =
+                                loaded.Entries
+                                |> List.map (fun e ->
+                                    match e.Operation.AccountId, ActorId.create e.Operation.ActorId with
+                                    | None, Ok actor -> { e with Operation = { e.Operation with AccountId = Some(AccountId.toWire (AccountId.ofActor actor)) } }
+                                    | _ -> e) }
+
+                    queue <- OfflineQueue.recover stamped
+
+                    if stamped <> loaded then
+                        do! store.Save queue |> Async.Ignore
                 | Ok None -> ()
                 | Error _ -> queueNote <- Some "The unsent changes kept in this browser could not be read; changes made now are kept in this tab until sent."
             | QueueOwnership.OwnedElsewhere ->
@@ -398,6 +452,10 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
     /// them when everything was sent, and what the engine needs to hear.
     let rec synchronize (ctx: Context) (attempts: int) : Async<Summa.Ledger.Payments.Receivables option * Msg list> =
         async {
+          if held () then
+            // Another sign-in's changes come first in line: they wait for the person.
+            return None, [ UnsentChanged(unsentView ()) ]
+          else
             let! synced, step = OfflineSync.run (providerOf ctx.Namespace) (storeOf ()) ctx.Namespace 50 queue
             queue <- synced
 
@@ -410,6 +468,7 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
                 | Ok(token, objects) ->
                     match Commands.decide Access.defaultApprovalGates ctx.Namespace token objects (requestOf ctx commit) with
                     | Ok(_, Some operation) ->
+                        // Arca 0.4.1 keeps the account the entry recorded (WI-0046).
                         match OfflineQueue.revise entry.Sequence operation queue with
                         | Ok revised ->
                             queue <- revised
@@ -480,6 +539,7 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
                                       Snapshot = snapshot }
 
                                 context <- Some ctx
+                                foreignReleased <- false
 
                                 match! Storage.applicationNamespace binding |> Result.map (fun a -> Workspace.checkApplication (providerOf a) binding) |> Result.defaultValue (async.Return(Ok())) with
                                 | Error failure -> return [ BooksNotOpened(BooksUnusable [ describeFailure (widen failure) ]) ]
@@ -588,6 +648,29 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
                     match! Verification.audit (providerOf ctx.Namespace) ctx.Namespace with
                     | Ok findings -> return [ BooksChecked(describeAll findings) ]
                     | Error failure -> return [ BooksChecked [ "The books could not be checked: " + describeFailure (Commands.StorageFailed failure) ] ]
+                })
+      SendForeign =
+        fun () ->
+            withContext (fun ctx ->
+                async {
+                    foreignReleased <- true
+                    let! sent = synchronizeAll ctx
+                    let! opened = opening ctx
+                    return opened :: sent
+                })
+      DiscardForeign =
+        fun () ->
+            withContext (fun ctx ->
+                async {
+                    let discarded =
+                        foreignEntries ()
+                        |> List.fold (fun q e -> OfflineQueue.abandon e.Sequence $"discarded by {ctx.Person.Login}, who did not make it" q |> Result.defaultValue q) queue
+
+                    queue <- discarded
+                    do! (storeOf ()).Save queue |> Async.Ignore
+                    let! sent = synchronizeAll ctx
+                    let! opened = opening ctx
+                    return opened :: sent
                 })
       Abandon =
         fun sequence ->

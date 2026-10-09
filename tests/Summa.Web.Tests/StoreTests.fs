@@ -381,3 +381,84 @@ let ``checking the books shows a record edited outside Summa, and changes nothin
 
     Assert.True(flag "booksChecked" reply)
     Assert.Equal<(string * string) list>([ "CUST-0001", "Acme" ], storedCustomers repository)
+
+// ---- Unsent changes keep their account (WI-0046) ---------------------------------------------
+
+let private keptQueue () =
+    let key = browser.Value.Storage.Keys |> Seq.find (fun k -> k.StartsWith "arca.queue.")
+    key, OfflineQueue.decode browser.Value.Storage[key] |> Result.defaultWith (fun e -> failwith $"%A{e}")
+
+/// A change kept while GitHub could not be reached, then made to look as if
+/// an earlier Summa (or Arca 0.4.0's revise) kept it without its account,
+/// recording `actor` as the one who made it.
+let private keptWithoutAccount (actor: string) =
+    browser <- Some(Browser())
+    let repository = InMemoryStore()
+    let env, session, _ = openAs repository "583231" "octocat"
+    let session, _ = send env session [ "foundRequested", "" ]
+    (networkOf repository).Online <- false
+    addCustomer env session "Acme" |> ignore
+    let key, queue = keptQueue ()
+    let legacy = { queue with Entries = queue.Entries |> List.map (fun e -> { e with Operation = { e.Operation with AccountId = None; ActorId = actor } }) }
+    browser.Value.Storage[key] <- OfflineQueue.encode legacy |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    browser.Value.Locks.Clear()
+    (networkOf repository).Online <- true
+    repository
+
+[<Fact>]
+let ``a change another sign-in kept without its account is held, never sent as whoever signs in, until the person sends it`` () =
+    let repository = keptWithoutAccount "github:999"
+    let env, session, reply = openAs repository "583231" "octocat"
+    Assert.True(flag "hasForeignUnsent" reply)
+    Assert.Equal(1, waiting session)
+    Assert.Empty(storedCustomers repository)
+    // Stamped only from the actor it recorded, never with this sign-in's account.
+    Assert.True((snd (keptQueue ())).Entries |> List.forall (fun e -> e.Operation.AccountId = Some "actor:github:999"))
+
+    let session, reply = send env session [ "foreignUnsentSendRequested", "" ]
+    Assert.False(flag "hasForeignUnsent" reply)
+    Assert.Equal(0, waiting session)
+    Assert.Equal<(string * string) list>([ "CUST-0001", "Acme" ], storedCustomers repository)
+    browser <- None
+
+[<Fact>]
+let ``the person may discard a change another sign-in kept, and it is given up, not sent`` () =
+    let repository = keptWithoutAccount "github:999"
+    let env, session, _ = openAs repository "583231" "octocat"
+    let session, reply = send env session [ "foreignUnsentDiscardRequested", "" ]
+    Assert.False(flag "hasForeignUnsent" reply)
+    Assert.Equal(0, waiting session)
+    Assert.Empty(storedCustomers repository)
+    browser <- None
+
+[<Fact>]
+let ``revising a kept change keeps the account it recorded, and gives none to one that recorded none`` () =
+    browser <- Some(Browser())
+    let repository = InMemoryStore()
+    let env, session, _ = openAs repository "583231" "octocat"
+    let session, _ = send env session [ "foundRequested", "" ]
+    (networkOf repository).Online <- false
+    addCustomer env session "Acme" |> ignore
+    let _, queue = keptQueue ()
+    let refused = { queue with Entries = queue.Entries |> List.map (fun e -> { e with State = EntryState.Refused "test" }) }
+    let entry = refused.Entries.Head
+    Assert.Equal(Some "subject:github:583231", entry.Operation.AccountId)
+    let config = Summa.Storage.Deployment.parse configuration |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    let binding = Summa.Storage.Storage.binding config |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    let ns = Summa.Storage.Storage.organizationNamespace config binding "org_acme" |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    let operation = OfflineQueue.operationOf ns entry.Operation |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    let revised = OfflineQueue.revise entry.Sequence operation refused |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    Assert.Equal(Some "subject:github:583231", revised.Entries.Head.Operation.AccountId)
+    let unattributed = { refused with Entries = refused.Entries |> List.map (fun e -> { e with Operation = { e.Operation with AccountId = None } }) }
+    let stillNone = OfflineQueue.revise entry.Sequence operation unattributed |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    Assert.Equal(None, stillNone.Entries.Head.Operation.AccountId)
+    browser <- None
+
+[<Fact>]
+let ``a change kept without its account, but recording this person as its actor, is theirs and is sent`` () =
+    let repository = keptWithoutAccount "github:583231"
+    let _, session, reply = openAs repository "583231" "octocat"
+    Assert.False(flag "hasForeignUnsent" reply)
+    Assert.Equal(0, waiting session)
+    Assert.Equal<(string * string) list>([ "CUST-0001", "Acme" ], storedCustomers repository)
+    browser <- None

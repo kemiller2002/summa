@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-09T04:06:17.000Z",
+  "updatedAt": "2026-10-09T04:32:44.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -2203,6 +2203,55 @@
           "mechanism": "git-remote-observation"
         }
       }
+    },
+    {
+      "id": "WI-0046",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Application/Store.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "conditor.json"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/StoreTests.fs"
+        },
+        {
+          "type": "decision",
+          "path": "research/decisions/DF-SUMMA-2026-0014--books-on-github-through-arca.md"
+        }
+      ],
+      "updatedAt": "2026-10-09T04:32:44.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261009T041729762Z-84e7aa9f"
+      ],
+      "latestCheckpoint": {
+        "id": "5e6303ba9a69ea0b95b13bbb",
+        "recordedAt": "2026-10-09T04:32:44.000Z",
+        "executionId": "EXE-20261009T041729762Z-84e7aa9f",
+        "repository": "summa",
+        "branch": "fix/wi-0046-queue-accounts",
+        "commit": "f763bf6ac15748af78b52b2ed4ffdc5b727fe03d",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "fix/wi-0046-queue-accounts",
+        "remoteCommit": "f763bf6ac15748af78b52b2ed4ffdc5b727fe03d",
+        "summary": "Arca 0.4.1 via echelon-current 1.18.0; accounts kept and foreign entries held",
+        "nextAction": "Complete WI-0046",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-09T04:32:44.000Z"
     }
   ]
 }

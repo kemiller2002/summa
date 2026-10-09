@@ -2,7 +2,7 @@
 id: DF-SUMMA-2026-0014
 title: Books on GitHub through Arca's GitHub adapter, each change a command
 status: accepted
-version: 1.2.0
+version: 1.3.0
 created: 2026-10-09
 updated: 2026-10-09
 owners:
@@ -38,6 +38,16 @@ provenance:
         model: unknown
         runtime: claude-code
       reason: "Adopt Arca 0.4.0: namespace tokens, erasure and queued entries by account (WI-0045)"
+    EXE-20261009T041729762Z-84e7aa9f:
+      operations: [modified]
+      at: 2026-10-09T04:23:10.000Z
+      actor:
+        kind: agent
+        id: anthropic/claude-code
+        provider: anthropic
+        model: unknown
+        runtime: claude-code
+      reason: "Keep queued changes' accounts and hold other sign-ins' changes (WI-0046)"
 ---
 
 # DF-SUMMA-2026-0014 — Books on GitHub through Arca's GitHub adapter, each change a command
@@ -149,6 +159,20 @@ browser: each change computes the next books and saves a snapshot.
     - The adoption came through Conditor 0.8.2 `upgrade --current` to
       echelon-current 1.17.0, which moves Praxis 3.7.2 to 3.11.0 in the
       same change. Praxis was not pinned.
+11. **Unsent changes keep their account (WI-0046, Arca 0.4.1 through
+    echelon-current 1.18.0).**
+    - `OfflineQueue.revise` keeps the account the entry recorded. In 0.4.0
+      it dropped it.
+    - An entry kept without its account (before Arca 0.4.0, or revised
+      under 0.4.0) is stamped only from the actor the entry itself
+      recorded (`AccountId.ofActor`), never from the session and never by
+      display name. One that names this person's actor id is theirs and is
+      sent.
+    - An entry that another account made, or that records no usable actor,
+      is held. It is never stamped with the
+      signed-in person's account, never sent as them, and never discarded
+      on its own. The page says so and offers "Send them as me" or "Discard
+      them"; the person's choice is what releases or abandons them.
 ## Consequences
 
 - `StoreTests` run the engine, wire, store port and Arca against Arca's
