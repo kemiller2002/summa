@@ -929,10 +929,10 @@
         "migration"
       ],
       "priority": "medium",
-      "status": "captured",
+      "status": "ready",
       "attachments": [],
       "createdAt": "2026-10-08T16:07:53.000Z",
-      "updatedAt": "2026-10-08T16:16:55.000Z",
+      "updatedAt": "2026-10-09T01:25:02.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

@@ -19,6 +19,7 @@
     <Compile Include="IntegrityTests.fs" />
     <Compile Include="MigrationTests.fs" />
     <Compile Include="WorkspaceTests.fs" />
+    <Compile Include="FinancialMigrationTests.fs" />
     <Compile Include="RecoveryTests.fs" />
     <Compile Include="EnvironmentTests.fs" />
     <Compile Include="ArtifactsTests.fs" />
