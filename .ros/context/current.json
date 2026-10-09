@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-09T01:25:02.000Z",
+  "updatedAt": "2026-10-09T01:37:17.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -1985,13 +1985,47 @@
     {
       "id": "WI-0038",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-09T01:25:02.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Operations/FinancialMigration.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Storage.Tests/FinancialMigrationTests.fs"
+        },
+        {
+          "type": "decision",
+          "path": "research/decisions/DF-SUMMA-2026-0016--financial-migrations-through-arca.md"
+        }
+      ],
+      "updatedAt": "2026-10-09T01:37:17.000Z",
       "telemetryExecutionIds": [
         "EXE-20261009T012503535Z-72200b70"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "2986906a5abcb32bb299babe",
+        "recordedAt": "2026-10-09T01:37:16.000Z",
+        "executionId": "EXE-20261009T012503535Z-72200b70",
+        "repository": "summa",
+        "branch": "feat/wi-0038-migration-runner",
+        "commit": "ce0d7cb126fea34e0d887c44add2503b9ab7ba5e",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/wi-0038-migration-runner",
+        "remoteCommit": "ce0d7cb126fea34e0d887c44add2503b9ab7ba5e",
+        "summary": "Migration runner: checked before writing, backup, Arca migration, copy read back and reconciled, explicit retirement (DF-SUMMA-2026-0016)",
+        "nextAction": "Complete WI-0038 and merge",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-09T01:37:17.000Z"
     }
   ]
 }
