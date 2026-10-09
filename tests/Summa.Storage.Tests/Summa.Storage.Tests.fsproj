@@ -23,6 +23,7 @@
     <Compile Include="RecoveryTests.fs" />
     <Compile Include="EnvironmentTests.fs" />
     <Compile Include="ArtifactsTests.fs" />
+    <Compile Include="OperationalSafetyTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

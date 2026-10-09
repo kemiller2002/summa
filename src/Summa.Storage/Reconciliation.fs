@@ -59,3 +59,26 @@ let run (receivablesAccount: string) (asOf: DateOnly) (r: Receivables) : Finding
       for KeyValue(id, i) in r.Books.Invoices do
           if (outstanding r i).Minor < 0L then
               { Check = "invoice-balances"; Detail = $"{id} is overpaid" } ]
+
+/// Report consistency (SUM3-027): the receivable projection, rebuilt from
+/// the same records, agrees with the books. The balance sheet's receivables
+/// are the control account, which `run` checks against the open invoices,
+/// so the balance sheet, the receivables subsidiary and the projection all
+/// say the same, or a finding says where they differ.
+let agreesWithIndex (receivablesAccount: string) (r: Receivables) (index: Arca.DerivedIndex) : Finding list =
+    let ledger = r.Books.Ledger
+    let projected = Projection.balances index
+    let owed = Projection.outstanding index
+
+    [ for KeyValue((account, currency), minor) in projected do
+          if account = receivablesAccount then
+              let books = (balance ledger currency DateOnly.MaxValue account).Minor
+
+              if books <> minor then
+                  { Check = "projection-receivables"; Detail = $"{currency}: the projection holds {minor}, the books {books}" }
+      for KeyValue(id, i) in r.Books.Invoices do
+          let books = (outstanding r i).Minor
+          let index = owed.TryFind id |> Option.defaultValue 0L
+
+          if books <> index then
+              { Check = "projection-outstanding"; Detail = $"{id}: the projection holds {index}, the books {books}" } ]

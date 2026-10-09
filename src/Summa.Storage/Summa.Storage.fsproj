@@ -26,6 +26,8 @@
     <Compile Include="Reconciliation.fs" />
     <Compile Include="Compatibility.fs" />
     <Compile Include="Commands.fs" />
+    <Compile Include="Telemetry.fs" />
+    <Compile Include="Exports.fs" />
     <Compile Include="Verification.fs" />
     <Compile Include="Environments.fs" />
     <Compile Include="Settings.fs" />

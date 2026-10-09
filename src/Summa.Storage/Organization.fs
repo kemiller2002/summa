@@ -456,6 +456,14 @@ let systemTerms (manifest: OrganizationManifest) =
 
 /// The id of the account the manifest names by code; the code itself when
 /// no account has it, so issuing reports it as an invalid account.
+/// The business date of an instant in the organization's time zone
+/// (SUM3-029): accounting dates are business dates, never the UTC date of
+/// the instant. An unknown zone falls back to UTC rather than guessing.
+let businessDate (manifest: OrganizationManifest) (at: DateTimeOffset) =
+    match TimeZoneInfo.TryFindSystemTimeZoneById manifest.TimeZone with
+    | true, (NonNull zone) -> DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(at, zone).DateTime)
+    | _ -> DateOnly.FromDateTime at.UtcDateTime
+
 let accountByCode (ledger: Summa.Ledger.Ledger.Ledger) (code: string) =
     ledger.Accounts |> Map.tryFindKey (fun _ a -> a.Code = code) |> Option.defaultValue code
 

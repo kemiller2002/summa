@@ -135,7 +135,18 @@ let ``the CPA workspace links the year's reports and downloads them as CSV`` () 
 
     match run [ CpaExportRequested "trial-balance" ] withFiles |> snd with
     | [ OfferDownload("trial-balance-2026.csv", "text/csv", data) ] ->
-        Assert.StartsWith("Code,Account,Debit,Credit\n", Encoding.UTF8.GetString(Convert.FromBase64String data))
+        let text = Encoding.UTF8.GetString(Convert.FromBase64String data)
+        // Each export says what it is (SUM3-026), then the columns.
+        Assert.StartsWith("# Export: trial-balance\n# SchemaVersion: summa.export/1\n# GeneratedAt: ", text)
+        Assert.Contains("# AccountingPeriod: 2026-01-01..2026-12-31\n", text)
+        Assert.Matches("# DataVersion: sha256:[0-9a-f]{64}\n", text)
+        Assert.Contains("# Filters: currency=USD; year=2026\nCode,Account,Debit,Credit\n", text)
+        // The same books give the same data version.
+        let again = run [ CpaExportRequested "trial-balance" ] withFiles |> snd
+
+        match again with
+        | [ OfferDownload(_, _, data') ] -> Assert.Equal(data, data')
+        | other -> failwith $"%A{other}"
     | other -> failwith $"%A{other}"
 
     match run [ CpaExportRequested "journal" ] withFiles |> snd with
