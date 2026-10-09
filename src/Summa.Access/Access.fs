@@ -208,7 +208,21 @@ let organizationsOf (rosters: Roster list) (principalId: string) =
 /// Operations that need a person's approval when anyone else prepares them.
 /// Configurable per organization; this is the default.
 let defaultApprovalGates =
-    set [ IssueInvoice; OverrideInvoiceNumber; WriteOffReceivable; PostManualAdjustment; ClosePeriod; RefundCustomer ]
+    set
+        [ IssueInvoice
+          OverrideInvoiceNumber
+          WriteOffReceivable
+          PostManualAdjustment
+          ClosePeriod
+          RefundCustomer
+          // No autonomous financial surprise (INV-AGENT-007, SUM4-045): voiding,
+          // applying credit, reversing a payment, and changing customer terms
+          // or a contracted rate are prepared by an agent, never done by one.
+          VoidInvoice
+          ApplyCreditMemo
+          ReversePayment
+          ManageBilling
+          OverrideRate ]
 
 /// What a principal holding the capability may do with it.
 type Decision =

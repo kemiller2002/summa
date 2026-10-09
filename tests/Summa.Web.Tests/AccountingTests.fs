@@ -279,3 +279,30 @@ let ``a configuration that cannot be used stops the page with the reason`` () =
     let production = update ctx (ConfigurationRead(Ok """{"environment":"production","environmentName":"production"}""")) configuring |> fst
     // Production shows no banner.
     Assert.Equal("False", value "hasBanner" production)
+
+[<Fact>]
+let ``an invoice's history says when an agent acted, with its identity and run, apart from people`` () =
+    let model = started () |> customer |> drafted |> run [ DraftSubmitted; DraftIssued ] |> fst
+    // The application's own changes are a person's.
+    let own = model.Books.Value.Books.Ledger.Audit |> List.last
+    Assert.Equal(Some "human", own.Provenance |> Option.map _.ActorKind)
+
+    let byAgent: Summa.Ledger.Ledger.AuditRecord =
+        { own with
+            Who = "summa-agent"
+            What = "invoice-sent"
+            Provenance =
+                Some
+                    { ActorKind = "agent"
+                      Agent = Some { Provider = "anthropic"; Model = "claude"; Runtime = "claude-code" }
+                      ExecutionId = Some "EXE-summa.7"
+                      SourceSystem = None
+                      SourceId = None
+                      Reason = Some "customer asked for a copy" } }
+
+    let books = model.Books.Value
+    let withAgent = { model with Books = Some { books with Books = { books.Books with Ledger = { books.Books.Ledger with Audit = books.Books.Ledger.Audit @ [ byAgent ] } } } }
+    let history = run [ LocationChanged(address "#/invoices/INV-0001?tab=history") ] withAgent |> fst |> items "history"
+    let last = history |> List.last |> Map.ofList
+    Assert.Equal(Text "Agent summa-agent (anthropic claude), run EXE-summa.7", last["who"])
+    Assert.Equal(Text "invoice sent: customer asked for a copy", last["what"])

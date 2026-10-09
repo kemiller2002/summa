@@ -8,7 +8,7 @@ open Summa.Ledger.Ledger
 open Summa.Ledger.Invoicing
 open Summa.Ledger.Payments
 
-let ledgerContext = { Who = "github:583231"; When = DateTimeOffset(2026, 10, 7, 12, 0, 0, 123, TimeSpan.Zero).AddTicks(4567L); Source = "summa-test"; CorrelationId = Some "c-1" }
+let ledgerContext = { Who = "github:583231"; When = DateTimeOffset(2026, 10, 7, 12, 0, 0, 123, TimeSpan.Zero).AddTicks(4567L); Source = "summa-test"; CorrelationId = Some "c-1"; Provenance = None }
 
 let ok result =
     match result with

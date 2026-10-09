@@ -152,6 +152,36 @@ let private arcaKind =
     | ScheduledProcess -> ActorKind.Service
     | Integration -> ActorKind.Integration
 
+/// The ledger context a command's transition runs under, with where it came
+/// from (INV-AUD-002, INV-PROV-001, INV-PROV-002): the actor's Praxis kind
+/// (`human`, `agent`, or `automation` for services, integrations and
+/// scheduled processes; never `human` for anything but a person), the
+/// agent's identity, the execution id as supplied, and the source system.
+let contextFor (actor: Actor.Actor) (at: DateTimeOffset) (source: string) (sourceId: string option) (reason: string option) : Summa.Ledger.Ledger.Context =
+    { Who = actor.ActorId
+      When = at
+      Source = source
+      CorrelationId = Some actor.CorrelationId
+      Provenance =
+        Some
+            { ActorKind =
+                match actor.Kind with
+                | Human -> "human"
+                | Agent -> "agent"
+                | Service
+                | Integration
+                | ScheduledProcess -> "automation"
+              Agent =
+                actor.Agent
+                |> Option.map (fun a ->
+                    { Provider = a.Provider
+                      Model = a.Model
+                      Runtime = a.Runtime })
+              ExecutionId = actor.ExecutionId
+              SourceSystem = actor.SourceSystem |> Option.orElse (Some source)
+              SourceId = sourceId
+              Reason = reason } }
+
 /// The Arca operation metadata of a command: the actor, its execution and
 /// correlation, and the idempotency key, never a token.
 let metadata (actor: Actor.Actor) (summary: string) (key: string) : Result<OperationMetadata, Diagnostic list> =

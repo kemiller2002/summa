@@ -64,7 +64,7 @@ let private ofInvoiceProblem =
     | InvalidAdjustment why -> [ blocker "invalid-adjustment" $"An adjustment is invalid: {why}." "Correct the adjustment." ]
 
 /// A context for checks that are never committed.
-let private dryRun = { Who = "readiness"; When = DateTimeOffset.UnixEpoch; Source = "summa"; CorrelationId = None }
+let private dryRun = { Who = "readiness"; When = DateTimeOffset.UnixEpoch; Source = "summa"; CorrelationId = None; Provenance = None }
 
 // ---- Payment instructions profiles (INV-PAYINST) -----------------------------------
 

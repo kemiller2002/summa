@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-09T01:37:17.000Z",
+  "updatedAt": "2026-10-09T02:28:09.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -2026,6 +2026,63 @@
         }
       },
       "completedAt": "2026-10-09T01:37:17.000Z"
+    },
+    {
+      "id": "WI-0028",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Ledger.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Billing.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Commands.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Access/Access.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/ProvenanceTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Storage.Tests/CommandTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-09T02:28:09.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261009T014433559Z-48075d15"
+      ],
+      "latestCheckpoint": {
+        "id": "300dcbe715ebbefa429332d3",
+        "recordedAt": "2026-10-09T02:28:08.000Z",
+        "executionId": "EXE-20261009T014433559Z-48075d15",
+        "repository": "summa",
+        "branch": "feat/wi-0028-provenance",
+        "commit": "c3f03ee27477244859a387f878ca1892187b5a40",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/wi-0028-provenance",
+        "remoteCommit": "c3f03ee27477244859a387f878ca1892187b5a40",
+        "summary": "Audit provenance, appended contributions, explanation, scoped agent context, wider approval gates (DF-SUMMA-2026-0017)",
+        "nextAction": "Complete WI-0028 and merge",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-09T02:28:09.000Z"
     }
   ]
 }

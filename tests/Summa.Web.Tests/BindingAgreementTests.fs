@@ -201,7 +201,7 @@ module private Accounting =
               let unapplied: Summa.Ledger.Payments.Payment =
                   { Id = "PAY-0009"; CustomerId = "CUST-0001"; DateReceived = System.DateOnly(2026, 10, 7); Amount = Summa.Ledger.Money.usd 100L; Method = Summa.Ledger.Payments.Ach; Reference = ""; Memo = None }
 
-              let context: Summa.Ledger.Ledger.Context = { Who = "test"; When = ctx.Now; Source = "test"; CorrelationId = None }
+              let context: Summa.Ledger.Ledger.Context = { Who = "test"; When = ctx.Now; Source = "test"; CorrelationId = None; Provenance = None }
 
               match Summa.Ledger.Payments.recordPayment context unapplied full.Books.Value with
               | Ok books -> step { full with Books = Some books } (go "#/periods/2026-10")

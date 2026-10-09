@@ -54,6 +54,12 @@ type BillingAccounts =
       /// Revenue from reimbursed expenses, apart from the expense itself (v0.2 §14).
       ReimbursedExpenses: string }
 
+let private contribution (context: Context) (what: string) : Contribution =
+    { Who = context.Who
+      What = what
+      At = context.When
+      Provenance = context.Provenance }
+
 let private audited (context: Context) what subject (books: Books) =
     { books with Ledger = audit context what subject books.Ledger }
 
@@ -513,7 +519,8 @@ let buildProposal (context: Context) (request: ProposalRequest) (r: Receivables)
                   Lines = lines
                   Grouping = request.Grouping
                   State = Proposed
-                  CreatedAt = context.When }
+                  CreatedAt = context.When
+                  Contributions = [ contribution context "proposed" ] }
 
 /// Proposes an invoice and reserves its sources. Retrying the same
 /// proposal changes nothing; reusing its id for another is refused.
@@ -534,8 +541,10 @@ let private openProposal (books: Books) (proposalId: string) =
     | Some p when live p -> Ok p
     | Some p -> Error [ ProposalIs(proposalId, p.State) ]
 
+/// A proposal saved with this contribution appended (INV-AGENT-005).
 let private saveProposal context what (proposal: Proposal) (r: Receivables) =
-    { r with Books = { r.Books with Proposals = r.Books.Proposals.Add(proposal.Id, proposal) } |> audited context what proposal.Id }
+    let contributed = { proposal with Contributions = proposal.Contributions @ [ contribution context what ] }
+    { r with Books = { r.Books with Proposals = r.Books.Proposals.Add(proposal.Id, contributed) } |> audited context what proposal.Id }
 
 /// A person sets a line's rate before issue, with a reason; the previous
 /// rate, the person and the time are kept (INV-RATE-004). The proposal
@@ -665,3 +674,106 @@ let accept (context: Context) (proposalId: string) (request: IssueRequest) (r: R
                     |> audited context "proposal-accepted" p.Id
 
                 { r with Books = books }, invoice)
+
+// ---- Agents: explanation and context (INV-AGENT-004, SUM0-049) -------------------------
+
+/// What a proposal is made of, in words a reviewer checks it by
+/// (INV-AGENT-004, SUM4-043): the sources selected, the sources left out and
+/// why, how time was grouped, where each rate came from, which terms apply,
+/// and what is still assumed. Derived from the records, so a proposal an
+/// agent prepared explains itself the same way as one a person did.
+type Explanation =
+    { Selected: string list
+      Excluded: string list
+      Grouping: string
+      Rates: string list
+      Terms: string
+      Assumptions: string list }
+
+let private sourceText (source: LineSource) =
+    match source with
+    | ManualLine -> [ "typed by hand" ]
+    | TimeSource refs -> refs |> List.map (fun t -> $"time {t.ActivityId} ({t.Minutes} min, publication {t.PublicationId})")
+    | FixedFeeSource engagement -> [ $"fixed fee of {engagement}" ]
+    | MilestoneSource(engagement, milestone) -> [ $"milestone {milestone} of {engagement}" ]
+    | ExpenseSource expense -> [ $"expense {expense}" ]
+
+let private rateSourceText =
+    function
+    | InvoiceOverride -> "set on this invoice"
+    | EngagementAgreement -> "the engagement's agreement"
+    | ProjectAgreement -> "the project's agreement"
+    | CustomerDefault -> "the customer's rate"
+    | PersonRate -> "the person's rate"
+    | RoleRate -> "the role's rate"
+    | SystemDefault -> "the default rate"
+
+/// The explanation of a proposal, from the books it was made in.
+let explain (r: Receivables) (proposal: Proposal) (systemTerms: PaymentTerms) : Explanation =
+    let lines = proposal.Lines |> List.map _.Line
+    let used = lines |> List.collect (fun l -> match l.Source with TimeSource refs -> refs |> List.map _.ActivityId | _ -> []) |> Set.ofList
+
+    let excluded =
+        r.Books.Time
+        |> Map.toList
+        |> List.map snd
+        |> List.filter (fun t -> t.ClientId = Some proposal.CustomerId && not (used.Contains t.ActivityId))
+        |> List.map (fun t ->
+            let why = timeProblem r proposal.Id proposal.CustomerId proposal.EngagementId t |> Option.defaultValue "not asked for"
+            $"time {t.ActivityId}: {why}")
+
+    let engagementTerms = proposal.EngagementId |> Option.bind r.Books.Engagements.TryFind |> Option.bind _.Terms
+    let customerTerms = r.Books.Customers.TryFind proposal.CustomerId |> Option.bind _.DefaultTerms
+    let terms, source = resolveTerms None engagementTerms customerTerms systemTerms
+
+    let termsSource =
+        match source with
+        | InvoiceTerms -> "set on the invoice"
+        | EngagementTerms -> "from the engagement"
+        | CustomerTerms -> "from the customer"
+        | SystemTerms -> "the default"
+
+    { Selected = lines |> List.collect (fun l -> sourceText l.Source |> List.map (fun s -> $"{l.Description}: {s}"))
+      Excluded = excluded
+      Grouping =
+        match proposal.Grouping with
+        | [] -> "time is not grouped: one line per entry"
+        | by -> "time grouped by " + (by |> List.map (fun g -> $"%A{g}".ToLowerInvariant()) |> String.concat ", then ")
+      Rates =
+        lines
+        |> List.map (fun l ->
+            match l.Rate with
+            | Some rate ->
+                let changed = rate.Override |> Option.map (fun o -> $", changed by {o.Actor}: {o.Reason}") |> Option.defaultValue ""
+                $"{l.Description}: {rateSourceText rate.RateSource} ({rate.Reference}){changed}"
+            | None -> $"{l.Description}: priced by hand")
+      Terms = $"%A{terms} ({termsSource})"
+      Assumptions =
+        [ for line in proposal.Lines do
+              if not line.Priced then $"'{line.Line.Description}' has no rate yet; someone must set it"
+          match r.Books.Customers.TryFind proposal.CustomerId |> Option.map _.Tax with
+          | Some TaxNotAssessed
+          | None -> "tax: nothing is recorded for the customer; no tax is added"
+          | _ -> () ] }
+
+/// What an agent preparing a proposal for one customer may read, and
+/// nothing more (SUM0-049): that customer, the engagement, the rate card,
+/// the customer's own imported time and expenses, and the proposals already
+/// made for them. Other customers' records are not in it.
+type AgentContext =
+    { Customer: Customer
+      Engagement: Engagement option
+      Rates: RateCard
+      Time: SourceTime list
+      Expenses: Expense list
+      Proposals: Proposal list }
+
+let agentContext (r: Receivables) (customerId: string) (engagementId: string option) : AgentContext option =
+    r.Books.Customers.TryFind customerId
+    |> Option.map (fun customer ->
+        { Customer = customer
+          Engagement = engagementId |> Option.bind r.Books.Engagements.TryFind |> Option.filter (fun e -> e.CustomerId = customerId)
+          Rates = r.Books.Rates
+          Time = r.Books.Time |> Map.toList |> List.map snd |> List.filter (fun t -> t.ClientId = Some customerId)
+          Expenses = r.Books.Expenses |> Map.toList |> List.map snd |> List.filter (fun e -> e.CustomerId = Some customerId)
+          Proposals = r.Books.Proposals |> Map.toList |> List.map snd |> List.filter (fun p -> p.CustomerId = customerId) })

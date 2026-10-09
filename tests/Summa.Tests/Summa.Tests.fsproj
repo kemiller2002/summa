@@ -21,6 +21,7 @@
     <Compile Include="LifecycleTests.fs" />
     <Compile Include="PeriodsTests.fs" />
     <Compile Include="TaxTests.fs" />
+    <Compile Include="ProvenanceTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
