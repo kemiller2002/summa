@@ -61,7 +61,7 @@ let private drafted (model: Model) =
 [<Fact>]
 let ``starting reads the deployment, then asks the browser for its books; an empty browser starts new ones`` () =
     let configuring, first = update ctx (Started home) initial
-    Assert.Equal<AppEffect list>([ LoadConfiguration ], first)
+    Assert.Equal<AppEffect list>([ LoadConfiguration; ReadEditor ], first)
     Assert.Equal("True", value "isConfiguring" configuring)
     let loading, effects = update ctx (ConfigurationRead(Ok localConfig)) configuring
     Assert.Equal<AppEffect list>([ LoadBooks ], effects)
@@ -87,7 +87,9 @@ let ``the invoicing flow runs through Summa's domain commands`` () =
     // Saved, the new invoice is its draft: the address is replaced, not pushed.
     Assert.Equal<AppEffect list>(
         [ SaveBooks(match effects with SaveBooks s :: _ -> s | _ -> "")
-          Navigate(Limen.Routing.NavigationEffect.Replace "/drafts/D-0001") ],
+          Navigate(Limen.Routing.NavigationEffect.Replace "/drafts/D-0001")
+          // Saved: the editor's kept form is forgotten (WI-0044).
+          KeepEditor None ],
         effects
     )
     Assert.Equal("False", value "cannotIssue" reviewed)

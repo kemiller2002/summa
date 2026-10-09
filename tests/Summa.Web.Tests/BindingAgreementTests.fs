@@ -207,6 +207,29 @@ module private Accounting =
               | Ok books -> step { full with Books = Some books } (go "#/periods/2026-10")
               | Error e -> failwith $"%A{e}"
           )
+          // An invoice proposal, listed and shown (WI-0044).
+          yield!
+              (let context: Summa.Ledger.Ledger.Context = { Who = "agent"; When = ctx.Now; Source = "test"; CorrelationId = None; Provenance = None }
+               let revenue = full.Books.Value.Books.Ledger.Accounts |> Map.findKey (fun _ a -> a.Code = "4000")
+
+               let request: Summa.Ledger.Billing.ProposalRequest =
+                   { ProposalId = "P-1"
+                     CustomerId = "CUST-0001"
+                     EngagementId = None
+                     Currency = "USD"
+                     Time = []
+                     Grouping = []
+                     FixedFee = false
+                     Milestones = []
+                     Expenses = []
+                     Manual = [ { fixedUp.Books.Value.Books.Invoices["INV-0001"].Lines.Head with RevenueAccountId = revenue } ]
+                     Accounts = { TimeRevenue = revenue; FeeRevenue = revenue; ReimbursedExpenses = revenue } }
+
+               match Summa.Ledger.Billing.propose context request full.Books.Value with
+               | Ok books ->
+                   let proposed = { full with Books = Some books }
+                   [ view (step proposed (go "#/proposals")); view (step proposed (go "#/proposals/P-1")) ]
+               | Error e -> failwith $"%A{e}")
           view (step paid (LinkCopied false))
           view untrustworthy
           view misconfigured

@@ -89,27 +89,67 @@ type CustomerForm =
       BillingName: string
       Address: string
       Email: string
-      TermsDays: string }
+      TermsDays: string
+      /// not-assessed, taxable or exempt (INV-ADJ-005): what the person says.
+      TaxStatus: string
+      TaxJurisdiction: string
+      /// The exemption certificate or reference, for an exempt customer.
+      TaxEvidence: string }
 
 let emptyCustomer =
     { Name = ""
       BillingName = ""
       Address = ""
       Email = ""
-      TermsDays = "" }
+      TermsDays = ""
+      TaxStatus = "not-assessed"
+      TaxJurisdiction = ""
+      TaxEvidence = "" }
 
 type LineForm =
     { Key: string
       Description: string
       Hours: string
-      Rate: string }
+      Rate: string
+      /// The person marked the line taxable (INV-ADJ-005).
+      Taxable: bool }
+
+/// A tax the person enters on the invoice (INV-ADJ-005, WI-0044). Summa
+/// never works it out: the amount, the code and where the rate came from
+/// are all what the person typed.
+type TaxForm =
+    { Code: string
+      Amount: string
+      /// The liability account's code the tax posts to.
+      AccountCode: string
+      Jurisdiction: string
+      /// The rate as a percentage, such as 8.875, if the person gives one.
+      Rate: string
+      RateSource: string
+      Evidence: string
+      /// Already inside the line prices, rather than added to them.
+      Inclusive: bool }
+
+let noTax =
+    { Code = ""
+      Amount = ""
+      AccountCode = "2300"
+      Jurisdiction = ""
+      Rate = ""
+      RateSource = ""
+      Evidence = ""
+      Inclusive = false }
+
+/// A rate a person changes on a proposal's line, with the reason (INV-RATE-004, v0.4 §7).
+type RateForm = { Line: string; Rate: string; Reason: string }
 
 type DraftForm =
     { DraftId: string option
       CustomerId: string
       Lines: LineForm list
       PurchaseOrder: string
-      Notes: string }
+      Notes: string
+      Tax: TaxForm }
 
 type PaymentForm =
     { InvoiceId: string
@@ -278,11 +318,15 @@ type Model =
       /// Why books on GitHub may only be read, if they may.
       ReadOnly: string list
       Unsent: Unsent
-      Check: BooksCheck }
+      Check: BooksCheck
+      /// The editor's unsaved form as this tab kept it, waiting for its
+      /// draft (or the new invoice) to be opened again (WI-0044).
+      KeptEditor: DraftForm option
+      ProposalRate: RateForm }
 
 let private newLine (counter: int) =
     let key, next = nextKey "line" counter
-    { Key = key; Description = ""; Hours = "1"; Rate = "" }, next
+    { Key = key; Description = ""; Hours = "1"; Rate = ""; Taxable = false }, next
 
 let private emptyDraft counter =
     let line, next = newLine counter
@@ -291,7 +335,8 @@ let private emptyDraft counter =
       CustomerId = ""
       Lines = [ line ]
       PurchaseOrder = ""
-      Notes = "" },
+      Notes = ""
+      Tax = noTax },
     next
 
 let initial =
@@ -325,6 +370,8 @@ let initial =
       ReadOnly = []
       Unsent = noneUnsent
       Check = NotChecked
+      KeptEditor = None
+      ProposalRate = { Line = "0"; Rate = ""; Reason = "" }
       Blockers = []
       Notice = None
       Error = None
@@ -478,6 +525,30 @@ type Msg =
     | ReceiptRecorded
     /// trial-balance or journal, as CSV for the year shown.
     | CpaExportRequested of string
+    | LineTaxableChanged of key: string * taxable: bool
+    | DraftTaxCodeChanged of string
+    | DraftTaxAmountChanged of string
+    | DraftTaxAccountChosen of string
+    | DraftTaxJurisdictionChanged of string
+    | DraftTaxRateChanged of string
+    | DraftTaxRateSourceChanged of string
+    | DraftTaxEvidenceChanged of string
+    | DraftTaxInclusiveChanged of inclusive: bool
+    | CustomerTaxStatusChosen of string
+    | CustomerTaxJurisdictionChanged of string
+    | CustomerTaxEvidenceChanged of string
+    /// The editor's form this tab kept, or None (WI-0044).
+    | EditorRead of string option
+    /// Give up the editor's unsaved changes: the draft as saved, or an empty invoice.
+    | EditorDiscarded
+    /// A person reviewed the proposal and issues it as an invoice (SUM4-042).
+    | ProposalApproved of proposalId: string
+    | ProposalAbandoned of proposalId: string
+    | ProposalLineChosen of string
+    | ProposalRateChanged of string
+    | ProposalReasonChanged of string
+    /// Change the chosen line's rate, with the reason (INV-RATE-004).
+    | ProposalRateOverridden of proposalId: string
 
 /// A change to the books to commit on the store: the message that made it,
 /// which the store runs again on the books as they stand (`replay`), and
@@ -527,6 +598,10 @@ type AppEffect =
     | AbandonUnsent of sequence: int64
     /// Check every financial record against its history on GitHub.
     | CheckBooks
+    /// Keep (or, with None, forget) the editor's unsaved form in this tab,
+    /// so a refresh does not lose it (WI-0044).
+    | KeepEditor of string option
+    | ReadEditor
 
 // ---- Helpers ---------------------------------------------------------------------------
 
@@ -597,9 +672,54 @@ let private issueRequest (manifest: Organization.OrganizationManifest) (books: R
     let obligationId = nextId "OBL" books.Books.Obligations.ContainsKey
     Organization.issueRequest manifest books.Books.Ledger draftId issueDate invoiceId entryId obligationId
 
+let private nonEmptyText (text: string) = if text.Trim() = "" then None else Some(text.Trim())
+
+/// A rate typed as a percentage (8.875), in hundredths of a basis point (88750).
+let private parseRate (text: string) =
+    match Decimal.TryParse(text.Trim(), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture) with
+    | true, percent when percent >= 0m && percent <= 100m && Decimal.Round(percent * 10000m) = percent * 10000m -> Some(int (percent * 10000m))
+    | _ -> None
+
+let private rateText (hundredths: int) =
+    (decimal hundredths / 10000m).ToString("0.####", CultureInfo.InvariantCulture)
+
+/// The tax the editor describes (INV-ADJ-005): None when the person entered
+/// none, or what is wrong with what they entered.
+let private taxOf (books: Receivables) (tax: TaxForm) : Result<Adjustment option, string> =
+    let code = tax.Code.Trim()
+
+    match code, tax.Amount.Trim() with
+    | "", "" -> Ok None
+    | "", _ -> Error "A tax needs its code, such as NY-8.875 or VAT-STD."
+    | _, amount ->
+        let account = books.Books.Ledger.Accounts |> Map.tryFindKey (fun _ a -> a.Code = tax.AccountCode)
+
+        match parseAmount amount, account, (if tax.Rate.Trim() = "" then Ok None else parseRate tax.Rate |> Option.map (Some >> Ok) |> Option.defaultValue (Error())) with
+        | None, _, _
+        | Some { Minor = 0L }, _, _ -> Error $"Tax {code} needs an amount such as 12.50. Summa does not work tax out."
+        | Some money, _, _ when money.Minor < 0L -> Error $"Tax {code} cannot be negative."
+        | _, None, _ -> Error $"Tax {code} needs a liability account; account {tax.AccountCode} is not in these books."
+        | _, _, Error() -> Error $"Tax {code}'s rate is a percentage such as 8.875."
+        | Some money, Some accountId, Ok rate ->
+            Ok(
+                Some
+                    { Kind =
+                        Tax
+                            { Code = code
+                              AccountId = accountId
+                              Jurisdiction = nonEmptyText tax.Jurisdiction
+                              RateSource = nonEmptyText tax.RateSource
+                              RateHundredthBasisPoints = rate
+                              Evidence = nonEmptyText tax.Evidence
+                              Pricing = (if tax.Inclusive then TaxInclusive else TaxExclusive) }
+                      Label = $"Tax {code}"
+                      Amount = money }
+            )
+
 /// The draft the editor describes, or what is wrong with it.
 let private draftOf (manifest: Organization.OrganizationManifest) (books: Receivables) (form: DraftForm) =
     let revenue = Organization.accountByCode books.Books.Ledger manifest.Accounting.RevenueAccount
+    let taxCode = if form.Tax.Code.Trim() = "" then "taxable" else form.Tax.Code.Trim()
 
     let lines =
         form.Lines
@@ -617,22 +737,25 @@ let private draftOf (manifest: Organization.OrganizationManifest) (books: Receiv
                       Discount = None
                       Source = ManualLine
                       Rate = None
-                      Tax = NotAssessed }
+                      Tax = (if l.Taxable then Taxable taxCode else NotAssessed) }
             | _ -> Error $"'{l.Description}' needs a description, a quantity and a rate such as 150.00")
 
-    match lines |> List.tryPick (function Error e -> Some e | Ok _ -> None) with
-    | Some why -> Error why
-    | None when form.CustomerId = "" -> Error "Choose a customer."
-    | None ->
+    match lines |> List.tryPick (function Error e -> Some e | Ok _ -> None), taxOf books form.Tax with
+    | Some why, _
+    | None, Error why -> Error why
+    | None, Ok _ when form.CustomerId = "" -> Error "Choose a customer."
+    | None, Ok tax ->
         let draftId = form.DraftId |> Option.defaultWith (fun () -> nextId "D" (fun id -> books.Books.Drafts.ContainsKey id || books.Books.IssuedFrom.ContainsKey id))
         let stored = books.Books.Drafts.TryFind draftId
+        // The editor shows one tax; any other adjustment the draft holds stays.
+        let kept = stored |> Option.map (fun d -> d.Adjustments |> List.filter (fun a -> match a.Kind with Tax _ -> false | _ -> true)) |> Option.defaultValue []
 
         Ok
             { DraftId = draftId
               CustomerId = form.CustomerId
               Currency = "USD"
               Lines = lines |> List.choose Result.toOption
-              Adjustments = []
+              Adjustments = kept @ Option.toList tax
               Discounts = []
               Terms = None
               DueDate = None
@@ -647,7 +770,7 @@ let private draftOf (manifest: Organization.OrganizationManifest) (books: Receiv
               Version = stored |> Option.map _.Version |> Option.defaultValue 0
               Review = stored |> Option.map _.Review |> Option.defaultValue Editing }
 
-let private formOf (counter: int) (draft: DraftInvoice) =
+let private formOf (ledger: Summa.Ledger.Ledger.Ledger) (counter: int) (draft: DraftInvoice) =
     let lines, next =
         draft.Lines
         |> List.mapFold
@@ -657,16 +780,134 @@ let private formOf (counter: int) (draft: DraftInvoice) =
                 { Key = key
                   Description = l.Description
                   Hours = Documents.quantityText l.QuantityThousandths
-                  Rate = Documents.amountText l.UnitPrice |> fun t -> t.Replace(",", "") },
+                  Rate = Documents.amountText l.UnitPrice |> fun t -> t.Replace(",", "")
+                  Taxable = (match l.Tax with Taxable _ -> true | _ -> false) },
                 n)
             counter
+
+    let tax =
+        draft.Adjustments
+        |> List.tryPick (fun a ->
+            match a.Kind with
+            | Tax t ->
+                Some
+                    { Code = t.Code
+                      Amount = Documents.amountText a.Amount |> fun text -> text.Replace(",", "")
+                      AccountCode = ledger.Accounts.TryFind t.AccountId |> Option.map _.Code |> Option.defaultValue t.AccountId
+                      Jurisdiction = t.Jurisdiction |> Option.defaultValue ""
+                      Rate = t.RateHundredthBasisPoints |> Option.map rateText |> Option.defaultValue ""
+                      RateSource = t.RateSource |> Option.defaultValue ""
+                      Evidence = t.Evidence |> Option.defaultValue ""
+                      Inclusive = (t.Pricing = TaxInclusive) }
+            | _ -> None)
+        |> Option.defaultValue noTax
 
     { DraftId = Some draft.DraftId
       CustomerId = draft.CustomerId
       Lines = lines
       PurchaseOrder = draft.Details.PurchaseOrder |> Option.defaultValue ""
-      Notes = draft.Details.CustomerNotes |> Option.defaultValue "" },
+      Notes = draft.Details.CustomerNotes |> Option.defaultValue ""
+      Tax = tax },
     next
+
+// ---- The editor's unsaved form, kept in the tab (WI-0044) ------------------------------
+
+/// The tab storage key the editor's unsaved form is kept under.
+[<Literal>]
+let EditorKey = "summa.editor"
+
+/// The editor's form as text, with the counter its row keys were drawn from.
+let encodeEditor (counter: int) (form: DraftForm) =
+    let str (v: string) = Arca.Json.String v
+
+    Arca.Json.objectOf
+        [ "counter", Codec.number counter
+          "draftId", Codec.optionalString form.DraftId
+          "customerId", str form.CustomerId
+          "purchaseOrder", str form.PurchaseOrder
+          "notes", str form.Notes
+          "lines",
+          Arca.Json.Array(
+              form.Lines
+              |> List.map (fun l ->
+                  Arca.Json.objectOf
+                      [ "key", str l.Key
+                        "description", str l.Description
+                        "hours", str l.Hours
+                        "rate", str l.Rate
+                        "taxable", Arca.Json.Bool l.Taxable ])
+          )
+          "tax",
+          Arca.Json.objectOf
+              [ "code", str form.Tax.Code
+                "amount", str form.Tax.Amount
+                "accountCode", str form.Tax.AccountCode
+                "jurisdiction", str form.Tax.Jurisdiction
+                "rate", str form.Tax.Rate
+                "rateSource", str form.Tax.RateSource
+                "evidence", str form.Tax.Evidence
+                "inclusive", Arca.Json.Bool form.Tax.Inclusive ] ]
+    |> Arca.Json.canonicalText
+
+/// The kept form and its counter, or None when the text is not one (a
+/// kept form is only a convenience: one that cannot be read is dropped).
+let decodeEditor (text: string) : (int * DraftForm) option =
+    let line json =
+        Codec.decode {
+            let! key = Codec.text "key" json
+            let! description = Codec.text "description" json
+            let! hours = Codec.text "hours" json
+            let! rate = Codec.text "rate" json
+            let! taxable = Codec.flag "taxable" json
+            return { Key = key; Description = description; Hours = hours; Rate = rate; Taxable = taxable }
+        }
+
+    let tax json =
+        Codec.decode {
+            let! code = Codec.text "code" json
+            let! amount = Codec.text "amount" json
+            let! account = Codec.text "accountCode" json
+            let! jurisdiction = Codec.text "jurisdiction" json
+            let! rate = Codec.text "rate" json
+            let! rateSource = Codec.text "rateSource" json
+            let! evidence = Codec.text "evidence" json
+            let! inclusive = Codec.flag "inclusive" json
+
+            return
+                { Code = code
+                  Amount = amount
+                  AccountCode = account
+                  Jurisdiction = jurisdiction
+                  Rate = rate
+                  RateSource = rateSource
+                  Evidence = evidence
+                  Inclusive = inclusive }
+        }
+
+    Arca.Json.parse text
+    |> Result.mapError (fun _ -> "not JSON")
+    |> Result.bind (fun json ->
+        Codec.decode {
+            let! counter = Codec.integer "counter" json
+            let! draftId = Codec.optionalText "draftId" json
+            let! customerId = Codec.text "customerId" json
+            let! purchaseOrder = Codec.text "purchaseOrder" json
+            let! notes = Codec.text "notes" json
+            let! lines = Codec.list "lines" line json
+            let! taxJson = Codec.field "tax" json
+            let! tax = tax taxJson
+
+            return
+                counter,
+                { DraftId = draftId
+                  CustomerId = customerId
+                  Lines = lines
+                  PurchaseOrder = purchaseOrder
+                  Notes = notes
+                  Tax = tax }
+        })
+    |> Result.toOption
+    |> Option.filter (fun (_, form) -> not form.Lines.IsEmpty)
 
 let private editLine (key: string) (change: LineForm -> LineForm) (model: Model) =
     { model with Draft = { model.Draft with Lines = model.Draft.Lines |> List.map (fun l -> if l.Key = key then change l else l) } }, []
@@ -704,21 +945,41 @@ let private isAnchor (page: Limen.Routing.PageLocation) = page.Hash.Length > 1 &
 
 let private navigation (effect: Limen.Routing.NavigationEffect option) = effect |> Option.map Navigate |> Option.toList
 
+/// Whether a kept editor form belongs to this place: its draft, still in
+/// the books, or a new invoice (for the same customer, if the link names one).
+let private fits (place: Routes.Place) (books: Receivables option) (form: DraftForm) =
+    match place with
+    | Routes.Draft draftId -> form.DraftId = Some draftId && books |> Option.exists (fun b -> b.Books.Drafts.ContainsKey draftId)
+    | Routes.NewInvoice customerId -> form.DraftId.IsNone && (customerId.IsNone || customerId = Some form.CustomerId)
+    | _ -> false
+
 /// Prepares what a place shows when the person arrives at it: the draft it
 /// opens, the invoice a payment is for, an empty new invoice.
 let private enter (place: Routes.Place) (model: Model) =
-    match place with
-    | Routes.Invoice(invoiceId, _) when model.Payment.InvoiceId <> invoiceId ->
+    // The editor's unsaved form, kept across a refresh, for this place (WI-0044).
+    let restore (form: DraftForm) =
+        { model with
+            Draft = form
+            Blockers = []
+            KeptEditor = None
+            Notice = Some "Your unsaved changes were restored." }
+
+    match place, model.KeptEditor with
+    | Routes.Invoice(invoiceId, _), _ when model.Payment.InvoiceId <> invoiceId ->
         { model with
             Payment = { model.Payment with InvoiceId = invoiceId; Amount = ""; Reference = ""; Date = "" }
             Credit = { Amount = ""; Reason = "" } }
-    | Routes.Draft draftId when model.Draft.DraftId <> Some draftId ->
-        match model.Books |> Option.bind (fun b -> b.Books.Drafts.TryFind draftId) with
-        | Some draft ->
-            let form, counter = formOf model.Counter draft
+    | (Routes.Draft _ | Routes.NewInvoice _), Some kept when fits place model.Books kept -> restore kept
+    | Routes.Draft draftId, _ when model.Draft.DraftId <> Some draftId ->
+        match model.Books |> Option.bind (fun b -> b.Books.Drafts.TryFind draftId |> Option.map (fun d -> b, d)) with
+        | Some(books, draft) ->
+            let form, counter = formOf books.Books.Ledger model.Counter draft
             { model with Draft = form; Counter = counter; Blockers = [] }
         | None -> model
-    | Routes.NewInvoice customerId ->
+    | Routes.Proposal _, _ -> { model with ProposalRate = { Line = "0"; Rate = ""; Reason = "" } }
+    // Back at a new invoice from elsewhere: the one being typed is kept (v0.4 §39).
+    | Routes.NewInvoice customerId, _ when model.Draft.DraftId.IsNone && (customerId.IsNone || customerId = Some model.Draft.CustomerId) -> model
+    | Routes.NewInvoice customerId, _ ->
         let draft, counter = emptyDraft model.Counter
         { model with Draft = { draft with CustomerId = defaultArg customerId "" }; Counter = counter; Blockers = [] }
     | _ -> model
@@ -950,7 +1211,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
     match msg with
     | Started page ->
         let started, effects = adopt page { model with Configuration = Configuring; Storage = Loading }
-        started, LoadConfiguration :: effects
+        started, LoadConfiguration :: ReadEditor :: effects
     | LocationChanged page -> adopt page model
     | ConfigurationRead(Error why) ->
         { model with Configuration = Misconfigured $"The deployment's configuration could not be read ({why})." }, []
@@ -1164,6 +1425,10 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
     | CustomerAddressChanged v -> { model with Customer = { model.Customer with Address = v } }, []
     | CustomerEmailChanged v -> { model with Customer = { model.Customer with Email = v } }, []
     | CustomerTermsChanged v -> { model with Customer = { model.Customer with TermsDays = v } }, []
+    | CustomerTaxStatusChosen v when List.contains v [ "not-assessed"; "taxable"; "exempt" ] -> { model with Customer = { model.Customer with TaxStatus = v } }, []
+    | CustomerTaxStatusChosen _ -> model, []
+    | CustomerTaxJurisdictionChanged v -> { model with Customer = { model.Customer with TaxJurisdiction = v } }, []
+    | CustomerTaxEvidenceChanged v -> { model with Customer = { model.Customer with TaxEvidence = v } }, []
     | CustomerAdded ->
         let form = model.Customer
 
@@ -1176,10 +1441,21 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                 | true, days when days > 0 && days <= 365 -> Ok(Some(Net days))
                 | _ -> Error "Terms are a number of days between 0 and 365, or empty for the organization's default."
 
-        match terms with
-        | Error why -> { model with Error = Some why }, []
-        | Ok _ when form.Name.Trim() = "" -> { model with Error = Some "A customer needs a name." }, []
-        | Ok terms ->
+        // What the person says of the customer's tax, and nothing assumed (INV-ADJ-005).
+        let tax =
+            match form.TaxStatus with
+            | "taxable" -> Ok(SubjectToTax(nonEmpty form.TaxJurisdiction))
+            | "exempt" ->
+                match nonEmpty form.TaxEvidence with
+                | Some evidence -> Ok(TaxExempt(evidence, nonEmpty form.TaxJurisdiction))
+                | None -> Error "An exempt customer needs the certificate or reference that shows it."
+            | _ -> Ok TaxNotAssessed
+
+        match terms, tax with
+        | Error why, _
+        | _, Error why -> { model with Error = Some why }, []
+        | Ok _, _ when form.Name.Trim() = "" -> { model with Error = Some "A customer needs a name." }, []
+        | Ok terms, Ok tax ->
             let added, effects =
                 command model $"Customer {form.Name.Trim()} added." (fun books ->
                     let id = nextId "CUST" books.Books.Customers.ContainsKey
@@ -1193,7 +1469,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                           DefaultTerms = terms
                           PaymentProfileId = None
                           Active = true
-                          Tax = TaxNotAssessed }
+                          Tax = tax }
 
                     Ok { books with Books = saveCustomer (context ctx) customer books.Books })
 
@@ -1215,6 +1491,38 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
             { model with Draft = { model.Draft with Lines = rest } }, []
     | DraftPurchaseOrderChanged v -> { model with Draft = { model.Draft with PurchaseOrder = v } }, []
     | DraftNotesChanged v -> { model with Draft = { model.Draft with Notes = v } }, []
+    | LineTaxableChanged(key, taxable) -> editLine key (fun l -> { l with Taxable = taxable }) model
+    | DraftTaxCodeChanged v -> { model with Draft = { model.Draft with Tax = { model.Draft.Tax with Code = v } } }, []
+    | DraftTaxAmountChanged v -> { model with Draft = { model.Draft with Tax = { model.Draft.Tax with Amount = v } } }, []
+    | DraftTaxAccountChosen v -> { model with Draft = { model.Draft with Tax = { model.Draft.Tax with AccountCode = v } } }, []
+    | DraftTaxJurisdictionChanged v -> { model with Draft = { model.Draft with Tax = { model.Draft.Tax with Jurisdiction = v } } }, []
+    | DraftTaxRateChanged v -> { model with Draft = { model.Draft with Tax = { model.Draft.Tax with Rate = v } } }, []
+    | DraftTaxRateSourceChanged v -> { model with Draft = { model.Draft with Tax = { model.Draft.Tax with RateSource = v } } }, []
+    | DraftTaxEvidenceChanged v -> { model with Draft = { model.Draft with Tax = { model.Draft.Tax with Evidence = v } } }, []
+    | DraftTaxInclusiveChanged inclusive -> { model with Draft = { model.Draft with Tax = { model.Draft.Tax with Inclusive = inclusive } } }, []
+    | EditorRead None -> model, []
+    | EditorRead(Some text) ->
+        match decodeEditor text with
+        // Not a form this Summa can read: forget it.
+        | None -> model, [ KeepEditor None ]
+        | Some(counter, form) ->
+            let kept = { model with KeptEditor = Some form; Counter = max counter model.Counter }
+            // Before the books are read it waits: reading them enters the place.
+            (if model.Books.IsSome && fits model.Place model.Books form then enter model.Place kept else kept), []
+    | EditorDiscarded ->
+        let fresh, counter = emptyDraft model.Counter
+
+        let draft, counter =
+            match model.Place, model.Books with
+            | Routes.Draft draftId, Some books ->
+                books.Books.Drafts.TryFind draftId
+                |> Option.map (formOf books.Books.Ledger counter)
+                |> Option.defaultValue (fresh, counter)
+            | Routes.NewInvoice customerId, _ -> { fresh with CustomerId = defaultArg customerId "" }, counter
+            | _ -> fresh, counter
+
+        { model with Draft = draft; Counter = counter; KeptEditor = None; Blockers = []; Error = None; Notice = Some "Your unsaved changes were discarded." },
+        [ KeepEditor None ]
     | DraftSubmitted ->
         match model.Manifest, model.Books with
         | Some manifest, Some books ->
@@ -1278,6 +1586,46 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
             | Error blockers -> { model with Blockers = blockers; Error = Some "The invoice cannot be issued yet." }, []
         | _ -> { model with Error = Some "Save and review the draft first." }, []
     | PrintRequested -> model, [ PrintPage ]
+    // A person approves: the proposal is checked again and issued as one
+    // invoice in the same change (INV-CHR-006, SUM4-042). The application
+    // has no agent of its own, so the approval is always a person's.
+    | ProposalApproved proposalId ->
+        match model.Manifest, model.Books with
+        | Some manifest, Some books ->
+            let draftId = nextId "D" (fun id -> books.Books.Drafts.ContainsKey id || books.Books.IssuedFrom.ContainsKey id)
+            let request = issueRequest manifest books draftId (today ctx)
+
+            match
+                Billing.markReady (context ctx) false proposalId books
+                |> Result.bind (Billing.accept (context ctx) proposalId request)
+            with
+            | Ok(issued, invoice) ->
+                let saved, effects =
+                    save { model with Books = Some issued; Notice = Some $"Invoice {invoice.Number} issued from proposal {proposalId}."; Error = None }
+
+                let moved, more = goTo (Routes.Invoice(invoice.InvoiceId, Routes.Document)) saved
+                moved, effects @ more
+            | Error problems -> { model with Error = Some $"Proposal {proposalId} cannot be approved: {describe problems}"; Notice = None }, []
+        | _ -> model, []
+    | ProposalLineChosen v -> { model with ProposalRate = { model.ProposalRate with Line = v } }, []
+    | ProposalRateChanged v -> { model with ProposalRate = { model.ProposalRate with Rate = v } }, []
+    | ProposalReasonChanged v -> { model with ProposalRate = { model.ProposalRate with Reason = v } }, []
+    | ProposalRateOverridden proposalId ->
+        let form = model.ProposalRate
+
+        match Int32.TryParse form.Line, parseAmount form.Rate with
+        | (false, _), _ -> { model with Error = Some "Choose the line whose rate changes."; Notice = None }, []
+        | _, None -> { model with Error = Some "The new rate is an amount such as 175.00."; Notice = None }, []
+        | _, Some _ when form.Reason.Trim() = "" -> { model with Error = Some "Say why the rate changes; the reason is kept with the proposal."; Notice = None }, []
+        | (true, index), Some rate ->
+            let changed, effects =
+                command model $"The rate was changed on proposal {proposalId}. It needs review again before it is issued." (fun books ->
+                    Billing.overrideRate (context ctx) proposalId index rate (form.Reason.Trim()) books |> Result.mapError describe)
+
+            (if changed.Error.IsNone then { changed with ProposalRate = { Line = "0"; Rate = ""; Reason = "" } } else changed), effects
+    | ProposalAbandoned proposalId ->
+        command model $"Proposal {proposalId} abandoned; its time and expenses are free to bill again." (fun books ->
+            Billing.abandon (context ctx) proposalId books |> Result.mapError describe)
     | PaymentAmountChanged v -> { model with Payment = { model.Payment with Amount = v } }, []
     | PaymentDateChanged v -> { model with Payment = { model.Payment with Date = v } }, []
     | PaymentMethodChanged v -> { model with Payment = { model.Payment with Method = v } }, []
@@ -1733,6 +2081,9 @@ let bookCommand (msg: Msg) : (Summa.Access.Access.Capability * string) option =
     | PeriodLocked -> open' Summa.Access.Access.ClosePeriod "close a period"
     | PeriodReopened -> open' Summa.Access.Access.ReopenPeriod "reopen a period"
     | CompanySaved -> open' Summa.Access.Access.ManageSettings "change the company details"
+    | ProposalApproved _ -> open' Summa.Access.Access.IssueInvoice "issue an invoice from a proposal"
+    | ProposalAbandoned _ -> open' Summa.Access.Access.ProposeInvoice "abandon an invoice proposal"
+    | ProposalRateOverridden _ -> open' Summa.Access.Access.OverrideRate "change a proposed rate"
     | _ -> None
 
 /// Runs a message that changes books on GitHub again, on `basis` with the
@@ -1750,7 +2101,7 @@ let replay (ctx: Ctx) (msg: Msg) (basis: Model) (stored: Receivables) : Result<R
 /// Books on GitHub change through the store: a message that changes them
 /// needs its capability, is shown at once, and is committed as a command
 /// (`CommitBooks`), never saved as a snapshot.
-let update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
+let private updateBooks (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
     if not (onGitHub model) then
         apply ctx msg model
     else
@@ -1779,6 +2130,39 @@ let update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
         | None ->
             let next, effects = apply ctx msg model
             next, effects |> List.filter local
+
+let private editsEditor =
+    function
+    | DraftCustomerChanged _
+    | LineDescriptionChanged _
+    | LineHoursChanged _
+    | LineRateChanged _
+    | LineAdded
+    | LineRemoved _
+    | LineTaxableChanged _
+    | DraftPurchaseOrderChanged _
+    | DraftNotesChanged _
+    | DraftTaxCodeChanged _
+    | DraftTaxAmountChanged _
+    | DraftTaxAccountChosen _
+    | DraftTaxJurisdictionChanged _
+    | DraftTaxRateChanged _
+    | DraftTaxRateSourceChanged _
+    | DraftTaxEvidenceChanged _
+    | DraftTaxInclusiveChanged _ -> true
+    | _ -> false
+
+/// The engine: one message, the next model and what to ask of the browser.
+/// The editor's form is kept in the tab as the person types, so a refresh
+/// does not lose it, and forgotten once the draft is saved or issued (WI-0044).
+let update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
+    let next, effects = updateBooks ctx msg model
+
+    match msg with
+    | _ when editsEditor msg && next.Draft <> model.Draft -> next, effects @ [ KeepEditor(Some(encodeEditor next.Counter next.Draft)) ]
+    | DraftSubmitted
+    | DraftIssued when not (obj.ReferenceEquals(model.Books, next.Books)) -> { next with KeptEditor = None }, effects @ [ KeepEditor None ]
+    | _ -> next, effects
 
 // ---- View -----------------------------------------------------------------------------------
 
@@ -1871,6 +2255,9 @@ let screen (model: Model) =
         | Routes.CreditMemo _
         | Routes.Engagements _
         | Routes.Engagement _ as place -> Showing place
+        | Routes.Proposal id when not (holds (fun b -> b.Books.Proposals) id) -> Missing
+        | Routes.Proposals
+        | Routes.Proposal _ as place -> Showing place
         | Routes.JournalEntry id when not (holds (fun b -> b.Books.Ledger.Entries) id) -> Missing
         | Routes.Ledger(Some account, _, _) when not (holds (fun b -> b.Books.Ledger.Accounts) account) -> Missing
         | Routes.Periods _
@@ -1914,6 +2301,17 @@ let banner (model: Model) =
 /// A select's customer options, each saying whether it is the one chosen.
 /// The kernel cannot set a select's value before its options exist, so on
 /// a link that names a customer the chosen option carries `selected` itself.
+/// Who acted, as the history shows it: an agent's action says so, with its
+/// identity and run (INV-PROV-001, SUM4-042), and is never shown as a person's.
+let private actorText (who: string) (provenance: Provenance option) =
+    match provenance with
+    | Some { ActorKind = "agent"; Agent = agent; ExecutionId = execution } ->
+        let identity = agent |> Option.map (fun g -> $" ({g.Provider} {g.Model})") |> Option.defaultValue ""
+        let run = execution |> Option.map (fun e -> $", run {e}") |> Option.defaultValue ""
+        $"Agent {who}{identity}{run}"
+    | Some { ActorKind = "automation" } -> $"Automation {who}"
+    | _ -> who
+
 let private customerChoices (books: Receivables option) (activeOnly: bool) (chosen: string option) =
     books
     |> Option.map (fun b ->
@@ -2791,6 +3189,124 @@ let private attentionValues (model: Model) (shown: Screen) : View =
       "hasCpaAdjustments", flagOf (not adjustments.IsEmpty)
       "canExport", flagOf model.Packs.Files ]
 
+let private proposalStateText =
+    function
+    | Proposed -> "Proposed"
+    | ReadyForReview -> "Ready for review"
+    | Abandoned -> "Abandoned"
+    | Accepted invoiceId -> $"Issued as {invoiceId}"
+
+/// Who prepared a proposal: its first contribution.
+let private preparedBy (p: Proposal) =
+    p.Contributions |> List.tryHead |> Option.map (fun c -> actorText c.Who c.Provenance) |> Option.defaultValue "-"
+
+/// Invoice proposals, an agent's among them, to inspect and approve or
+/// abandon (SUM4-042, SUM4-043, INV-AGENT-004).
+let private proposalValues (model: Model) (shown: Screen) : View =
+    let books = model.Books
+    let rows (items: (string * Scalar) list list) = Items items
+    let on pick = Value(Flag(match shown with Showing place -> pick place | _ -> false))
+    let proposalTotal (p: Proposal) = p.Lines |> List.map (fun l -> lineAmount l.Line) |> sum p.Currency
+
+    let listed =
+        books
+        |> Option.map (fun b ->
+            b.Books.Proposals
+            |> Map.toList
+            |> List.map snd
+            |> List.sortByDescending _.CreatedAt
+            |> List.map (fun p ->
+                [ "id", Text p.Id
+                  "href", Text(Routes.href (Routes.Proposal p.Id))
+                  "customer", Text(customerName b p.CustomerId)
+                  "state", Text(proposalStateText p.State)
+                  "preparedBy", Text(preparedBy p)
+                  "total", money (proposalTotal p) ]))
+        |> Option.defaultValue []
+
+    let shownProposal =
+        match shown, books with
+        | Showing(Routes.Proposal id), Some b -> b.Books.Proposals.TryFind id |> Option.map (fun p -> b, p)
+        | _ -> None
+
+    let explanation =
+        match shownProposal, model.Manifest with
+        | Some(b, p), Some manifest -> Some(Billing.explain b p (Organization.systemTerms manifest))
+        | _ -> None
+
+    let live = shownProposal |> Option.exists (fun (_, p) -> p.State = Proposed || p.State = ReadyForReview)
+    let propText (f: Receivables -> Proposal -> string) = Value(Text(shownProposal |> Option.map (fun (b, p) -> f b p) |> Option.defaultValue ""))
+
+    let textRows (pick: Billing.Explanation -> string list) =
+        explanation |> Option.map (pick >> List.mapi (fun i t -> [ "key", Text(string i); "text", Text t ])) |> Option.defaultValue []
+
+    [ "onProposals", on (function Routes.Proposals -> true | _ -> false)
+      "onProposal", on (function Routes.Proposal _ -> true | _ -> false)
+      "proposals", rows listed
+      "hasProposals", Value(Flag(not listed.IsEmpty))
+      "noProposals", Value(Flag listed.IsEmpty)
+      "propId", propText (fun _ p -> p.Id)
+      "propCustomer", propText (fun b p -> customerName b p.CustomerId)
+      "propCustomerHref", propText (fun _ p -> Routes.href (Routes.Customer(p.CustomerId, Routes.CustomerInvoices)))
+      "propState", propText (fun _ p -> proposalStateText p.State)
+      "propPreparedBy", propText (fun _ p -> preparedBy p)
+      "propTotal", propText (fun _ p -> Documents.moneyText (proposalTotal p))
+      "propByAgent",
+      Value(Flag(shownProposal |> Option.exists (fun (_, p) -> p.Contributions |> List.exists (fun c -> c.Provenance |> Option.exists (fun v -> v.ActorKind = "agent")))))
+      "propIssuedHref",
+      propText (fun _ p ->
+          match p.State with
+          | Accepted invoiceId -> Routes.href (Routes.Invoice(invoiceId, Routes.Document))
+          | _ -> "")
+      "propIsIssued", Value(Flag(shownProposal |> Option.exists (fun (_, p) -> match p.State with Accepted _ -> true | _ -> false)))
+      "propLines",
+      rows (
+          shownProposal
+          |> Option.map (fun (_, p) ->
+              p.Lines
+              |> List.mapi (fun i l ->
+                  [ "key", Text(string i)
+                    "description", Text l.Line.Description
+                    "quantity", Text(Documents.quantityText l.Line.QuantityThousandths)
+                    "rate", Text(if l.Priced then Documents.amountText l.Line.UnitPrice else "No rate yet")
+                    "amount", Text(Documents.amountText (lineAmount l.Line)) ]))
+          |> Option.defaultValue []
+      )
+      "propContributions",
+      rows (
+          shownProposal
+          |> Option.map (fun (_, p) ->
+              p.Contributions
+              |> List.mapi (fun i c ->
+                  [ "key", Text(string i)
+                    "who", Text(actorText c.Who c.Provenance)
+                    "what", Text(c.What.Replace('-', ' '))
+                    "when", Text(c.At.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture)) ]))
+          |> Option.defaultValue []
+      )
+      "propSelected", rows (textRows _.Selected)
+      "propExcluded", rows (textRows _.Excluded)
+      "propHasExcluded", Value(Flag(explanation |> Option.exists (fun e -> not e.Excluded.IsEmpty)))
+      "propRates", rows (textRows _.Rates)
+      "propAssumptions", rows (textRows _.Assumptions)
+      "propHasAssumptions", Value(Flag(explanation |> Option.exists (fun e -> not e.Assumptions.IsEmpty)))
+      "propGrouping", Value(Text(explanation |> Option.map _.Grouping |> Option.defaultValue ""))
+      "propTerms", Value(Text(explanation |> Option.map _.Terms |> Option.defaultValue ""))
+      // The actions, keyed by the proposal, while it can still be decided.
+      "propActions", rows (if live then shownProposal |> Option.map (fun (_, p) -> [ [ "id", Text p.Id ] ]) |> Option.toList |> List.concat else [])
+      "propIsLive", Value(Flag live)
+      "propLineOptions",
+      rows (
+          shownProposal
+          |> Option.map (fun (_, p) ->
+              p.Lines
+              |> List.mapi (fun i l -> [ "value", Text(string i); "label", Text $"{i + 1}. {l.Line.Description}"; "selected", Flag(string i = model.ProposalRate.Line) ]))
+          |> Option.defaultValue []
+      )
+      "propRateLine", Value(Text model.ProposalRate.Line)
+      "propRate", Value(Text model.ProposalRate.Rate)
+      "propRateReason", Value(Text model.ProposalRate.Reason) ]
+
 let view (model: Model) : View =
     let books = model.Books
     let zeroUsd = zero "USD"
@@ -2886,17 +3402,7 @@ let view (model: Model) : View =
             |> List.mapi (fun index a ->
                 [ "key", Text(string index)
                   "when", Text(a.When.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture))
-                  "who",
-                  Text(
-                      match a.Provenance with
-                      // An agent's action says so, with its identity and run (INV-PROV-001, SUM4-042).
-                      | Some { ActorKind = "agent"; Agent = agent; ExecutionId = execution } ->
-                          let identity = agent |> Option.map (fun g -> $" ({g.Provider} {g.Model})") |> Option.defaultValue ""
-                          let run = execution |> Option.map (fun e -> $", run {e}") |> Option.defaultValue ""
-                          $"Agent {a.Who}{identity}{run}"
-                      | Some { ActorKind = "automation" } -> $"Automation {a.Who}"
-                      | _ -> a.Who
-                  )
+                  "who", Text(actorText a.Who a.Provenance)
                   "what", Text(a.What.Replace('-', ' ') + (a.Provenance |> Option.bind _.Reason |> Option.map (fun r -> $": {r}") |> Option.defaultValue "")) ]))
         |> Option.defaultValue []
 
@@ -2928,6 +3434,13 @@ let view (model: Model) : View =
           "docHasPurchaseOrder", flag (doc |> Option.exists (fun d -> d.Details.PurchaseOrder.IsSome))
           "docSubtotal", docText (fun d -> Documents.amountText d.Subtotal)
           "docTotal", docText (fun d -> Documents.moneyText d.Total)
+          // Taxes and other adjustments, as entered (INV-ADJ-005).
+          "docAdjustments",
+          Items(
+              doc
+              |> Option.map (fun d -> d.Adjustments |> List.mapi (fun i (label, amount) -> [ "key", Text(string i); "label", Text label; "amount", Text(Documents.amountText amount) ]))
+              |> Option.defaultValue []
+          )
           "docPayment", docText _.Issuer.PaymentInstructions
           "docNotes", docText (fun d -> d.Details.CustomerNotes |> Option.defaultValue "")
           "docHasNotes", flag (doc |> Option.exists (fun d -> d.Details.CustomerNotes.IsSome))
@@ -3034,13 +3547,45 @@ let view (model: Model) : View =
         |> Option.map (fun c -> termsLabel c.DefaultTerms)
         |> Option.defaultValue ""
 
+    // An exclusive tax adds to the total; one inside the prices does not.
+    let draftTax =
+        match parseAmount model.Draft.Tax.Amount with
+        | Some tax when not model.Draft.Tax.Inclusive && model.Draft.Tax.Code.Trim() <> "" -> [ tax ]
+        | _ -> []
+
     let draftTotal =
         model.Draft.Lines
         |> List.choose (fun l ->
             match parseHours l.Hours, parseAmount l.Rate with
             | Some h, Some r -> Some(extend h r)
             | _ -> None)
+        |> fun lines -> lines @ draftTax
         |> sum "USD"
+
+    let draftCustomerTax =
+        books
+        |> Option.bind (fun b -> b.Books.Customers.TryFind model.Draft.CustomerId)
+        |> Option.map (fun c ->
+            match c.Tax with
+            | TaxNotAssessed -> "No tax status recorded"
+            | SubjectToTax jurisdiction -> "Subject to tax" + (jurisdiction |> Option.map (fun j -> $" in {j}") |> Option.defaultValue "")
+            | TaxExempt(evidence, _) -> $"Tax-exempt ({evidence})")
+        |> Option.defaultValue ""
+
+    // Whether the editor holds changes that are not saved: the form differs
+    // from the draft as saved, or a new invoice has anything typed in it.
+    let editorChanged =
+        let content (form: DraftForm) =
+            form.CustomerId, form.PurchaseOrder, form.Notes, form.Tax, form.Lines |> List.map (fun l -> l.Description, l.Hours, l.Rate, l.Taxable)
+
+        match model.Place, books with
+        | Routes.Draft draftId, Some b ->
+            b.Books.Drafts.TryFind draftId
+            |> Option.exists (fun d -> content (fst (formOf b.Books.Ledger 0 d)) <> content model.Draft)
+        | Routes.NewInvoice customerId, _ ->
+            let empty, _ = emptyDraft 0
+            content { empty with CustomerId = defaultArg customerId "" } <> content model.Draft
+        | _ -> false
 
     let reviewedDraft =
         match model.Draft.DraftId, books with
@@ -3198,6 +3743,7 @@ let view (model: Model) : View =
           [ "home", "Home", Routes.Home
             "work", "Work", Routes.Work
             "invoices", "Invoices", Routes.Invoices Routes.allInvoices
+            "proposals", "Proposals", Routes.Proposals
             "customers", "Customers", Routes.Customers Routes.allCustomers
             "engagements", "Engagements", Routes.Engagements None
             "payments", "Payments", Routes.Payments Routes.allPayments
@@ -3219,6 +3765,8 @@ let view (model: Model) : View =
                   | Routes.Invoice _
                   | Routes.NewInvoice _
                   | Routes.Draft _ -> "invoices"
+                  | Routes.Proposals
+                  | Routes.Proposal _ -> "proposals"
                   | Routes.Customers _
                   | Routes.Customer _ -> "customers"
                   | Routes.Engagements _
@@ -3284,6 +3832,15 @@ let view (model: Model) : View =
       "customerAddress", text model.Customer.Address
       "customerEmail", text model.Customer.Email
       "customerTerms", text model.Customer.TermsDays
+      "customerTaxStatus", text model.Customer.TaxStatus
+      "customerTaxJurisdiction", text model.Customer.TaxJurisdiction
+      "customerTaxEvidence", text model.Customer.TaxEvidence
+      "customerTaxExempt", flag (model.Customer.TaxStatus = "exempt")
+      "customerTaxOptions",
+      Items(
+          [ "not-assessed", "Not recorded"; "taxable", "Subject to tax"; "exempt", "Tax-exempt" ]
+          |> List.map (fun (value, label) -> [ "value", Text value; "label", Text label; "selected", Flag(model.Customer.TaxStatus = value) ])
+      )
       "hasCustomers", flag (books |> Option.exists (fun b -> not b.Books.Customers.IsEmpty))
       "hasListedCustomers", flag (not customerRows.IsEmpty)
       "noListedCustomers", flag (books |> Option.exists (fun b -> not b.Books.Customers.IsEmpty) && customerRows.IsEmpty)
@@ -3317,8 +3874,32 @@ let view (model: Model) : View =
                 "position", Text(string (i + 1))
                 "description", Text l.Description
                 "hours", Text l.Hours
-                "rate", Text l.Rate ])
+                "rate", Text l.Rate
+                "taxable", Flag l.Taxable ])
       )
+      // The tax the person enters (INV-ADJ-005): never worked out by Summa.
+      "draftTaxCode", text model.Draft.Tax.Code
+      "draftTaxAmount", text model.Draft.Tax.Amount
+      "draftTaxJurisdiction", text model.Draft.Tax.Jurisdiction
+      "draftTaxRate", text model.Draft.Tax.Rate
+      "draftTaxRateSource", text model.Draft.Tax.RateSource
+      "draftTaxEvidence", text model.Draft.Tax.Evidence
+      "draftTaxInclusive", flag model.Draft.Tax.Inclusive
+      "draftTaxAccount", text model.Draft.Tax.AccountCode
+      "taxAccountOptions",
+      Items(
+          books
+          |> Option.map (fun b ->
+              b.Books.Ledger.Accounts
+              |> Map.toList
+              |> List.map snd
+              |> List.filter (fun a -> a.Type = Liability && a.Active)
+              |> List.sortBy _.Code
+              |> List.map (fun a -> [ "value", Text a.Code; "label", Text $"{a.Code} {a.Name}"; "selected", Flag(a.Code = model.Draft.Tax.AccountCode) ]))
+          |> Option.defaultValue []
+      )
+      "draftCustomerTax", text draftCustomerTax
+      "editorChanged", flag editorChanged
       "customerOptions", Items(customerChoices books true (nonEmpty model.Draft.CustomerId))
       "hasBlockers", flag (not model.Blockers.IsEmpty)
       "blockers",
@@ -3347,6 +3928,12 @@ let view (model: Model) : View =
              "previewDueDate", pv (fun d -> Documents.dateText d.DueDate)
              "previewTerms", pv (fun d -> Documents.termsText d.Terms)
              "previewTotal", pv (fun d -> Documents.moneyText d.Total)
+             "previewAdjustments",
+             Items(
+                 preview
+                 |> Option.map (fun d -> d.Adjustments |> List.mapi (fun i (label, amount) -> [ "key", Text(string i); "label", Text label; "amount", Text(Documents.amountText amount) ]))
+                 |> Option.defaultValue []
+             )
              "previewPayment", pv _.Issuer.PaymentInstructions
              "previewLines",
              Items(
@@ -3414,3 +4001,4 @@ let view (model: Model) : View =
     @ placeValues model shown
     @ bookValues model shown
     @ attentionValues model shown
+    @ proposalValues model shown

@@ -300,6 +300,17 @@
           </div>
           <div class="ef-field"><label class="ef-field__label" for="customer-address">Billing address</label>
             <textarea id="customer-address" rows="3" autocomplete="street-address" data-event="customerAddressChanged" data-on="input" data-bind-value="customerAddress"></textarea></div>
+          <div class="summa-fields">
+            <div class="ef-field"><label class="ef-field__label" for="customer-tax-status">Tax status</label>
+              <select id="customer-tax-status" aria-describedby="customer-tax-note" data-event="customerTaxStatusChosen" data-bind-value="customerTaxStatus">
+                <template data-each="customerTaxOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
+              </select>
+              <p class="ef-field__description" id="customer-tax-note">What you know of the customer's tax. Summa assumes nothing.</p></div>
+            <div class="ef-field"><label class="ef-field__label" for="customer-tax-jurisdiction">Tax jurisdiction</label>
+              <input id="customer-tax-jurisdiction" type="text" data-event="customerTaxJurisdictionChanged" data-on="input" data-bind-value="customerTaxJurisdiction" /></div>
+            <template data-if="customerTaxExempt"><div class="ef-field"><label class="ef-field__label" for="customer-tax-evidence">Exemption certificate or reference</label>
+              <input id="customer-tax-evidence" type="text" required data-event="customerTaxEvidenceChanged" data-on="input" data-bind-value="customerTaxEvidence" /></div></template>
+          </div>
           <div class="ef-actions"><button type="submit" class="ef-button" id="add-customer">Add customer</button></div>
         </form>
       </section>
@@ -316,19 +327,20 @@
                 <option value="">Choose a customer</option>
                 <template data-each="customerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
               </select>
-              <p class="ef-field__description">Terms: <span id="draft-terms" data-text="draftCustomerTerms"></span></p></div>
+              <p class="ef-field__description">Terms: <span id="draft-terms" data-text="draftCustomerTerms"></span>. Tax: <span id="draft-customer-tax" data-text="draftCustomerTax"></span></p></div>
             <div class="ef-field"><label class="ef-field__label" for="draft-po">Purchase order</label>
               <input id="draft-po" type="text" data-event="draftPurchaseOrderChanged" data-on="input" data-bind-value="draftPurchaseOrder" /></div>
           </div>
           <table class="summa-table summa-lines" id="draft-lines">
             <caption>Lines</caption>
-            <thead><tr><th scope="col">Description</th><th scope="col">Quantity</th><th scope="col">Rate</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
+            <thead><tr><th scope="col">Description</th><th scope="col">Quantity</th><th scope="col">Rate</th><th scope="col">Taxable</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
             <tbody>
               <template data-each="draftLines" data-key="key">
                 <tr>
                   <td><label class="ef-visually-hidden">Line <span data-text="position"></span> description<input type="text" class="line-description" data-event="lineDescriptionChanged" data-on="input" data-bind-value="description" /></label></td>
                   <td><label class="ef-visually-hidden">Line <span data-text="position"></span> quantity<input type="text" inputmode="decimal" class="line-hours" data-event="lineHoursChanged" data-on="input" data-bind-value="hours" /></label></td>
                   <td><label class="ef-visually-hidden">Line <span data-text="position"></span> rate<input type="text" inputmode="decimal" class="line-rate" data-event="lineRateChanged" data-on="input" data-bind-value="rate" /></label></td>
+                  <td><label class="summa-check"><input type="checkbox" class="line-taxable" data-event="lineTaxableChanged" data-on="change" data-bind-checked="taxable" /><span class="ef-visually-hidden">Line <span data-text="position"></span> is taxable</span></label></td>
                   <td><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="lineRemoved">Remove</button></td>
                 </tr>
               </template>
@@ -336,6 +348,29 @@
           </table>
           <div class="ef-actions"><button type="button" class="ef-button" data-variant="secondary" id="add-line" data-event="lineAdded">Add line</button>
             <p class="summa-total">Total <strong id="draft-total" data-text="draftTotal"></strong></p></div>
+          <fieldset class="ef-stack summa-tax" id="draft-tax">
+            <legend>Tax</legend>
+            <p class="ef-field__description" id="draft-tax-note">Summa does not work tax out. Enter the tax you charge, and mark the lines it applies to.</p>
+            <div class="summa-fields">
+              <div class="ef-field"><label class="ef-field__label" for="draft-tax-code">Tax code</label>
+                <input id="draft-tax-code" type="text" aria-describedby="draft-tax-note" data-event="draftTaxCodeChanged" data-on="input" data-bind-value="draftTaxCode" /></div>
+              <div class="ef-field"><label class="ef-field__label" for="draft-tax-amount">Tax amount</label>
+                <input id="draft-tax-amount" type="text" inputmode="decimal" data-event="draftTaxAmountChanged" data-on="input" data-bind-value="draftTaxAmount" /></div>
+              <div class="ef-field"><label class="ef-field__label" for="draft-tax-rate">Rate (%)</label>
+                <input id="draft-tax-rate" type="text" inputmode="decimal" data-event="draftTaxRateChanged" data-on="input" data-bind-value="draftTaxRate" /></div>
+              <div class="ef-field"><label class="ef-field__label" for="draft-tax-account">Liability account</label>
+                <select id="draft-tax-account" data-event="draftTaxAccountChosen" data-bind-value="draftTaxAccount">
+                  <template data-each="taxAccountOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
+                </select></div>
+              <div class="ef-field"><label class="ef-field__label" for="draft-tax-jurisdiction">Jurisdiction</label>
+                <input id="draft-tax-jurisdiction" type="text" data-event="draftTaxJurisdictionChanged" data-on="input" data-bind-value="draftTaxJurisdiction" /></div>
+              <div class="ef-field"><label class="ef-field__label" for="draft-tax-source">Rate source</label>
+                <input id="draft-tax-source" type="text" data-event="draftTaxRateSourceChanged" data-on="input" data-bind-value="draftTaxRateSource" /></div>
+              <div class="ef-field"><label class="ef-field__label" for="draft-tax-evidence">Evidence or reference</label>
+                <input id="draft-tax-evidence" type="text" data-event="draftTaxEvidenceChanged" data-on="input" data-bind-value="draftTaxEvidence" /></div>
+            </div>
+            <label class="summa-check"><input id="draft-tax-inclusive" type="checkbox" data-event="draftTaxInclusiveChanged" data-on="change" data-bind-checked="draftTaxInclusive" /> The line prices already include this tax</label>
+          </fieldset>
           <div class="ef-field"><label class="ef-field__label" for="draft-notes">Note to the customer</label>
             <textarea id="draft-notes" rows="2" data-event="draftNotesChanged" data-on="input" data-bind-value="draftNotes"></textarea></div>
           <template data-if="hasBlockers">
@@ -365,7 +400,7 @@
                   <thead><tr><th scope="col">Description</th><th scope="col" class="summa-number">Quantity</th><th scope="col" class="summa-number">Rate</th><th scope="col" class="summa-number">Amount</th></tr></thead>
                   <tbody><template data-each="previewLines" data-key="key"><tr><td data-text="description"></td><td class="summa-number" data-text="quantity"></td><td class="summa-number" data-text="rate"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
                 </table></ef-print-table>
-                <ef-print-keep><dl class="summa-document__totals"><div class="summa-document__due"><dt>Total due</dt><dd id="preview-total" data-text="previewTotal"></dd></div></dl></ef-print-keep>
+                <ef-print-keep><dl class="summa-document__totals"><template data-each="previewAdjustments" data-key="key"><div class="summa-adjustment"><dt data-text="label"></dt><dd data-text="amount"></dd></div></template><div class="summa-document__due"><dt>Total due</dt><dd id="preview-total" data-text="previewTotal"></dd></div></dl></ef-print-keep>
                 <section aria-label="Payment instructions"><h3 class="summa-document__label">Payment instructions</h3><p class="summa-pre" id="preview-payment" data-text="previewPayment"></p></section>
               </ef-print-document>
             </section>
@@ -373,6 +408,7 @@
           <div class="ef-actions">
             <button type="submit" class="ef-button" data-variant="secondary" id="review-draft">Save and review</button>
             <button type="button" class="ef-button" id="issue-invoice" data-event="draftIssued" data-bind-disabled="cannotIssue">Issue invoice</button>
+            <template data-if="editorChanged"><button type="button" class="ef-button" data-variant="secondary" id="discard-changes" data-event="editorDiscarded">Discard unsaved changes</button></template>
           </div>
         </form>
       </section>
@@ -468,6 +504,7 @@
             </table></ef-print-table>
             <ef-print-keep><dl class="summa-document__totals">
               <div><dt>Subtotal</dt><dd data-text="docSubtotal"></dd></div>
+              <template data-each="docAdjustments" data-key="key"><div class="summa-adjustment"><dt data-text="label"></dt><dd data-text="amount"></dd></div></template>
               <div class="summa-document__due"><dt>Total due</dt><dd id="invoice-total" data-text="docTotal"></dd></div>
             </dl></ef-print-keep>
             <section aria-label="Payment instructions"><h2 class="summa-document__label">Payment instructions</h2><p class="summa-pre" data-text="docPayment"></p></section>
@@ -588,6 +625,86 @@
               </template>
             </tbody>
           </table>
+        </template>
+      </section>
+    </template>
+
+    <!-- Invoice proposals, an agent's among them: inspect, then approve or abandon (v0.4 §42-43, INV-AGENT-004). -->
+    <template data-if="onProposals">
+      <section class="ef-stack" aria-labelledby="proposals-title">
+        <h1 id="proposals-title">Proposals</h1>
+        <template data-if="noProposals"><p id="no-proposals">No invoice proposals. Proposals come from approved time, engagements and agents.</p></template>
+        <template data-if="hasProposals">
+          <table class="summa-table" id="proposals-table">
+            <caption class="ef-visually-hidden">Invoice proposals</caption>
+            <thead><tr><th scope="col">Proposal</th><th scope="col">Customer</th><th scope="col">Prepared by</th><th scope="col">State</th><th scope="col" class="summa-number">Total</th></tr></thead>
+            <tbody>
+              <template data-each="proposals" data-key="id">
+                <tr><td><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="customer"></td><td data-text="preparedBy"></td><td data-text="state"></td><td class="summa-number" data-text="total"></td></tr>
+              </template>
+            </tbody>
+          </table>
+        </template>
+      </section>
+    </template>
+
+    <template data-if="onProposal">
+      <section class="ef-stack" aria-labelledby="proposal-title">
+        <h1 id="proposal-title">Proposal <span data-text="propId"></span></h1>
+        <template data-if="propByAgent"><p class="summa-notice" id="proposal-agent-note" role="note">An agent prepared or changed this proposal. Check what it selected and assumed before you approve it.</p></template>
+        <dl class="summa-facts">
+          <div><dt>Customer</dt><dd><a class="summa-link" data-bind-href="propCustomerHref" data-text="propCustomer"></a></dd></div>
+          <div><dt>Prepared by</dt><dd id="proposal-prepared-by" data-text="propPreparedBy"></dd></div>
+          <div><dt>State</dt><dd id="proposal-state" data-text="propState"></dd></div>
+          <div><dt>Total</dt><dd id="proposal-total" data-text="propTotal"></dd></div>
+          <div><dt>Terms</dt><dd id="proposal-terms" data-text="propTerms"></dd></div>
+        </dl>
+        <template data-if="propIsIssued"><p><a class="summa-link" id="proposal-invoice" data-bind-href="propIssuedHref">Open the invoice it was issued as</a></p></template>
+        <table class="summa-table" id="proposal-lines">
+          <caption>Lines</caption>
+          <thead><tr><th scope="col">Description</th><th scope="col" class="summa-number">Quantity</th><th scope="col" class="summa-number">Rate</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+          <tbody><template data-each="propLines" data-key="key"><tr><td data-text="description"></td><td class="summa-number" data-text="quantity"></td><td class="summa-number" data-text="rate"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
+        </table>
+        <section class="ef-surface ef-stack" id="proposal-explanation" aria-labelledby="explanation-title">
+          <h2 id="explanation-title">How it was made</h2>
+          <h3>Selected</h3>
+          <ul id="proposal-selected"><template data-each="propSelected" data-key="key"><li data-text="text"></li></template></ul>
+          <template data-if="propHasExcluded"><div class="ef-stack"><h3>Left out</h3><ul id="proposal-excluded"><template data-each="propExcluded" data-key="key"><li data-text="text"></li></template></ul></div></template>
+          <h3>Grouping</h3>
+          <p id="proposal-grouping" data-text="propGrouping"></p>
+          <h3>Rates</h3>
+          <ul id="proposal-rates"><template data-each="propRates" data-key="key"><li data-text="text"></li></template></ul>
+          <template data-if="propHasAssumptions"><div class="ef-stack"><h3>Assumptions</h3><ul id="proposal-assumptions"><template data-each="propAssumptions" data-key="key"><li data-text="text"></li></template></ul></div></template>
+        </section>
+        <section class="ef-stack" id="proposal-contributions" aria-labelledby="contributions-title">
+          <h2 id="contributions-title">Contributions</h2>
+          <table class="summa-table">
+            <caption class="ef-visually-hidden">Who contributed, oldest first</caption>
+            <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th></tr></thead>
+            <tbody><template data-each="propContributions" data-key="key"><tr><td data-text="when"></td><td data-text="who"></td><td data-text="what"></td></tr></template></tbody>
+          </table>
+        </section>
+        <template data-each="propActions" data-key="id">
+          <div class="ef-stack" id="proposal-decision">
+            <form class="ef-surface ef-stack" id="proposal-rate-form" data-event="proposalRateOverridden" aria-labelledby="proposal-rate-title">
+              <h2 id="proposal-rate-title">Change a rate</h2>
+              <div class="summa-fields">
+                <div class="ef-field"><label class="ef-field__label" for="proposal-rate-line">Line</label>
+                  <select id="proposal-rate-line" data-event="proposalLineChosen" data-bind-value="propRateLine">
+                    <template data-each="propLineOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
+                  </select></div>
+                <div class="ef-field"><label class="ef-field__label" for="proposal-rate">New rate</label>
+                  <input id="proposal-rate" type="text" inputmode="decimal" required data-event="proposalRateChanged" data-on="input" data-bind-value="propRate" /></div>
+                <div class="ef-field"><label class="ef-field__label" for="proposal-rate-reason">Reason</label>
+                  <input id="proposal-rate-reason" type="text" required data-event="proposalReasonChanged" data-on="input" data-bind-value="propRateReason" /></div>
+              </div>
+              <div class="ef-actions"><button type="submit" class="ef-button" data-variant="secondary" id="override-rate">Change rate</button></div>
+            </form>
+            <div class="ef-actions" id="proposal-actions">
+              <button type="button" class="ef-button" id="approve-proposal" data-event="proposalApproved">Approve and issue invoice</button>
+              <button type="button" class="ef-button" data-variant="secondary" id="abandon-proposal" data-event="proposalAbandoned">Abandon proposal</button>
+            </div>
+          </div>
         </template>
       </section>
     </template>

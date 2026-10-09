@@ -51,7 +51,7 @@ let ``books on GitHub ask who is signed in first, and show nothing to anyone bef
     let model, effects = opened "#/invoices/INV-0001" ""
 
     match effects with
-    | [ LoadConfiguration; BeginIdentity(identity, []); Navigate _ ] -> Assert.Equal("https://fides.test", identity.Exchange)
+    | [ LoadConfiguration; ReadEditor; BeginIdentity(identity, []); Navigate _ ] -> Assert.Equal("https://fides.test", identity.Exchange)
     | other -> failwith $"%A{other}"
 
     Assert.Equal("True", value "isRestoringSession" model)
@@ -77,7 +77,7 @@ let ``the provider's callback is completed, and the identity is GitHub's numeric
     let model, effects = opened "" "?code=abc&state=xyz"
 
     match effects with
-    | LoadConfiguration :: BeginIdentity(_, query) :: _ -> Assert.Equal<(string * string) list>([ "code", "abc"; "state", "xyz" ], query)
+    | LoadConfiguration :: ReadEditor :: BeginIdentity(_, query) :: _ -> Assert.Equal<(string * string) list>([ "code", "abc"; "state", "xyz" ], query)
     | other -> failwith $"%A{other}"
 
     let model, _ = run [ IdentityChanged(IdentitySignedIn("github", "583231", "octocat")) ] model

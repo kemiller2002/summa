@@ -122,6 +122,25 @@ let events: Map<string, string -> string -> Msg> =
           "lineRemoved", (fun key _ -> LineRemoved key)
           "draftPurchaseOrderChanged", (fun _ value -> DraftPurchaseOrderChanged value)
           "draftNotesChanged", (fun _ value -> DraftNotesChanged value)
+          "lineTaxableChanged", (fun key value -> LineTaxableChanged(key, value = "true"))
+          "draftTaxCodeChanged", (fun _ value -> DraftTaxCodeChanged value)
+          "draftTaxAmountChanged", (fun _ value -> DraftTaxAmountChanged value)
+          "draftTaxAccountChosen", (fun _ value -> DraftTaxAccountChosen value)
+          "draftTaxJurisdictionChanged", (fun _ value -> DraftTaxJurisdictionChanged value)
+          "draftTaxRateChanged", (fun _ value -> DraftTaxRateChanged value)
+          "draftTaxRateSourceChanged", (fun _ value -> DraftTaxRateSourceChanged value)
+          "draftTaxEvidenceChanged", (fun _ value -> DraftTaxEvidenceChanged value)
+          "draftTaxInclusiveChanged", (fun _ value -> DraftTaxInclusiveChanged(value = "true"))
+          "customerTaxStatusChosen", (fun _ value -> CustomerTaxStatusChosen value)
+          "customerTaxJurisdictionChanged", (fun _ value -> CustomerTaxJurisdictionChanged value)
+          "customerTaxEvidenceChanged", (fun _ value -> CustomerTaxEvidenceChanged value)
+          "editorDiscarded", (fun _ _ -> EditorDiscarded)
+          "proposalApproved", (fun key _ -> ProposalApproved key)
+          "proposalAbandoned", (fun key _ -> ProposalAbandoned key)
+          "proposalLineChosen", (fun _ value -> ProposalLineChosen value)
+          "proposalRateChanged", (fun _ value -> ProposalRateChanged value)
+          "proposalReasonChanged", (fun _ value -> ProposalReasonChanged value)
+          "proposalRateOverridden", (fun key _ -> ProposalRateOverridden key)
           "draftSubmitted", (fun _ _ -> DraftSubmitted)
           "draftIssued", (fun _ _ -> DraftIssued)
           "printRequested", (fun _ _ -> PrintRequested)
@@ -145,6 +164,9 @@ let events: Map<string, string -> string -> Msg> =
           "sendUnsentRequested", (fun _ _ -> SendUnsentRequested)
           "checkRequested", (fun _ _ -> CheckRequested)
           "abandonUnsentRequested", (fun _ _ -> AbandonUnsentRequested) ]
+
+/// Checkboxes inside a form: their events carry whether they are checked.
+let private stateEvents = set [ "lineTaxableChanged"; "draftTaxInclusiveChanged" ]
 
 let private message (name: string) (key: string option) (value: string option) =
     match events |> Map.tryFind name with
@@ -240,7 +262,16 @@ let decode (messageJson: string) =
     | "LocationChanged" -> LocationChanged(location message)
     | "Event" ->
         let event = required "event" "$" asObject message
-        Event(required "name" "$.event" asString event, optional "key" "$.event" asString event, optional "value" "$.event" asString event)
+        let name = required "name" "$.event" asString event
+
+        // A checkbox in a form is fired again when the form is submitted, so
+        // its event carries its state, never a toggle (WI-0044).
+        let value =
+            match optional "checked" "$.event" asBool event with
+            | Some isChecked when stateEvents.Contains name -> Some(if isChecked then "true" else "false")
+            | _ -> optional "value" "$.event" asString event
+
+        Event(name, optional "key" "$.event" asString event, value)
     | "EffectResult" -> effectResult (required "result" "$" asObject message)
     | "CapabilityFact" -> CapabilityFact(required "capability" "$" asString message, required "fact" "$" asObject message)
     | other -> raise (MalformedInput("$.kind", $"a known message kind, not '{other}'"))
@@ -296,6 +327,7 @@ type Purpose =
     | KeepingReturn
     /// Reading the return target this tab kept across a sign-in.
     | ReadingReturn
+    | ReadingEditor
 
 [<NoComparison; NoEquality>]
 type Session =
@@ -462,7 +494,14 @@ let private requests (session: Session) (effects: AppEffect list) =
 
                 { s with Pending = s.Pending.Add(correlation, Downloading) }, out @ [ PackRequest(correlation, files, request) ]
             | KeepReturnTarget _
+            | KeepEditor _
+            | ReadEditor
             | ReadReturnTarget when not s.Hosting -> s, out
+            | KeepEditor(Some form) ->
+                { s with Pending = s.Pending.Add(correlation, KeepingReturn) }, out @ [ Host(correlation, "tabSet", [ "key", EditorKey; "value", form ]) ]
+            | KeepEditor None ->
+                { s with Pending = s.Pending.Add(correlation, KeepingReturn) }, out @ [ Host(correlation, "tabRemove", [ "key", EditorKey ]) ]
+            | ReadEditor -> { s with Pending = s.Pending.Add(correlation, ReadingEditor) }, out @ [ Host(correlation, "tabGet", [ "key", EditorKey ]) ]
             | KeepReturnTarget(Some location) ->
                 { s with Pending = s.Pending.Add(correlation, KeepingReturn) }, out @ [ Host(correlation, "tabSet", [ "key", ReturnKey; "value", location ]) ]
             | KeepReturnTarget None ->
@@ -851,14 +890,17 @@ let private step (env: Env) (now: DateTimeOffset) (session: Session) (inbound: I
             let rest = { session with Pending = session.Pending.Remove correlation }
             let path = "$.result.outcome"
 
+            let read () =
+                match required "kind" path asString outcome with
+                | "Completed" -> optional "value" $"{path}.result" asString (required "result" path asObject outcome)
+                | _ -> None
+
             match session.Pending[correlation] with
             | ReadingReturn ->
-                let read =
-                    match required "kind" path asString outcome with
-                    | "Completed" -> optional "value" $"{path}.result" asString (required "result" path asObject outcome)
-                    | _ -> None
-
-                let s, out = run (ReturnTargetRead read) rest
+                let s, out = run (ReturnTargetRead(read ())) rest
+                s, out, None
+            | ReadingEditor ->
+                let s, out = run (EditorRead(read ())) rest
                 s, out, None
             | _ -> rest, [], None
         | CapabilityResult(correlation, capability, _) when capability = schedule.Id && env.Bridge.Waits correlation ->

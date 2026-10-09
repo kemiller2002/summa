@@ -26,6 +26,7 @@
     <Compile Include="AttentionTests.fs" />
     <Compile Include="SignInTests.fs" />
     <Compile Include="StoreTests.fs" />
+    <Compile Include="InterfaceTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
