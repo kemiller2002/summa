@@ -91,7 +91,7 @@ let create (bridge: Bridge) (now: unit -> DateTimeOffset) (randomBytes: int -> b
             fun path body ->
                 async {
                     match! bridge.Call(Post(exchange + path, body, ExchangeTimeoutMs)) with
-                    | Http(Responded(status, body)) -> return HttpOutcome.Responded { Status = status; Body = body }
+                    | Http(Responded(status, _, body)) -> return HttpOutcome.Responded { Status = status; Body = body }
                     | Http(Unknown _) -> return HttpOutcome.Failed TransportFailure.TimedOut
                     | _ -> return HttpOutcome.Failed TransportFailure.Unreachable
                 }

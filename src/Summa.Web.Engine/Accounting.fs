@@ -177,11 +177,42 @@ type PdfWork =
 
 /// Where the books stand in this browser.
 type Storage =
-    /// Asked the browser for the stored snapshot.
+    /// Asked the browser for the stored snapshot, or the store for the books.
     | Loading
     | Ready
     /// The stored snapshot failed its checks; nothing runs on it.
     | Untrustworthy of problems: string list
+    /// Books on GitHub (WI-0037): the organization is not set up. Whether
+    /// this person may set it up, or why not.
+    | NotSetUp of mayFound: bool * reason: string option
+    /// No listed administrator on the roster: nothing is granted until one
+    /// confirms themself (`canConfirm`: this person may).
+    | AwaitingAdministrator of canConfirm: bool
+    /// The organization manifest is at an older schema; an administrator
+    /// migrates it first.
+    | Outdated of mayMigrate: bool
+    /// Signed in, but not on the organization's roster.
+    | NotAMember
+    /// The store could not be reached or refused; why, in words.
+    | Unreachable of reason: string
+
+/// The books as the store opened them for the signed-in person.
+type StoredBooks =
+    { Manifest: Organization.OrganizationManifest
+      Books: Receivables
+      Capabilities: Set<Summa.Access.Access.Capability>
+      /// Why the books may only be read, if they may.
+      ReadOnly: string list }
+
+/// Why the store did not open the books.
+type BooksProblem =
+    | BooksNotSetUp of mayFound: bool * reason: string option
+    | BooksAwaitAdministrator of canConfirm: bool
+    | BooksOutdated of mayMigrate: bool
+    | BooksNotForYou
+    | BooksUnreachable of reason: string
+    | BooksUnusable of problems: string list
+
 
 [<NoComparison; NoEquality>]
 type Model =
@@ -222,7 +253,11 @@ type Model =
       SignIn: SignInState
       /// Keep the session in this tab rather than this page only.
       KeepInTab: bool
-      Return: ReturnTarget }
+      Return: ReturnTarget
+      /// What the signed-in person may do in books on GitHub.
+      Capabilities: Set<Summa.Access.Access.Capability>
+      /// Why books on GitHub may only be read, if they may.
+      ReadOnly: string list }
 
 let private newLine (counter: int) =
     let key, next = nextKey "line" counter
@@ -265,6 +300,8 @@ let initial =
       SignIn = NotRequired
       KeepInTab = false
       Return = NotReturning
+      Capabilities = Set.empty
+      ReadOnly = []
       Blockers = []
       Notice = None
       Error = None
@@ -287,6 +324,18 @@ type Msg =
     | KeepSignInToggled
     /// The return target this tab kept across the sign-in (WI-0043).
     | ReturnTargetRead of string option
+    /// The store opened the books on GitHub (WI-0037).
+    | BooksOpened of StoredBooks
+    | BooksNotOpened of BooksProblem
+    | FoundRequested
+    | ConfirmRequested
+    | MigrateRequested
+    /// A command was committed; the books as they stand after it.
+    | BooksCommitted of Receivables
+    | ManifestCommitted of Organization.OrganizationManifest
+    /// A command was not committed: why, and the books as they stand now,
+    /// when the store could read them.
+    | StoreRefused of reason: string * latest: (Organization.OrganizationManifest * Receivables) option
     /// The stored snapshot, or None when this browser has none yet.
     | Loaded of string option
     | Saved of ok: bool
@@ -395,6 +444,14 @@ type Msg =
     /// trial-balance or journal, as CSV for the year shown.
     | CpaExportRequested of string
 
+/// A change to the books to commit on the store: the message that made it,
+/// which the store runs again on the books as they stand (`replay`), and
+/// the capability it needs.
+type BooksCommand =
+    { Capability: Summa.Access.Access.Capability
+      Summary: string
+      Msg: Msg }
+
 type AppEffect =
     | LoadConfiguration
     | LoadBooks
@@ -422,6 +479,14 @@ type AppEffect =
     /// only: it must survive the round trip to GitHub and nothing longer.
     | KeepReturnTarget of string option
     | ReadReturnTarget
+    /// Open the organization's books on GitHub for the signed-in person.
+    | OpenStoredBooks
+    /// Set the organization up, with this person as its first administrator.
+    | FoundStoredBooks
+    | ConfirmAdministrator
+    | MigrateStoredBooks
+    | CommitBooks of BooksCommand
+    | CommitManifest of Organization.OrganizationManifest
 
 // ---- Helpers ---------------------------------------------------------------------------
 
@@ -557,6 +622,12 @@ let private editLine (key: string) (change: LineForm -> LineForm) (model: Model)
 
 // ---- Places (WI-0041) -------------------------------------------------------------------
 
+/// Whether the books live on GitHub (WI-0037).
+let private onGitHub (model: Model) =
+    match model.Configuration with
+    | Configured config -> config.Location.IsSome
+    | _ -> false
+
 let private everything =
     Routes.Member(Summa.Access.Access.allCapabilities |> List.map Summa.Access.Access.capabilityName |> Set.ofList)
 
@@ -566,7 +637,10 @@ let private everything =
 /// GitHub store reads (WI-0037); until it does, the books are not open.
 let viewerOf (model: Model) =
     match model.SignIn with
-    | NotRequired
+    | NotRequired -> everything
+    // Books on GitHub: what the roster grants, once the store has opened them.
+    | SignedInAs _ when model.Storage = Ready ->
+        Routes.Member(model.Capabilities |> Set.map Summa.Access.Access.capabilityName)
     | SignedInAs _ -> everything
     | Restoring
     | SignedOut _
@@ -652,10 +726,13 @@ let private adopt (page: Limen.Routing.PageLocation) (model: Model) =
         | Error problem -> { model with Router = router; Unrouted = Some problem; Notice = None; Error = None }, navigation effect
 
 /// The address the browser shows, adopted again: who may see what changed.
+/// That is the router's location once the engine has moved the browser
+/// itself (the page reports only moves it did not make), else the page's.
 let private readopt (model: Model) =
-    match model.Page with
-    | Some page -> adopt page model
-    | None -> model, []
+    match model.Page, model.Router.Current with
+    | Some page, Some current -> adopt { page with Query = ""; Hash = Limen.Routing.Location.href Routes.mode current } model
+    | Some page, None -> adopt page model
+    | None, _ -> model, []
 
 /// A query string as name and value pairs, decoded.
 let queryPairs (query: string) =
@@ -816,7 +893,7 @@ let workItems (today: DateOnly) (r: Receivables) =
 
 // ---- Update ----------------------------------------------------------------------------
 
-let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
+let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
     let model = { model with Today = today ctx }
 
     match msg with
@@ -835,8 +912,15 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
             | Some identity ->
                 let query = model.Page |> Option.map (fun p -> queryPairs p.Query) |> Option.defaultValue []
                 let returning = isCallback query
-                let restoring, effects = readopt { model with Configuration = Configured config; SignIn = Restoring; Return = (if returning then AwaitingTarget else NotReturning) }
-                restoring, BeginIdentity(identity, query) :: (if returning then [ ReadReturnTarget ] else []) @ effects
+
+                let artifacts, opening =
+                    if model.Packs.Store then StoreOpening, [ OpenArtifactStore(Artifacts.database config) ]
+                    else StoreUnavailable "this browser offers no artifact store", []
+
+                let restoring, effects =
+                    readopt { model with Configuration = Configured config; SignIn = Restoring; Return = (if returning then AwaitingTarget else NotReturning); Artifacts = artifacts }
+
+                restoring, BeginIdentity(identity, query) :: (if returning then [ ReadReturnTarget ] else []) @ opening @ effects
             | None -> { model with Configuration = Misconfigured "This deployment names a data location on GitHub but no way to sign in." }, []
         | Ok config when model.Packs.Store ->
             { model with Configuration = Configured config; Artifacts = StoreOpening }, [ LoadBooks; OpenArtifactStore(Artifacts.database config) ]
@@ -846,7 +930,9 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
         // Local books: Fides is not running, so nothing it says applies.
         | NotRequired, _ -> model, []
         | _, IdentitySignedIn(provider, subject, login) ->
-            returnAfterSignIn { model with SignIn = SignedInAs { ActorId = $"{provider}:{subject}"; Login = login } }
+            let signedIn, effects = returnAfterSignIn { model with SignIn = SignedInAs { ActorId = $"{provider}:{subject}"; Login = login } }
+            // Signed in: open the books on GitHub (WI-0037), once.
+            signedIn, effects @ (if model.SignIn = Restoring || model.SignIn = LeavingForProvider || (match model.SignIn with SignedOut _ | ProviderUnavailable -> true | _ -> false) then [ OpenStoredBooks ] else [])
         | _, IdentitySigningIn -> { model with SignIn = LeavingForProvider }, []
         | _, IdentitySignedOut code -> signedOut (SignedOut(code |> Option.map signInNotice)) model
         // Signed in: the session stays; GitHub is only unreachable for now.
@@ -871,6 +957,51 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
         | SignedInAs _ -> model, [ EndSignIn ]
         | _ -> model, []
     | KeepSignInToggled -> { model with KeepInTab = not model.KeepInTab }, []
+    | BooksOpened opened ->
+        readopt
+            { model with
+                Storage = Ready
+                Manifest = Some opened.Manifest
+                Books = Some opened.Books
+                Company = companyForm opened.Manifest
+                Capabilities = opened.Capabilities
+                ReadOnly = opened.ReadOnly }
+    | BooksNotOpened problem ->
+        { model with
+            Storage =
+                match problem with
+                | BooksNotSetUp(mayFound, reason) -> NotSetUp(mayFound, reason)
+                | BooksAwaitAdministrator canConfirm -> AwaitingAdministrator canConfirm
+                | BooksOutdated mayMigrate -> Outdated mayMigrate
+                | BooksNotForYou -> NotAMember
+                | BooksUnreachable reason -> Unreachable reason
+                | BooksUnusable problems -> Untrustworthy problems },
+        []
+    | FoundRequested ->
+        match model.Storage with
+        | NotSetUp(true, _) -> { model with Storage = Loading }, [ FoundStoredBooks ]
+        | _ -> model, []
+    | ConfirmRequested ->
+        match model.Storage with
+        | AwaitingAdministrator true -> { model with Storage = Loading }, [ ConfirmAdministrator ]
+        | _ -> model, []
+    | MigrateRequested ->
+        match model.Storage with
+        | Outdated true -> { model with Storage = Loading }, [ MigrateStoredBooks ]
+        | _ -> model, []
+    | BooksCommitted books ->
+        let unsaved = max 0 (model.Unsaved - 1)
+        // While later changes are still on their way, the page keeps showing them.
+        { model with Unsaved = unsaved; Books = (if unsaved = 0 then Some books else model.Books) }, []
+    | ManifestCommitted manifest ->
+        { model with Unsaved = max 0 (model.Unsaved - 1); Manifest = Some manifest }, []
+    | StoreRefused(reason, latest) ->
+        let model =
+            match latest with
+            | Some(manifest, books) -> { model with Manifest = Some manifest; Books = Some books; Company = companyForm manifest }
+            | None -> model
+
+        { model with Unsaved = max 0 (model.Unsaved - 1); Error = Some reason; Notice = None }, []
     | ReturnTargetRead target ->
         match model.Return with
         | AwaitingTarget -> returnAfterSignIn { model with Return = TargetRead target }
@@ -1511,8 +1642,78 @@ let rec update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
     | ResetConfirmed ->
         // Only offered when the stored books fail their checks.
         match model.Storage with
-        | Untrustworthy _ -> update ctx (Loaded None) { model with Storage = Loading }
+        | Untrustworthy _ when not (onGitHub model) -> apply ctx (Loaded None) { model with Storage = Loading }
         | _ -> model, []
+
+/// The capability a message that changes books on GitHub needs, and the
+/// one-line summary its commit carries. Messages not here change no books.
+let bookCommand (msg: Msg) : (Summa.Access.Access.Capability * string) option =
+    let open' capability summary = Some(capability, summary)
+
+    match msg with
+    | CustomerAdded -> open' Summa.Access.Access.ManageBilling "add a customer"
+    | EngagementAdded -> open' Summa.Access.Access.ManageBilling "add an engagement"
+    | DraftSubmitted -> open' Summa.Access.Access.CreateDraftInvoice "save a draft invoice"
+    | DraftIssued -> open' Summa.Access.Access.IssueInvoice "issue an invoice"
+    | PdfStored _ -> open' Summa.Access.Access.IssueInvoice "record an invoice's PDF"
+    | PaymentRecorded -> open' Summa.Access.Access.RecordPayment "record a payment"
+    | ReceiptRecorded -> open' Summa.Access.Access.RecordPayment "record a payment on account"
+    | InboxApplied _ -> open' Summa.Access.Access.AllocatePayment "apply a payment"
+    | InboxCredited _ -> open' Summa.Access.Access.AllocatePayment "keep a payment as credit"
+    | CreditMemoIssued -> open' Summa.Access.Access.CreateCreditMemo "issue a credit memo"
+    | ReminderRecorded _ -> open' Summa.Access.Access.RecordPayment "record a reminder"
+    | DisputeMarked
+    | DisputeSettled -> open' Summa.Access.Access.RecordPayment "record a dispute"
+    | PeriodClosed
+    | PeriodLocked -> open' Summa.Access.Access.ClosePeriod "close a period"
+    | PeriodReopened -> open' Summa.Access.Access.ReopenPeriod "reopen a period"
+    | CompanySaved -> open' Summa.Access.Access.ManageSettings "change the company details"
+    | _ -> None
+
+/// Runs a message that changes books on GitHub again, on `basis` with the
+/// books as they stand on the store: the transition the store commits, and
+/// decides again when someone else changed the books first.
+let replay (ctx: Ctx) (msg: Msg) (basis: Model) (stored: Receivables) : Result<Receivables, string> =
+    let replayed, _ = apply ctx msg { basis with Books = Some stored; Error = None }
+
+    match replayed.Error, replayed.Books with
+    | Some why, _ -> Error why
+    | None, Some books -> Ok books
+    | None, None -> Error "The books are not available."
+
+/// The engine: one message, the next model and what to ask of the browser.
+/// Books on GitHub change through the store: a message that changes them
+/// needs its capability, is shown at once, and is committed as a command
+/// (`CommitBooks`), never saved as a snapshot.
+let update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
+    if not (onGitHub model) then
+        apply ctx msg model
+    else
+        let local = function
+            | SaveBooks _ -> false
+            | _ -> true
+
+        match bookCommand msg with
+        | Some(capability, _) when model.Storage = Ready && not (model.Capabilities.Contains capability) ->
+            { model with Error = Some "Your role in these books does not include this. Ask an administrator if you need it."; Notice = None }, []
+        | Some _ when model.Storage = Ready && not model.ReadOnly.IsEmpty ->
+            { model with Error = Some("These books can only be read: " + String.concat "; " model.ReadOnly); Notice = None }, []
+        | Some(capability, summary) ->
+            let next, effects = apply ctx msg model
+
+            let changedBooks = not (obj.ReferenceEquals(model.Books, next.Books))
+            let changedManifest = not (obj.ReferenceEquals(model.Manifest, next.Manifest))
+
+            let commits =
+                [ if changedBooks then CommitBooks { Capability = capability; Summary = summary; Msg = msg }
+                  match next.Manifest with
+                  | Some manifest when changedManifest && msg = CompanySaved -> CommitManifest manifest
+                  | _ -> () ]
+
+            { next with Unsaved = model.Unsaved + commits.Length }, (effects |> List.filter local) @ commits
+        | None ->
+            let next, effects = apply ctx msg model
+            next, effects |> List.filter local
 
 // ---- View -----------------------------------------------------------------------------------
 
@@ -2834,8 +3035,21 @@ let view (model: Model) : View =
       "keepInTab", flag model.KeepInTab
       "isSignedIn", flag (match model.SignIn with SignedInAs _ -> true | _ -> false)
       "signedInLogin", text (match model.SignIn with SignedInAs person -> person.Login | _ -> "")
-      // Signed in, with books on GitHub: the GitHub store opens them (WI-0037).
+      // Signed in, with books on GitHub: the store opens them (WI-0037).
       "awaitsGitHubStore", flag (configured && model.Storage = Loading && (match model.SignIn with SignedInAs _ -> true | _ -> false))
+      "booksNotSetUp", flag (match model.Storage with NotSetUp _ -> true | _ -> false)
+      "mayFound", flag (match model.Storage with NotSetUp(may, _) -> may | _ -> false)
+      "notSetUpReason", text (match model.Storage with NotSetUp(_, Some why) -> why | _ -> "")
+      "awaitingAdministrator", flag (match model.Storage with AwaitingAdministrator _ -> true | _ -> false)
+      "canConfirm", flag (model.Storage = AwaitingAdministrator true)
+      "booksOutdated", flag (match model.Storage with Outdated _ -> true | _ -> false)
+      "mayMigrate", flag (model.Storage = Outdated true)
+      "notAMember", flag (model.Storage = NotAMember)
+      "storeUnreachable", flag (match model.Storage with Unreachable _ -> true | _ -> false)
+      "storeProblem", text (match model.Storage with Unreachable why -> why | _ -> "")
+      "isReadOnly", flag (not model.ReadOnly.IsEmpty)
+      "readOnlyReasons", text (String.concat "; " model.ReadOnly)
+      "canResetBooks", flag (not (onGitHub model))
       "isReady", flag (configured && model.Storage = Ready)
       "isUntrustworthy",
       flag (

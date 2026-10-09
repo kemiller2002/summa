@@ -21,6 +21,11 @@ open Summa.Web.Engine.Accounting
 type KernelCall =
     /// A POST of a JSON body, its response read as text.
     | Post of url: string * body: string * timeoutMs: int
+    /// Any Http request, its response read as text, with these response
+    /// headers returned (Arca's GitHub adapter).
+    | Request of method: string * url: string * headers: (string * string) list * body: string option * timeoutMs: int * responseHeaders: string list
+    /// Wait this long (a back-off).
+    | Sleep of milliseconds: int
     | DeviceGet of key: string
     | DeviceSet of key: string * value: string
     | DeviceRemove of key: string
@@ -34,7 +39,7 @@ type KernelCall =
 
 /// How an Http request ended, as the kernel reported it.
 type HttpAnswer =
-    | Responded of status: int * body: string
+    | Responded of status: int * headers: (string * string) list * body: string
     | Unreachable of reason: string
     /// It may have reached the server; nothing is known of its effect.
     | Unknown of reason: string
@@ -74,6 +79,9 @@ type Bridge() =
                 | Choice2Of2 error -> failures.Add error
             }
         )
+
+    /// Engine messages an operation produced while still running.
+    member _.Emit(messages: Msg list) = finished.AddRange messages
 
     /// Resumes the operation waiting on this correlation id; false when none is.
     member _.Answer (id: string) (answer: KernelAnswer) =

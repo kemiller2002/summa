@@ -14,6 +14,7 @@
     <Compile Include="HubWire.fs" />
     <Compile Include="Bridge.fs" />
     <Compile Include="Identity.fs" />
+    <Compile Include="Store.fs" />
     <Compile Include="AccountingWire.fs" />
     <Compile Include="Runtime.fs" />
   </ItemGroup>
@@ -22,6 +23,7 @@
     <PackageReference Include="EchelonFoundry.Aegis.Core" />
     <PackageReference Include="EchelonFoundry.Fides.Client" />
     <PackageReference Include="EchelonFoundry.Fides.Arca" />
+    <PackageReference Include="EchelonFoundry.Arca.GitHub" />
   </ItemGroup>
 
   <ItemGroup>

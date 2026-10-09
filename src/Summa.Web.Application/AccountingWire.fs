@@ -32,6 +32,12 @@ let host =
       Version = 1
       Fingerprint = "summa.host/1: tab storage, leave, replace address, broadcast" }
 
+/// `limen.schedule` v1: timeouts, for the GitHub adapter's back-off waits.
+let schedule =
+    { Id = "limen.schedule"
+      Version = 1
+      Fingerprint = "sha256:627657798f0fa735ac6f955eb4f413e7c397f0aef6942b340a87683a30db54d0" }
+
 /// Every event app/index.html may send, so a test can hold the page to it.
 let events: Map<string, string -> string -> Msg> =
     Map.ofList
@@ -125,7 +131,10 @@ let events: Map<string, string -> string -> Msg> =
           "resetConfirmed", (fun _ _ -> ResetConfirmed)
           "signInRequested", (fun _ _ -> SignInRequested)
           "signOutRequested", (fun _ _ -> SignOutRequested)
-          "keepSignInToggled", (fun _ _ -> KeepSignInToggled) ]
+          "keepSignInToggled", (fun _ _ -> KeepSignInToggled)
+          "foundRequested", (fun _ _ -> FoundRequested)
+          "confirmRequested", (fun _ _ -> ConfirmRequested)
+          "migrateRequested", (fun _ _ -> MigrateRequested) ]
 
 let private message (name: string) (key: string option) (value: string option) =
     match events |> Map.tryFind name with
@@ -178,7 +187,15 @@ let private effectResult (node: JsonNode) =
                     | Some other -> other.ToJsonString()
                     | None -> ""
 
-                Bridge.Responded(required "status" at asInt outcome, body)
+                let headers =
+                    match tryField "headers" outcome with
+                    | Some(:? JsonObject as found) ->
+                        found
+                        |> Seq.choose (fun pair -> pair.Value |> Option.ofObj |> Option.map (fun value -> pair.Key.ToLowerInvariant(), asString $"{at}.headers.{pair.Key}" value))
+                        |> List.ofSeq
+                    | _ -> []
+
+                Bridge.Responded(required "status" at asInt outcome, headers, body)
             | "Failure" -> Bridge.Unreachable(required "reason" at asString outcome)
             | "OutcomeUnknown" -> Bridge.Unknown(required "reason" at asString outcome)
             | other -> Bridge.Unreachable other
@@ -222,7 +239,7 @@ let decode (messageJson: string) =
 
 [<NoComparison; NoEquality>]
 type Answer =
-    | Accepted of minor: int * contract: JsonNode * printing: bool * packs: Packs * hosting: bool
+    | Accepted of minor: int * contract: JsonNode * printing: bool * packs: Packs * hosting: bool * scheduling: bool
     | Rejected of reason: (Utf8JsonWriter -> unit)
 
 /// Accepts Limen Core and selects `summa.print`, `limen.files` and
@@ -249,7 +266,7 @@ let answer (offer: JsonNode) =
             writer.WritePropertyName "offered"
             writeNode writer contract)
     else
-        Accepted(min minor ProtocolMinor, contract, printing, { Files = offers files; Store = offers store }, offers host)
+        Accepted(min minor ProtocolMinor, contract, printing, { Files = offers files; Store = offers store }, offers host, offers schedule)
 
 // ---- Session ---------------------------------------------------------------------------------------
 
@@ -278,6 +295,8 @@ type Session =
       Printing: bool
       /// The kernel offers `summa.host`, which sign-in needs.
       Hosting: bool
+      /// The kernel offers `limen.schedule`, for the GitHub adapter's waits.
+      Scheduling: bool
       Fault: FaultView option }
 
 let initial =
@@ -286,6 +305,7 @@ let initial =
       Sequence = 0
       Printing = false
       Hosting = false
+      Scheduling = false
       Fault = None }
 
 /// What the wire is given: the clock, the actor of books without sign-in,
@@ -295,12 +315,17 @@ type Env =
     { Now: unit -> DateTimeOffset
       LocalActor: string
       Bridge: Bridge.Bridge
-      Identity: Identity.IdentityPort }
+      Identity: Identity.IdentityPort
+      Store: Store.StorePort }
 
 [<NoComparison; NoEquality>]
 type Request =
     | HttpGet of correlation: string * url: string
     | HttpPost of correlation: string * url: string * body: string * timeoutMs: int
+    /// Any Http request, with the response headers to return (the GitHub adapter).
+    | HttpCall of correlation: string * method: string * url: string * headers: (string * string) list * body: string option * timeoutMs: int * responseHeaders: string list
+    /// A `limen.schedule` timeout.
+    | Wake of correlation: string * delayMs: int
     | StorageRemove of correlation: string * key: string
     /// A `summa.host` request: its operation and string arguments.
     | Host of correlation: string * operation: string * arguments: (string * string) list
@@ -428,20 +453,30 @@ let private requests (session: Session) (effects: AppEffect list) =
             | KeepReturnTarget None ->
                 { s with Pending = s.Pending.Add(correlation, KeepingReturn) }, out @ [ Host(correlation, "tabRemove", [ "key", ReturnKey ]) ]
             | ReadReturnTarget -> { s with Pending = s.Pending.Add(correlation, ReadingReturn) }, out @ [ Host(correlation, "tabGet", [ "key", ReturnKey ]) ]
-            // Fides' client carries these out (`step`).
+            // Fides' client and the store carry these out (`step`).
             | BeginIdentity _
             | StartSignIn _
-            | EndSignIn -> s, out)
+            | EndSignIn
+            | OpenStoredBooks
+            | FoundStoredBooks
+            | ConfirmAdministrator
+            | MigrateStoredBooks
+            | CommitBooks _
+            | CommitManifest _ -> s, out)
         (session, [])
 
 /// A browser service the bridge's client asked for, as a Limen request, or
 /// the answer to give at once when the kernel cannot carry it.
-let private bridgeRequest (hosting: bool) (id: string) (call: Bridge.KernelCall) : Result<Request, Bridge.KernelAnswer> =
+let private bridgeRequest (hosting: bool) (scheduling: bool) (id: string) (call: Bridge.KernelCall) : Result<Request, Bridge.KernelAnswer> =
     let hosted operation arguments =
         if hosting then Ok(Host(id, operation, arguments)) else Error Bridge.Missing
 
     match call with
     | Bridge.Post(url, body, timeoutMs) -> Ok(HttpPost(id, url, body, timeoutMs))
+    | Bridge.Request(method, url, headers, body, timeoutMs, responseHeaders) -> Ok(HttpCall(id, method, url, headers, body, timeoutMs, responseHeaders))
+    // Without the schedule pack a back-off is not timed: it ends at once.
+    | Bridge.Sleep milliseconds when scheduling -> Ok(Wake(id, milliseconds))
+    | Bridge.Sleep _ -> Error Bridge.Done
     | Bridge.DeviceGet key -> Ok(StorageGet(id, key))
     | Bridge.DeviceSet(key, value) -> Ok(StorageSet(id, key, value))
     | Bridge.DeviceRemove key -> Ok(StorageRemove(id, key))
@@ -477,6 +512,43 @@ let private writeRequest (writer: Utf8JsonWriter) =
         writer.WriteNumber("timeoutMs", timeoutMs)
         writer.WriteString("response", "text")
         writer.WriteString("credentials", "omit")
+        writer.WriteEndObject()
+    | HttpCall(correlation, method, url, headers, body, timeoutMs, responseHeaders) ->
+        writer.WriteStartObject()
+        writer.WriteString("kind", "Http")
+        writer.WriteString("correlationId", correlation)
+        writer.WriteString("method", method)
+        writer.WriteString("url", url)
+
+        if not headers.IsEmpty then
+            writer.WritePropertyName "headers"
+            writer.WriteStartObject()
+            headers |> List.iter (fun (name, value) -> writer.WriteString(name, value))
+            writer.WriteEndObject()
+
+        body |> Option.iter (fun body -> writer.WriteString("body", body))
+        writer.WriteNumber("timeoutMs", timeoutMs)
+        writer.WriteString("response", "text")
+        writer.WriteString("credentials", "omit")
+
+        if not responseHeaders.IsEmpty then
+            writer.WritePropertyName "responseHeaders"
+            writer.WriteStartArray()
+            responseHeaders |> List.iter writer.WriteStringValue
+            writer.WriteEndArray()
+
+        writer.WriteEndObject()
+    | Wake(correlation, delayMs) ->
+        writer.WriteStartObject()
+        writer.WriteString("kind", "Capability")
+        writer.WriteString("correlationId", correlation)
+        writer.WriteString("capability", schedule.Id)
+        writer.WriteNumber("version", schedule.Version)
+        writer.WritePropertyName "request"
+        writer.WriteStartObject()
+        writer.WriteString("operation", "timeout")
+        writer.WriteNumber("delayMs", delayMs)
+        writer.WriteEndObject()
         writer.WriteEndObject()
     | StorageRemove(correlation, key) ->
         writer.WriteStartObject()
@@ -569,7 +641,7 @@ let render (session: Session) (out: Request list) (handshake: Answer option) =
 
         match handshake with
         | None -> ()
-        | Some(Accepted(minor, contract, printing, packs, hosting)) ->
+        | Some(Accepted(minor, contract, printing, packs, hosting, scheduling)) ->
             writer.WritePropertyName "handshake"
             writer.WriteStartObject()
             writer.WriteString("kind", "Accepted")
@@ -586,6 +658,7 @@ let render (session: Session) (out: Request list) (handshake: Answer option) =
             if packs.Files then writeOffer writer files
             if packs.Store then writeOffer writer store
             if hosting then writeOffer writer host
+            if scheduling then writeOffer writer schedule
             writer.WriteEndArray()
             writer.WriteEndObject()
         | Some(Rejected reason) ->
@@ -608,15 +681,27 @@ let private actorOf (env: Env) (model: Model) =
 
 let private step (env: Env) (now: DateTimeOffset) (session: Session) (inbound: Inbound) =
     let rec run msg (s: Session) =
-        let model, effects = update { Now = now; Actor = actorOf env s.Model } msg s.Model
+        let ctx = { Now = now; Actor = actorOf env s.Model }
+        let model, effects = update ctx msg s.Model
 
-        // Sign-in effects go to Fides' client; its browser calls come back
-        // through the bridge (`settle`).
+        // Sign-in effects go to Fides' client and book effects to the store;
+        // their browser calls come back through the bridge (`settle`).
         effects
         |> List.iter (function
             | BeginIdentity(config, query) -> env.Identity.Begin config query
             | StartSignIn kept -> env.Identity.SignIn kept
             | EndSignIn -> env.Identity.SignOut()
+            | OpenStoredBooks ->
+                match model.Configuration, model.SignIn with
+                | Configured config, SignedInAs person -> env.Store.Open config person
+                | _ -> ()
+            | FoundStoredBooks -> env.Store.Found()
+            | ConfirmAdministrator -> env.Store.Confirm()
+            | MigrateStoredBooks -> env.Store.Migrate()
+            // The store runs the message again on the books as they stand,
+            // from the model it was made on.
+            | CommitBooks command -> env.Store.Commit { Command = command; Transition = replay ctx command.Msg s.Model }
+            | CommitManifest manifest -> env.Store.CommitManifest manifest
             | _ -> ())
 
         let s, out = requests { s with Model = model } effects
@@ -644,7 +729,7 @@ let private step (env: Env) (now: DateTimeOffset) (session: Session) (inbound: I
                 calls
                 |> List.fold
                     (fun (made, immediate) (id, call) ->
-                        match bridgeRequest s.Hosting id call with
+                        match bridgeRequest s.Hosting s.Scheduling id call with
                         | Ok request -> made @ [ request ], immediate
                         | Error answer -> made, immediate @ [ (id, answer) ])
                     ([], [])
@@ -658,12 +743,12 @@ let private step (env: Env) (now: DateTimeOffset) (session: Session) (inbound: I
         | Initialize(offer, page) ->
             let answered = offer |> Option.map answer
 
-            let printing, packs, hosting =
+            let printing, packs, hosting, scheduling =
                 match answered with
-                | Some(Accepted(_, _, p, packs, hosting)) -> p, packs, hosting
-                | _ -> false, { Files = false; Store = false }, false
+                | Some(Accepted(_, _, p, packs, hosting, scheduling)) -> p, packs, hosting, scheduling
+                | _ -> false, { Files = false; Store = false }, false, false
 
-            let started, first = run (Started page) { session with Printing = printing; Hosting = hosting }
+            let started, first = run (Started page) { session with Printing = printing; Hosting = hosting; Scheduling = scheduling }
             let s, more = run (PacksNegotiated packs) started
             s, first @ more, answered
         | LocationChanged page ->
@@ -711,8 +796,8 @@ let private step (env: Env) (now: DateTimeOffset) (session: Session) (inbound: I
             | Some Configuring ->
                 let read =
                     match result with
-                    | Bridge.Responded(status, body) when status >= 200 && status < 300 -> Ok body
-                    | Bridge.Responded(status, _) -> Error $"HTTP {status}"
+                    | Bridge.Responded(status, _, body) when status >= 200 && status < 300 -> Ok body
+                    | Bridge.Responded(status, _, _) -> Error $"HTTP {status}"
                     | Bridge.Unreachable reason
                     | Bridge.Unknown reason -> Error reason
 
@@ -734,6 +819,8 @@ let private step (env: Env) (now: DateTimeOffset) (session: Session) (inbound: I
                 let s, out = run (ReturnTargetRead read) rest
                 s, out, None
             | _ -> rest, [], None
+        | CapabilityResult(correlation, capability, _) when capability = schedule.Id && env.Bridge.Waits correlation ->
+            answerBridge session correlation Bridge.Done
         | CapabilityResult(correlation, capability, outcome) when capability = host.Id && env.Bridge.Waits correlation ->
             let path = "$.result.outcome"
 

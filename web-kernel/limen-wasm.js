@@ -14,6 +14,7 @@ import { BrowserKernel } from "../node_modules/@echelon-foundry/limen/dist/kerne
 import { filesCapability } from "../node_modules/@echelon-foundry/limen/dist/capabilities/files/index.js";
 import { transferCapability } from "../node_modules/@echelon-foundry/limen/dist/capabilities/transfer/index.js";
 import { storeCapability } from "../node_modules/@echelon-foundry/limen/dist/capabilities/store/index.js";
+import { scheduleCapability } from "../node_modules/@echelon-foundry/limen/dist/capabilities/schedule/index.js";
 import { printCapability } from "./print.js";
 import { hostCapability } from "./host.js";
 
@@ -84,7 +85,8 @@ export async function startPage(exportName, capabilities = filePacks()) {
 // browser's print dialog for the invoice's Folio document, and the files and
 // store packs, which read the PDF the person saved and keep it in this
 // environment's artifact database, and Summa's host pack (./host.js), which
-// Fides' sign-in client needs where the books live on GitHub.
+// Fides' sign-in client needs where the books live on GitHub, and Limen's
+// schedule pack, which times the GitHub adapter's back-off waits.
 export async function startApp() {
-  await startPage("DispatchAccounting", [printCapability(), filesCapability(), storeCapability(), hostCapability()]);
+  await startPage("DispatchAccounting", [printCapability(), filesCapability(), storeCapability(), hostCapability(), scheduleCapability()]);
 }

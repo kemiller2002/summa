@@ -31,6 +31,7 @@
     <Compile Include="Settings.fs" />
     <Compile Include="Health.fs" />
     <Compile Include="Migrations.fs" />
+    <Compile Include="Workspace.fs" />
     <Compile Include="LocalSnapshot.fs" />
     <Compile Include="Artifacts.fs" />
   </ItemGroup>
