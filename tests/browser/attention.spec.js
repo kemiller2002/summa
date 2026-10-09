@@ -69,5 +69,5 @@ test("the CPA workspace downloads the year's trial balance as CSV", async ({ app
   expect(download.suggestedFilename()).toMatch(/^trial-balance-\d{4}\.csv$/);
   const chunks = [];
   for await (const chunk of await download.createReadStream()) chunks.push(chunk);
-  expect(Buffer.concat(chunks).toString("utf8")).toMatch(/^Code,Account,Debit,Credit\n1100,Accounts Receivable,350\.00,0\.00\n/);
+  expect(Buffer.concat(chunks).toString("utf8")).toMatch(/^# Export: trial-balance\n# SchemaVersion: summa\.export\/1\n# GeneratedAt: .*\n# AccountingPeriod: \d{4}-01-01\.\.\d{4}-12-31\n# DataVersion: sha256:[0-9a-f]{64}\n# Filters: currency=USD; year=\d{4}\nCode,Account,Debit,Credit\n1100,Accounts Receivable,350\.00,0\.00\n/);
 });

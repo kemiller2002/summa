@@ -632,7 +632,13 @@ let private context (ctx: Ctx) =
               SourceId = None
               Reason = None } }
 
-let private today (ctx: Ctx) = DateOnly.FromDateTime ctx.Now.UtcDateTime
+/// Today, as the organization's business date (SUM3-029): the instant in
+/// its time zone, so an invoice issued in New York at 9 pm is not dated
+/// tomorrow. Before the books are open, the UTC date.
+let private businessToday (model: Model) (ctx: Ctx) =
+    match model.Manifest with
+    | Some manifest -> Organization.businessDate manifest ctx.Now
+    | None -> DateOnly.FromDateTime ctx.Now.UtcDateTime
 
 let private parseAmount (text: string) = tryParse "USD" text
 
@@ -1217,7 +1223,7 @@ let workItems (today: DateOnly) (r: Receivables) =
 // ---- Update ----------------------------------------------------------------------------
 
 let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
-    let model = { model with Today = today ctx }
+    let model = { model with Today = businessToday model ctx }
 
     match msg with
     | Started page ->
@@ -1542,7 +1548,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
             match draftOf manifest books model.Draft with
             | Error why -> { model with Error = Some why; Notice = None }, []
             | Ok draft ->
-                let request = issueRequest manifest books draft.DraftId (today ctx)
+                let request = issueRequest manifest books draft.DraftId (model.Today)
 
                 match saveDraft (context ctx) draft books.Books with
                 | Error problems -> { model with Error = Some(describe problems); Notice = None }, []
@@ -1578,7 +1584,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
     | DraftIssued ->
         match model.Manifest, model.Books, model.Draft.DraftId with
         | Some manifest, Some books, Some draftId ->
-            let request = issueRequest manifest books draftId (today ctx)
+            let request = issueRequest manifest books draftId (model.Today)
 
             match Issuance.issueInvoice (context ctx) request books with
             | Ok(issued, invoice) ->
@@ -1606,7 +1612,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
         match model.Manifest, model.Books with
         | Some manifest, Some books ->
             let draftId = nextId "D" (fun id -> books.Books.Drafts.ContainsKey id || books.Books.IssuedFrom.ContainsKey id)
-            let request = issueRequest manifest books draftId (today ctx)
+            let request = issueRequest manifest books draftId (model.Today)
 
             match
                 Billing.markReady (context ctx) false proposalId books
@@ -1647,7 +1653,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
         let form = model.Payment
 
         let received =
-            if form.Date.Trim() = "" then Some(today ctx) else parseDate form.Date
+            if form.Date.Trim() = "" then Some(model.Today) else parseDate form.Date
 
         let method =
             match form.Method with
@@ -1739,7 +1745,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                               Amount = amount
                               RevenueAccountId = Organization.accountByCode books.Books.Ledger manifest.Accounting.RevenueAccount
                               Reason = model.Credit.Reason.Trim()
-                              IssueDate = today ctx
+                              IssueDate = model.Today
                               JournalEntryId = entry "JE-CM"
                               Lines = [] }
 
@@ -1748,7 +1754,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                               Source = FromCreditMemo memoId
                               InvoiceId = invoiceId
                               Amount = amount
-                              Date = today ctx
+                              Date = model.Today
                               JournalEntryId = entry "JE-AP" }
 
                         Credits.issueCreditMemo (context ctx) accounts memo books
@@ -1847,7 +1853,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
         | Routes.IncomeStatement(from, until, _), Some basis -> refineTo (Routes.IncomeStatement(from, until, basis)) model
         | _ -> model, []
     | IncomeRangeChosen key ->
-        match model.Place, dateRange (today ctx) key with
+        match model.Place, dateRange (model.Today) key with
         | Routes.IncomeStatement(_, _, basis), Some(from, until) -> refineTo (Routes.IncomeStatement(Some from, Some until, basis)) model
         | _ -> model, []
     | PeriodClosed when (match model.Place, model.Books with
@@ -1965,7 +1971,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
 
             let changed, effects =
                 command model (if msg = DisputeMarked then "Dispute recorded. The invoice and the books are unchanged." else "Dispute resolved.") (fun books ->
-                    (if msg = DisputeMarked then Lifecycle.dispute else Lifecycle.resolveDispute) (context ctx) invoiceId note (today ctx) books
+                    (if msg = DisputeMarked then Lifecycle.dispute else Lifecycle.resolveDispute) (context ctx) invoiceId note (model.Today) books
                     |> Result.mapError describe)
 
             (if changed.Error.IsNone then { changed with FollowUpNote = "" } else changed), effects
@@ -1978,7 +1984,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                 match books.Payments.TryFind paymentId with
                 | None -> Error $"There is no payment {paymentId}."
                 | Some payment ->
-                    let invoices = openInvoices (today ctx) books |> List.filter (fun i -> i.CustomerId = payment.CustomerId)
+                    let invoices = openInvoices (model.Today) books |> List.filter (fun i -> i.CustomerId = payment.CustomerId)
 
                     // Oldest due first, each up to what it still owes, until the payment is used.
                     let requests, _ =
@@ -2013,7 +2019,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                 let request: Credits.CreditRequest =
                     { CreditId = nextId "CR" books.Credits.ContainsKey
                       PaymentId = paymentId
-                      Date = today ctx
+                      Date = model.Today
                       JournalEntryId = nextId "JE-CR" books.Books.Ledger.Entries.ContainsKey }
 
                 Credits.creditUnapplied (context ctx) (Organization.receivableAccounts manifest books.Books.Ledger) request books |> Result.mapError describe)
@@ -2025,7 +2031,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
     | ReceiptReferenceChanged v -> { model with Receipt = { model.Receipt with Reference = v } }, []
     | ReceiptRecorded ->
         let form = model.Receipt
-        let received = if form.Date.Trim() = "" then Some(today ctx) else parseDate form.Date
+        let received = if form.Date.Trim() = "" then Some(model.Today) else parseDate form.Date
 
         match parseAmount form.Amount, received with
         | _, _ when form.CustomerId = "" -> { model with Error = Some "Choose who paid."; Notice = None }, []
@@ -2052,17 +2058,38 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
             let year =
                 match model.Place with
                 | Routes.Cpa(Some year) -> year
-                | _ -> (today ctx).Year
+                | _ -> (model.Today).Year
 
             let yearEnd = DateOnly(year, 12, 31)
             let ledger = books.Books.Ledger
             let base64 (text: string) = Convert.ToBase64String(Text.Encoding.UTF8.GetBytes text)
 
+            // Each file says what it is (SUM3-026): when, which period, which
+            // version of the books, which filters, which export schema.
+            let described kind' (csv: string) =
+                match Exports.dataVersion books with
+                | Ok version ->
+                    Ok(
+                        Exports.withHeader
+                            { Kind = kind'
+                              GeneratedAt = ctx.Now
+                              Period = DateOnly(year, 1, 1), yearEnd
+                              DataVersion = version
+                              Filters = [ "currency", "USD"; "year", string year ] }
+                            csv
+                    )
+                | Error problems -> Error(describe problems)
+
+            let offer name (described: Result<string, string>) =
+                match described with
+                | Ok text -> model, [ OfferDownload(name, "text/csv", base64 text) ]
+                | Error why -> { model with Error = Some $"The export could not be made: {why}" }, []
+
             match kind with
-            | "trial-balance" -> model, [ OfferDownload($"trial-balance-{year}.csv", "text/csv", base64 (Reports.trialBalanceCsv (Reports.trialBalance "USD" yearEnd ledger))) ]
+            | "trial-balance" -> offer $"trial-balance-{year}.csv" (described "trial-balance" (Reports.trialBalanceCsv (Reports.trialBalance "USD" yearEnd ledger)))
             | "journal" ->
                 let ofYear = { ledger with Journal = ledger.Journal |> List.filter (fun id -> ledger.Entries[id].Date.Year = year) }
-                model, [ OfferDownload($"journal-{year}.csv", "text/csv", base64 (Reports.journalCsv ofYear)) ]
+                offer $"journal-{year}.csv" (described "journal" (Reports.journalCsv ofYear))
             | _ -> model, []
         | _ -> { model with Error = Some "This browser cannot offer downloads here." }, []
     | ResetConfirmed ->
