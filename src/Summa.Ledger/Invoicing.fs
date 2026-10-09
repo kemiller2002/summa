@@ -536,10 +536,56 @@ let openBooks (ledger: Ledger) =
       Deliveries = Map.empty
       FollowUps = Map.empty }
 
+let private termsWords =
+    function
+    | None -> "default"
+    | Some DueOnReceipt -> "due on receipt"
+    | Some(Net days) -> $"Net {days}"
+    | Some(CustomDate d) -> d.ToString("yyyy-MM-dd")
+
+let private optional (value: string option) = defaultArg value "none"
+
+/// The customer fields a change can touch, in words (INV-AUD-002).
+let private customerFields: (string * (Customer -> string)) list =
+    [ "name", _.Name
+      "billing name", _.BillingName
+      "billing address", _.BillingAddress
+      "email", _.Email
+      "terms", _.DefaultTerms >> termsWords
+      "payment profile", _.PaymentProfileId >> optional
+      "active", (fun c -> if c.Active then "yes" else "no")
+      "tax", (fun c -> $"%A{c.Tax}") ]
+
 let saveCustomer (context: Context) (customer: Customer) (books: Books) =
+    let changed =
+        match books.Customers.TryFind customer.Id with
+        | Some before -> changedFields customerFields before customer
+        | None -> []
+
     { books with
         Customers = books.Customers.Add(customer.Id, customer)
-        Ledger = audit context "customer-saved" customer.Id books.Ledger }
+        Ledger = auditChange context "customer-saved" customer.Id (applied None changed) books.Ledger }
+
+/// The draft fields a change can touch, in words (INV-AUD-002). Lines,
+/// adjustments and discounts are named when they change, not spelled out.
+let private draftFields: (string * (DraftInvoice -> string)) list =
+    let lineText (l: InvoiceLine) = $"{l.Description} {l.QuantityThousandths} x {Money.text l.UnitPrice} %A{l.Tax} %A{l.Discount} %A{l.Rate}"
+
+    [ "customer", _.CustomerId
+      "currency", _.Currency
+      "lines", (fun d -> $"{d.Lines.Length} lines: " + (d.Lines |> List.map lineText |> String.concat "; "))
+      "adjustments", (fun d -> $"%A{d.Adjustments}")
+      "discounts", (fun d -> $"%A{d.Discounts}")
+      "terms", _.Terms >> termsWords
+      "due date", _.DueDate >> Option.map (fun d -> d.ToString("yyyy-MM-dd")) >> optional
+      "engagement", _.EngagementId >> optional
+      "purchase order", _.Details.PurchaseOrder >> optional
+      "client reference", _.Details.ClientReference >> optional
+      "service period", (fun d -> $"%A{d.Details.ServicePeriod}")
+      "customer notes", _.Details.CustomerNotes >> optional
+      "internal notes", _.Details.InternalNotes >> optional
+      "assumptions", (fun d -> String.concat "; " d.Assumptions)
+      "recipients", (fun d -> $"%A{d.Recipients}") ]
 
 /// Saves a draft. The draft names the version it changes: 0 for a new
 /// draft, otherwise the version that was read; a stale save is refused
@@ -555,7 +601,12 @@ let saveDraft (context: Context) (draft: DraftInvoice) (books: Books) =
     | None, stored ->
         let what = if stored.IsSome then "invoice-changed" else "invoice-created"
         let saved = { draft with Version = draft.Version + 1; Review = Editing }
-        Ok { books with Drafts = books.Drafts.Add(draft.DraftId, saved); Ledger = audit context what draft.DraftId books.Ledger }
+        let changed = stored |> Option.map (fun before -> changedFields draftFields before saved) |> Option.defaultValue []
+
+        Ok
+            { books with
+                Drafts = books.Drafts.Add(draft.DraftId, saved)
+                Ledger = auditChange context what draft.DraftId (applied (Some saved.Version) changed) books.Ledger }
 
 /// Whether numbers restart every calendar year or run on (INV-NUM-004).
 type NumberScope =
@@ -824,7 +875,7 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
 
                     Ok(
                         { books with
-                            Ledger = audit context "invoice-issued" request.InvoiceId ledger
+                            Ledger = auditChange context "invoice-issued" request.InvoiceId (applied (Some draft.Version) []) ledger
                             Drafts = books.Drafts.Remove request.DraftId
                             Invoices = books.Invoices.Add(request.InvoiceId, invoice)
                             Obligations = books.Obligations.Add(request.ObligationId, obligation)

@@ -19,6 +19,7 @@
     <Compile Include="CreditMemoDocuments.fs" />
     <Compile Include="Corrections.fs" />
     <Compile Include="Billing.fs" />
+    <Compile Include="AgentRequests.fs" />
     <Compile Include="Issuance.fs" />
     <Compile Include="Lifecycle.fs" />
     <Compile Include="ChronaImport.fs" />

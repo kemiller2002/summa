@@ -61,5 +61,11 @@ let extend (quantityThousandths: int64) (unitPrice: Money) =
     let product = decimal quantityThousandths * decimal unitPrice.Minor / 1000m
     { unitPrice with Minor = int64 (Decimal.Round(product, 0, MidpointRounding.AwayFromZero)) }
 
+/// An amount in words for a record of what changed: `175.00 USD`.
+let text (m: Money) =
+    let sign = if m.Minor < 0L then "-" else ""
+    let a = abs m.Minor
+    $"{sign}{a / 100L}.{a % 100L:D2} {m.Currency}"
+
 let isPositive (m: Money) = m.Minor > 0L
 let isNegative (m: Money) = m.Minor < 0L

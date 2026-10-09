@@ -308,3 +308,12 @@ let ``an invoice's history says when an agent acted, with its identity and run, 
     let last = history |> List.last |> Map.ofList
     Assert.Equal(Text "Agent summa-agent (anthropic claude), run EXE-summa.7", last["who"])
     Assert.Equal(Text "invoice sent: customer asked for a copy", last["what"])
+
+[<Fact>]
+let ``an invoice's history says which version changed and what changed in it`` () =
+    let saved = started () |> customer |> drafted |> run [ DraftSubmitted ] |> fst
+    let model = run [ DraftPurchaseOrderChanged "PO-77"; DraftSubmitted; DraftIssued ] saved |> fst
+    let history = run [ LocationChanged(address "#/invoices/INV-0001?tab=history") ] model |> fst |> items "history" |> List.map Map.ofList
+    let changed = history |> List.map (fun row -> row["changed"])
+    Assert.Contains(Text "version 1", changed)
+    Assert.Contains(Text "version 2; purchase order: none -> PO-77", changed)

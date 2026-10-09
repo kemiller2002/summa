@@ -1068,6 +1068,35 @@ let provenanceOf (value: Json) : Decoded<Provenance> =
             | other -> Error $"'{other}' is not an actor kind"
     }
 
+/// What a change did to its entity (INV-AUD-002).
+let changeJson (c: AuditChange) =
+    Json.objectOf
+        [ "version", (match c.Version with Some v -> Codec.number v | None -> Json.Null)
+          "outcome", Json.String c.Outcome
+          "changed", Json.Array(c.Changed |> List.map Json.String) ]
+
+let changeOf (value: Json) : Decoded<AuditChange> =
+    decode {
+        do! closed [ "changed"; "outcome"; "version" ] value
+
+        let! version =
+            match Codec.tryField "version" value with
+            | None -> Ok None
+            | Some _ -> integer "version" value |> Result.map Some
+
+        let! outcome = text "outcome" value
+
+        let! changed =
+            list "changed" (function
+                | Json.String s -> Ok s
+                | _ -> Error "'changed' holds text only") value
+
+        return!
+            match outcome with
+            | "applied" -> Ok { Version = version; Outcome = outcome; Changed = changed }
+            | other -> Error $"'{other}' is not an audit outcome"
+    }
+
 /// Stable ids of audit events: a hash of the event and how many identical
 /// events precede it, so the same history always has the same paths.
 let private auditBody (a: AuditRecord) =
@@ -1079,6 +1108,7 @@ let private auditBody (a: AuditRecord) =
           "correlationId", optionalString a.CorrelationId
           "subject", Json.String a.Subject ]
         @ (a.Provenance |> Option.map (fun p -> "provenance", provenanceJson p) |> Option.toList)
+        @ (a.Change |> Option.map (fun c -> "change", changeJson c) |> Option.toList)
     )
 
 let private auditIds (audit: AuditRecord list) =
@@ -1448,7 +1478,7 @@ let schemaVersionOf (record: FinancialRecord) =
         match value with
         | Json.Object members ->
             members
-            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || recordsTax inner)
+            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || key = "change" || recordsTax inner)
         | Json.Array items -> items |> List.exists recordsTax
         | _ -> false
 
@@ -1843,7 +1873,7 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
         }
     | "summa.audit" ->
         decode {
-            do! closed [ "correlationId"; "provenance"; "source"; "subject"; "what"; "when"; "who" ] b
+            do! closed [ "change"; "correlationId"; "provenance"; "source"; "subject"; "what"; "when"; "who" ] b
             let! who = text "who" b
             let! what = text "what" b
             let! at = preciseInstant "when" b
@@ -1856,6 +1886,11 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                 | None -> Ok None
                 | Some p -> provenanceOf p |> Result.map Some
 
+            let! change =
+                match Codec.tryField "change" b with
+                | None -> Ok None
+                | Some c -> changeOf c |> Result.map Some
+
             return
                 AuditPart
                     { Who = who
@@ -1864,7 +1899,8 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                       Source = source
                       CorrelationId = correlation
                       Subject = subject
-                      Provenance = provenance }
+                      Provenance = provenance
+                      Change = change }
         }
     | "summa.credit" ->
         decode {

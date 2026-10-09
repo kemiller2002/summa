@@ -184,6 +184,26 @@ let contextFor (actor: Actor.Actor) (at: DateTimeOffset) (source: string) (sourc
 
 /// The Arca operation metadata of a command: the actor, its execution and
 /// correlation, and the idempotency key, never a token.
+/// The authorized agent interface (INV-AGENT-001): a request in words,
+/// from an agent the organization's roster lets propose invoices, becomes a
+/// proposal and nothing more. It needs `ProposeInvoice` only, so it never
+/// issues, voids, applies, writes off, refunds or changes a rate
+/// (INV-AGENT-007); what it cannot settle comes back as questions
+/// (INV-AGENT-003). Retrying the same request with the same proposal id
+/// changes nothing.
+let agentRequest
+    (actor: Actor.Actor)
+    (at: DateTimeOffset)
+    (accounts: Summa.Ledger.Billing.BillingAccounts)
+    (proposalId: string)
+    (request: string)
+    : Request<Summa.Ledger.AgentRequests.Question list> =
+    { Actor = actor
+      Capability = ProposeInvoice
+      Summary = $"Propose {proposalId} from a request in words"
+      IdempotencyKey = $"agent-request-{proposalId}"
+      Transition = Summa.Ledger.AgentRequests.propose (contextFor actor at "summa-agent-interface" None None) accounts proposalId request }
+
 let metadata (actor: Actor.Actor) (summary: string) (key: string) : Result<OperationMetadata, Diagnostic list> =
     match ActorId.create actor.ActorId, CorrelationId.create actor.CorrelationId, IdempotencyKey.create key with
     | Ok id, Ok correlation, Ok idempotency ->

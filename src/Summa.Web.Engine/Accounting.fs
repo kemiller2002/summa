@@ -3403,7 +3403,15 @@ let view (model: Model) : View =
                 [ "key", Text(string index)
                   "when", Text(a.When.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture))
                   "who", Text(actorText a.Who a.Provenance)
-                  "what", Text(a.What.Replace('-', ' ') + (a.Provenance |> Option.bind _.Reason |> Option.map (fun r -> $": {r}") |> Option.defaultValue "")) ]))
+                  "what", Text(a.What.Replace('-', ' ') + (a.Provenance |> Option.bind _.Reason |> Option.map (fun r -> $": {r}") |> Option.defaultValue ""))
+                  // The entity's version and what changed (INV-AUD-002).
+                  "changed",
+                  Text(
+                      match a.Change with
+                      | Some change ->
+                          (change.Version |> Option.map (fun v -> $"version {v}") |> Option.toList) @ change.Changed |> String.concat "; "
+                      | None -> ""
+                  ) ]))
         |> Option.defaultValue []
 
     let detailValues =
