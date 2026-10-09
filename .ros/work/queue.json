@@ -1078,14 +1078,14 @@
     },
     {
       "id": "WI-0045",
-      "title": "Arca 0.4.0: adopt echelon-current 1.16.0 (per-namespace change tokens, sign-out discard by account, explicit erasure)",
+      "title": "Arca 0.4.0 and Praxis 3.11.0: adopt echelon-current 1.17.0 through Conditor 0.8.2 (per-namespace change tokens, sign-out discard by account, explicit erasure)",
       "description": "Arca 0.4.0 is a breaking minor release in echelon-current 1.16.0: change tokens are per namespace (Fresh.read and ProviderObservation.Current take provider.NamespaceState ns; Operation.requireNamespaceToken applies the check), sign-out discard goes by AccountId.ofIdentity, and explicit erasure of immutable records is available. Summa's books on GitHub run on Arca, so adopt 0.4.0 through Conditor --current in its own PR, with the Praxis version --current selects or an explicit pin.",
       "tags": [],
       "priority": "medium",
       "status": "ready",
       "attachments": [],
       "createdAt": "2026-10-09T02:34:43.000Z",
-      "updatedAt": "2026-10-09T02:34:48.000Z",
+      "updatedAt": "2026-10-09T03:40:52.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
