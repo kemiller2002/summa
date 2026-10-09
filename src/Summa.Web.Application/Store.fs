@@ -337,7 +337,14 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
     /// changes another sign-in left in this browser.
     let mutable foreignReleased = false
 
-    let accountOf (ctx: Context) = AccountId.toWire (AccountId.ofIdentity ctx.Snapshot.Identity)
+    /// The accounts this sign-in answers to: the one GitHub resolved, and its
+    /// actor id as an entry recorded it. Never a display name.
+    let accountsOf (ctx: Context) =
+        set
+            [ AccountId.toWire (AccountId.ofIdentity ctx.Snapshot.Identity)
+              match ActorId.create ctx.Person.ActorId with
+              | Ok actor -> AccountId.toWire (AccountId.ofActor actor)
+              | Error _ -> () ]
 
     let isOpen (entry: QueueEntry) =
         match entry.State with
@@ -350,7 +357,9 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
     /// this account, sent as it, or dropped without the person's choice.
     let foreignEntries () =
         match context with
-        | Some ctx -> queue.Entries |> List.filter (fun e -> isOpen e && e.Operation.AccountId <> Some(accountOf ctx))
+        | Some ctx ->
+            let mine = accountsOf ctx
+            queue.Entries |> List.filter (fun e -> isOpen e && not (e.Operation.AccountId |> Option.exists mine.Contains))
         | None -> []
 
     let held () = not foreignReleased && not (foreignEntries ()).IsEmpty
@@ -387,7 +396,23 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
                 queueNote <- None
 
                 match! store.Load() with
-                | Ok(Some loaded) -> queue <- OfflineQueue.recover loaded
+                | Ok(Some loaded) ->
+                    // Entries kept before Summa recorded the account (before Arca
+                    // 0.4.0, or revised under 0.4.0) take it from the actor the
+                    // entry itself recorded, and from nothing else (WI-0046).
+                    let stamped =
+                        { loaded with
+                            Entries =
+                                loaded.Entries
+                                |> List.map (fun e ->
+                                    match e.Operation.AccountId, ActorId.create e.Operation.ActorId with
+                                    | None, Ok actor -> { e with Operation = { e.Operation with AccountId = Some(AccountId.toWire (AccountId.ofActor actor)) } }
+                                    | _ -> e) }
+
+                    queue <- OfflineQueue.recover stamped
+
+                    if stamped <> loaded then
+                        do! store.Save queue |> Async.Ignore
                 | Ok None -> ()
                 | Error _ -> queueNote <- Some "The unsent changes kept in this browser could not be read; changes made now are kept in this tab until sent."
             | QueueOwnership.OwnedElsewhere ->

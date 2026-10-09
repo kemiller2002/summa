@@ -1,14 +1,14 @@
 {
   "schemaVersion": 4,
   "project": "summa",
-  "manifestSha256": "2683ec984aeffd9d5fb0d599d29ef06cca1bcd772fe73aec66563705244fbbf8",
+  "manifestSha256": "6cd0aa24607ff8892239b6b0efb71718a351740afc914a39ebee91edb8b56022",
   "manifest": {
     "schemaVersion": 1,
     "name": "summa",
     "registryAuthority": {
       "kind": "resolved-release-set",
       "path": ".conditor/authority/resolved-release-set.json",
-      "sha256": "94b37048d25a7c8ef67b9470f8ab66d529d52a5152baeeae6d6e1ca72df95ec4"
+      "sha256": "48aeb43c667f9153eea3bdd16a0d600fa8f93dea109a4fa2411c458a393ffbc5"
     },
     "components": [
       {
@@ -28,7 +28,7 @@
       },
       {
         "id": "arca",
-        "version": "0.4.0",
+        "version": "0.4.1",
         "required": true
       },
       {
@@ -77,11 +77,11 @@
     },
     {
       "id": "arca",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "distribution": "nuget",
       "package": "EchelonFoundry.Arca.Core,EchelonFoundry.Arca.GitHub,EchelonFoundry.Arca.Limen",
       "authority": "registry-resolved-set",
-      "sourceReference": "nuget-feed:kemiller2002/arca@v0.4.0#sha256:f1ec5078b5c003a8200d3e13f3f840242bde065fe4ce0aeb61aecdb358237a37"
+      "sourceReference": "nuget-feed:kemiller2002/arca@v0.4.1#sha256:76c1d7132147044421a5664c3c77cf339ec90a47044fb67ed79c0768de3bf368"
     },
     {
       "id": "fides",
@@ -106,8 +106,15 @@
       "component": "ordo",
       "code": "SDE-STRUCT-001",
       "band": "conformance-concern",
+      "path": "src/Summa.Wasm/bin/Release/net10.0/wwwroot/_framework/dotnet.native.go6x1p5bpl.js",
+      "lineCount": 6773
+    },
+    {
+      "component": "ordo",
+      "code": "SDE-STRUCT-001",
+      "band": "conformance-concern",
       "path": "src/Summa.Web.Engine/Accounting.fs",
-      "lineCount": 4012
+      "lineCount": 4032
     },
     {
       "component": "ordo",
@@ -142,7 +149,7 @@
       "code": "SDE-STRUCT-001",
       "band": "strong-review",
       "path": "src/Summa.Web.Application/AccountingWire.fs",
-      "lineCount": 1015
+      "lineCount": 1021
     },
     {
       "component": "ordo",
@@ -163,7 +170,14 @@
       "code": "SDE-STRUCT-001",
       "band": "review",
       "path": "src/Summa.Web.Application/Store.fs",
-      "lineCount": 628
+      "lineCount": 688
+    },
+    {
+      "component": "ordo",
+      "code": "SDE-STRUCT-001",
+      "band": "review",
+      "path": "tests/Summa.Storage.Tests/CommandTests.fs",
+      "lineCount": 503
     }
   ]
 }
