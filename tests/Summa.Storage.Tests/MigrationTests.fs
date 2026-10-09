@@ -154,6 +154,7 @@ let private contentOf (store: InMemoryStore) (ns: Namespace) (relative: string) 
     match store.Provider.Read ns (RelativePath.parse relative |> ok) |> Async.RunSynchronously |> ok with
     | ReadOutcome.Found o -> o.Content
     | ReadOutcome.Absent -> failwith "absent"
+    | ReadOutcome.Erased _ -> failwith "erased"
 
 /// Acme's books on a store, as a schema 1 Summa left them.
 let private storedAtSchema1 () =

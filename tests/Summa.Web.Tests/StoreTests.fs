@@ -52,6 +52,7 @@ let private synchronous (provider: StorageProvider) : StorageProvider =
         List = fun ns path -> now (provider.List ns path)
         Commit = fun operation -> now (provider.Commit operation)
         ChangeToken = fun ns -> now (provider.ChangeToken ns)
+        NamespaceState = fun ns -> now (provider.NamespaceState ns)
         History = fun ns path -> now (provider.History ns path)
         Reconcile = fun ns pending -> now (provider.Reconcile ns pending) }
 
@@ -67,7 +68,8 @@ type private Network(repository: InMemoryStore) =
             Read = fun ns path -> guard (provider.Read ns path)
             List = fun ns path -> guard (provider.List ns path)
             Commit = fun operation -> guard (provider.Commit operation)
-            ChangeToken = fun ns -> guard (provider.ChangeToken ns) }
+            ChangeToken = fun ns -> guard (provider.ChangeToken ns)
+            NamespaceState = fun ns -> guard (provider.NamespaceState ns) }
 
 /// One browser: its localStorage, and which tab holds which Web Lock.
 type private Browser() =
@@ -300,6 +302,8 @@ let ``unsent changes outlive the page in this browser, held by one tab at a time
     let session, _ = addCustomer env session "Acme"
     Assert.Equal(1, waiting session)
     Assert.Contains(browser.Value.Storage.Keys, fun key -> key.StartsWith "arca.queue.")
+    // Kept under the account GitHub resolved, so sign-out matches it by a stable id (Arca 0.4.0).
+    Assert.Contains(browser.Value.Storage.Values, fun text -> text.Contains "subject:github:583231")
 
     // Another tab of the same browser does not take them: one lock, one holder.
     openAs repository "583231" "octocat" |> ignore

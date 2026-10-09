@@ -53,6 +53,7 @@ let ``the application manifest names Summa, its versions and where organizations
         Assert.Equal(Some 1, manifest.RecordSchemas.TryFind "summa.application")
         Assert.Equal(Application.ApplicationVersion, manifest.MinimumApplicationVersion)
     | ReadOutcome.Absent -> failwith "no application manifest"
+    | ReadOutcome.Erased _ -> failwith "erased"
 
 [<Fact>]
 let ``a namespace opens only when its Arca manifest matches the configuration`` () =
@@ -72,6 +73,7 @@ let ``a namespace opens only when its Arca manifest matches the configuration`` 
     | ReadOutcome.Found stored ->
         Assert.Equal<string list>([ "SUMMA.STORAGE.NAMESPACE_UNUSABLE" ], codes (openNamespace configured (ReadOutcome.Found stored)))
     | ReadOutcome.Absent -> failwith "manifest missing"
+    | ReadOutcome.Erased _ -> failwith "erased"
 
 [<Fact>]
 let ``an organization's folder is named by its immutable id and may be in its own repository`` () =
@@ -112,6 +114,7 @@ let ``the organization manifest round-trips with every SUM0-011 field`` () =
         // Read as another organization's manifest, it is refused.
         Assert.Equal("SUMMA.STORAGE.INVALID_RECORD", Organization.decode "org_eu" stored |> codeOf)
     | ReadOutcome.Absent -> failwith "no organization manifest"
+    | ReadOutcome.Erased _ -> failwith "erased"
 
 [<Fact>]
 let ``initializing twice never overwrites`` () =
@@ -147,6 +150,7 @@ let ``renaming changes names, never the id or the folder, and needs the revision
         match read ns path state with
         | ReadOutcome.Found stored -> stored.Revision
         | ReadOutcome.Absent -> failwith "missing"
+        | ReadOutcome.Erased _ -> failwith "erased"
 
     let renamed =
         { acme with
@@ -158,6 +162,7 @@ let ``renaming changes names, never the id or the folder, and needs the revision
     match read ns path next with
     | ReadOutcome.Found stored -> Assert.Equal(renamed, Organization.decode "org_acme" stored |> ok)
     | ReadOutcome.Absent -> failwith "missing"
+    | ReadOutcome.Erased _ -> failwith "erased"
 
     // A stale revision is a conflict, never a blind overwrite.
     let stale = updateOrganization ns (context "rename-2") revision renamed { renamed with Slug = "acme-2" } |> ok
@@ -204,3 +209,4 @@ let ``stored content is untrusted: a tampered manifest is refused, not used`` ()
         let extra = { stored with Content = stored.Content.Replace("\"slug\":", "\"owner\":\"x\",\"slug\":") }
         Assert.Equal("SUMMA.STORAGE.INVALID_RECORD", Organization.decode "org_acme" extra |> codeOf)
     | ReadOutcome.Absent -> failwith "missing"
+    | ReadOutcome.Erased _ -> failwith "erased"

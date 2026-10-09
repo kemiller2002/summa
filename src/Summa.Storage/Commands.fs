@@ -137,6 +137,16 @@ let readAll (provider: StorageProvider) (ns: Namespace) : Async<Result<StoredObj
                                 match! provider.Read ns entry.Path with
                                 | Ok(ReadOutcome.Found stored) -> return Ok [ stored ]
                                 | Ok ReadOutcome.Absent -> return Ok []
+                                // A member erased (ARCA-INT-005) is no longer a member.
+                                // An erased financial record would change history:
+                                // the books are not kept on without it.
+                                | Ok(ReadOutcome.Erased erased) when RelativePath.render(erased.Path).Contains "/members/" -> return Ok []
+                                | Ok(ReadOutcome.Erased erased) ->
+                                    return
+                                        Error(
+                                            Untrustworthy
+                                                [ InvalidStoredRecord(RelativePath.render erased.Path, "it was erased; Summa does not keep books with an erased financial record") ]
+                                        )
                                 | Error failure -> return Error(StorageFailed failure)
                             })
                     |> inOrder
@@ -236,7 +246,7 @@ let private isMember (o: StoredObject) =
 let decide
     (gates: Set<Capability>)
     (ns: Namespace)
-    (token: ChangeToken)
+    (state: NamespaceState)
     (objects: StoredObject list)
     (request: Request<'e>)
     : Result<Receivables * Operation option, CommandFailure<'e>> =
@@ -272,7 +282,7 @@ let decide
                                     Operation.create ns meta found
                                     |> Result.mapError (fun error -> [ StorageOperationRefused $"%A{error}" ]))
                                 |> Result.mapError Unstorable
-                                |> Result.map (fun operation -> next, Some(Operation.requireChangeToken token operation))))
+                                |> Result.map (fun operation -> next, Some(Operation.requireNamespaceToken state.NamespaceToken operation))))
 
 /// How this Summa may use the organization's folder, from its Arca manifest
 /// and organization manifest; a folder without them is not usable.
@@ -295,6 +305,7 @@ let compatibility (provider: StorageProvider) (ns: Namespace) : Async<Result<Com
                 | Error problems, _ -> return Error(Untrustworthy problems)
                 | _, Error problem -> return Error(Untrustworthy [ problem ])
             | Ok _, Ok ReadOutcome.Absent -> return Error(Untrustworthy [ NamespaceNotInitialized(RelativePath.render ns.Root) ])
+            | Ok _, Ok(ReadOutcome.Erased _) -> return Error(Untrustworthy [ NamespaceUnusable(RelativePath.render ns.Root, "its organization manifest was erased") ])
         | _ -> return Error(Untrustworthy [ InvalidOrganizationId organizationId ])
     }
 
@@ -310,7 +321,7 @@ let execute
     : Async<Result<Outcome, CommandFailure<'e>>> =
     let rec attempt (n: int) =
         async {
-            match! provider.ChangeToken ns with
+            match! provider.NamespaceState ns with
             | Error failure -> return Error(StorageFailed failure)
             | Ok token ->
                 match! readAll provider ns with
@@ -326,7 +337,8 @@ let execute
                         match! provider.Commit operation with
                         | Ok receipt -> return Ok { State = state; Receipt = Some receipt; Attempts = n }
                         | Error(StorageFailure.Conflicted _)
-                        | Error(StorageFailure.StaleChangeToken _) -> return! retry ()
+                        | Error(StorageFailure.StaleChangeToken _)
+                        | Error(StorageFailure.StaleNamespaceToken _) -> return! retry ()
                         | Error(StorageFailure.OutcomeUnknown pending) ->
                             match! provider.Reconcile ns pending with
                             | Ok(ReconcileOutcome.Landed receipt) -> return Ok { State = state; Receipt = Some receipt; Attempts = n }

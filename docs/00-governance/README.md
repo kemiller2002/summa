@@ -47,7 +47,7 @@ This directory is the canonical Phase 1 governance layer for Praxis, Echelon Fou
 1. [Root agent guide](../../AGENTS.md) — session startup and high-signal rules.
 2. [AI Repository Operating System](AI-Repository-Operating-System.md) — constitution, authority, lifecycle, and change control.
 3. [Agent Operating Manual](Agent-Operating-Manual.md) — executable research, engineering, escalation, and handoff procedures.
-4. Read the task-specific standard: [Engineering Standards](Engineering-Standards.md) and/or [REP Specification](https://github.com/kemiller2002/praxis/blob/v3.7.2/docs/00-governance/Research-Execution-Package-Specification.md). Executing work also follows the [adaptive telemetry contract](../development-telemetry.md).
+4. Read the task-specific standard: [Engineering Standards](Engineering-Standards.md) and/or [REP Specification](https://github.com/kemiller2002/praxis/blob/v3.11.0/docs/00-governance/Research-Execution-Package-Specification.md). Executing work also follows the [adaptive telemetry contract](../development-telemetry.md).
 5. [Governance Decision Log](Governance-Decision-Log.md) — rationale and revisit triggers for Phase 1 decisions.
 
 Each rule has one authoritative home. The index and `AGENTS.md` summarize and link; the constitution governs cross-domain questions; the manuals govern their named procedures; the decision log explains why but does not override an accepted canonical rule.

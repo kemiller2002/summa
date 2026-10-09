@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-09T03:15:27.000Z",
+  "updatedAt": "2026-10-09T04:06:17.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -2087,14 +2087,60 @@
     {
       "id": "WI-0045",
       "type": "task",
-      "state": "blocked",
-      "semanticState": "blocked",
-      "evidence": [],
-      "updatedAt": "2026-10-09T02:35:56.000Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Commands.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Application/Store.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "conditor.json"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Storage.Tests/CommandTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/StoreTests.fs"
+        },
+        {
+          "type": "decision",
+          "path": "research/decisions/DF-SUMMA-2026-0014--books-on-github-through-arca.md"
+        }
+      ],
+      "updatedAt": "2026-10-09T04:06:17.000Z",
       "telemetryExecutionIds": [
         "EXE-20261009T023449249Z-e60c915b"
       ],
-      "blockReason": "Conditor 0.8.1 (latest) refuses echelon-current 1.16.0 for summa: the set selects Praxis 3.10.0, which declares no echelon.repository-lifecycle contract and is not a lifecycle version Conditor has qualified (it qualifies Praxis up to 3.7.2). Praxis cannot be pinned separately: Registry is the single version authority and Conditor refuses substituting a version. Needs a Conditor release that qualifies Praxis 3.10.0, or a Praxis 3.10.x that declares the lifecycle contract."
+      "blockReason": "Conditor 0.8.1 (latest) refuses echelon-current 1.16.0 for summa: the set selects Praxis 3.10.0, which declares no echelon.repository-lifecycle contract and is not a lifecycle version Conditor has qualified (it qualifies Praxis up to 3.7.2). Praxis cannot be pinned separately: Registry is the single version authority and Conditor refuses substituting a version. Needs a Conditor release that qualifies Praxis 3.10.0, or a Praxis 3.10.x that declares the lifecycle contract.",
+      "latestCheckpoint": {
+        "id": "4e05eda3c677637abe568efa",
+        "recordedAt": "2026-10-09T04:06:06.000Z",
+        "executionId": "EXE-20261009T023449249Z-e60c915b",
+        "repository": "summa",
+        "branch": "feat/wi-0045-arca-0.4.0",
+        "commit": "7df0c80a6628ed96ce849412df9ad8055f9fd838",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/wi-0045-arca-0.4.0",
+        "remoteCommit": "7df0c80a6628ed96ce849412df9ad8055f9fd838",
+        "summary": "Arca 0.4.0 and Praxis 3.11.0 adopted through Conditor 0.8.2 (echelon-current 1.17.0)",
+        "nextAction": "Complete WI-0045",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-09T04:06:17.000Z"
     },
     {
       "id": "WI-0044",

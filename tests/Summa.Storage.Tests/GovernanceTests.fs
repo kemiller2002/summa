@@ -78,7 +78,8 @@ let ``founding is one commit: manifests and the founder's membership, nothing ov
         |> List.map (fun entry ->
             match read ns entry.Path next with
             | ReadOutcome.Found s -> s
-            | ReadOutcome.Absent -> failwith "listed but absent")
+            | ReadOutcome.Absent -> failwith "listed but absent"
+            | ReadOutcome.Erased _ -> failwith "erased")
 
     let roster, revisions = MemberRecord.roster "org_acme" stored |> ok
     Assert.Equal<string list>([ "github:583231" ], roster.Members |> Map.toList |> List.map fst)

@@ -97,6 +97,7 @@ let openNamespace (ns: Namespace) (stored: ReadOutcome) : Result<Manifest, Diagn
 
     match stored with
     | ReadOutcome.Absent -> Error [ NamespaceNotInitialized root ]
+    | ReadOutcome.Erased _ -> Error [ NamespaceUnusable(root, "its manifest was erased") ]
     | ReadOutcome.Found found ->
         Manifest.decode found.Content
         |> Result.mapError (fun error -> [ InvalidStoredRecord(RelativePath.render found.Path, $"%A{error}") ])

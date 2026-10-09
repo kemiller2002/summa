@@ -3,7 +3,7 @@
 A practical, example-driven guide to capturing and executing work once Praxis is
 installed in a repository. For the underlying design, see the "Local
 backlog" section of [`work-protocol.md`](work-protocol.md) and
-[`DF-ROS-2026-A008`](https://github.com/kemiller2002/praxis/blob/v3.7.2/research/decisions/DF-ROS-2026-A008--repository-local-work-backlog.md).
+[`DF-ROS-2026-A008`](https://github.com/kemiller2002/praxis/blob/v3.11.0/research/decisions/DF-ROS-2026-A008--repository-local-work-backlog.md).
 
 Two things are layered here, and it helps to keep them straight from the
 start:

@@ -261,7 +261,7 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
         diagnostics |> List.map Diagnostics.describe
 
     /// The records as last read from GitHub, and the change token then.
-    let mutable lastRead: (ChangeToken * StoredObject list) option = None
+    let mutable lastRead: (NamespaceState * StoredObject list) option = None
 
     /// Opens the books for the context's person, as the engine's message.
     let opening (ctx: Context) : Async<Msg> =
@@ -374,7 +374,7 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
         async {
             let provider = providerOf ctx.Namespace
 
-            match! provider.ChangeToken ctx.Namespace with
+            match! provider.NamespaceState ctx.Namespace with
             | Error failure -> return Error(Commands.StorageFailed failure)
             | Ok token ->
                 match! Commands.readAll provider ctx.Namespace with
@@ -567,7 +567,9 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
                             return [ StoreRefused(describeFailure failure, now) ]
                         | Ok(state, None) -> return [ BooksCommitted state ]
                         | Ok(_, Some operation) ->
-                            match OfflineQueue.enqueue (now ()) operation queue with
+                            // Queued under the account GitHub resolved for this sign-in, so
+                            // sign-out matches its entries by a stable id (Arca 0.4.0, LCP-070).
+                            match OfflineQueue.enqueueFor (AccountId.ofIdentity ctx.Snapshot.Identity) (now ()) operation queue with
                             | Error error -> return [ StoreRefused($"The change could not be kept to send: %A{error}", None) ]
                             | Ok(queued, sequence) ->
                                 queue <- queued

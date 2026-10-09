@@ -120,6 +120,8 @@ let migrate (provider: StorageProvider) (gates: Set<Summa.Access.Access.Capabili
             | _, _, Error failure -> return Error failure
             | Ok ReadOutcome.Absent, _, _
             | _, Ok ReadOutcome.Absent, _ -> return Error(Commands.Untrustworthy [ NamespaceNotInitialized(RelativePath.render ns.Root) ])
+            | Ok(ReadOutcome.Erased _), _, _
+            | _, Ok(ReadOutcome.Erased _), _ -> return Error(Commands.Untrustworthy [ NamespaceUnusable(RelativePath.render ns.Root, "a manifest was erased") ])
             | Ok(ReadOutcome.Found arcaStored as arcaFound), Ok(ReadOutcome.Found organizationFound), Ok objects ->
                 let members, financial = objects |> List.partition (fun o -> match Layout.keyOf o.Path with Some k -> k.Type = MemberRecord.recordType | None -> false)
 

@@ -9,7 +9,7 @@ of what's outstanding across all of them.
 This lives in a separate, installable Praxis profile
 (`praxis init --profile project-administration`) — not inside a
 plain Praxis repository — for the same reason described in
-[`DF-ROS-2026-A008`](https://github.com/kemiller2002/praxis/blob/v3.7.2/research/decisions/DF-ROS-2026-A008--repository-local-work-backlog.md):
+[`DF-ROS-2026-A008`](https://github.com/kemiller2002/praxis/blob/v3.11.0/research/decisions/DF-ROS-2026-A008--repository-local-work-backlog.md):
 a single repository's work protocol must stay independently usable, and
 cross-repository coordination is a distinct concern from repository
 execution. The README's ownership table assigns "repository registration,
@@ -96,12 +96,16 @@ and no browser JavaScript: a register form, a repo list (with unregister), a
 create-work-item form (repository, title, tags, priority, description, and
 up to three files with optional display names), a filter bar (repo, tag,
 status), and the aggregated table. Every form post redirects back with a
-notice or the exact error. **No authentication, localhost by default** --
+notice or the exact error, carried in a short-lived flash cookie rather than
+the URL. Filters have one canonical URL (`/?repo=ID&tag=a,b&status=ready`;
+empty fields omitted, other spellings redirected), unknown pages are a typed
+404 with a way back, and each page offers "Link to this view" (inventory
+`.echelon/routes.hub.json`; see the URLs section of `web-interface.md`). **No authentication, localhost by default** --
 this server can create work items and run commands in every registered
 repository, which is a larger blast radius than the single-repo web
 interface. Do not bind it to a non-loopback host without your own
-authentication in front of it. `web-hub/styles.css` in the hub repository
-styles the page (a built-in copy is used when it is absent).
+authentication in front of it. The hub is presented by the same pinned Forma release (see `docs/web-interface.md`); `web-hub/styles.css` in the hub repository is an optional
+project override loaded after Forma and ships empty.
 
 The pages and the JSON API below call the same functions as `praxis hub`
 (`Praxis.Cli.Hub`); uploaded files touch disk only as short-lived temp files
