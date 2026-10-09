@@ -2136,7 +2136,27 @@
       "updatedAt": "2026-10-09T03:15:27.000Z",
       "telemetryExecutionIds": [
         "EXE-20261009T031528777Z-d8d5aa1a"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "e5de3ba427c48942908aeba2",
+        "recordedAt": "2026-10-09T03:35:32.000Z",
+        "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
+        "repository": "summa",
+        "branch": "feat/wi-0029-agent-audit",
+        "commit": "9bbdfb3f9562bdfb62c4b731195e3ad9ede71157",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/wi-0029-agent-audit",
+        "remoteCommit": "9bbdfb3f9562bdfb62c4b731195e3ad9ede71157",
+        "summary": "Agent request interface (INV-AGENT-001) and audit change detail (INV-AUD-002), DF-SUMMA-2026-0019",
+        "nextAction": "Operational safety rows of WI-0029 (SUM3-011..035, INV-OPS/FAIL/SEC/PERF/EXP/FX/INTL/ACC/REC/SET/DATA/CON/ARCH)",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      }
     }
   ]
 }
