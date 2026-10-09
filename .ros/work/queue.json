@@ -977,10 +977,10 @@
         "tax"
       ],
       "priority": "low",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T18:08:35.000Z",
-      "updatedAt": "2026-10-09T00:54:00.000Z",
+      "updatedAt": "2026-10-09T01:18:30.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
