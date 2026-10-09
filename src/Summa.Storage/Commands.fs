@@ -102,6 +102,22 @@ let folders: RelativePath list =
     @ [ RelativePath.render MemberRecord.folder ]
     |> List.choose (RelativePath.parse >> Result.toOption)
 
+/// Runs the steps in order, one after another, on the caller's thread: no
+/// thread pool, so a single-threaded host (the browser) sees each step
+/// finish within the message that started it. The first failure stops it.
+let private inOrder (steps: Async<Result<'a list, 'e>> list) : Async<Result<'a list, 'e>> =
+    let rec go (remaining: Async<Result<'a list, 'e>> list) (acc: 'a list) =
+        async {
+            match remaining with
+            | [] -> return Ok acc
+            | step :: rest ->
+                match! step with
+                | Error failure -> return Error failure
+                | Ok found -> return! go rest (acc @ found)
+        }
+
+    go steps []
+
 /// Every object under the folders, recursively. A listing the provider cut
 /// short is a failure: what was not read was not verified.
 let readAll (provider: StorageProvider) (ns: Namespace) : Async<Result<StoredObject list, CommandFailure<'e>>> =
@@ -111,7 +127,7 @@ let readAll (provider: StorageProvider) (ns: Namespace) : Async<Result<StoredObj
             | Error failure -> return Error(StorageFailed failure)
             | Ok listing when not listing.Complete -> return Error(Untrustworthy [ InvalidStoredRecord(RelativePath.render folder, "the listing was incomplete") ])
             | Ok listing ->
-                let! found =
+                return!
                     listing.Entries
                     |> List.map (fun entry ->
                         if entry.IsFolder then
@@ -123,17 +139,10 @@ let readAll (provider: StorageProvider) (ns: Namespace) : Async<Result<StoredObj
                                 | Ok ReadOutcome.Absent -> return Ok []
                                 | Error failure -> return Error(StorageFailed failure)
                             })
-                    |> Async.Sequential
-
-                return
-                    found
-                    |> Array.fold (fun state item -> state |> Result.bind (fun acc -> item |> Result.map (fun more -> acc @ more))) (Ok [])
+                    |> inOrder
         }
 
-    async {
-        let! results = folders |> List.map walk |> Async.Sequential
-        return results |> Array.fold (fun state item -> state |> Result.bind (fun acc -> item |> Result.map (fun more -> acc @ more))) (Ok [])
-    }
+    folders |> List.map walk |> inOrder
 
 let private arcaKind =
     function

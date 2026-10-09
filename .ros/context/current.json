@@ -1769,20 +1769,20 @@
         "EXE-20261008T221837840Z-607ce088"
       ],
       "latestCheckpoint": {
-        "id": "00944f8b34f1fd14ccb0b7a8",
-        "recordedAt": "2026-10-08T22:37:18.000Z",
+        "id": "8c67df8bd48edaac6c6ac60b",
+        "recordedAt": "2026-10-09T00:14:06.000Z",
         "executionId": "EXE-20261008T221837840Z-607ce088",
         "repository": "summa",
-        "branch": "feat/wi-0037-manifest-accounts",
-        "commit": "4e9d73166b40840650416ecdf27db38044efb131",
+        "branch": "feat/wi-0037-github-store",
+        "commit": "c1ff25df87cca31b60732b6393eb5e7b4dec3c2e",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0037-manifest-accounts",
-        "remoteCommit": "4e9d73166b40840650416ecdf27db38044efb131",
-        "summary": "Part 1: organization manifest schema 2 names the credit, deposit and bad-debt accounts; tested migration for local and stored books (DF-SUMMA-2026-0012)",
-        "nextAction": "Part 2: GitHub store through Arca's GitHub provider with Fides tokens, start-up from manifests offering the migration, offline queue",
+        "remoteBranch": "feat/wi-0037-github-store",
+        "remoteCommit": "c1ff25df87cca31b60732b6393eb5e7b4dec3c2e",
+        "summary": "Part 2: books on GitHub through Arca's GitHub adapter; opening, setting up, confirming, migrating; each change a replayed command (DF-SUMMA-2026-0014)",
+        "nextAction": "Part 3: offline queue on localStorage, conflicts and outside edits shown, drain before shutdown, application manifest at start-up",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"

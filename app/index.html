@@ -62,11 +62,63 @@
   </main>
 </template>
 
+<!-- Books on GitHub (WI-0037): what the store found for the signed-in person. -->
 <template data-if="awaitsGitHubStore">
-  <main class="summa-gate ef-stack" id="main" aria-labelledby="signed-in-title">
+  <main class="summa-gate ef-stack" id="main" aria-busy="true" aria-labelledby="signed-in-title">
     <h1 id="signed-in-title">Signed in as <span id="signed-in-login" data-text="signedInLogin"></span></h1>
-    <p>This build of Summa cannot open books kept on GitHub yet.</p>
+    <p>Opening the books on GitHub…</p>
+  </main>
+</template>
+
+<template data-if="booksNotSetUp">
+  <main class="summa-gate ef-stack" id="main" aria-labelledby="not-set-up-title">
+    <h1 id="not-set-up-title">These books are not set up yet</h1>
+    <template data-if="mayFound">
+      <div class="ef-stack">
+        <p>You are one of this organization's listed administrators. Setting it up creates its folder in the data repository, with you as its first administrator.</p>
+        <button type="button" class="ef-button" id="found-books" data-event="foundRequested">Set up the books</button>
+      </div>
+    </template>
+    <p id="not-set-up-reason" data-text="notSetUpReason"></p>
+    <button type="button" class="ef-button" data-variant="secondary" id="sign-out" data-event="signOutRequested">Sign out <span data-text="signedInLogin"></span></button>
+  </main>
+</template>
+
+<template data-if="awaitingAdministrator">
+  <main class="summa-gate ef-stack" id="main" aria-labelledby="awaiting-title">
+    <h1 id="awaiting-title">These books have no listed administrator</h1>
+    <p>Nothing is granted until one of the administrators this deployment lists confirms themself.</p>
+    <template data-if="canConfirm">
+      <button type="button" class="ef-button" id="confirm-administrator" data-event="confirmRequested">Confirm me as administrator</button>
+    </template>
+    <button type="button" class="ef-button" data-variant="secondary" id="sign-out" data-event="signOutRequested">Sign out <span data-text="signedInLogin"></span></button>
+  </main>
+</template>
+
+<template data-if="booksOutdated">
+  <main class="summa-gate ef-stack" id="main" aria-labelledby="outdated-title">
+    <h1 id="outdated-title">These books need updating before anyone works in them</h1>
+    <p>They were written by an earlier version of Summa. Updating names the credit, deposit and bad-debt accounts from the books' own chart, in one commit, and changes no financial record.</p>
+    <template data-if="mayMigrate">
+      <button type="button" class="ef-button" id="migrate-books" data-event="migrateRequested">Update the books</button>
+    </template>
+    <button type="button" class="ef-button" data-variant="secondary" id="sign-out" data-event="signOutRequested">Sign out <span data-text="signedInLogin"></span></button>
+  </main>
+</template>
+
+<template data-if="notAMember">
+  <main class="summa-gate ef-stack" id="main" aria-labelledby="not-member-title">
+    <h1 id="not-member-title">You are not a member of these books</h1>
+    <p>You are signed in as <span data-text="signedInLogin"></span>, but this organization has not given you access. Ask an administrator to add you.</p>
     <button type="button" class="ef-button" data-variant="secondary" id="sign-out" data-event="signOutRequested">Sign out</button>
+  </main>
+</template>
+
+<template data-if="storeUnreachable">
+  <main class="summa-gate ef-stack" id="main" aria-labelledby="unreachable-title">
+    <h1 id="unreachable-title">The books on GitHub could not be opened</h1>
+    <p role="alert" id="store-problem" data-text="storeProblem"></p>
+    <button type="button" class="ef-button" data-variant="secondary" id="sign-out" data-event="signOutRequested">Sign out <span data-text="signedInLogin"></span></button>
   </main>
 </template>
 
@@ -76,13 +128,17 @@
 
 <template data-if="isUntrustworthy">
   <main class="summa-gate ef-stack" id="main">
-    <h1>The books in this browser failed their checks.</h1>
+    <h1>The books failed their checks.</h1>
     <p>Summa does not run on books it cannot trust. These problems were found:</p>
     <ul id="storage-problems">
       <template data-each="storageProblems" data-key="key"><li data-text="problem"></li></template>
     </ul>
-    <p>You can start a new, empty set of books in this browser. The damaged copy is replaced.</p>
-    <button type="button" class="ef-button" data-variant="danger" id="reset-books" data-event="resetConfirmed">Start new books</button>
+    <template data-if="canResetBooks">
+      <div class="ef-stack">
+        <p>You can start a new, empty set of books in this browser. The damaged copy is replaced.</p>
+        <button type="button" class="ef-button" data-variant="danger" id="reset-books" data-event="resetConfirmed">Start new books</button>
+      </div>
+    </template>
   </main>
 </template>
 
@@ -110,6 +166,7 @@
       <template data-if="hasNotice"><p class="summa-notice" id="notice" data-text="notice"></p></template>
     </div>
     <template data-if="hasError"><p class="summa-error" id="error" role="alert" data-text="error"></p></template>
+    <template data-if="isReadOnly"><p class="summa-notice" id="read-only">These books can only be read: <span data-text="readOnlyReasons"></span></p></template>
     <template data-if="hasCopyFallback">
       <div class="ef-field summa-copy-fallback"><label class="ef-field__label" for="copy-fallback">Link to this view</label>
         <input id="copy-fallback" type="text" readonly data-bind-value="copyFallback" /></div>

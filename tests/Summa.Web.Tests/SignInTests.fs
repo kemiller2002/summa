@@ -143,9 +143,10 @@ let ``back from GitHub, the person goes where the link pointed, in place of sign
     Assert.Contains(ReadReturnTarget, effects)
     Assert.Equal(AwaitingTarget, model.Return)
 
-    // Signed in before the kept target is read: wait for it.
+    // Signed in before the kept target is read: the books open (WI-0037),
+    // and the page waits for the target.
     let model, effects = run [ signedInAsOctocat ] model
-    Assert.Empty(effects)
+    Assert.Equal<AppEffect list>([ OpenStoredBooks ], effects)
     let model, effects = run [ ReturnTargetRead(Some "/customers?q=acme") ] model
     Assert.Equal(Routes.Customers { Routes.allCustomers with Search = Some "acme" }, model.Place)
     Assert.Equal(Some "/customers?q=acme", model.Router.Current)
@@ -339,7 +340,8 @@ let private envFor () : Wire.Env =
             (fun count ->
                 Array.init count (fun _ ->
                     counter.Value <- counter.Value + 1uy
-                    counter.Value)) }
+                    counter.Value))
+      Store = Store.none }
 
 /// Signs in end to end: the page leaves for GitHub, GitHub sends it back with
 /// a code, a new page load completes the callback.

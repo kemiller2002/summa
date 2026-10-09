@@ -95,8 +95,11 @@ in the browser (DF-SUMMA-2026-0009). A deployment with a `location` must
 name an `identity`: the page signs the person in with GitHub through Fides
 first (WI-0035, DF-SUMMA-2026-0013), and shows nothing of the books before.
 Its Content-Security-Policy must allow `connect-src` to the exchange's
-origin. This build cannot yet open the books on GitHub once signed in; that
-is the GitHub store (WI-0037), and until then the page says so.
+origin and to `https://api.github.com`. Once someone is signed in, the page
+opens the first configured organization's books from the data repository
+through Arca's GitHub adapter (WI-0037, DF-SUMMA-2026-0014). A listed
+administrator sets up an organization that has no folder yet. Every change
+is one commit on the configured branch.
 
 ## Deployment: GitHub Pages
 

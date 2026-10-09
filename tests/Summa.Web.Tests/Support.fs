@@ -36,4 +36,5 @@ let wireEnv (now: System.DateTimeOffset) : Summa.Web.Application.AccountingWire.
     { Now = (fun () -> now)
       LocalActor = "local-person"
       Bridge = Summa.Web.Application.Bridge.Bridge()
-      Identity = Summa.Web.Application.Identity.none }
+      Identity = Summa.Web.Application.Identity.none
+      Store = Summa.Web.Application.Store.none }

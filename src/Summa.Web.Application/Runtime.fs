@@ -37,11 +37,18 @@ let private now () = System.DateTimeOffset.UtcNow
 
 /// The wire's world: the clock, the browser's cryptographic random source
 /// for Fides' client, and the page's bridge.
+let private identity = Identity.create bridge now System.Security.Cryptography.RandomNumberGenerator.GetBytes
+
+let private newKey () = $"summa-{System.Guid.NewGuid():N}"
+
 let private accountingEnv: AccountingWire.Env =
     { Now = now
       LocalActor = LocalActor
       Bridge = bridge
-      Identity = Identity.create bridge now System.Security.Cryptography.RandomNumberGenerator.GetBytes }
+      Identity = identity
+      // Arca's GitHub adapter through the bridge, with Fides' token provider;
+      // used only when the deployment names a location on GitHub (WI-0037).
+      Store = Store.arca bridge (Store.gitHub bridge identity.TokenProvider) now newKey }
 
 /// One kernel message for the accounting application (app/).
 let dispatchAccounting (messageJson: string) =
