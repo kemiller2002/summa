@@ -665,6 +665,49 @@
     "version": "1.1.0"
   },
   {
+    "created": "2026-10-09",
+    "id": "DF-SUMMA-2026-0015",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0015--room-for-tax-without-calculating-it.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261009T005401069Z-ca84f2de": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "unknown",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-09T01:14:23.000Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Give the model room for tax without calculating it (WI-0040, INV-ADJ-005)"
+        }
+      }
+    },
+    "related_documents": [
+      "research/decisions/DF-SUMMA-2026-0012--organization-manifest-schema-2-and-its-migration.md",
+      "docs/requirements/implementation-gap-analysis.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "invoicing",
+      "tax",
+      "schema",
+      "storage"
+    ],
+    "title": "Room for tax without calculating it, written at schema 2 only where tax is recorded",
+    "updated": "2026-10-09",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-10-05",
     "id": "DF-SUMMA-FND-2026-0001",
     "owners": [

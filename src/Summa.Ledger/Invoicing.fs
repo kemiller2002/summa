@@ -73,6 +73,22 @@ type Engagement =
 let daysUntilDue (today: DateOnly) (due: DateOnly) = max 0 (due.DayNumber - today.DayNumber)
 let daysPastDue (today: DateOnly) (due: DateOnly) = max 0 (today.DayNumber - due.DayNumber)
 
+/// Whether a line is taxable, as the person said (INV-ADJ-005). Summa never
+/// decides it from the line.
+type LineTax =
+    /// Nothing was said: Summa assumes nothing either way.
+    | NotAssessed
+    | Taxable of category: string
+    | NonTaxable of reason: string
+
+/// A customer's tax status, as the person recorded it (INV-ADJ-005).
+type CustomerTax =
+    /// Nothing was recorded: Summa assumes nothing either way.
+    | TaxNotAssessed
+    | SubjectToTax of jurisdiction: string option
+    /// Exempt, with the certificate or reference that shows it.
+    | TaxExempt of evidence: string * jurisdiction: string option
+
 type Customer =
     { Id: string
       Name: string
@@ -84,7 +100,9 @@ type Customer =
       /// The payment instructions profile shown on this customer's invoices;
       /// None uses the organization's (INV-PAYINST-001).
       PaymentProfileId: string option
-      Active: bool }
+      Active: bool
+      /// Their tax status, as recorded (INV-ADJ-005).
+      Tax: CustomerTax }
 
 /// An explicit discount (v0.2 §13). A discount is never a silently lowered
 /// unit price: the price stays and the discount is shown and posted.
@@ -108,22 +126,68 @@ type InvoiceDiscount =
       Rule: Discount
       Reason: string option }
 
+/// Whether a tax the person entered is on top of the prices or inside them
+/// (INV-ADJ-005).
+type TaxPricing =
+    /// Added to the invoice: the total is the lines plus the tax.
+    | TaxExclusive
+    /// Already inside the line prices: the total is unchanged, and the tax
+    /// is moved from revenue to its liability account when posted.
+    | TaxInclusive
+
+/// A tax the person entered (INV-ADJ-005). Summa never calculates or infers
+/// tax: every field is what the person (or the source they used) said.
+type TaxCharge =
+    { /// The tax category or code, for example `NY-8.875` or `VAT-STD`.
+      Code: string
+      /// The liability account it posts to.
+      AccountId: string
+      Jurisdiction: string option
+      /// Where the rate came from, for example a rate table and its date.
+      RateSource: string option
+      /// The rate, in basis points (887.5% is not possible; 8.875% is 887.5,
+      /// so rates are kept in hundredths of a basis point: 88750).
+      RateHundredthBasisPoints: int option
+      /// The evidence or reference for the tax, for example a filing id.
+      Evidence: string option
+      Pricing: TaxPricing }
+
 /// What an adjustment is (INV-ADJ-003). Discounts, credits and deposits
-/// have their own concepts; an adjustment always adds to the invoice.
+/// have their own concepts; an adjustment always adds to the invoice
+/// (a tax included in the prices adds nothing to the total).
 type AdjustmentKind =
     | Surcharge
     | Fee
-    /// A tax the person entered, posted to the named liability account.
-    /// Summa never calculates or infers tax (INV-ADJ-005).
-    | Tax of code: string * accountId: string
+    /// A tax the person entered, posted to its liability account.
+    | Tax of TaxCharge
+
+/// A tax charge with only a code and an account: exclusive, nothing else said.
+let taxCharge (code: string) (accountId: string) =
+    { Code = code
+      AccountId = accountId
+      Jurisdiction = None
+      RateSource = None
+      RateHundredthBasisPoints = None
+      Evidence = None
+      Pricing = TaxExclusive }
 
 type Adjustment =
     { Kind: AdjustmentKind
       Label: string
       Amount: Money }
 
+/// What the adjustments add to the invoice: every one but a tax already
+/// inside the prices.
 let adjustmentTotal (currency: string) (adjustments: Adjustment list) =
-    adjustments |> List.map _.Amount |> sum currency
+    adjustments
+    |> List.filter (fun a ->
+        match a.Kind with
+        | Tax { Pricing = TaxInclusive } -> false
+        | _ -> true)
+    |> List.map _.Amount
+    |> sum currency
+
+
 
 /// Who an invoice is sent to (INV-DEL-002).
 type Recipients =
@@ -144,7 +208,9 @@ type InvoiceLine =
       /// Where the line's billing fact came from (INV-SOURCE-007).
       Source: LineSource
       /// Where its rate came from; None for a line priced by hand (INV-RATE-001).
-      Rate: RateProvenance option }
+      Rate: RateProvenance option
+      /// Whether it is taxable, as the person said (INV-ADJ-005).
+      Tax: LineTax }
 
 /// Quantity times unit price, before the line's discount.
 let lineGross (line: InvoiceLine) = extend line.QuantityThousandths line.UnitPrice
@@ -573,11 +639,28 @@ let private validateDraft (books: Books) (draft: DraftInvoice) =
               InvalidAdjustment $"'{a.Label}' must be positive and in {draft.Currency}; use a discount or a credit memo to reduce"
 
           match a.Kind with
-          | Tax(_, account) ->
+          | Tax tax ->
+              let account = tax.AccountId
+
               match books.Ledger.Accounts.TryFind account with
               | Some found when found.Type = Liability && found.Active -> ()
               | _ -> InvalidAdjustment $"tax '{a.Label}' needs an active liability account, not {account}"
           | _ -> ()
+      // Tax is what the person said, never inferred (INV-ADJ-005); what is
+      // said must agree with itself.
+      let taxes = draft.Adjustments |> List.choose (fun a -> match a.Kind with Tax tax -> Some(tax, a) | _ -> None)
+      let taxableLines = draft.Lines |> List.filter (fun l -> match l.Tax with Taxable _ -> true | _ -> false)
+
+      if not taxes.IsEmpty && taxableLines.IsEmpty then
+          InvalidAdjustment "a tax needs at least one line marked taxable; Summa does not decide which lines are taxable"
+      match books.Customers.TryFind draft.CustomerId |> Option.map _.Tax with
+      | Some(TaxExempt(evidence, _)) when not taxes.IsEmpty -> InvalidAdjustment $"the customer is recorded as tax-exempt ({evidence}); remove the tax, or change their tax status"
+      | _ -> ()
+      let inclusive =
+          taxes |> List.filter (fun (tax, _) -> tax.Pricing = TaxInclusive) |> List.map (snd >> _.Amount) |> sum draft.Currency
+
+      if inclusive > (taxableLines |> List.map lineAmount |> sum draft.Currency) then
+          InvalidAdjustment "a tax included in the prices cannot be more than the taxable lines"
       if
           draft.Lines |> List.forall (fun l -> (lineAmount l).Minor >= 0L)
           && discountTotal draft.Currency (subtotal draft) draft.Discounts > subtotal draft
@@ -655,8 +738,16 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
                     draft.Adjustments
                     |> List.choose (fun a ->
                         match a.Kind with
-                        | Tax(code, account) -> Some { AccountId = account; Side = Credit a.Amount; Memo = Some $"{a.Label} ({code})"; Dimensions = dims None }
+                        | Tax tax -> Some(tax, a)
                         | _ -> None)
+                    |> List.collect (fun (tax, a) ->
+                        let liability = { AccountId = tax.AccountId; Side = Credit a.Amount; Memo = Some $"{a.Label} ({tax.Code})"; Dimensions = dims None }
+
+                        match tax.Pricing with
+                        | TaxExclusive -> [ liability ]
+                        // Inside the prices: the line amounts credited revenue with
+                        // it, so it moves from revenue to its liability.
+                        | TaxInclusive -> [ { AccountId = firstAccount; Side = Debit a.Amount; Memo = Some $"{a.Label} ({tax.Code}) included in prices"; Dimensions = dims None }; liability ])
 
                 let nonZero =
                     List.filter (fun l ->

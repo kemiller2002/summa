@@ -35,7 +35,8 @@ let abc =
       Email = "ap@abc.example"
       DefaultTerms = Some(Net 30)
       PaymentProfileId = None
-      Active = true }
+      Active = true
+      Tax = TaxNotAssessed }
 
 let draft =
     { DraftId = "D-1"
@@ -50,7 +51,8 @@ let draft =
             WorkItem = None
             Discount = None
             Source = Summa.Ledger.Sources.ManualLine
-            Rate = None } ]
+            Rate = None
+            Tax = NotAssessed } ]
       Adjustments = [ { Kind = Fee; Label = "Processing fee"; Amount = usd 1250L } ]
       Discounts = []
       Terms = None
@@ -294,7 +296,7 @@ let withLifecycle () =
     let prepared =
         { draft with
             DraftId = "D-9"
-            Adjustments = [ { Kind = Tax("NY", "credits"); Label = "Sales tax"; Amount = usd 500L }; { Kind = Surcharge; Label = "Rush"; Amount = usd 100L } ]
+            Adjustments = [ { Kind = Tax(taxCharge "NY" "credits"); Label = "Sales tax"; Amount = usd 500L }; { Kind = Surcharge; Label = "Rush"; Amount = usd 100L } ]
             Assumptions = [ "Grouped by project" ]
             Recipients = Some { To = [ "ap@abc.example" ]; Cc = [ "cfo@abc.example" ]; ReplyTo = Some "billing@echelon.example" } }
 

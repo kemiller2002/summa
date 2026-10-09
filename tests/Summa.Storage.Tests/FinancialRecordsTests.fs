@@ -258,3 +258,40 @@ let ``adjusting and closing entries keep their kind through storage`` () =
     Assert.Equal(Summa.Ledger.Periods.Adjusting(Summa.Ledger.Periods.Accrual, Some "WP-3"), Summa.Ledger.Periods.kindOf entries["JE-ADJ-1"])
     Assert.Equal(Summa.Ledger.Periods.YearEndClose 2026, Summa.Ledger.Periods.kindOf entries["JE-CLOSE-2026"])
     Assert.Equal(Some "github:583231", Summa.Ledger.Periods.createdBy loaded.State.Books.Ledger "JE-ADJ-1")
+
+[<Fact>]
+let ``tax as the person recorded it is stored at schema 2, and books without tax keep their schema 1 records`` () =
+    // Books that record no tax: every record is written exactly as schema 1 wrote it.
+    Assert.All(toRecords (full ()) |> ok, fun record -> Assert.Equal(1, schemaVersionOf record))
+
+    let tax: Summa.Ledger.Invoicing.TaxCharge =
+        { Code = "NY-8.875"
+          AccountId = "credits"
+          Jurisdiction = Some "New York, NY"
+          RateSource = Some "NYS Pub 718, 2026-09"
+          RateHundredthBasisPoints = Some 88750
+          Evidence = Some "ST-100 2026-Q4"
+          Pricing = Summa.Ledger.Invoicing.TaxInclusive }
+
+    let exempt = { abc with Tax = Summa.Ledger.Invoicing.TaxExempt("ST-119.1 #4471", Some "New York") }
+
+    let taxedDraft =
+        { draft with
+            DraftId = "D-TAX"
+            Lines = draft.Lines |> List.map (fun l -> { l with Tax = Summa.Ledger.Invoicing.Taxable "services" })
+            Adjustments = [ { Kind = Summa.Ledger.Invoicing.Tax tax; Label = "Sales tax"; Amount = usd 100L } ] }
+
+    let books =
+        let r = full ()
+        { r with Books = { r.Books with Customers = r.Books.Customers.Add(exempt.Id, exempt); Drafts = r.Books.Drafts.Add(taxedDraft.DraftId, taxedDraft) } }
+
+    let records = toRecords books |> ok
+    let versionOf (path: string) = records |> List.find (fun r -> RelativePath.render (Layout.recordPath r.Key |> ok) = path) |> schemaVersionOf
+    Assert.Equal(2, versionOf "records/summa.customer/CUST-ABC.json")
+    Assert.Equal(2, versionOf "records/summa.draft/D-TAX.json")
+    Assert.Equal(1, versionOf "records/summa.invoice/2026/INV-001.json")
+
+    let loaded = load (stored books)
+    Assert.Empty loaded.Problems
+    Assert.Equal(exempt, loaded.State.Books.Customers[exempt.Id])
+    Assert.True((taxedDraft = loaded.State.Books.Drafts[taxedDraft.DraftId]))

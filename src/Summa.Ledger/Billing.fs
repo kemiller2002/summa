@@ -378,7 +378,8 @@ let groupTime (card: RateCard) (customerId: string) (currency: string) (revenueA
                           Revision = t.Revision
                           Minutes = t.BillableMinutes })
                 )
-              Rate = rate |> Option.map snd }
+              Rate = rate |> Option.map snd
+              Tax = NotAssessed }
           Priced = rate.IsSome })
 
 let private fixedLine description (amount: Money) account source reference =
@@ -391,7 +392,8 @@ let private fixedLine description (amount: Money) account source reference =
           WorkItem = None
           Discount = None
           Source = source
-          Rate = Some { RateSource = EngagementAgreement; Reference = reference; Override = None } }
+          Rate = Some { RateSource = EngagementAgreement; Reference = reference; Override = None }
+          Tax = NotAssessed }
       Priced = true }
 
 /// Builds a proposal from the sources asked for, checking each is
@@ -471,7 +473,8 @@ let buildProposal (context: Context) (request: ProposalRequest) (r: Receivables)
                               WorkItem = None
                               Discount = None
                               Source = ExpenseSource e.Id
-                              Rate = None }
+                              Rate = None
+                              Tax = NotAssessed }
                           Priced = true })
 
     let problems =

@@ -211,10 +211,10 @@ let ``a credit memo's document names the invoice and lines it credits, from the 
 [<Fact>]
 let ``adjustments are typed and positive; a tax posts to its own liability account`` () =
     let taxed =
-        { draftFor [ consulting 10000L 10000L ] with
+        { draftFor [ { consulting 10000L 10000L with Tax = Taxable "services" } ] with
             Adjustments =
                 [ { Kind = Fee; Label = "Rush fee"; Amount = usd 5000L }
-                  { Kind = Tax("NY-8.875", "salestax"); Label = "Sales tax"; Amount = usd 8875L } ] }
+                  { Kind = Tax(taxCharge "NY-8.875" "salestax"); Label = "Sales tax"; Amount = usd 8875L } ] }
 
     let r, invoice = issuedWith taxed request
     Assert.Equal(usd (100000L + 5000L + 8875L), invoice.Total)
@@ -226,7 +226,7 @@ let ``adjustments are typed and positive; a tax posts to its own liability accou
     // Reductions are discounts or credit memos, never negative adjustments; a tax needs a liability account.
     let negative = { draftFor [ consulting 10000L 10000L ] with Adjustments = [ { Kind = Surcharge; Label = "Goodwill"; Amount = usd -500L } ] }
     Assert.Equal<string list>([ "invalid-adjustment" ], blockers (start (saveDraft context negative (baseBooks ()) |> ok)) request |> List.map _.Code)
-    let wrongAccount = { draftFor [ consulting 10000L 10000L ] with Adjustments = [ { Kind = Tax("X", "revenue"); Label = "Tax"; Amount = usd 100L } ] }
+    let wrongAccount = { draftFor [ { consulting 10000L 10000L with Tax = Taxable "services" } ] with Adjustments = [ { Kind = Tax(taxCharge "X" "revenue"); Label = "Tax"; Amount = usd 100L } ] }
     Assert.Equal<string list>([ "invalid-adjustment" ], blockers (start (saveDraft context wrongAccount (baseBooks ()) |> ok)) request |> List.map _.Code)
 
 [<Fact>]

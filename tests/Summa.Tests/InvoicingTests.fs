@@ -16,7 +16,8 @@ let abc =
       Email = "ap@abc.example"
       DefaultTerms = Some(Net 30)
       PaymentProfileId = None
-      Active = true }
+      Active = true
+      Tax = TaxNotAssessed }
 
 let consulting hours rate =
     { Description = "Architecture assessment"
@@ -27,7 +28,8 @@ let consulting hours rate =
       WorkItem = None
       Discount = None
       Source = Summa.Ledger.Sources.ManualLine
-      Rate = None }
+      Rate = None
+      Tax = NotAssessed }
 
 let draftFor lines =
     { DraftId = "D-1"

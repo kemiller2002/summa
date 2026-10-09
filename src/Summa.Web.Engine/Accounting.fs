@@ -606,7 +606,8 @@ let private draftOf (manifest: Organization.OrganizationManifest) (books: Receiv
                       WorkItem = None
                       Discount = None
                       Source = ManualLine
-                      Rate = None }
+                      Rate = None
+                      Tax = NotAssessed }
             | _ -> Error $"'{l.Description}' needs a description, a quantity and a rate such as 150.00")
 
     match lines |> List.tryPick (function Error e -> Some e | Ok _ -> None) with
@@ -1181,7 +1182,8 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                           Email = form.Email.Trim()
                           DefaultTerms = terms
                           PaymentProfileId = None
-                          Active = true }
+                          Active = true
+                          Tax = TaxNotAssessed }
 
                     Ok { books with Books = saveCustomer (context ctx) customer books.Books })
 

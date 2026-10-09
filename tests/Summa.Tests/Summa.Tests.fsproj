@@ -20,6 +20,7 @@
     <Compile Include="IssuanceTests.fs" />
     <Compile Include="LifecycleTests.fs" />
     <Compile Include="PeriodsTests.fs" />
+    <Compile Include="TaxTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

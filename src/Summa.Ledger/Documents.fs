@@ -99,7 +99,13 @@ let ofInvoice (invoice: IssuedInvoice) : InvoiceDocument =
               Source = l.Source })
       Subtotal = invoice.Subtotal
       Discounts = invoice.Discounts |> List.map (fun d -> d.Label, discountOn invoice.Subtotal d.Rule)
-      Adjustments = invoice.Adjustments |> List.map (fun a -> a.Label, a.Amount)
+      // A tax inside the prices is shown as included, so no reader adds it again.
+      Adjustments =
+          invoice.Adjustments
+          |> List.map (fun a ->
+              match a.Kind with
+              | Tax { Pricing = TaxInclusive } -> $"{a.Label} (included in the prices above)", a.Amount
+              | _ -> a.Label, a.Amount)
       Total = invoice.Total
       AmountDue = invoice.Total
       Template = invoice.Template }
