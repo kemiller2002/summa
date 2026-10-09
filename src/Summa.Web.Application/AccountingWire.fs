@@ -38,6 +38,13 @@ let schedule =
       Version = 1
       Fingerprint = "sha256:627657798f0fa735ac6f955eb4f413e7c397f0aef6942b340a87683a30db54d0" }
 
+/// `limen.coordination` v1: the Web Lock that makes one tab the holder of
+/// this browser's unsent changes.
+let coordination =
+    { Id = "limen.coordination"
+      Version = 1
+      Fingerprint = "sha256:510dfbcd2f3f7966b842d518d209a511ada3ffb30132853f291e9d5fa8342684" }
+
 /// Every event app/index.html may send, so a test can hold the page to it.
 let events: Map<string, string -> string -> Msg> =
     Map.ofList
@@ -134,7 +141,10 @@ let events: Map<string, string -> string -> Msg> =
           "keepSignInToggled", (fun _ _ -> KeepSignInToggled)
           "foundRequested", (fun _ _ -> FoundRequested)
           "confirmRequested", (fun _ _ -> ConfirmRequested)
-          "migrateRequested", (fun _ _ -> MigrateRequested) ]
+          "migrateRequested", (fun _ _ -> MigrateRequested)
+          "sendUnsentRequested", (fun _ _ -> SendUnsentRequested)
+          "checkRequested", (fun _ _ -> CheckRequested)
+          "abandonUnsentRequested", (fun _ _ -> AbandonUnsentRequested) ]
 
 let private message (name: string) (key: string option) (value: string option) =
     match events |> Map.tryFind name with
@@ -239,7 +249,7 @@ let decode (messageJson: string) =
 
 [<NoComparison; NoEquality>]
 type Answer =
-    | Accepted of minor: int * contract: JsonNode * printing: bool * packs: Packs * hosting: bool * scheduling: bool
+    | Accepted of minor: int * contract: JsonNode * printing: bool * packs: Packs * hosting: bool * scheduling: bool * coordinating: bool
     | Rejected of reason: (Utf8JsonWriter -> unit)
 
 /// Accepts Limen Core and selects `summa.print`, `limen.files` and
@@ -266,7 +276,7 @@ let answer (offer: JsonNode) =
             writer.WritePropertyName "offered"
             writeNode writer contract)
     else
-        Accepted(min minor ProtocolMinor, contract, printing, { Files = offers files; Store = offers store }, offers host, offers schedule)
+        Accepted(min minor ProtocolMinor, contract, printing, { Files = offers files; Store = offers store }, offers host, offers schedule, offers coordination)
 
 // ---- Session ---------------------------------------------------------------------------------------
 
@@ -297,6 +307,8 @@ type Session =
       Hosting: bool
       /// The kernel offers `limen.schedule`, for the GitHub adapter's waits.
       Scheduling: bool
+      /// The kernel offers `limen.coordination`, for the unsent changes' lock.
+      Coordinating: bool
       Fault: FaultView option }
 
 let initial =
@@ -306,6 +318,7 @@ let initial =
       Printing = false
       Hosting = false
       Scheduling = false
+      Coordinating = false
       Fault = None }
 
 /// What the wire is given: the clock, the actor of books without sign-in,
@@ -326,6 +339,8 @@ type Request =
     | HttpCall of correlation: string * method: string * url: string * headers: (string * string) list * body: string option * timeoutMs: int * responseHeaders: string list
     /// A `limen.schedule` timeout.
     | Wake of correlation: string * delayMs: int
+    /// A `limen.coordination` exclusive lock, without waiting.
+    | Acquire of correlation: string * name: string
     | StorageRemove of correlation: string * key: string
     /// A `summa.host` request: its operation and string arguments.
     | Host of correlation: string * operation: string * arguments: (string * string) list
@@ -462,12 +477,17 @@ let private requests (session: Session) (effects: AppEffect list) =
             | ConfirmAdministrator
             | MigrateStoredBooks
             | CommitBooks _
-            | CommitManifest _ -> s, out)
+            | CommitManifest _
+            | SendUnsent
+            | AbandonUnsent _
+            | CheckBooks -> s, out)
         (session, [])
 
 /// A browser service the bridge's client asked for, as a Limen request, or
 /// the answer to give at once when the kernel cannot carry it.
-let private bridgeRequest (hosting: bool) (scheduling: bool) (id: string) (call: Bridge.KernelCall) : Result<Request, Bridge.KernelAnswer> =
+let private bridgeRequest (session: Session) (id: string) (call: Bridge.KernelCall) : Result<Request, Bridge.KernelAnswer> =
+    let hosting, scheduling = session.Hosting, session.Scheduling
+
     let hosted operation arguments =
         if hosting then Ok(Host(id, operation, arguments)) else Error Bridge.Missing
 
@@ -477,6 +497,8 @@ let private bridgeRequest (hosting: bool) (scheduling: bool) (id: string) (call:
     // Without the schedule pack a back-off is not timed: it ends at once.
     | Bridge.Sleep milliseconds when scheduling -> Ok(Wake(id, milliseconds))
     | Bridge.Sleep _ -> Error Bridge.Done
+    | Bridge.Lock name when session.Coordinating -> Ok(Acquire(id, name))
+    | Bridge.Lock _ -> Error(Bridge.Locked "Unsupported")
     | Bridge.DeviceGet key -> Ok(StorageGet(id, key))
     | Bridge.DeviceSet(key, value) -> Ok(StorageSet(id, key, value))
     | Bridge.DeviceRemove key -> Ok(StorageRemove(id, key))
@@ -548,6 +570,21 @@ let private writeRequest (writer: Utf8JsonWriter) =
         writer.WriteStartObject()
         writer.WriteString("operation", "timeout")
         writer.WriteNumber("delayMs", delayMs)
+        writer.WriteEndObject()
+        writer.WriteEndObject()
+    | Acquire(correlation, name) ->
+        writer.WriteStartObject()
+        writer.WriteString("kind", "Capability")
+        writer.WriteString("correlationId", correlation)
+        writer.WriteString("capability", coordination.Id)
+        writer.WriteNumber("version", coordination.Version)
+        writer.WritePropertyName "request"
+        writer.WriteStartObject()
+        writer.WriteString("operation", "acquire")
+        writer.WriteString("name", name)
+        writer.WriteString("mode", "exclusive")
+        writer.WriteBoolean("wait", false)
+        writer.WriteBoolean("steal", false)
         writer.WriteEndObject()
         writer.WriteEndObject()
     | StorageRemove(correlation, key) ->
@@ -641,7 +678,7 @@ let render (session: Session) (out: Request list) (handshake: Answer option) =
 
         match handshake with
         | None -> ()
-        | Some(Accepted(minor, contract, printing, packs, hosting, scheduling)) ->
+        | Some(Accepted(minor, contract, printing, packs, hosting, scheduling, coordinating)) ->
             writer.WritePropertyName "handshake"
             writer.WriteStartObject()
             writer.WriteString("kind", "Accepted")
@@ -659,6 +696,7 @@ let render (session: Session) (out: Request list) (handshake: Answer option) =
             if packs.Store then writeOffer writer store
             if hosting then writeOffer writer host
             if scheduling then writeOffer writer schedule
+            if coordinating then writeOffer writer coordination
             writer.WriteEndArray()
             writer.WriteEndObject()
         | Some(Rejected reason) ->
@@ -702,6 +740,9 @@ let private step (env: Env) (now: DateTimeOffset) (session: Session) (inbound: I
             // from the model it was made on.
             | CommitBooks command -> env.Store.Commit { Command = command; Transition = replay ctx command.Msg s.Model }
             | CommitManifest manifest -> env.Store.CommitManifest manifest
+            | SendUnsent -> env.Store.SendUnsent()
+            | AbandonUnsent sequence -> env.Store.Abandon sequence
+            | CheckBooks -> env.Store.Check()
             | _ -> ())
 
         let s, out = requests { s with Model = model } effects
@@ -729,7 +770,7 @@ let private step (env: Env) (now: DateTimeOffset) (session: Session) (inbound: I
                 calls
                 |> List.fold
                     (fun (made, immediate) (id, call) ->
-                        match bridgeRequest s.Hosting s.Scheduling id call with
+                        match bridgeRequest s id call with
                         | Ok request -> made @ [ request ], immediate
                         | Error answer -> made, immediate @ [ (id, answer) ])
                     ([], [])
@@ -743,12 +784,13 @@ let private step (env: Env) (now: DateTimeOffset) (session: Session) (inbound: I
         | Initialize(offer, page) ->
             let answered = offer |> Option.map answer
 
-            let printing, packs, hosting, scheduling =
+            let printing, packs, hosting, scheduling, coordinating =
                 match answered with
-                | Some(Accepted(_, _, p, packs, hosting, scheduling)) -> p, packs, hosting, scheduling
-                | _ -> false, { Files = false; Store = false }, false, false
+                | Some(Accepted(_, _, p, packs, hosting, scheduling, coordinating)) -> p, packs, hosting, scheduling, coordinating
+                | _ -> false, { Files = false; Store = false }, false, false, false
 
-            let started, first = run (Started page) { session with Printing = printing; Hosting = hosting; Scheduling = scheduling }
+            let started, first =
+                run (Started page) { session with Printing = printing; Hosting = hosting; Scheduling = scheduling; Coordinating = coordinating }
             let s, more = run (PacksNegotiated packs) started
             s, first @ more, answered
         | LocationChanged page ->
@@ -789,7 +831,7 @@ let private step (env: Env) (now: DateTimeOffset) (session: Session) (inbound: I
                     correlation
                     (match outcome with
                      | StorageValue value -> Bridge.Read value
-                     | StorageFailed _ -> Bridge.Read None)
+                     | StorageFailed reason -> Bridge.Refused reason)
             | _ -> session, [], None
         | HttpResult(correlation, result) ->
             match session.Pending.TryFind correlation with
@@ -821,6 +863,15 @@ let private step (env: Env) (now: DateTimeOffset) (session: Session) (inbound: I
             | _ -> rest, [], None
         | CapabilityResult(correlation, capability, _) when capability = schedule.Id && env.Bridge.Waits correlation ->
             answerBridge session correlation Bridge.Done
+        | CapabilityResult(correlation, capability, outcome) when capability = coordination.Id && env.Bridge.Waits correlation ->
+            let path = "$.result.outcome"
+
+            let kind =
+                match required "kind" path asString outcome with
+                | "Completed" -> required "kind" $"{path}.result" asString (required "result" path asObject outcome)
+                | _ -> "Unsupported"
+
+            answerBridge session correlation (Bridge.Locked kind)
         | CapabilityResult(correlation, capability, outcome) when capability = host.Id && env.Bridge.Waits correlation ->
             let path = "$.result.outcome"
 

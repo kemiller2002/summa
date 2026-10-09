@@ -15,6 +15,7 @@ import { filesCapability } from "../node_modules/@echelon-foundry/limen/dist/cap
 import { transferCapability } from "../node_modules/@echelon-foundry/limen/dist/capabilities/transfer/index.js";
 import { storeCapability } from "../node_modules/@echelon-foundry/limen/dist/capabilities/store/index.js";
 import { scheduleCapability } from "../node_modules/@echelon-foundry/limen/dist/capabilities/schedule/index.js";
+import { coordinationCapability } from "../node_modules/@echelon-foundry/limen/dist/capabilities/coordination/index.js";
 import { printCapability } from "./print.js";
 import { hostCapability } from "./host.js";
 
@@ -86,7 +87,16 @@ export async function startPage(exportName, capabilities = filePacks()) {
 // store packs, which read the PDF the person saved and keep it in this
 // environment's artifact database, and Summa's host pack (./host.js), which
 // Fides' sign-in client needs where the books live on GitHub, and Limen's
-// schedule pack, which times the GitHub adapter's back-off waits.
+// schedule pack, which times the GitHub adapter's back-off waits, and its
+// coordination pack, whose Web Lock makes one tab the holder of this
+// browser's unsent changes.
 export async function startApp() {
-  await startPage("DispatchAccounting", [printCapability(), filesCapability(), storeCapability(), hostCapability(), scheduleCapability()]);
+  await startPage("DispatchAccounting", [
+    printCapability(),
+    filesCapability(),
+    storeCapability(),
+    hostCapability(),
+    scheduleCapability(),
+    coordinationCapability()
+  ]);
 }

@@ -204,6 +204,25 @@ type StoredBooks =
       /// Why the books may only be read, if they may.
       ReadOnly: string list }
 
+/// Changes made here that GitHub does not have yet (WI-0037): how many wait
+/// to be sent, the one that needs the person (and why), and anything the
+/// person should know about where they are kept.
+type Unsent =
+    { Waiting: int
+      /// The change that stops the others: its place in line, what it was,
+      /// and why it was not sent.
+      Blocked: (int64 * string * string) option
+      Note: string option }
+
+let noneUnsent = { Waiting = 0; Blocked = None; Note = None }
+
+/// Checking the books on GitHub against their history (WI-0037): records
+/// edited outside Summa are shown, never trusted or put right silently.
+type BooksCheck =
+    | NotChecked
+    | Checking
+    | Checked of findings: string list
+
 /// Why the store did not open the books.
 type BooksProblem =
     | BooksNotSetUp of mayFound: bool * reason: string option
@@ -257,7 +276,9 @@ type Model =
       /// What the signed-in person may do in books on GitHub.
       Capabilities: Set<Summa.Access.Access.Capability>
       /// Why books on GitHub may only be read, if they may.
-      ReadOnly: string list }
+      ReadOnly: string list
+      Unsent: Unsent
+      Check: BooksCheck }
 
 let private newLine (counter: int) =
     let key, next = nextKey "line" counter
@@ -302,6 +323,8 @@ let initial =
       Return = NotReturning
       Capabilities = Set.empty
       ReadOnly = []
+      Unsent = noneUnsent
+      Check = NotChecked
       Blockers = []
       Notice = None
       Error = None
@@ -336,6 +359,18 @@ type Msg =
     /// A command was not committed: why, and the books as they stand now,
     /// when the store could read them.
     | StoreRefused of reason: string * latest: (Organization.OrganizationManifest * Receivables) option
+    /// A command could not reach GitHub: it is kept, to be sent later.
+    | ChangeKept
+    /// Everything waiting reached GitHub; the books as GitHub now holds them.
+    | BooksSynchronized of Receivables
+    /// What is still to be sent to GitHub.
+    | UnsentChanged of Unsent
+    | SendUnsentRequested
+    | CheckRequested
+    /// What checking the books against their history found, in words.
+    | BooksChecked of findings: string list
+    /// Give up the change that stops the others.
+    | AbandonUnsentRequested
     /// The stored snapshot, or None when this browser has none yet.
     | Loaded of string option
     | Saved of ok: bool
@@ -487,6 +522,11 @@ type AppEffect =
     | MigrateStoredBooks
     | CommitBooks of BooksCommand
     | CommitManifest of Organization.OrganizationManifest
+    /// Try now to send the changes GitHub does not have yet.
+    | SendUnsent
+    | AbandonUnsent of sequence: int64
+    /// Check every financial record against its history on GitHub.
+    | CheckBooks
 
 // ---- Helpers ---------------------------------------------------------------------------
 
@@ -1002,6 +1042,19 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
             | None -> model
 
         { model with Unsaved = max 0 (model.Unsaved - 1); Error = Some reason; Notice = None }, []
+    | UnsentChanged unsent -> { model with Unsent = unsent }, []
+    // The page keeps showing it; it is sent when GitHub can be reached.
+    | ChangeKept -> { model with Unsaved = max 0 (model.Unsaved - 1) }, []
+    | BooksSynchronized books -> { model with Books = (if model.Unsaved = 0 then Some books else model.Books) }, []
+    | SendUnsentRequested -> model, (if model.Unsent.Waiting > 0 then [ SendUnsent ] else [])
+    | CheckRequested when onGitHub model && model.Storage = Ready && model.Check <> Checking -> { model with Check = Checking }, [ CheckBooks ]
+    | CheckRequested -> model, []
+    | BooksChecked findings -> { model with Check = Checked findings }, []
+    // The page offers to give up only the change that is blocked.
+    | AbandonUnsentRequested ->
+        match model.Unsent.Blocked with
+        | Some(sequence, _, _) -> model, [ AbandonUnsent sequence ]
+        | None -> model, []
     | ReturnTargetRead target ->
         match model.Return with
         | AwaitingTarget -> returnAfterSignIn { model with Return = TargetRead target }
@@ -3050,6 +3103,28 @@ let view (model: Model) : View =
       "isReadOnly", flag (not model.ReadOnly.IsEmpty)
       "readOnlyReasons", text (String.concat "; " model.ReadOnly)
       "canResetBooks", flag (not (onGitHub model))
+      "canCheckBooks", flag (onGitHub model && model.Storage = Ready)
+      "isCheckingBooks", flag (model.Check = Checking)
+      "booksChecked", flag (match model.Check with Checked _ -> true | _ -> false)
+      "booksCheckedClean", flag (model.Check = Checked [])
+      "checkFindings",
+      Items(
+          match model.Check with
+          | Checked findings -> findings |> List.mapi (fun i f -> [ "key", Text(string i); "finding", Text f ])
+          | _ -> []
+      )
+      "hasUnsent", flag (model.Unsent.Waiting > 0)
+      "unsentText",
+      text (
+          match model.Unsent.Waiting with
+          | 1 -> "1 change has not reached GitHub yet."
+          | n -> $"{n} changes have not reached GitHub yet."
+      )
+      "hasUnsentNote", flag model.Unsent.Note.IsSome
+      "unsentNote", text (model.Unsent.Note |> Option.defaultValue "")
+      "hasBlockedChange", flag model.Unsent.Blocked.IsSome
+      "blockedSummary", text (model.Unsent.Blocked |> Option.map (fun (_, summary, _) -> summary) |> Option.defaultValue "")
+      "blockedReason", text (model.Unsent.Blocked |> Option.map (fun (_, _, why) -> why) |> Option.defaultValue "")
       "isReady", flag (configured && model.Storage = Ready)
       "isUntrustworthy",
       flag (

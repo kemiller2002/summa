@@ -53,20 +53,21 @@ let audit (provider: StorageProvider) (ns: Namespace) : Async<Result<Diagnostic 
                 objects
                 |> List.filter (fun o -> Layout.keyOf o.Path |> Option.exists (fun k -> FinancialRecords.isFinancial k.Type))
 
-            let! histories =
-                financial
-                |> List.map (fun o ->
-                    async {
-                        let! history = provider.History ns o.Path
-                        return history |> Result.map (judgeHistory (RelativePath.render o.Path) (isImmutable o.Path))
-                    })
-                |> Async.Sequential
+            // One record after another on the caller's thread: a single-threaded
+            // host (the browser) sees the audit finish within its message.
+            let rec judge (remaining: StoredObject list) (found: Diagnostic list) =
+                async {
+                    match remaining with
+                    | [] -> return Ok found
+                    | o :: rest ->
+                        match! provider.History ns o.Path with
+                        | Error failure -> return Error failure
+                        | Ok history -> return! judge rest (found @ judgeHistory (RelativePath.render o.Path) (isImmutable o.Path) history)
+                }
 
-            match histories |> Array.tryPick (function Error f -> Some f | Ok _ -> None) with
-            | Some failure -> return Error failure
-            | None ->
-                let fromHistory = histories |> Array.toList |> List.collect (function Ok d -> d | Error _ -> [])
-                return Ok(fromHistory @ (FinancialRecords.load financial).Problems)
+            match! judge financial [] with
+            | Error failure -> return Error failure
+            | Ok fromHistory -> return Ok(fromHistory @ (FinancialRecords.load financial).Problems)
     }
 
 /// Whether a command may run after an audit: outside edits that pass every

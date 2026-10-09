@@ -48,7 +48,13 @@ type StorePort =
       Confirm: unit -> unit
       Migrate: unit -> unit
       Commit: Commit -> unit
-      CommitManifest: Organization.OrganizationManifest -> unit }
+      CommitManifest: Organization.OrganizationManifest -> unit
+      /// Try now to send the changes GitHub does not have yet.
+      SendUnsent: unit -> unit
+      /// Give up the blocked change at this place in line.
+      Abandon: int64 -> unit
+      /// Check every financial record against its history.
+      Check: unit -> unit }
 
 /// A store for books kept in the browser: nothing to open on GitHub.
 let none: StorePort =
@@ -57,7 +63,10 @@ let none: StorePort =
       Confirm = ignore
       Migrate = ignore
       Commit = ignore
-      CommitManifest = ignore }
+      CommitManifest = ignore
+      SendUnsent = ignore
+      Abandon = ignore
+      Check = ignore }
 
 let private methodName =
     function
@@ -99,6 +108,8 @@ let gitHub (bridge: Bridge) (tokens: unit -> TokenProvider option) : Backend =
                             )
                     | Read _
                     | Done
+                    | Refused _
+                    | Locked _
                     | Missing -> return HttpOutcome.Failed HttpFailure.InvalidResponse
                 }
           Wait = fun delay -> bridge.Call(Sleep(int delay.TotalMilliseconds)) |> Async.Ignore
@@ -116,6 +127,35 @@ let gitHub (bridge: Bridge) (tokens: unit -> TokenProvider option) : Backend =
                 | Ok snapshot -> return Ok snapshot
                 | Error error -> return Error(describeResolve error)
             } }
+
+/// Browser localStorage through Limen's Storage effect, as Arca's queue
+/// store asks for it.
+let localStorage (bridge: Bridge) (request: LocalStorageRequest) : Async<LocalStorageOutcome> =
+    async {
+        let call =
+            match request with
+            | LocalStorageRequest.Get key -> DeviceGet key
+            | LocalStorageRequest.Set(key, value) -> DeviceSet(key, value)
+            | LocalStorageRequest.Remove key -> DeviceRemove key
+
+        match! bridge.Call call with
+        | Read value -> return LocalStorageOutcome.Success value
+        | Done -> return LocalStorageOutcome.Success None
+        | Refused "quota-exceeded" -> return LocalStorageOutcome.Failure LocalStorageFailure.QuotaExceeded
+        | _ -> return LocalStorageOutcome.Failure LocalStorageFailure.Unavailable
+    }
+
+/// The Web Lock that makes this tab the holder of the unsent changes,
+/// through `limen.coordination`.
+let lock (bridge: Bridge) (request: QueueLockRequest) : Async<QueueLockOutcome> =
+    async {
+        let (QueueLockRequest.Acquire name) = request
+
+        match! bridge.Call(Lock name) with
+        | Locked "Acquired" -> return QueueLockOutcome.Acquired
+        | Locked "Busy" -> return QueueLockOutcome.Busy
+        | _ -> return QueueLockOutcome.Unsupported
+    }
 
 /// Why a store operation did not complete, for the person.
 let describeFailure (failure: Commands.CommandFailure<string>) =
@@ -220,12 +260,19 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
     let describeAll (diagnostics: Diagnostics.Diagnostic list) =
         diagnostics |> List.map Diagnostics.describe
 
+    /// The records as last read from GitHub, and the change token then.
+    let mutable lastRead: (ChangeToken * StoredObject list) option = None
+
     /// Opens the books for the context's person, as the engine's message.
     let opening (ctx: Context) : Async<Msg> =
         async {
             match! Workspace.openBooks (providerOf ctx.Namespace) ctx.Config ctx.Binding ctx.Organization ctx.Person.ActorId with
             | Error failure -> return BooksNotOpened(BooksUnreachable(describeFailure (widen failure)))
             | Ok(Workspace.Opened opened) ->
+                match opened.Read with
+                | Some token, objects -> lastRead <- Some(token, objects)
+                | None, _ -> ()
+
                 let readOnly =
                     (match opened.Access with
                      | Compatibility.ReadOnly reasons -> describeAll reasons
@@ -259,6 +306,144 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
         match context with
         | Some ctx -> serial (fun () -> work ctx)
         | None -> ()
+
+    // ---- The unsent changes (Arca's offline queue) ----------------------------
+
+    /// This tab's queue of operations GitHub does not have yet, oldest first.
+    let mutable queue = OfflineQueue.create OfflinePolicy.QueueWrites
+    /// Where the queue is kept: this browser's localStorage when this tab
+    /// holds it, else this tab's memory only.
+    let mutable queueStore: QueueStore option = None
+    let mutable queueNote: string option = None
+    /// The commands queued in this tab, by place in line: when GitHub moved
+    /// under one, it is decided again on the newer books and revised.
+    let mutable replays: Map<int64, Commit> = Map.empty
+
+    let inMemory: QueueStore =
+        { Load = fun () -> async.Return(Ok(Some queue))
+          Save = fun _ -> async.Return(Ok()) }
+
+    let storeOf () = queueStore |> Option.defaultValue inMemory
+
+    let summaryOf (entry: QueueEntry) = entry.Operation.Summary
+
+    let unsentView () : Unsent =
+        let status = OfflineQueue.status queue
+        let waiting = status.Pending + status.InFlight + status.OutcomeUnknown + status.Conflicted + status.Refused
+
+        let blocked =
+            OfflineQueue.blocked queue
+            |> Option.map (fun entry ->
+                let why =
+                    match entry.State with
+                    | EntryState.Conflicted _ -> "Someone else changed the same records on GitHub first."
+                    | EntryState.Refused reason -> $"GitHub refused it ({reason})."
+                    | EntryState.OutcomeUnknown _ -> "GitHub did not say whether it was saved; Summa checks before sending it again."
+                    | _ -> "It is being sent."
+
+                entry.Sequence, summaryOf entry, why)
+
+        { Waiting = waiting
+          Blocked = blocked
+          Note = if waiting > 0 then queueNote else None }
+
+    /// Takes this browser's unsent changes for this tab when no other tab
+    /// holds them, and loads what an earlier page left (an entry that was
+    /// being sent may have landed: it is reconciled, never resent blindly).
+    let own (ns: Namespace) =
+        async {
+            match! LocalStorageQueue.own (lock bridge) (localStorage bridge) LocalStorageQueue.DefaultBudget ns with
+            | QueueOwnership.Owned store ->
+                queueStore <- Some store
+                queueNote <- None
+
+                match! store.Load() with
+                | Ok(Some loaded) -> queue <- OfflineQueue.recover loaded
+                | Ok None -> ()
+                | Error _ -> queueNote <- Some "The unsent changes kept in this browser could not be read; changes made now are kept in this tab until sent."
+            | QueueOwnership.OwnedElsewhere ->
+                queueStore <- None
+                queueNote <- Some "Another Summa tab holds this browser's unsent changes; changes made in this tab are kept here until sent."
+            | QueueOwnership.OwnershipUnsupported ->
+                queueStore <- None
+                queueNote <- Some "This browser cannot keep unsent changes across a reload; they are kept in this tab until sent."
+        }
+
+    /// The organization's records and the change token they were read at.
+    let readState (ctx: Context) =
+        async {
+            let provider = providerOf ctx.Namespace
+
+            match! provider.ChangeToken ctx.Namespace with
+            | Error failure -> return Error(Commands.StorageFailed failure)
+            | Ok token ->
+                match! Commands.readAll provider ctx.Namespace with
+                | Error failure -> return Error failure
+                | Ok objects ->
+                    lastRead <- Some(token, objects)
+                    return Ok(token, objects)
+        }
+
+    let requestOf (ctx: Context) (commit: Commit) : Commands.Request<string> =
+        { Actor = actorOf ctx.Person
+          Capability = commit.Command.Capability
+          Summary = commit.Command.Summary
+          IdempotencyKey = newKey ()
+          Transition = commit.Transition }
+
+    /// Sends the queue, oldest first, until it is empty, blocked or GitHub
+    /// cannot be reached. A command of this tab that GitHub moved under is
+    /// decided again on the newer books and sent again; one that no longer
+    /// applies is given up and said. Answers the books as GitHub then holds
+    /// them when everything was sent, and what the engine needs to hear.
+    let rec synchronize (ctx: Context) (attempts: int) : Async<Summa.Ledger.Payments.Receivables option * Msg list> =
+        async {
+            let! synced, step = OfflineSync.run (providerOf ctx.Namespace) (storeOf ()) ctx.Namespace 50 queue
+            queue <- synced
+
+            match step with
+            | SyncStep.Blocked entry when attempts > 0 && replays.ContainsKey entry.Sequence && (match entry.State with EntryState.Conflicted _ -> true | _ -> false) ->
+                let commit = replays[entry.Sequence]
+
+                match! readState ctx with
+                | Error _ -> return None, [ UnsentChanged(unsentView ()) ]
+                | Ok(token, objects) ->
+                    match Commands.decide Access.defaultApprovalGates ctx.Namespace token objects (requestOf ctx commit) with
+                    | Ok(_, Some operation) ->
+                        match OfflineQueue.revise entry.Sequence operation queue with
+                        | Ok revised ->
+                            queue <- revised
+                            return! synchronize ctx (attempts - 1)
+                        | Error _ -> return None, [ UnsentChanged(unsentView ()) ]
+                    | Ok(_, None) ->
+                        // Already as it would make them: nothing to send.
+                        queue <- OfflineQueue.abandon entry.Sequence "already applied" queue |> Result.defaultValue queue
+                        replays <- replays.Remove entry.Sequence
+                        return! synchronize ctx attempts
+                    | Error failure ->
+                        queue <- OfflineQueue.abandon entry.Sequence "no longer applies" queue |> Result.defaultValue queue
+                        replays <- replays.Remove entry.Sequence
+                        let! sent, more = synchronize ctx attempts
+                        return sent, StoreRefused($"{commit.Command.Summary}: {describeFailure failure}", None) :: more
+            | SyncStep.Idle ->
+                queue <- OfflineQueue.prune queue
+                replays <- Map.empty
+                do! (storeOf ()).Save queue |> Async.Ignore
+
+                match! readState ctx with
+                | Ok(_, objects) ->
+                    let loaded = FinancialRecords.load (objects |> List.filter (fun o -> match Layout.keyOf o.Path with Some k -> k.Type <> MemberRecord.recordType | None -> true))
+                    return Some loaded.State, [ UnsentChanged(unsentView ()) ]
+                | Error _ -> return None, [ UnsentChanged(unsentView ()) ]
+            | _ -> return None, [ UnsentChanged(unsentView ()) ]
+        }
+
+    /// Sends what is waiting, for the page as a whole (not one command).
+    let synchronizeAll (ctx: Context) =
+        async {
+            let! sent, messages = synchronize ctx Attempts
+            return (sent |> Option.map BooksSynchronized |> Option.toList) @ messages
+        }
 
     let rec commitAll (operations: Operation list) =
         async {
@@ -295,8 +480,15 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
                                       Snapshot = snapshot }
 
                                 context <- Some ctx
-                                let! opened = opening ctx
-                                return [ opened ]
+
+                                match! Storage.applicationNamespace binding |> Result.map (fun a -> Workspace.checkApplication (providerOf a) binding) |> Result.defaultValue (async.Return(Ok())) with
+                                | Error failure -> return [ BooksNotOpened(BooksUnusable [ describeFailure (widen failure) ]) ]
+                                | Ok() ->
+                                    do! own ns
+                                    // What an earlier page left is sent first, so the books shown include it.
+                                    let! _, sent = if queue.Entries.IsEmpty then async.Return(None, []) else synchronize ctx 0
+                                    let! opened = opening ctx
+                                    return opened :: sent
                 })
       Found =
         fun () ->
@@ -362,18 +554,52 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
         fun commit ->
             withContext (fun ctx ->
                 async {
-                    let request: Commands.Request<string> =
-                        { Actor = actorOf ctx.Person
-                          Capability = commit.Command.Capability
-                          Summary = commit.Command.Summary
-                          IdempotencyKey = newKey ()
-                          Transition = commit.Transition }
+                    // Decided on the books as GitHub holds them now; when GitHub
+                    // cannot be reached, on the books as last read, and kept.
+                    let! fresh = readState ctx
 
-                    match! Commands.execute (providerOf ctx.Namespace) Access.defaultApprovalGates ctx.Namespace Attempts request with
-                    | Ok outcome -> return [ BooksCommitted outcome.State ]
-                    | Error failure ->
-                        let! now = latest ctx
-                        return [ StoreRefused(describeFailure failure, now) ]
+                    match (match fresh with Ok read -> Some read | Error _ -> lastRead) with
+                    | None -> return [ StoreRefused("GitHub could not be reached, and these books were never read here.", None) ]
+                    | Some(token, objects) ->
+                        match Commands.decide Access.defaultApprovalGates ctx.Namespace token objects (requestOf ctx commit) with
+                        | Error failure ->
+                            let! now = latest ctx
+                            return [ StoreRefused(describeFailure failure, now) ]
+                        | Ok(state, None) -> return [ BooksCommitted state ]
+                        | Ok(_, Some operation) ->
+                            match OfflineQueue.enqueue (now ()) operation queue with
+                            | Error error -> return [ StoreRefused($"The change could not be kept to send: %A{error}", None) ]
+                            | Ok(queued, sequence) ->
+                                queue <- queued
+                                replays <- replays.Add(sequence, commit)
+                                do! (storeOf ()).Save queue |> Async.Ignore
+
+                                match! synchronize ctx Attempts with
+                                | Some books, messages -> return BooksCommitted books :: messages
+                                | None, messages -> return ChangeKept :: messages
+                })
+      SendUnsent = fun () -> withContext synchronizeAll
+      Check =
+        fun () ->
+            withContext (fun ctx ->
+                async {
+                    match! Verification.audit (providerOf ctx.Namespace) ctx.Namespace with
+                    | Ok findings -> return [ BooksChecked(describeAll findings) ]
+                    | Error failure -> return [ BooksChecked [ "The books could not be checked: " + describeFailure (Commands.StorageFailed failure) ] ]
+                })
+      Abandon =
+        fun sequence ->
+            withContext (fun ctx ->
+                async {
+                    match OfflineQueue.abandon sequence "given up by the person" queue with
+                    | Error _ -> return [ UnsentChanged(unsentView ()) ]
+                    | Ok abandoned ->
+                        queue <- abandoned
+                        replays <- replays.Remove sequence
+                        do! (storeOf ()).Save queue |> Async.Ignore
+                        let! sent = synchronizeAll ctx
+                        let! opened = opening ctx
+                        return opened :: sent
                 })
       CommitManifest =
         fun next ->

@@ -2,7 +2,7 @@
 id: DF-SUMMA-2026-0014
 title: Books on GitHub through Arca's GitHub adapter, each change a command
 status: accepted
-version: 1.0.0
+version: 1.1.0
 created: 2026-10-09
 updated: 2026-10-09
 owners:
@@ -27,13 +27,14 @@ provenance:
         model: unknown
         runtime: claude-code
       reason: "Decide how the accounting application keeps its books on GitHub (WI-0037 part 2)"
+      last: 2026-10-09T00:43:34.000Z
 ---
 
 # DF-SUMMA-2026-0014 — Books on GitHub through Arca's GitHub adapter, each change a command
 
 - **Date:** 2026-10-09
 - **Status:** accepted
-- **Work item:** WI-0037 (part 2)
+- **Work item:** WI-0037 (parts 2 and 3)
 
 ## Context
 
@@ -95,6 +96,32 @@ browser: each change computes the next books and saves a snapshot.
    opened), the engine adopts its router's current location again, not the
    page's first address, so a resumed deep link stays where it is.
 
+7. **Changes that cannot reach GitHub are kept, in order, never dropped
+   (1.1.0).**
+   - Every command is decided on the books as GitHub holds them, or, when
+     GitHub cannot be reached, on the books as last read. It is then put in
+     Arca's offline queue (`OfflinePolicy.QueueWrites`), the queue is saved,
+     and it is sent through `OfflineSync`.
+   - The page shows the change at once and says how many changes have not
+     reached GitHub yet; "Send now" tries again.
+   - The queue lives in this browser's localStorage (`LocalStorageQueue`)
+     when this tab holds its Web Lock (`limen.coordination`). Otherwise it
+     lives in this tab's memory, and the page says so.
+   - A new page sends what an earlier one kept before it shows the books.
+     An entry that was being sent is reconciled, never resent blindly.
+   - When GitHub moved under a queued command of this page, the command is
+     decided again on the newer books and revised in place. If it no longer
+     applies, it is given up and the reason is shown.
+   - A queued change from an earlier page cannot be decided again, because
+     its message is gone. It waits for the person, who sees what it was and
+     why it is stuck, and may give it up. Nothing is resolved silently.
+8. **Edits made outside Summa are shown on request.** "Check the books"
+   (Settings) runs `Verification.audit` against every financial record's
+   GitHub history and lists what it finds; it changes nothing. Integrity
+   failures already stop the books from opening.
+9. **Start-up reads Summa's application manifest** (SUM0-007,
+   `Workspace.checkApplication`). Books in a folder that is not Summa's, at
+   another storage version, or needing a newer Summa are refused.
 ## Consequences
 
 - `StoreTests` run the engine, wire, store port and Arca against Arca's
@@ -111,9 +138,9 @@ browser: each change computes the next books and saves a snapshot.
   - set up;
   - add a customer and find its commit on the branch;
   - reload and read it back.
-- Still to do in WI-0037:
-  - the offline queue (Arca's `OfflineQueue` on localStorage), so changes
-    survive a lost connection and a reload;
-  - showing conflicts and outside edits for the person to resolve;
-  - draining the queue before shutdown;
-  - reading the application manifest at start-up (SUM0-007).
+- The browser suite also keeps a change while GitHub is unreachable and
+  sends it after a reload (`github-books.spec.js`). `StoreTests` cover the
+  same, plus a stuck change from an earlier page given up, and the books
+  check.
+- The invoice editor's unsaved edits (before "Save draft") are not kept
+  across a refresh; that is WI-0044.

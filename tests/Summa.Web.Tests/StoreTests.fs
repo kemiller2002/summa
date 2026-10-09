@@ -55,12 +55,41 @@ let private synchronous (provider: StorageProvider) : StorageProvider =
         History = fun ns path -> now (provider.History ns path)
         Reconcile = fun ns pending -> now (provider.Reconcile ns pending) }
 
+/// GitHub as the pages see it: the repository, and whether it can be reached.
+type private Network(repository: InMemoryStore) =
+    member val Online = true with get, set
+    member this.Provider: StorageProvider =
+        let provider = synchronous repository.Provider
+        let offline () = StorageFailure.ProviderFailed("github", true, "offline")
+        let guard (work: Async<Result<'a, StorageFailure>>) = if this.Online then work else async.Return(Error(offline ()))
+
+        { provider with
+            Read = fun ns path -> guard (provider.Read ns path)
+            List = fun ns path -> guard (provider.List ns path)
+            Commit = fun operation -> guard (provider.Commit operation)
+            ChangeToken = fun ns -> guard (provider.ChangeToken ns) }
+
+/// One browser: its localStorage, and which tab holds which Web Lock.
+type private Browser() =
+    member val Storage = Collections.Generic.Dictionary<string, string>()
+    member val Locks = Collections.Generic.HashSet<string>()
+
+let private networks = Collections.Generic.Dictionary<InMemoryStore, Network>(HashIdentity.Reference)
+
+let private networkOf (repository: InMemoryStore) =
+    match networks.TryGetValue repository with
+    | true, found -> found
+    | _ ->
+        let created = Network repository
+        networks[repository] <- created
+        created
+
 /// One page, signed in as `subject`, over the shared in-memory repository.
 let private page (repository: InMemoryStore) (subject: string) (login: string) : Wire.Env =
     let bridge = Bridge.Bridge()
 
     let backend: Store.Backend =
-        { Provider = fun _ -> synchronous repository.Provider
+        { Provider = fun _ -> (networkOf repository).Provider
           Resolve = fun _ -> async.Return(Ok snapshot) }
 
     { Now = fun () -> start
@@ -77,8 +106,12 @@ let private text (node: JsonNode | null) =
     | null -> failwith "missing"
     | n -> n.GetValue<string>()
 
-/// Sends a message and answers the configuration request, until nothing is
-/// left to answer. The store and the identity answer through the bridge.
+/// The browser the pages of a test share, when they keep unsent changes.
+let mutable private browser: Browser option = None
+
+/// Sends a message and answers the configuration request (and, in a test
+/// with a browser, its storage and locks), until nothing is left to answer.
+/// The store and the identity answer through the bridge.
 let private pump (env: Wire.Env) (session: Wire.Session) (message: string) =
     let rec loop (session: Wire.Session) (queue: string list) (last: string) =
         match queue with
@@ -100,6 +133,28 @@ let private pump (env: Wire.Env) (session: Wire.Session) (message: string) =
                         let id = text effect["correlationId"]
                         let body = Text.Json.JsonSerializer.Serialize configuration
                         Some $"""{{"kind":"EffectResult","result":{{"kind":"HttpResult","correlationId":"{id}","outcome":{{"kind":"Success","status":200,"body":{body}}}}}}}"""
+                    | "Storage" when browser.IsSome ->
+                        let id = text effect["correlationId"]
+                        let key = text effect["key"]
+                        let storage = browser.Value.Storage
+                        let json (v: string) = Text.Json.JsonSerializer.Serialize v
+
+                        let value =
+                            match text effect["operation"] with
+                            | "get" -> (match storage.TryGetValue key with | true, v -> $",\"value\":{json v}" | _ -> "")
+                            | "set" ->
+                                storage[key] <- text effect["value"]
+                                ""
+                            | _ ->
+                                storage.Remove key |> ignore
+                                ""
+
+                        Some $"""{{"kind":"EffectResult","result":{{"kind":"StorageResult","correlationId":"{id}","outcome":{{"kind":"Success"{value}}}}}}}"""
+                    | "Capability" when browser.IsSome && text effect["capability"] = "limen.coordination" ->
+                        let id = text effect["correlationId"]
+                        let name = match effect["request"] with null -> "" | r -> text r.["name"]
+                        let kind = if browser.Value.Locks.Add name then "Acquired\",\"lock\":\"lock-1" else "Busy"
+                        Some $"""{{"kind":"EffectResult","result":{{"kind":"CapabilityResult","correlationId":"{id}","capability":"limen.coordination","version":1,"outcome":{{"kind":"Completed","result":{{"kind":"{kind}"}}}}}}}}"""
                     | _ -> None)
 
             loop session (rest @ answers) reply
@@ -107,7 +162,13 @@ let private pump (env: Wire.Env) (session: Wire.Session) (message: string) =
     loop session [ message ] ""
 
 let private initialize (hash: string) =
-    $"""{{"kind":"Initialize","location":{{"origin":"https://summa.example","path":"/app/","query":"","hash":"{hash}"}},"handshake":{{"protocol":{{"major":1,"minor":4}},"contract":{{"unit":"limen.core","version":1,"fingerprint":"{Limen.core.Fingerprint}"}},"capabilities":[]}}}}"""
+    let packs =
+        if browser.IsSome then
+            $"""{{"id":"limen.coordination","version":1,"fingerprint":"{Wire.coordination.Fingerprint}"}}"""
+        else
+            ""
+
+    $"""{{"kind":"Initialize","location":{{"origin":"https://summa.example","path":"/app/","query":"","hash":"{hash}"}},"handshake":{{"protocol":{{"major":1,"minor":4}},"contract":{{"unit":"limen.core","version":1,"fingerprint":"{Limen.core.Fingerprint}"}},"capabilities":[{packs}]}}}}"""
 
 let private event (name: string) (value: string) =
     $"""{{"kind":"Event","event":{{"kind":"Event","name":"{name}","value":{Text.Json.JsonSerializer.Serialize value}}}}}"""
@@ -200,3 +261,119 @@ let ``a change needs the capability: without it nothing is committed`` () =
     Assert.Contains("does not include", session.Model.Error.Value)
     Assert.Empty(storedCustomers repository)
 
+
+let private waiting (session: Wire.Session) = session.Model.Unsent.Waiting
+
+[<Fact>]
+let ``a change made while GitHub cannot be reached is kept, shown, and sent when it can`` () =
+    browser <- None
+    let repository = InMemoryStore()
+    let env, session, _ = openAs repository "583231" "octocat"
+    let session, _ = send env session [ "foundRequested", "" ]
+
+    (networkOf repository).Online <- false
+    let session, reply = addCustomer env session "Acme"
+    // Shown at once, kept to send, and not on GitHub.
+    Assert.Equal(1, session.Model.Books.Value.Books.Customers.Count)
+    Assert.Equal(1, waiting session)
+    Assert.True(flag "hasUnsent" reply)
+    Assert.Equal(0, session.Model.Unsaved)
+
+    // Still unreachable: sending again keeps it.
+    let session, _ = send env session [ "sendUnsentRequested", "" ]
+    Assert.Equal(1, waiting session)
+
+    (networkOf repository).Online <- true
+    let session, reply = send env session [ "sendUnsentRequested", "" ]
+    Assert.Equal(0, waiting session)
+    Assert.False(flag "hasUnsent" reply)
+    Assert.Equal<(string * string) list>([ "CUST-0001", "Acme" ], storedCustomers repository)
+
+[<Fact>]
+let ``unsent changes outlive the page in this browser, held by one tab at a time`` () =
+    browser <- Some(Browser())
+    let repository = InMemoryStore()
+    let env, session, _ = openAs repository "583231" "octocat"
+    let session, _ = send env session [ "foundRequested", "" ]
+
+    (networkOf repository).Online <- false
+    let session, _ = addCustomer env session "Acme"
+    Assert.Equal(1, waiting session)
+    Assert.Contains(browser.Value.Storage.Keys, fun key -> key.StartsWith "arca.queue.")
+
+    // Another tab of the same browser does not take them: one lock, one holder.
+    openAs repository "583231" "octocat" |> ignore
+    Assert.Equal(1, browser.Value.Locks.Count)
+
+    // The page closes (its lock goes with it) and GitHub can be reached again;
+    // a new page sends what the old one kept before showing the books.
+    browser.Value.Locks.Clear()
+    (networkOf repository).Online <- true
+    let _, reopened, _ = openAs repository "583231" "octocat"
+    Assert.Equal(0, waiting reopened)
+    Assert.Equal<(string * string) list>([ "CUST-0001", "Acme" ], storedCustomers repository)
+    Assert.Equal(1, reopened.Model.Books.Value.Books.Customers.Count)
+    browser <- None
+
+[<Fact>]
+let ``a kept change GitHub moved under, from an earlier page, waits for the person, who may give it up`` () =
+    browser <- Some(Browser())
+    let repository = InMemoryStore()
+    let env, session, _ = openAs repository "583231" "octocat"
+    let session, _ = send env session [ "foundRequested", "" ]
+
+    (networkOf repository).Online <- false
+    addCustomer env session "Acme" |> ignore
+
+    // Meanwhile someone else adds a customer on GitHub.
+    browser.Value.Locks.Clear()
+    (networkOf repository).Online <- true
+    let savedBrowser = browser
+    browser <- None
+    let elsewhere, elsewhereSession, _ = openAs repository "583231" "octocat"
+    addCustomer elsewhere elsewhereSession "Globex" |> ignore
+    browser <- savedBrowser
+
+    // A new page in the first browser cannot decide the old change again: it waits.
+    let env, reopened, reply = openAs repository "583231" "octocat"
+    Assert.Equal(1, waiting reopened)
+    Assert.True(flag "hasBlockedChange" reply)
+    Assert.True(reopened.Model.Unsent.Blocked.IsSome)
+    Assert.Equal<(string * string) list>([ "CUST-0001", "Globex" ], storedCustomers repository)
+
+    let after, reply = send env reopened [ "abandonUnsentRequested", "" ]
+    Assert.Equal(0, waiting after)
+    Assert.False(flag "hasUnsent" reply)
+    browser <- None
+
+[<Fact>]
+let ``checking the books shows a record edited outside Summa, and changes nothing`` () =
+    browser <- None
+    let repository = InMemoryStore()
+    let env, session, _ = openAs repository "583231" "octocat"
+    let session, _ = send env session [ "foundRequested", "" ]
+    let session, _ = addCustomer env session "Acme"
+
+    let session, _ = send env session [ "checkRequested", "" ]
+    Assert.Equal(Checked [], session.Model.Check)
+
+    // Someone rewrites the customer's file on GitHub, by hand.
+    let config = Summa.Storage.Deployment.parse configuration |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    let binding = Summa.Storage.Storage.binding config |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    let ns = Summa.Storage.Storage.organizationNamespace config binding "org_acme" |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    let path = RelativePath.parse "records/summa.customer/CUST-0001.json" |> Result.defaultWith (fun e -> failwith $"%A{e}")
+
+    let content =
+        match repository.Provider.Read ns path |> Async.RunSynchronously with
+        | Ok(ReadOutcome.Found found) -> found.Content
+        | other -> failwith $"%A{other}"
+
+    repository.WriteExternally(ns.Location, RelativePath.render ns.Root + "/records/summa.customer/CUST-0001.json", Some content)
+    let session, reply = send env session [ "checkRequested", "" ]
+
+    match session.Model.Check with
+    | Checked [ finding ] -> Assert.Contains("CUST-0001", finding)
+    | other -> failwith $"%A{other}"
+
+    Assert.True(flag "booksChecked" reply)
+    Assert.Equal<(string * string) list>([ "CUST-0001", "Acme" ], storedCustomers repository)
