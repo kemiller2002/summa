@@ -26,6 +26,8 @@ type KernelCall =
     | Request of method: string * url: string * headers: (string * string) list * body: string option * timeoutMs: int * responseHeaders: string list
     /// Wait this long (a back-off).
     | Sleep of milliseconds: int
+    /// Take this Web Lock exclusively, without waiting (`limen.coordination`).
+    | Lock of name: string
     | DeviceGet of key: string
     | DeviceSet of key: string * value: string
     | DeviceRemove of key: string
@@ -49,6 +51,10 @@ type KernelAnswer =
     | Http of HttpAnswer
     | Read of value: string option
     | Done
+    /// Browser storage refused a write: `quota-exceeded` or `unavailable`.
+    | Refused of reason: string
+    /// A lock request's answer: `Acquired`, `Busy` or `Unsupported`.
+    | Locked of kind: string
     /// The kernel offers no such service, or did not run the request.
     | Missing
 

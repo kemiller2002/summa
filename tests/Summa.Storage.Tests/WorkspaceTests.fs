@@ -174,3 +174,27 @@ let ``books that fail their checks are not opened`` () =
     match opening store "github:583231" with
     | Workspace.Unusable problems -> Assert.NotEmpty problems
     | other -> failwith $"%A{other}"
+
+[<Fact>]
+let ``start-up reads Summa's application manifest and refuses books that need a newer Summa`` () =
+    let empty = InMemoryStore()
+    Assert.Equal(Ok(), Workspace.checkApplication empty.Provider (bindingOf production) |> Async.RunSynchronously |> Result.mapError ignore)
+
+    let store = founded ()
+    Assert.Equal(Ok(), Workspace.checkApplication store.Provider (bindingOf production) |> Async.RunSynchronously |> Result.mapError ignore)
+
+    let application = Storage.applicationNamespace (bindingOf production) |> ok
+    let file = RelativePath.render application.Root + "/" + RelativePath.render Application.path
+
+    let current =
+        match store.Provider.Read application Application.path |> Async.RunSynchronously |> ok with
+        | ReadOutcome.Found found -> found.Content
+        | ReadOutcome.Absent -> failwith "absent"
+
+    let newer = current.Replace($"\"minimumApplicationVersion\":\"{Application.ApplicationVersion}\"", "\"minimumApplicationVersion\":\"9.0.0\"")
+    Assert.NotEqual<string>(current, newer)
+    store.WriteExternally(application.Location, file, Some newer)
+
+    match Workspace.checkApplication store.Provider (bindingOf production) |> Async.RunSynchronously with
+    | Error(Commands.Untrustworthy problems) -> Assert.Contains("need Summa 9.0.0", problems |> List.map describe |> String.concat " ")
+    | other -> failwith $"%A{other}"

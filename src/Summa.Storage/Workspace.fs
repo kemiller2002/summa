@@ -8,6 +8,7 @@
 /// sequences the reads and builds the commits.
 module Summa.Storage.Workspace
 
+open System
 open Arca
 open Summa.Access.Access
 open Summa.Ledger.Payments
@@ -23,7 +24,10 @@ type Opened =
       /// What this person may do here (their roster membership).
       Capabilities: Set<Capability>
       /// Read-write, or read-only with the reasons.
-      Access: Compatibility.Access }
+      Access: Compatibility.Access
+      /// What was read, and the change token it was read at: the basis for
+      /// deciding a command when the store cannot be reached.
+      Read: ChangeToken option * StoredObject list }
 
 /// What opening found.
 [<NoComparison; NoEquality>]
@@ -96,7 +100,8 @@ let decide
                               Manifest = current
                               Books = loaded.State
                               Capabilities = capabilities
-                              Access = access }
+                              Access = access
+                              Read = None, objects }
                     else
                         Unusable loaded.Problems
 
@@ -121,9 +126,18 @@ let openBooks
             | Ok ReadOutcome.Absent, _ -> return Ok(NotSetUp(Governance.decide binding.Environment.Kind organization true (empty organization.Id) actorId))
             | Ok(ReadOutcome.Found _), Ok ReadOutcome.Absent -> return Ok(Unusable [ NamespaceNotInitialized(RelativePath.render ns.Root) ])
             | Ok(ReadOutcome.Found folder), Ok(ReadOutcome.Found manifest) ->
-                match! Commands.readAll provider ns with
-                | Error failure -> return Error failure
-                | Ok objects -> return Ok(decide binding.Environment.Kind organization ns folder manifest objects actorId)
+                match! provider.ChangeToken ns with
+                | Error failure -> return Error(Commands.StorageFailed failure)
+                | Ok token ->
+                    match! Commands.readAll provider ns with
+                    | Error failure -> return Error failure
+                    | Ok objects ->
+                        return
+                            Ok(
+                                match decide binding.Environment.Kind organization ns folder manifest objects actorId with
+                                | Opened opened -> Opened { opened with Read = Some token, objects }
+                                | other -> other
+                            )
     }
 
 /// The commits that set a new organization up for its founder, in order:
@@ -183,3 +197,29 @@ let confirmation
             MemberRecord.changes revisions roster after
             |> Result.bind (fun changes ->
                 Storage.operation ns context $"confirm {principal.PrincipalId} as administrator of {organization.Id}" changes))
+
+/// Summa's application manifest, read on start-up (SUM0-007): Summa's
+/// namespace must be Summa's, at a storage version this Summa reads, and
+/// must not need a newer Summa than this one. A repository with no
+/// namespace yet is fine: setting the books up creates it.
+let checkApplication (provider: StorageProvider) (binding: ApplicationBinding) : Async<Result<unit, Commands.CommandFailure<unit>>> =
+    async {
+        match Storage.applicationNamespace binding with
+        | Error problem -> return Error(Commands.Untrustworthy [ problem ])
+        | Ok application ->
+            match! provider.Read application Application.path with
+            | Error failure -> return Error(Commands.StorageFailed failure)
+            | Ok ReadOutcome.Absent -> return Ok()
+            | Ok(ReadOutcome.Found stored) ->
+                match Application.decode stored with
+                | Error problem -> return Error(Commands.Untrustworthy [ problem ])
+                | Ok manifest ->
+                    match Version.TryParse manifest.MinimumApplicationVersion, Version.TryParse Application.ApplicationVersion with
+                    | (true, needed), (true, running) when needed > running ->
+                        return
+                            Error(
+                                Commands.Untrustworthy
+                                    [ NamespaceUnusable(RelativePath.render application.Root, $"these books need Summa {manifest.MinimumApplicationVersion} or newer; this is {Application.ApplicationVersion}") ]
+                            )
+                    | _ -> return Ok()
+    }

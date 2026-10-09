@@ -194,6 +194,8 @@ module private Accounting =
           view (visit "#/periods")
           view (visit "#/periods/2026-10")
           view (step (visit "#/periods/2026-10") PeriodClosed)
+          // What checking books on GitHub found.
+          view (step (visit "#/settings") (BooksChecked [ "records/summa.customer/CUST-0001.json was edited outside Summa." ]))
           // A payment recorded but not applied blocks the month's close.
           view (
               let unapplied: Summa.Ledger.Payments.Payment =
