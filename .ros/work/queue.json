@@ -674,10 +674,10 @@
         "agents"
       ],
       "priority": "medium",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-08T07:46:06.134Z",
-      "updatedAt": "2026-10-09T01:44:32.000Z",
+      "updatedAt": "2026-10-09T02:28:09.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
