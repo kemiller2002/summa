@@ -530,11 +530,21 @@ type AppEffect =
 
 // ---- Helpers ---------------------------------------------------------------------------
 
+/// Every change made in the application is a person's (INV-PROV-001): the
+/// application has no agent of its own.
 let private context (ctx: Ctx) =
     { Who = ctx.Actor
       When = ctx.Now
       Source = "summa-app"
-      CorrelationId = None }
+      CorrelationId = None
+      Provenance =
+        Some
+            { ActorKind = "human"
+              Agent = None
+              ExecutionId = None
+              SourceSystem = Some "summa-app"
+              SourceId = None
+              Reason = None } }
 
 let private today (ctx: Ctx) = DateOnly.FromDateTime ctx.Now.UtcDateTime
 
@@ -2876,8 +2886,18 @@ let view (model: Model) : View =
             |> List.mapi (fun index a ->
                 [ "key", Text(string index)
                   "when", Text(a.When.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture))
-                  "who", Text a.Who
-                  "what", Text(a.What.Replace('-', ' ')) ]))
+                  "who",
+                  Text(
+                      match a.Provenance with
+                      // An agent's action says so, with its identity and run (INV-PROV-001, SUM4-042).
+                      | Some { ActorKind = "agent"; Agent = agent; ExecutionId = execution } ->
+                          let identity = agent |> Option.map (fun g -> $" ({g.Provider} {g.Model})") |> Option.defaultValue ""
+                          let run = execution |> Option.map (fun e -> $", run {e}") |> Option.defaultValue ""
+                          $"Agent {a.Who}{identity}{run}"
+                      | Some { ActorKind = "automation" } -> $"Automation {a.Who}"
+                      | _ -> a.Who
+                  )
+                  "what", Text(a.What.Replace('-', ' ') + (a.Provenance |> Option.bind _.Reason |> Option.map (fun r -> $": {r}") |> Option.defaultValue "")) ]))
         |> Option.defaultValue []
 
     let detailValues =

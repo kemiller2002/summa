@@ -404,6 +404,15 @@ type ProposalLine = { Line: InvoiceLine; Priced: bool }
 
 /// An invoice proposal. While it is Proposed or ReadyForReview it reserves
 /// its sources, so another proposal cannot bill them (INV-CHR-004).
+/// One contribution to a proposal: who did what, when, and from where. A
+/// person's change to an agent's proposal is appended; the agent's own
+/// contribution is never overwritten (INV-AGENT-005, INV-PROV-007).
+type Contribution =
+    { Who: string
+      What: string
+      At: DateTimeOffset
+      Provenance: Provenance option }
+
 type Proposal =
     { Id: string
       CustomerId: string
@@ -413,7 +422,9 @@ type Proposal =
       /// The grouping used for its time, kept so it can be reproduced (INV-CHR-009).
       Grouping: GroupBy list
       State: ProposalState
-      CreatedAt: DateTimeOffset }
+      CreatedAt: DateTimeOffset
+      /// Everyone who contributed, oldest first.
+      Contributions: Contribution list }
 
 /// A versioned payment instructions profile (INV-PAYINST-001). A version
 /// is never changed; editing makes a new version, so invoices keep what

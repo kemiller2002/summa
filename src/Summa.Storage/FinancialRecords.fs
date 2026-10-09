@@ -116,9 +116,10 @@ let types: (RecordType * Mutability * bool) list =
       profileType, Mutability.Immutable, false
       followUpType, Mutability.Mutable, false ]
 
-/// The record types whose schema 2 records tax as the person said it
-/// (INV-ADJ-005): customers, drafts, issued invoices and proposals.
-let private taxedTypes = set [ "summa.customer"; "summa.draft"; "summa.invoice"; "summa.proposal" ]
+/// The record types with a schema 2: tax as the person said it (customers,
+/// drafts, invoices, proposals; INV-ADJ-005), and where an action came from
+/// (audit events, proposal contributions; INV-AUD-002, INV-PROV-007).
+let private taxedTypes = set [ "summa.customer"; "summa.draft"; "summa.invoice"; "summa.proposal"; "summa.audit" ]
 
 /// Schema support for every financial record type: version 1, and version 2
 /// for the types that can record tax. A record is written at version 2 only
@@ -1008,16 +1009,77 @@ let private keyOf (t: RecordType) (partition: string list) (id: string) : Result
 
 let private yearMonth (d: DateOnly) = [ $"{d.Year:D4}"; $"{d.Month:D2}" ]
 
+/// Where an action came from (INV-AUD-002, INV-PROV-001, INV-PROV-002).
+let provenanceJson (p: Provenance) =
+    Json.objectOf
+        [ "actorKind", Json.String p.ActorKind
+          "agent",
+          (match p.Agent with
+           | Some a -> Json.objectOf [ "provider", Json.String a.Provider; "model", Json.String a.Model; "runtime", Json.String a.Runtime ]
+           | None -> Json.Null)
+          "executionId", optionalString p.ExecutionId
+          "sourceSystem", optionalString p.SourceSystem
+          "sourceId", optionalString p.SourceId
+          "reason", optionalString p.Reason ]
+
+let provenanceOf (value: Json) : Decoded<Provenance> =
+    decode {
+        do! closed [ "actorKind"; "agent"; "executionId"; "reason"; "sourceId"; "sourceSystem" ] value
+        let! kind = text "actorKind" value
+
+        let! agent =
+            match Codec.tryField "agent" value with
+            | None -> Ok None
+            | Some a ->
+                decode {
+                    do! closed [ "model"; "provider"; "runtime" ] a
+                    let! provider = text "provider" a
+                    let! model = text "model" a
+                    let! runtime = text "runtime" a
+                    return Some { Provider = provider; Model = model; Runtime = runtime }
+                }
+
+        let! execution = optionalText "executionId" value
+        let! system = optionalText "sourceSystem" value
+        let! sourceId = optionalText "sourceId" value
+        let! reason = optionalText "reason" value
+
+        return!
+            match kind with
+            | "human"
+            | "agent"
+            | "automation"
+            | "unknown" ->
+                Ok
+                    { ActorKind = kind
+                      Agent = agent
+                      ExecutionId = execution
+                      SourceSystem = system
+                      SourceId = sourceId
+                      Reason = reason }
+            | other when other.StartsWith "x-" ->
+                Ok
+                    { ActorKind = other
+                      Agent = agent
+                      ExecutionId = execution
+                      SourceSystem = system
+                      SourceId = sourceId
+                      Reason = reason }
+            | other -> Error $"'{other}' is not an actor kind"
+    }
+
 /// Stable ids of audit events: a hash of the event and how many identical
 /// events precede it, so the same history always has the same paths.
 let private auditBody (a: AuditRecord) =
-    Json.objectOf
+    Json.objectOf (
         [ "who", Json.String a.Who
           "what", Json.String a.What
           "when", Json.String(preciseTimestamp a.When)
           "source", Json.String a.Source
           "correlationId", optionalString a.CorrelationId
           "subject", Json.String a.Subject ]
+        @ (a.Provenance |> Option.map (fun p -> "provenance", provenanceJson p) |> Option.toList)
+    )
 
 let private auditIds (audit: AuditRecord list) =
     audit
@@ -1289,7 +1351,7 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                     "withdrawnAt", Json.String(preciseTimestamp w.WithdrawnAt) ]
           for KeyValue(_, p) in books.Proposals ->
               keyOf proposalType [] p.Id,
-              Json.objectOf
+              Json.objectOf (
                   [ "id", Json.String p.Id
                     "customerId", Json.String p.CustomerId
                     "engagementId", optionalString p.EngagementId
@@ -1298,6 +1360,20 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                     "grouping", Json.Array(p.Grouping |> List.map (fun g -> Json.String(groupByNames |> List.find (fun (x, _) -> x = g) |> snd)))
                     "state", proposalState p.State
                     "createdAt", Json.String(preciseTimestamp p.CreatedAt) ]
+                  // Written only when there are some, so a proposal from before keeps its bytes.
+                  @ (if p.Contributions.IsEmpty then
+                         []
+                     else
+                         [ "contributions",
+                           Json.Array(
+                               p.Contributions
+                               |> List.map (fun c ->
+                                   Json.objectOf (
+                                       [ "who", Json.String c.Who; "what", Json.String c.What; "at", Json.String(preciseTimestamp c.At) ]
+                                       @ (c.Provenance |> Option.map (fun pv -> "provenance", provenanceJson pv) |> Option.toList)
+                                   ))
+                           ) ])
+              )
           if not books.Rates.Rates.IsEmpty || not books.Rates.Roles.IsEmpty then
               yield
                   keyOf rateCardType [] "rates",
@@ -1370,7 +1446,9 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
 let schemaVersionOf (record: FinancialRecord) =
     let rec recordsTax (value: Json) =
         match value with
-        | Json.Object members -> members |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || recordsTax inner)
+        | Json.Object members ->
+            members
+            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || recordsTax inner)
         | Json.Array items -> items |> List.exists recordsTax
         | _ -> false
 
@@ -1765,13 +1843,18 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
         }
     | "summa.audit" ->
         decode {
-            do! closed [ "correlationId"; "source"; "subject"; "what"; "when"; "who" ] b
+            do! closed [ "correlationId"; "provenance"; "source"; "subject"; "what"; "when"; "who" ] b
             let! who = text "who" b
             let! what = text "what" b
             let! at = preciseInstant "when" b
             let! source = text "source" b
             let! correlation = optionalText "correlationId" b
             let! subject = text "subject" b
+
+            let! provenance =
+                match Codec.tryField "provenance" b with
+                | None -> Ok None
+                | Some p -> provenanceOf p |> Result.map Some
 
             return
                 AuditPart
@@ -1780,7 +1863,8 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                       When = at
                       Source = source
                       CorrelationId = correlation
-                      Subject = subject }
+                      Subject = subject
+                      Provenance = provenance }
         }
     | "summa.credit" ->
         decode {
@@ -2071,7 +2155,7 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
         }
     | "summa.proposal" ->
         decode {
-            do! closed [ "createdAt"; "currency"; "customerId"; "engagementId"; "grouping"; "id"; "lines"; "state" ] b
+            do! closed [ "contributions"; "createdAt"; "currency"; "customerId"; "engagementId"; "grouping"; "id"; "lines"; "state" ] b
             let! id = text "id" b
             let! customer = text "customerId" b
             let! engagement = optionalText "engagementId" b
@@ -2093,6 +2177,32 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
             let! state = field "state" b |> Result.bind proposalStateOf
             let! created = preciseInstant "createdAt" b
 
+            let! contributions =
+                match Codec.tryField "contributions" b with
+                | None -> Ok []
+                | Some _ ->
+                    list
+                        "contributions"
+                        (fun c ->
+                            decode {
+                                do! closed [ "at"; "provenance"; "what"; "who" ] c
+                                let! who = text "who" c
+                                let! what = text "what" c
+                                let! at = preciseInstant "at" c
+
+                                let! provenance =
+                                    match Codec.tryField "provenance" c with
+                                    | None -> Ok None
+                                    | Some p -> provenanceOf p |> Result.map Some
+
+                                return
+                                    { Who = who
+                                      What = what
+                                      At = at
+                                      Provenance = provenance }
+                            })
+                        b
+
             return
                 ProposalPart
                     { Id = id
@@ -2102,7 +2212,8 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                       Lines = lines
                       Grouping = grouping
                       State = state
-                      CreatedAt = created }
+                      CreatedAt = created
+                      Contributions = contributions }
         }
     | "summa.rate-card" ->
         decode {

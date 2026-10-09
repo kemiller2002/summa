@@ -89,20 +89,46 @@ type PeriodState =
     | Closed
     | Locked
 
+/// An agent's self-reported identity, as Praxis records it: provider, model
+/// and runtime, literal `unknown` when not known (INV-PROV-001).
+type AgentInfo =
+    { Provider: string
+      Model: string
+      Runtime: string }
+
+/// Where a command came from beyond who (SUM2-028, INV-AUD-002,
+/// INV-PROV-001, INV-PROV-002, INV-PROV-007). Provenance, never authority
+/// (INV-PROV-006).
+type Provenance =
+    { /// Praxis-compatible: `human`, `agent`, `automation` or `unknown`. An
+      /// agent's action is never a person's.
+      ActorKind: string
+      Agent: AgentInfo option
+      /// Opaque, stored as supplied, never parsed (INV-PROV-002).
+      ExecutionId: string option
+      /// The system that triggered it, and that system's id for it.
+      SourceSystem: string option
+      SourceId: string option
+      /// Why, when the action needs a reason.
+      Reason: string option }
+
 type AuditRecord =
     { Who: string
       What: string
       When: DateTimeOffset
       Source: string
       CorrelationId: string option
-      Subject: string }
+      Subject: string
+      Provenance: Provenance option }
 
-/// Who, when and through what a command arrives (§18).
+/// Who, when and through what a command arrives (§18), and where it came
+/// from beyond who.
 type Context =
     { Who: string
       When: DateTimeOffset
       Source: string
-      CorrelationId: string option }
+      CorrelationId: string option
+      Provenance: Provenance option }
 
 type Problem =
     | Unbalanced of debits: Money * credits: Money
@@ -146,7 +172,8 @@ let audit (context: Context) (what: string) (subject: string) (ledger: Ledger) =
                   When = context.When
                   Source = context.Source
                   CorrelationId = context.CorrelationId
-                  Subject = subject } ] }
+                  Subject = subject
+                  Provenance = context.Provenance } ] }
 
 let addAccount (context: Context) (account: Account) (ledger: Ledger) =
     if ledger.Accounts |> Map.exists (fun id a -> a.Code = account.Code && id <> account.Id) then

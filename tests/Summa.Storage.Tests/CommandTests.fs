@@ -311,3 +311,63 @@ let ``choosing an invoice number is its own capability, and a person must approv
     Assert.Contains(OverrideInvoiceNumber, defaultApprovalGates)
     Assert.DoesNotContain(OverrideInvoiceNumber, Grants.bookkeeper)
     Assert.Contains(OverrideInvoiceNumber, Grants.accountant)
+
+let private admitAgent (store: InMemoryStore) ns =
+    let listing = store.Provider.List ns MemberRecord.folder |> Async.RunSynchronously |> Support.ok
+    let members = listing.Entries |> List.map (fun e -> match store.Provider.Read ns e.Path |> Async.RunSynchronously |> Support.ok with ReadOutcome.Found s -> s | _ -> failwith "absent")
+    let roster, revisions = MemberRecord.roster "org_acme" members |> Support.ok
+    let next = Access.execute "github:583231" (Admit({ PrincipalId = bot.ActorId; Kind = Agent; DisplayName = "agent" }, Grants.forKind Agent Grants.accountant)) roster |> Support.ok
+    let changes = MemberRecord.changes revisions roster next |> Support.ok
+    store.Provider.Commit(Storage.operation ns (context "admit") "admit agent" changes |> Support.ok) |> Async.RunSynchronously |> Support.ok |> ignore
+
+[<Fact>]
+let ``an agent's command keeps who, of what kind, from where and in which run, in the stored audit`` () =
+    let store, ns = founded ()
+    setUp store ns |> Support.ok |> ignore
+    admitAgent store ns
+    let agentContext = contextFor bot ledgerContext.When "summa-agent" (Some "TE-9821") None
+    Assert.Equal(Some "agent", agentContext.Provenance |> Option.map _.ActorKind)
+
+    let drafted = run store ns bot CreateDraftInvoice "draft-bot" (fun r -> saveDraft agentContext draft r.Books |> Result.map (fun b -> { r with Books = b })) |> Support.ok
+    Assert.True drafted.Receipt.IsSome
+
+    // Read back from the store: the audit event is an agent's, with its run and source.
+    let loaded = FinancialRecords.load (readAll store.Provider ns |> Async.RunSynchronously |> Support.ok |> List.filter (fun o -> match Layout.keyOf o.Path with Some k -> FinancialRecords.isFinancial k.Type | None -> false))
+    let event = loaded.State.Books.Ledger.Audit |> List.find (fun a -> a.Subject = draft.DraftId && a.Who = bot.ActorId)
+    Assert.Equal(agentContext.Provenance, event.Provenance)
+    Assert.Equal(Some "EXE-summa.1", event.Provenance |> Option.bind _.ExecutionId)
+    Assert.Equal(Some "anthropic", event.Provenance |> Option.bind _.Agent |> Option.map _.Provider)
+
+    // A service is automation, never a person (INV-PROV-001).
+    let service = { bot with Kind = Service; Agent = None; ActorId = "summa-import" }
+    Assert.Equal(Some "automation", (contextFor service ledgerContext.When "import" None None).Provenance |> Option.map _.ActorKind)
+
+[<Fact>]
+let ``an agent cannot void, apply credit, reverse a payment or change billing terms without a person`` () =
+    let store, ns = founded ()
+    setUp store ns |> Support.ok |> ignore
+    admitAgent store ns
+
+    for capability in [ VoidInvoice; ApplyCreditMemo; ReversePayment; ManageBilling; OverrideRate ] do
+        match run store ns bot capability $"gated-{capability}" (fun r -> Ok r) with
+        | Error(NeedsApproval c) -> Assert.Equal(capability, c)
+        | other -> failwith $"{capability}: %A{other}"
+
+[<Fact>]
+let ``audit events are append-only: a command can neither rewrite nor drop one`` () =
+    let store, ns = founded ()
+    setUp store ns |> Support.ok |> ignore
+
+    let rewrite (r: Receivables) =
+        let ledger = r.Books.Ledger
+        Ok { r with Books = { r.Books with Ledger = { ledger with Audit = ledger.Audit |> List.map (fun a -> { a with Who = "someone-else" }) } } }
+
+    match run store ns kevin ManageSettings "rewrite-audit" rewrite with
+    | Error(Unstorable _) -> ()
+    | other -> failwith $"%A{other}"
+
+    let drop (r: Receivables) = Ok { r with Books = { r.Books with Ledger = { r.Books.Ledger with Audit = [] } } }
+
+    match run store ns kevin ManageSettings "drop-audit" drop with
+    | Error(Unstorable _) -> ()
+    | other -> failwith $"%A{other}"

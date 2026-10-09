@@ -7,7 +7,7 @@ open Xunit
 open Summa.Ledger.Money
 open Summa.Ledger.Ledger
 
-let context = { Who = "kevin"; When = DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.Zero); Source = "summa-web"; CorrelationId = Some "c-1" }
+let context = { Who = "kevin"; When = DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.Zero); Source = "summa-web"; CorrelationId = Some "c-1"; Provenance = None }
 
 let ok result =
     match result with

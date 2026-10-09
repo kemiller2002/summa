@@ -177,7 +177,7 @@ let ``a period with a payment not yet applied cannot be closed, and says why`` (
           Reference = "unapplied"
           Memo = None }
 
-    let context: Summa.Ledger.Ledger.Context = { Who = "test"; When = ctx.Now; Source = "test"; CorrelationId = None }
+    let context: Summa.Ledger.Ledger.Context = { Who = "test"; When = ctx.Now; Source = "test"; CorrelationId = None; Provenance = None }
 
     let withUnapplied =
         match Summa.Ledger.Payments.recordPayment context payment model.Books.Value with
