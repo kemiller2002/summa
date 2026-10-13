@@ -26,7 +26,15 @@ async function typeLine(page, description, hours, rate) {
 
 test("an unsaved invoice survives a refresh, and can be discarded", async ({ app: { page } }) => {
   await addCustomer(page, "ABC Corp");
-  await typeLine(page, "Architecture assessment", "10", "150.00");
+  const typed = await typeLine(page, "Architecture assessment", "10", "150.00");
+  // The line's fields are on screen at a usable size, not only present (their labels are for screen readers).
+  for (const field of [".line-description", ".line-hours", ".line-rate"]) {
+    const onScreen = await typed.locator(field).evaluate((input) => {
+      const box = input.getBoundingClientRect();
+      return box.width > 40 && document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) === input;
+    });
+    expect(onScreen, `${field} is not visible where it is`).toBe(true);
+  }
   await expect(page.locator("#draft-total")).toHaveText("1,500.00 USD");
 
   await page.reload();
@@ -63,7 +71,8 @@ test("line details and client references are entered in the editor and shown on 
   await addCustomer(page, "ABC Corp");
   const row = await typeLine(page, "Assessment", "10", "150.00");
   await row.locator(".line-details").click();
-  await expect(page.locator("#line-details legend")).toHaveText("Details of line 1: Assessment");
+  await expect(page.locator("#line-details")).toBeVisible();
+  await expect(page.locator("#line-details-title")).toHaveText("Line 1: Assessment");
   await page.fill("#line-detailed-description", "Security assessment of the billing service");
   await page.fill("#line-unit", "hours");
   await page.fill("#line-service-from", "2026-09-01");
@@ -71,7 +80,7 @@ test("line details and client references are entered in the editor and shown on 
   await page.fill("#line-customer-code", "ABC-4410");
   await expect(row.locator(".line-details")).toContainText("Details (given)");
   await page.click("#line-details-done");
-  await expect(page.locator("#line-details")).toHaveCount(0);
+  await expect(page.locator("#line-details")).toBeHidden();
 
   await page.click("#add-reference");
   const reference = page.locator("#draft-reference-rows tbody tr").first();
@@ -84,6 +93,8 @@ test("line details and client references are entered in the editor and shown on 
   await expect(page.locator("#draft-reference-rows .reference-kind")).toHaveValue("cost-center");
   await row.locator(".line-details").click();
   await expect(page.locator("#line-unit")).toHaveValue("hours");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#line-details")).toBeHidden();
 
   await page.click("#issue-invoice");
   const document = page.locator("#invoice-document");
@@ -92,6 +103,20 @@ test("line details and client references are entered in the editor and shown on 
   await expect(document).toContainText("Your code: ABC-4410");
   await expect(document.locator("dt", { hasText: "Cost center" })).toHaveCount(1);
   await expect(document).toContainText("CC-7");
+});
+
+test("a customer that requires a purchase order: the editor says so and issuing waits for it", async ({ app: { page } }) => {
+  await addCustomer(page, "ABC Corp");
+  await page.goto(page.url().replace(/#.*$/, "#/customers/CUST-0001"));
+  await page.check("#customer-po-required");
+  await expect(page.locator("#notice")).toHaveText("Invoices for this customer now need a purchase order.");
+  await typeLine(page, "Assessment", "10", "150.00");
+  await expect(page.locator("#draft-po-note")).toHaveText("Required: this customer's accounts payable needs a purchase order on every invoice.");
+  await page.click("#review-draft");
+  await expect(page.locator("#blockers")).toContainText("requires a purchase order on every invoice");
+  await page.fill("#draft-po", "PO-55");
+  await page.click("#review-draft");
+  await expect(page.locator("#notice")).toHaveText("Ready to issue. Check the preview, then issue it.");
 });
 
 test("proposals have their own place, empty until something proposes an invoice", async ({ app: { page } }) => {

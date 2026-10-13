@@ -94,7 +94,9 @@ type CustomerForm =
       TaxStatus: string
       TaxJurisdiction: string
       /// The exemption certificate or reference, for an exempt customer.
-      TaxEvidence: string }
+      TaxEvidence: string
+      /// Their accounts payable needs a purchase order on every invoice (INV-OPS-006).
+      RequiresPurchaseOrder: bool }
 
 let emptyCustomer =
     { Name = ""
@@ -104,7 +106,8 @@ let emptyCustomer =
       TermsDays = ""
       TaxStatus = "not-assessed"
       TaxJurisdiction = ""
-      TaxEvidence = "" }
+      TaxEvidence = ""
+      RequiresPurchaseOrder = false }
 
 /// What a line says beyond its description and amount, as typed
 /// (INV-DATA-008). Every field may be left empty.
@@ -395,6 +398,10 @@ type Model =
       Artifacts: ArtifactStore
       /// The reason or resolution typed on an invoice's follow-up.
       FollowUpNote: string
+      /// A payment promise as typed on an invoice (SUM4-016): amount, date, note.
+      PromiseAmount: string
+      PromiseBy: string
+      PromiseNote: string
       Receipt: ReceiptForm
       Pdf: PdfWork
       Blockers: Issuance.Blocker list
@@ -471,6 +478,9 @@ let initial =
       Packs = { Files = false; Store = false }
       Artifacts = StoreClosed
       FollowUpNote = ""
+      PromiseAmount = ""
+      PromiseBy = ""
+      PromiseNote = ""
       Receipt = { CustomerId = ""; Amount = ""; Date = ""; Method = "ach"; Reference = "" }
       Pdf = PdfIdle
       SignIn = NotRequired
@@ -657,6 +667,12 @@ type Msg =
     /// A reminder was sent for this invoice, by whatever means.
     | ReminderRecorded of invoiceId: string
     | FollowUpNoteChanged of string
+    | PromiseAmountChanged of string
+    | PromiseByChanged of string
+    | PromiseNoteChanged of string
+    /// Record the customer's promise to pay this invoice (SUM4-016).
+    | PromiseRecorded
+    | PromiseWithdrawn
     | DisputeMarked
     | DisputeSettled
     | InboxCustomerChosen of string
@@ -686,6 +702,9 @@ type Msg =
     | CustomerTaxStatusChosen of string
     | CustomerTaxJurisdictionChanged of string
     | CustomerTaxEvidenceChanged of string
+    | CustomerRequiresPurchaseOrderChanged of bool
+    /// The shown customer needs, or no longer needs, a purchase order on every invoice.
+    | CustomerPurchaseOrderRequirementSet of bool
     /// The editor's form this tab kept, or None (WI-0044).
     | EditorRead of string option
     /// Give up the editor's unsaved changes: the draft as saved, or an empty invoice.
@@ -821,6 +840,28 @@ let private command (model: Model) (notice: string) (run: Receivables -> Result<
     | _ -> { model with Error = Some "The books are not available."; Notice = None }, []
 
 let private describe (problems: 'a list) = problems |> List.map (fun p -> $"%A{p}") |> String.concat "; "
+
+/// A payment promise problem as one sentence.
+let private promiseProblemText =
+    function
+    | Lifecycle.UnknownInvoiceToPromise id -> $"There is no invoice {id}."
+    | Lifecycle.NothingOwed _ -> "Nothing is owed on this invoice, so there is nothing to promise."
+    | Lifecycle.PromiseNotPositive -> "A promise is for an amount greater than zero."
+    | Lifecycle.PromiseCurrency currency -> $"A promise is in the invoice's currency, {currency}."
+    | Lifecycle.PromiseMoreThanOwed owed -> $"The invoice owes {Documents.moneyText owed}; a promise cannot be for more."
+    | Lifecycle.PromiseInThePast by -> $"{Documents.dateText by} has already passed; a promise is for today or later."
+
+/// A promise and where it stands, in words.
+let private promiseText (promise: PaymentPromise, status: Lifecycle.PromiseStatus) =
+    let state =
+        match status with
+        | Lifecycle.PromiseDue -> "due"
+        | Lifecycle.PromiseKept -> "kept"
+        | Lifecycle.PromiseMissed -> "missed"
+
+    let note = if promise.Note = "" then "" else $" ({promise.Note})"
+    $"Promised {Documents.moneyText promise.Amount} by {Documents.dateText promise.By}{note}: {state}."
+
 
 /// The issue request for a draft, with the organization's defaults.
 let private issueRequest (manifest: Organization.OrganizationManifest) (books: Receivables) (draftId: string) (expectedVersion: int) (issueDate: DateOnly) =
@@ -1571,6 +1612,11 @@ let workItems (today: DateOnly) (r: Receivables) =
           match d.Review with
           | SubmittedForReview _ -> "Ready to issue", $"Draft {id} is reviewed and ready to issue.", Routes.href (Routes.Draft id)
           | Editing -> "Draft", $"Draft {id} is not yet submitted for review.", Routes.href (Routes.Draft id)
+          // A purchase order the customer requires and the draft lacks (INV-OPS-006).
+          match r.Books.Customers.TryFind d.CustomerId with
+          | Some c when c.RequiresPurchaseOrder && d.Details.PurchaseOrder.IsNone ->
+              "Missing PO", $"Draft {id} for {c.Name} needs the customer's purchase order before it can be issued.", Routes.href (Routes.Draft id)
+          | _ -> ()
       for i in openInvoices today r do
           match (Lifecycle.followUp r i.InvoiceId).Dispute with
           | Disputed(reason, _) -> "Disputed", $"Invoice {i.Number} is disputed: {reason}", invoice i.InvoiceId
@@ -1581,6 +1627,12 @@ let workItems (today: DateOnly) (r: Receivables) =
               "Unapplied payment", $"Payment {p.Id} has {Documents.moneyText (unallocated r p)} not yet applied.", Routes.href (Routes.Inbox(Some p.CustomerId))
       for id, why in Lifecycle.attention r do
           "Delivery", $"Invoice {number id}: {why}.", invoice id
+      // A promise to pay whose date passed without the payment (INV-OPS-006, SUM4-016).
+      for KeyValue(id, i) in r.Books.Invoices do
+          match Lifecycle.promiseStatus r today id with
+          | Some(p, Lifecycle.PromiseMissed) ->
+              "Payment promise missed", $"Invoice {i.Number}: {i.Customer.Name} promised {Documents.moneyText p.Amount} by {Documents.dateText p.By}, and it has not been paid.", invoice id
+          | _ -> ()
       // Proposals waiting for a person, and time corrected after it was invoiced (INV-OPS-006).
       for KeyValue(id, p) in r.Books.Proposals do
           if p.State = ReadyForReview then
@@ -1827,6 +1879,17 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
     | CustomerTaxStatusChosen _ -> model, []
     | CustomerTaxJurisdictionChanged v -> { model with Customer = { model.Customer with TaxJurisdiction = v } }, []
     | CustomerTaxEvidenceChanged v -> { model with Customer = { model.Customer with TaxEvidence = v } }, []
+    | CustomerRequiresPurchaseOrderChanged v -> { model with Customer = { model.Customer with RequiresPurchaseOrder = v } }, []
+    | CustomerPurchaseOrderRequirementSet required ->
+        match model.Place with
+        | Routes.Customer(id, _) ->
+            let notice = if required then "Invoices for this customer now need a purchase order." else "Invoices for this customer no longer need a purchase order."
+
+            command model notice (fun books ->
+                match books.Books.Customers.TryFind id with
+                | Some customer -> Ok { books with Books = saveCustomer (context ctx) { customer with RequiresPurchaseOrder = required } books.Books }
+                | None -> Error $"Customer {id} is not in these books.")
+        | _ -> model, []
     | CustomerAdded ->
         let form = model.Customer
 
@@ -1868,7 +1931,8 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                           PaymentProfileId = None
                           Active = true
                           Tax = tax
-                          LegalFields = [] }
+                          LegalFields = []
+                          RequiresPurchaseOrder = form.RequiresPurchaseOrder }
 
                     Ok { books with Books = saveCustomer (context ctx) customer books.Books })
 
@@ -2476,6 +2540,26 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
 
             Lifecycle.setCollection (context ctx) invoiceId (Reminded times) books |> Result.mapError describe)
     | FollowUpNoteChanged v -> { model with FollowUpNote = v }, []
+    | PromiseAmountChanged v -> { model with PromiseAmount = v }, []
+    | PromiseByChanged v -> { model with PromiseBy = v }, []
+    | PromiseNoteChanged v -> { model with PromiseNote = v }, []
+    | PromiseRecorded ->
+        match model.Place, parseAmount model.PromiseAmount, parseDate model.PromiseBy with
+        | Routes.Invoice _, None, _ -> { model with Error = Some "Enter the amount promised, such as 500.00."; Notice = None }, []
+        | Routes.Invoice _, _, None -> { model with Error = Some "Enter the date it was promised by, such as 2026-10-30."; Notice = None }, []
+        | Routes.Invoice(invoiceId, _), Some amount, Some by ->
+            let recorded, effects =
+                command model "Payment promise recorded. The invoice and the books are unchanged." (fun books ->
+                    Lifecycle.recordPromise (context ctx) invoiceId amount by model.PromiseNote model.Today books
+                    |> Result.mapError (List.map promiseProblemText >> String.concat " "))
+
+            (if recorded.Error.IsNone then { recorded with PromiseAmount = ""; PromiseBy = ""; PromiseNote = "" } else recorded), effects
+        | _ -> model, []
+    | PromiseWithdrawn ->
+        match model.Place with
+        | Routes.Invoice(invoiceId, _) ->
+            command model "Payment promise withdrawn." (fun books -> Lifecycle.withdrawPromise (context ctx) invoiceId books |> Result.mapError (fun () -> ""))
+        | _ -> model, []
     | DisputeMarked
     | DisputeSettled ->
         match model.Place with
@@ -2637,6 +2721,8 @@ let bookCommand (msg: Msg) : (Summa.Access.Access.Capability * string) option =
     | ReminderRecorded _ -> open' Summa.Access.Access.RecordPayment "record a reminder"
     | DisputeMarked
     | DisputeSettled -> open' Summa.Access.Access.RecordPayment "record a dispute"
+    | PromiseRecorded
+    | PromiseWithdrawn -> open' Summa.Access.Access.RecordPayment "record a payment promise"
     | PeriodClosed
     | PeriodLocked -> open' Summa.Access.Access.ClosePeriod "close a period"
     | PeriodReopened -> open' Summa.Access.Access.ReopenPeriod "reopen a period"
@@ -2646,6 +2732,7 @@ let bookCommand (msg: Msg) : (Summa.Access.Access.Capability * string) option =
     | OrganizationLegalFieldRemoved _ -> open' Summa.Access.Access.ManageSettings "change the legal fields on invoices"
     | CustomerLegalFieldAdded
     | CustomerLegalFieldRemoved _ -> open' Summa.Access.Access.ManageBilling "change a customer's legal fields"
+    | CustomerPurchaseOrderRequirementSet _ -> open' Summa.Access.Access.ManageBilling "change whether a customer needs a purchase order"
     | ProposalApproved _ -> open' Summa.Access.Access.IssueInvoice "issue an invoice from a proposal"
     | ProposalAbandoned _ -> open' Summa.Access.Access.ProposeInvoice "abandon an invoice proposal"
     | ProposalRateOverridden _ -> open' Summa.Access.Access.OverrideRate "change a proposed rate"
@@ -3182,6 +3269,7 @@ let private placeValues (model: Model) (shown: Screen) : View =
       "custCredit", custText (fun b c -> Credits.available b c.Id |> List.map snd |> sum "USD" |> Documents.moneyText)
       "custNewInvoiceHref", custText (fun _ c -> Routes.href (Routes.NewInvoice(Some c.Id)))
       "custStatus", custText (fun _ c -> if c.Active then "Active" else "Inactive")
+      "custRequiresPurchaseOrder", flag (customer |> Option.exists (fun (_, c, _) -> c.RequiresPurchaseOrder))
       "customerTabs",
       tabs customerTab Routes.customerTabText [ Routes.CustomerInvoices, "Invoices"; Routes.CustomerPayments, "Payments"; Routes.CustomerCredits, "Credit memos" ]
       "onCustInvoicesTab", Value(Flag(customerTab = Routes.CustomerInvoices))
@@ -3707,7 +3795,8 @@ let private attentionValues (model: Model) (shown: Screen) : View =
                   "late", Text(if i.DueDate < today then $"{today.DayNumber - i.DueDate.DayNumber} days" else "Not due")
                   "outstanding", Text(Documents.moneyText (outstanding b i))
                   "collection", Text(collectionText follow.Collection)
-                  "dispute", Text(disputeText follow.Dispute) ]))
+                  "dispute", Text(disputeText follow.Dispute)
+                  "promise", Text(Lifecycle.promiseStatus b today i.InvoiceId |> Option.map promiseText |> Option.defaultValue "") ]))
         |> Option.defaultValue []
 
     // Inbox
@@ -4209,6 +4298,12 @@ let view (model: Model) : View =
           "fuNotDisputed",
           flag (detail |> Option.exists (fun (b, i) -> match (Lifecycle.followUp b i.InvoiceId).Dispute with Disputed _ -> false | _ -> true))
           "fuNote", text model.FollowUpNote
+          // The customer's promise to pay and where it stands (SUM4-016).
+          "fuPromise", text (detail |> Option.bind (fun (b, i) -> Lifecycle.promiseStatus b model.Today i.InvoiceId) |> Option.map promiseText |> Option.defaultValue "")
+          "fuHasPromise", flag (detail |> Option.exists (fun (b, i) -> (Lifecycle.followUp b i.InvoiceId).Promise.IsSome))
+          "promiseAmount", text model.PromiseAmount
+          "promiseBy", text model.PromiseBy
+          "promiseNote", text model.PromiseNote
           "detailEntryId", text (detail |> Option.map (fun (_, i) -> i.JournalEntryId) |> Option.defaultValue "")
           "detailEntryHref", text (detail |> Option.map (fun (_, i) -> Routes.href (Routes.JournalEntry i.JournalEntryId)) |> Option.defaultValue "")
           "detailCustomer", text (detail |> Option.map (fun (_, i) -> i.Customer.Name) |> Option.defaultValue "")
@@ -4576,6 +4671,7 @@ let view (model: Model) : View =
       "customerTaxJurisdiction", text model.Customer.TaxJurisdiction
       "customerTaxEvidence", text model.Customer.TaxEvidence
       "customerTaxExempt", flag (model.Customer.TaxStatus = "exempt")
+      "customerRequiresPurchaseOrder", flag model.Customer.RequiresPurchaseOrder
       "customerTaxOptions",
       Items(
           [ "not-assessed", "Not recorded"; "taxable", "Subject to tax"; "exempt", "Tax-exempt" ]
@@ -4607,6 +4703,14 @@ let view (model: Model) : View =
       "draftCustomerChosen", flag (books |> Option.exists (fun b -> b.Books.Customers.ContainsKey model.Draft.CustomerId))
       "draftCustomerUnchosen", flag (not (books |> Option.exists (fun b -> b.Books.Customers.ContainsKey model.Draft.CustomerId)))
       "draftPurchaseOrder", text model.Draft.PurchaseOrder
+      // The chosen customer needs a purchase order on every invoice (INV-OPS-006).
+      "draftPurchaseOrderNote",
+      text (
+          if books |> Option.bind (fun b -> b.Books.Customers.TryFind model.Draft.CustomerId) |> Option.exists _.RequiresPurchaseOrder then
+              "Required: this customer's accounts payable needs a purchase order on every invoice."
+          else
+              ""
+      )
       "draftNotes", text model.Draft.Notes
       "draftTotal", Value(money draftTotal)
       "draftLabel", text (model.Draft.DraftId |> Option.map (fun id -> $"Draft {id}") |> Option.defaultValue "New invoice")

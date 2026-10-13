@@ -339,7 +339,8 @@ let followUp (r: Receivables) (invoiceId: string) =
         { InvoiceId = invoiceId
           Dispute = NotDisputed
           Collection = NoFollowUp
-          DeliveryResolved = None }
+          DeliveryResolved = None
+          Promise = None }
 
 let private setFollowUp (context: Context) what (f: FollowUp) (r: Receivables) =
     if not (r.Books.Invoices.ContainsKey f.InvoiceId) then
@@ -362,6 +363,90 @@ let resolveDispute (context: Context) (invoiceId: string) (resolution: string) (
 
 let setCollection (context: Context) (invoiceId: string) (stage: CollectionStage) (r: Receivables) =
     setFollowUp context "invoice-collection-changed" { followUp r invoiceId with Collection = stage } r
+
+// ---- Payment promises (SUM4-016) ----------------------------------------------------------
+
+/// Why a payment promise cannot be recorded.
+type PromiseProblem =
+    | UnknownInvoiceToPromise of string
+    /// Nothing is owed on it, or it is voided.
+    | NothingOwed of invoiceId: string
+    | PromiseNotPositive
+    | PromiseCurrency of expected: string
+    | PromiseMoreThanOwed of owed: Money
+    /// The date is before the day the promise is recorded.
+    | PromiseInThePast of DateOnly
+
+/// Where a promise stands, worked out from the books (SUM4-016).
+type PromiseStatus =
+    /// Its date has not passed and it is not yet kept.
+    | PromiseDue
+    /// What the invoice owes fell by at least the promised amount since it was made.
+    | PromiseKept
+    /// Its date passed and what the invoice owes did not fall by the promised amount.
+    | PromiseMissed
+
+/// Records the customer's promise to pay `amount` of the invoice by `by`;
+/// it replaces any earlier promise, which stays in the audit trail. The
+/// invoice and the books are unchanged.
+let recordPromise (context: Context) (invoiceId: string) (amount: Money) (by: DateOnly) (note: string) (on: DateOnly) (r: Receivables) =
+    match r.Books.Invoices.TryFind invoiceId with
+    | None -> Error [ UnknownInvoiceToPromise invoiceId ]
+    | Some invoice ->
+        let owed = outstanding r invoice
+
+        let problems =
+            if status r invoice = Voided || owed.Minor <= 0L then
+                [ NothingOwed invoiceId ]
+            else
+                [ if amount.Currency <> owed.Currency then PromiseCurrency owed.Currency
+                  if amount.Minor <= 0L then PromiseNotPositive
+                  elif amount.Currency = owed.Currency && amount.Minor > owed.Minor then PromiseMoreThanOwed owed
+                  if by < on then PromiseInThePast by ]
+
+        match problems with
+        | [] ->
+            let promise =
+                { Amount = amount
+                  By = by
+                  MadeOn = on
+                  OutstandingWhenMade = owed
+                  Note = note.Trim() }
+
+            Ok
+                { r with
+                    Books =
+                        { r.Books with
+                            FollowUps = r.Books.FollowUps.Add(invoiceId, { followUp r invoiceId with Promise = Some promise })
+                            Ledger = audit context "payment-promise-recorded" invoiceId r.Books.Ledger } }
+        | problems -> Error problems
+
+/// Withdraws the invoice's promise, for example when the customer retracts
+/// it. Nothing else changes; the promise stays in the audit trail.
+let withdrawPromise (context: Context) (invoiceId: string) (r: Receivables) =
+    match (followUp r invoiceId).Promise with
+    | None -> Ok r
+    | Some _ ->
+        Ok
+            { r with
+                Books =
+                    { r.Books with
+                        FollowUps = r.Books.FollowUps.Add(invoiceId, { followUp r invoiceId with Promise = None })
+                        Ledger = audit context "payment-promise-withdrawn" invoiceId r.Books.Ledger } }
+
+/// Where the invoice's promise stands today, if it has one: kept once what
+/// it owes fell by the promised amount since the promise was made (by a
+/// payment, a credit or a write-off alike), missed once its date passed
+/// without that.
+let promiseStatus (r: Receivables) (today: DateOnly) (invoiceId: string) =
+    match (followUp r invoiceId).Promise, r.Books.Invoices.TryFind invoiceId with
+    | Some p, Some invoice ->
+        let owed = outstanding r invoice
+
+        if owed.Minor <= p.OutstandingWhenMade.Minor - p.Amount.Minor then Some(p, PromiseKept)
+        elif today > p.By then Some(p, PromiseMissed)
+        else Some(p, PromiseDue)
+    | _ -> None
 
 /// A person resolves a failed or bounced delivery without a new one, for
 /// example when the customer collected the invoice. The attempts and the

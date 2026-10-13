@@ -2184,21 +2184,21 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "9446daae29fd029df9fb1375",
-        "recordedAt": "2026-10-13T19:01:25Z",
+        "id": "1f806c944d9fb5d3ab2005fe",
+        "recordedAt": "2026-10-13T20:40:54Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
-        "stepId": "STEP-20261013T175532000Z-a92e3140",
+        "stepId": "STEP-20261013T202303000Z-db9acc09",
         "repository": "summa",
-        "branch": "feat/wi-0029-editor-details-references",
-        "commit": "10c786f38a0b5ce713807958e04274b22b93c808",
+        "branch": "feat/wi-0029-forma-components",
+        "commit": "31768d64d01a8adef135484607d92f4c0abb0437",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0029-editor-details-references",
-        "remoteCommit": "10c786f38a0b5ce713807958e04274b22b93c808",
-        "summary": "Slice 23: saving from the draft editor overlays the form on the stored draft (each row remembers its stored line), so a line's source, rate, project, discount and details and the draft's terms, due date, recipients, notes and references survive; a save on an older version is refused; line details are edited in one panel and typed references as rows; the printed invoice shows them only when given (print byte-identical without them); DF-SUMMA-2026-0043. Found and fixed: the editor discarded everything it did not show.",
-        "nextAction": "Gate the editor PR, then the INV-OPS-006 slices for required PO and payment promise.",
+        "remoteBranch": "feat/wi-0029-forma-components",
+        "remoteCommit": "31768d64d01a8adef135484607d92f4c0abb0437",
+        "summary": "Slice 27 (INV-ARCH-007): all 41 screen tables are Forma data grids (labelled regions, labelled cells, screen-only on the grid); line details in a Forma flyout and new books confirmed in a Forma dialog (native dialogs via commandfor); found and fixed: editor line and reference inputs were clipped by visually-hidden labels; ArchitectureTests and browser hit test enforce; print byte-identical; DF-SUMMA-2026-0046.",
+        "nextAction": "Gate the INV-ARCH-007 PR; the queue given (INV-OPS-006, INV-ARCH-007) is then done.",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"

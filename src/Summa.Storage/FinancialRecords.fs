@@ -1319,6 +1319,8 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                      | TaxExempt(evidence, jurisdiction) ->
                          [ "tax", Json.objectOf [ "kind", Json.String "exempt"; "evidence", Json.String evidence; "jurisdiction", optionalString jurisdiction ] ])
                   @ legalFieldsMember c.LegalFields
+                  // Written only when required, so other customers keep their bytes (INV-OPS-006).
+                  @ (if c.RequiresPurchaseOrder then [ "requiresPurchaseOrder", Json.Bool true ] else [])
               )
           // The organization's legal fields, once it has recorded any (INV-INTL-001).
           match books.LegalFields with
@@ -1657,6 +1659,17 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                               "note", Json.String d.Note
                               "by", Json.String d.By
                               "at", Json.String(preciseTimestamp d.At) ]
+                    | None -> ()
+                    // Written only while there is a promise, so other follow-ups keep their bytes (SUM4-016).
+                    match f.Promise with
+                    | Some p ->
+                        "promise",
+                        Json.objectOf
+                            [ "amount", money p.Amount
+                              "by", Json.String(dateText p.By)
+                              "madeOn", Json.String(dateText p.MadeOn)
+                              "outstandingWhenMade", money p.OutstandingWhenMade
+                              "note", Json.String p.Note ]
                     | None -> () ]
           for id, a in auditIds ledger.Audit -> keyOf auditType (yearMonth (DateOnly.FromDateTime a.When.UtcDateTime)) id, auditBody a ]
 
@@ -1672,7 +1685,7 @@ let schemaVersionOf (record: FinancialRecord) =
         match value with
         | Json.Object members ->
             members
-            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || key = "change" || key = "deliveryResolved" || key = "postedFor" || key = "lineDetails" || key = "clientReferences" || key = "rounding" || key = "recurring" || key = "legalFields" || recordsTax inner)
+            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || key = "change" || key = "deliveryResolved" || key = "postedFor" || key = "lineDetails" || key = "clientReferences" || key = "rounding" || key = "recurring" || key = "legalFields" || key = "requiresPurchaseOrder" || key = "promise" || recordsTax inner)
         | Json.Array items -> items |> List.exists recordsTax
         | _ -> false
 
@@ -1803,7 +1816,7 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
         }
     | "summa.customer" ->
         decode {
-            do! closed [ "active"; "billingAddress"; "billingName"; "defaultTerms"; "email"; "id"; "legalFields"; "name"; "paymentProfileId"; "tax" ] b
+            do! closed [ "active"; "billingAddress"; "billingName"; "defaultTerms"; "email"; "id"; "legalFields"; "name"; "paymentProfileId"; "requiresPurchaseOrder"; "tax" ] b
             let! id = text "id" b
             let! name = text "name" b
             let! billingName = text "billingName" b
@@ -1832,6 +1845,7 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                     }
 
             let! fields = legalFieldsOf b
+            let! requiresPo = (match Codec.tryField "requiresPurchaseOrder" b with None -> Ok false | Some _ -> flag "requiresPurchaseOrder" b)
 
             return
                 CustomerPart
@@ -1844,7 +1858,8 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                       PaymentProfileId = profile
                       Active = active
                       Tax = tax
-                      LegalFields = fields }
+                      LegalFields = fields
+                      RequiresPurchaseOrder = requiresPo }
         }
     | "summa.legal-fields" ->
         decode {
@@ -2064,18 +2079,40 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
         }
     | "summa.follow-up" ->
         decode {
-            do! closed [ "collection"; "deliveryResolved"; "dispute"; "invoiceId" ] b
+            do! closed [ "collection"; "deliveryResolved"; "dispute"; "invoiceId"; "promise" ] b
             let! invoice = text "invoiceId" b
             let! dispute = field "dispute" b |> Result.bind disputeOf
             let! collection = field "collection" b |> Result.bind collectionOf
             let! resolved = deliveryResolutionOf b
+
+            let! promise =
+                match Codec.tryField "promise" b with
+                | None -> Ok None
+                | Some p ->
+                    decode {
+                        do! closed [ "amount"; "by"; "madeOn"; "note"; "outstandingWhenMade" ] p
+                        let! amount = moneyField "amount" p
+                        let! by = date "by" p
+                        let! madeOn = date "madeOn" p
+                        let! owed = moneyField "outstandingWhenMade" p
+                        let! note = text "note" p
+
+                        return
+                            Some
+                                { Amount = amount
+                                  By = by
+                                  MadeOn = madeOn
+                                  OutstandingWhenMade = owed
+                                  Note = note }
+                    }
 
             return
                 FollowUpPart
                     { InvoiceId = invoice
                       Dispute = dispute
                       Collection = collection
-                      DeliveryResolved = resolved }
+                      DeliveryResolved = resolved
+                      Promise = promise }
         }
     | "summa.obligation" ->
         decode {

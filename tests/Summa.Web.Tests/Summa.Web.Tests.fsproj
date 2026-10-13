@@ -29,6 +29,7 @@
     <Compile Include="StoreTests.fs" />
     <Compile Include="InterfaceTests.fs" />
     <Compile Include="DraftEditorTests.fs" />
+    <Compile Include="BookCommandTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

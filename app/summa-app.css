@@ -192,8 +192,8 @@ a.summa-nav__link {
   overflow-wrap: break-word;
 }
 
-/* A line's label is for assistive technology only; its input is visible. */
-.summa-line-field {
+/* A control in a table cell, named by a label only screen readers hear. */
+.summa-cell-label {
   display: block;
 }
 
@@ -305,7 +305,8 @@ a.summa-nav__link {
   color: var(--ef-color-text-muted, #57606a);
 }
 
-.summa-line-note:empty {
+.summa-line-note:empty,
+.summa-optional-note:empty {
   display: none;
 }
 
@@ -517,4 +518,24 @@ a.summa-new {
   .summa-header__actions {
     flex: 1 1 100%;
   }
+}
+
+/* Forma's data grid is a contained horizontal scroller (overflow-x: auto),
+   but as a flex item of an .ef-stack its automatic minimum size is its
+   table's 42rem minimum, so at 200% text it widened the page instead of
+   scrolling inside itself (ULI-L05; upstream FORMA-GRID-MIN-SIZE in
+   docs/ui-conformance/upstream-defects.md). The composition lets it shrink
+   to its column, as Forma's own .ef-surface does; so must each view in the
+   main column, whose automatic minimum would otherwise be the grid's. */
+.summa-main .ef-data-grid,
+.summa-main > * {
+  min-inline-size: 0;
+}
+
+/* And the grid must be the containing block of what it scrolls: Forma's
+   .ef-visually-hidden labels in its cells are absolutely positioned, so in
+   a static grid they escaped the scroller and widened the page by 65 CSS px
+   at 200% text (ULI-L05). */
+.summa-main .ef-data-grid {
+  position: relative;
 }

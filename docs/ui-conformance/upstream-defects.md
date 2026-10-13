@@ -102,3 +102,11 @@ Either option makes the failure impossible to hit silently.
   shrinks its columns until headers and button labels break between letters.
 - **In Summa:** the line editor's table uses `overflow-wrap: break-word`,
   scoped to `.summa-lines`.
+
+## FORMA-GRID-MIN-SIZE: `.ef-data-grid` widens a flex column instead of scrolling
+
+- **Rule:** ULI-L05 (no horizontal page scrolling; essential 2-D content may have a contained, labelled scroller).
+- **Owner:** Forma. Observed in 0.6.1, after Summa adopted the data grid (summa#101).
+- **Cause:** `.ef-data-grid` sets `overflow-x: auto` and its table `min-inline-size: 42rem`, but the grid itself keeps `min-inline-size: auto`. As a flex item (for example inside `.ef-stack`), its automatic minimum is the table's 42rem, so the grid grows past its column and the page scrolls. At 1280 CSS px with 200% text, the invoice editor's lines grid pushed the page 65 CSS px wide. `.ef-surface` already sets `min-inline-size: 0` for this reason.
+- **A second cause, in the same grid:** `.ef-data-grid` is `position: static`. Absolutely positioned descendants, such as Forma's own `.ef-visually-hidden` cell labels, take their containing block from outside the scroller, so they escape it. Those labels alone made the document 65 CSS px wider than the viewport. The grid should be `position: relative`.
+- **In Summa:** `.summa-main .ef-data-grid { min-inline-size: 0; position: relative }` and `.summa-main > * { min-inline-size: 0 }`, both composition fixes. The regression test is "200% text: the editor, customers and home still reflow without horizontal scrolling".

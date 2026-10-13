@@ -451,3 +451,34 @@ let ``INV-INTL-001: legal fields round-trip on the organization, the customer an
     let cleared = load (stored { original with Books = { books with LegalFields = Some [] } })
     Assert.Empty cleared.Problems
     Assert.Equal(Some [], cleared.State.Books.LegalFields)
+
+[<Fact>]
+let ``INV-OPS-006: a customer's purchase order requirement round-trips, written only when required`` () =
+    let r = full ()
+    let customerRecord (rr: Receivables) = stored rr |> List.find (fun o -> RelativePath.render o.Path = "records/summa.customer/CUST-ABC.json")
+    let strict = { r with Books = { r.Books with Customers = r.Books.Customers.Add(abc.Id, { r.Books.Customers[abc.Id] with RequiresPurchaseOrder = true }) } }
+    let loaded = load (stored strict)
+    Assert.Empty loaded.Problems
+    Assert.True(loaded.State.Books.Customers[abc.Id].RequiresPurchaseOrder)
+    Assert.Contains("\"requiresPurchaseOrder\":true", (customerRecord strict).Content)
+    Assert.Equal(2, toRecords strict |> ok |> List.find (fun x -> RecordId.value x.Key.Id = abc.Id && RecordType.value x.Key.Type = "summa.customer") |> schemaVersionOf)
+    // A customer that does not require one keeps its bytes and its schema, and reads as not requiring one.
+    Assert.DoesNotContain("requiresPurchaseOrder", (customerRecord r).Content)
+    Assert.Equal(1, toRecords r |> ok |> List.find (fun x -> RecordId.value x.Key.Id = abc.Id && RecordType.value x.Key.Type = "summa.customer") |> schemaVersionOf)
+    Assert.False((load (stored r)).State.Books.Customers[abc.Id].RequiresPurchaseOrder)
+
+[<Fact>]
+let ``SUM4-016: a payment promise round-trips on the follow-up, written only while there is one`` () =
+    // INV-001 with its payment not yet applied, so it is owed.
+    let r = { full () with Allocations = [] }
+    let followUpRecord (rr: Receivables) = stored rr |> List.tryFind (fun o -> RelativePath.render o.Path = "records/summa.follow-up/INV-001.json")
+    let promised = Summa.Ledger.Lifecycle.recordPromise ledgerContext "INV-001" (usd 100000L) (System.DateOnly(2026, 11, 15)) "Jane, by phone" (System.DateOnly(2026, 11, 2)) r |> ok
+    let loaded = load (stored promised)
+    Assert.Empty loaded.Problems
+    Assert.True((promised.Books.FollowUps = loaded.State.Books.FollowUps))
+    Assert.Contains("\"promise\":", (followUpRecord promised).Value.Content)
+    Assert.Equal(2, toRecords promised |> ok |> List.find (fun x -> RecordType.value x.Key.Type = "summa.follow-up") |> schemaVersionOf)
+    // Withdrawn: the follow-up stays, without the promise.
+    let withdrawn = Summa.Ledger.Lifecycle.withdrawPromise ledgerContext "INV-001" promised |> ok
+    Assert.DoesNotContain("promise", (followUpRecord withdrawn).Value.Content)
+    Assert.Equal(None, (load (stored withdrawn)).State.Books.FollowUps["INV-001"].Promise)
