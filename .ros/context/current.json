@@ -2184,20 +2184,20 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "8d06bf075117fcd848addd36",
-        "recordedAt": "2026-10-13T09:14:47Z",
+        "id": "1db69ab3adceea15bec4fc44",
+        "recordedAt": "2026-10-13T10:49:46Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
         "repository": "summa",
-        "branch": "feat/wi-0029-concurrency",
-        "commit": "717d2defeef048612f74a8387b5b081f30dcc84f",
+        "branch": "perf/wi-0029-reads",
+        "commit": "3b994c189b674fd2f6bbfe328c661f698b958975",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0029-concurrency",
-        "remoteCommit": "717d2defeef048612f74a8387b5b081f30dcc84f",
-        "summary": "INV-CON: issue requires the reviewed version, the app commits the version on screen, a reissue with other input is a conflict (DF-SUMMA-2026-0023); INV-CONTRACT-001/003 evidenced",
-        "nextAction": "INV-FAIL (clear errors with retry safety), INV-SEC capabilities, INV-CONTRACT-002, SUM3-011 API contracts, SUM2-031, served import preview, integration state in the app, export handling, SUM3-006 scheduling, SUM0-034 index reads, INV OPS/PERF/EXP/FX/INTL/ACC/REC/SET/DATA/ARCH",
+        "remoteBranch": "perf/wi-0029-reads",
+        "remoteCommit": "3b994c189b674fd2f6bbfe328c661f698b958975",
+        "summary": "SUM0-034: commands and openings read only what changed (token and revision reuse), at most six requests in flight, resumed on the page's turn (DF-SUMMA-2026-0025); measured 1.0-2.3 s per command instead of 3-5 s",
+        "nextAction": "INV-FAIL (failure classes with retry safety), INV-SEC capabilities, INV-CONTRACT-002, SUM3-011, SUM2-031, served import preview, integration state in the app, export handling, SUM3-006 scheduling, INV OPS/PERF/EXP/FX/INTL/ACC/REC/SET/DATA/ARCH; adopt arca#38/#39 via Conditor when released",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
