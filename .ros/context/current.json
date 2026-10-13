@@ -2378,7 +2378,27 @@
       "updatedAt": "2026-10-13T15:47:11Z",
       "telemetryExecutionIds": [
         "EXE-20261013T154712086Z-29141d0f"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "110ffbecdea985a028c20ba1",
+        "recordedAt": "2026-10-13T15:58:35Z",
+        "executionId": "EXE-20261013T154712086Z-29141d0f",
+        "repository": "summa",
+        "branch": "chore/wi-0052-forma-folio-step1",
+        "commit": "1aa8c56c4921e2bf0bc1be965eea82a7877c08e9",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "chore/wi-0052-forma-folio-step1",
+        "remoteCommit": "1aa8c56c4921e2bf0bc1be965eea82a7877c08e9",
+        "summary": "Step 1 (echelon-current 1.19.0): Conditor 0.9.0 verified (checksums, attestation); forma 0.4.1 and folio 0.3.0 declared; plan sha256:a5329d5e authorized with isolated --home; Forma 0.5.0 written by Conditor; print screenshots of invoice and credit memo byte-identical; golden vectors unchanged",
+        "nextAction": "Merge step 1 (PR #86); step 2 against 1.20.0 (forma 0.6.1, folio 0.4.0); then 1.21.0 (ordo 1.6.0) and 1.22.0 (ordo 1.7.0), one PR each",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      }
     }
   ]
 }
