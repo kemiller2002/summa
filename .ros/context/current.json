@@ -2153,21 +2153,21 @@
         "EXE-20261009T024702576Z-bcf1e384"
       ],
       "latestCheckpoint": {
-        "id": "b9eae5e066fbc37e3b0aecb4",
-        "recordedAt": "2026-10-13T23:11:56Z",
+        "id": "49bd12be60b18cce7f2260ab",
+        "recordedAt": "2026-10-13T23:46:49Z",
         "executionId": "EXE-20261009T024702576Z-bcf1e384",
-        "stepId": "STEP-20261013T225528000Z-4d2efac2",
+        "stepId": "STEP-20261013T233221000Z-9cb98adc",
         "repository": "summa",
-        "branch": "feat/wi-0044-attention-receivables",
-        "commit": "87e9a72640ce448fe9e7fd391f37727d985d4a45",
+        "branch": "feat/wi-0044-search-palette",
+        "commit": "f4a63d89833c463080c7a1a3c9a8f5af0978fca9",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0044-attention-receivables",
-        "remoteCommit": "87e9a72640ce448fe9e7fd391f37727d985d4a45",
-        "summary": "SUM4-010 tested: the invoices list opens Needs attention first (Attention.rank): overdue, due within seven days, large balances (>=25% of what is owed among 3+ open invoices), unusual delays (>7 days past the customer's median days to pay over 3+ paid invoices), then the rest by due date, settled last; each row says why; attention is the default sort; DF-SUMMA-2026-0050; summary 185/38/12.",
-        "nextAction": "Gate the attention-first PR, then SUM4-018 search and SUM4-019 command palette.",
+        "remoteBranch": "feat/wi-0044-search-palette",
+        "remoteCommit": "f4a63d89833c463080c7a1a3c9a8f5af0978fca9",
+        "summary": "SUM4-018 and SUM4-019 tested: a header search field opens #/search; Search.find covers customers, invoices and references, payments, amounts (as amounts), projects, journal entries and memos, closest first, 5,000 invoices within a second; the same page offers the high-frequency commands as links narrowed by what is typed; no document-level shortcut; DF-SUMMA-2026-0051; summary 187/38/10.",
+        "nextAction": "Gate the search PR, then the echelon-current 1.23.0 upgrade (Praxis 3.12.0) as one PR, then SUM4-021/033/034 explanations.",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
