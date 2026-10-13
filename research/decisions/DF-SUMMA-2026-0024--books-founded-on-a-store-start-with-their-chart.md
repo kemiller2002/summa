@@ -89,7 +89,20 @@ fix the defect.
 - A founded organization can be invoiced at once. This is tested end to end
   through the page against a GitHub fake (`StoreTests`) and in a real
   browser (`github-books.spec.js`).
-- No organization exists on GitHub yet: deployment (WI-0036) is blocked. So
-  no books founded without a chart need repair. An organization founded
-  before this decision would still have to add its accounts through
-  records.
+- No books founded without a chart can exist, so none need repair.
+  - The only deployment, GitHub Pages (WI-0039), is configured as
+    `{"environment":"local","environmentName":"demo (GitHub Pages)"}`
+    (`deploy/pages/summa.deployment.json`). Its books are kept only in the
+    browser, and they always started with the chart.
+  - That deployment names no data repository and no identity exchange.
+  - Its content security policy allows `connect-src 'self'` only, so the
+    page cannot reach GitHub's API at all.
+  - Real sign-in and storage against a Summa data repository (WI-0036) has
+    not been done.
+  - The only GitHub-backed books so far are the ones tests found against
+    fakes.
+- If books founded by the earlier code ever turn up, the remedy is a
+  one-time, audited command an administrator runs to adopt the starting
+  chart. It would add only accounts whose codes are absent, in one commit.
+  Accounts are never inferred when books are read. That command is not
+  built now, because nothing needs it.
