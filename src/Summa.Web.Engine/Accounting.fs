@@ -106,13 +106,41 @@ let emptyCustomer =
       TaxJurisdiction = ""
       TaxEvidence = "" }
 
+/// What a line says beyond its description and amount, as typed
+/// (INV-DATA-008). Every field may be left empty.
+type LineDetailsForm =
+    { DetailedDescription: string
+      Unit: string
+      /// The service period's first and last day, as yyyy-MM-dd.
+      ServiceFrom: string
+      ServiceTo: string
+      Category: string
+      CustomerCode: string }
+
+let noLineDetailsForm =
+    { DetailedDescription = ""
+      Unit = ""
+      ServiceFrom = ""
+      ServiceTo = ""
+      Category = ""
+      CustomerCode = "" }
+
 type LineForm =
     { Key: string
       Description: string
       Hours: string
       Rate: string
       /// The person marked the line taxable (INV-ADJ-005).
-      Taxable: bool }
+      Taxable: bool
+      Details: LineDetailsForm
+      /// The position of the stored draft's line this row was opened from,
+      /// so a save keeps what the editor does not show (its source, rate,
+      /// project, discount); None for a line added here.
+      Origin: int option }
+
+/// A typed client reference as typed (INV-DATA-014): its kind's stable name
+/// (`contract`, `engagement`, `vendor`, `cost-center`, `matter`) and value.
+type ReferenceForm = { Key: string; Kind: string; Value: string }
 
 /// A tax the person enters on the invoice (INV-ADJ-005, WI-0044). Summa
 /// never works it out: the amount, the code and where the rate came from
@@ -149,7 +177,11 @@ type DraftForm =
       Lines: LineForm list
       PurchaseOrder: string
       Notes: string
-      Tax: TaxForm }
+      Tax: TaxForm
+      References: ReferenceForm list
+      /// The stored draft's version when it was opened here; a save made on
+      /// an older version than the stored one is refused (INV-UI-007).
+      BaseVersion: int option }
 
 type PaymentForm =
     { InvoiceId: string
@@ -382,11 +414,21 @@ type Model =
       /// The editor's unsaved form as this tab kept it, waiting for its
       /// draft (or the new invoice) to be opened again (WI-0044).
       KeptEditor: DraftForm option
+      /// The line whose details the editor's details panel shows, by key;
+      /// one panel for all lines, so a long invoice stays light.
+      DetailsLine: string option
       ProposalRate: RateForm }
 
 let private newLine (counter: int) =
     let key, next = nextKey "line" counter
-    { Key = key; Description = ""; Hours = "1"; Rate = ""; Taxable = false }, next
+    { Key = key
+      Description = ""
+      Hours = "1"
+      Rate = ""
+      Taxable = false
+      Details = noLineDetailsForm
+      Origin = None },
+    next
 
 let private emptyDraft counter =
     let line, next = newLine counter
@@ -396,7 +438,9 @@ let private emptyDraft counter =
       Lines = [ line ]
       PurchaseOrder = ""
       Notes = ""
-      Tax = noTax },
+      Tax = noTax
+      References = []
+      BaseVersion = None },
     next
 
 let initial =
@@ -433,6 +477,7 @@ let initial =
       Unsent = noneUnsent
       Check = NotChecked
       KeptEditor = None
+      DetailsLine = None
       ProposalRate = { Line = "0"; Rate = ""; Reason = "" }
       Blockers = []
       Notice = None
@@ -515,6 +560,21 @@ type Msg =
     | LineRateChanged of key: string * string
     | LineAdded
     | LineRemoved of key: string
+    /// Show a line's details (INV-DATA-008) in the details panel, by the line's key.
+    | LineDetailsOpened of key: string
+    | LineDetailsClosed
+    /// A detail of the line the panel shows.
+    | LineDetailedDescriptionChanged of string
+    | LineUnitChanged of string
+    | LineServiceFromChanged of string
+    | LineServiceToChanged of string
+    | LineCategoryChanged of string
+    | LineCustomerCodeChanged of string
+    /// Typed client references (INV-DATA-014), by the reference row's key.
+    | ReferenceAdded
+    | ReferenceRemoved of key: string
+    | ReferenceKindChosen of key: string * string
+    | ReferenceValueChanged of key: string * string
     | DraftPurchaseOrderChanged of string
     | DraftNotesChanged of string
     | DraftSubmitted
@@ -813,75 +873,174 @@ let private taxOf (books: Receivables) (tax: TaxForm) : Result<Adjustment option
                       Amount = money }
             )
 
-/// The draft the editor describes, or what is wrong with it.
+/// A line's details as typed, or why they cannot be read. Empty fields are
+/// absent, and a line with none has no details.
+let private lineDetailsOf (description: string) (form: LineDetailsForm) =
+    let given (text: string) = if text.Trim() = "" then None else Some(text.Trim())
+
+    let period =
+        match given form.ServiceFrom, given form.ServiceTo with
+        | None, None -> Ok None
+        | Some _, None
+        | None, Some _ -> Error $"'{description}' needs both the first and the last day of its service period, or neither."
+        | Some first, Some last ->
+            match parseDate first, parseDate last with
+            | Some from, Some until when from <= until -> Ok(Some(from, until))
+            | Some _, Some _ -> Error $"'{description}' has a service period that ends before it starts."
+            | _ -> Error $"'{description}' needs its service period as dates such as 2026-09-01."
+
+    period
+    |> Result.map (fun period ->
+        let details =
+            { DetailedDescription = given form.DetailedDescription
+              Unit = given form.Unit
+              ServicePeriod = period
+              Category = given form.Category
+              CustomerCode = given form.CustomerCode }
+
+        if details = noLineDetails then None else Some details)
+
+/// The typed client references as typed, or why one cannot be used. A row
+/// left empty is dropped; a kind may be given more than once.
+let private referencesOf (rows: ReferenceForm list) =
+    rows
+    |> List.filter (fun r -> r.Value.Trim() <> "")
+    |> List.map (fun r ->
+        match clientReferenceKinds |> List.tryFind (fun (_, name) -> name = r.Kind) with
+        | Some(kind, _) -> Ok(kind, r.Value.Trim())
+        | None -> Error $"Choose what kind of reference '{r.Value.Trim()}' is.")
+    |> List.fold (fun state item -> state |> Result.bind (fun acc -> item |> Result.map (fun i -> acc @ [ i ]))) (Ok [])
+
+/// The draft the editor describes, or what is wrong with it. An opened draft
+/// is the stored one with what the editor shows replaced: everything it does
+/// not show (a line's source, rate, project and discount; terms, due date,
+/// discounts, recipients, notes and the rest) is kept as stored. A save made
+/// on an older version than the stored one is refused (INV-UI-007).
 let private draftOf (manifest: Organization.OrganizationManifest) (books: Receivables) (form: DraftForm) =
     let revenue = Organization.accountByCode books.Books.Ledger manifest.Accounting.RevenueAccount
     let taxCode = if form.Tax.Code.Trim() = "" then "taxable" else form.Tax.Code.Trim()
+    let stored = form.DraftId |> Option.bind books.Books.Drafts.TryFind
 
     let lines =
         form.Lines
         |> List.filter (fun l -> l.Description.Trim() <> "" || l.Rate.Trim() <> "")
         |> List.map (fun l ->
-            match parseHours l.Hours, parseAmount l.Rate with
-            | Some hours, Some rate when l.Description.Trim() <> "" ->
+            let origin = l.Origin |> Option.bind (fun i -> stored |> Option.bind (fun d -> List.tryItem i d.Lines))
+
+            match parseHours l.Hours, parseAmount l.Rate, lineDetailsOf l.Description l.Details with
+            | _, _, Error why -> Error why
+            | Some hours, Some rate, Ok details when l.Description.Trim() <> "" ->
+                let tax =
+                    match l.Taxable, origin |> Option.map _.Tax with
+                    | true, Some(Taxable _ as kept) -> kept
+                    | true, _ -> Taxable taxCode
+                    | false, Some(Taxable _)
+                    | false, None -> NotAssessed
+                    | false, Some kept -> kept
+
+                let line =
+                    origin
+                    |> Option.defaultValue
+                        { Description = ""
+                          QuantityThousandths = 0L
+                          UnitPrice = rate
+                          RevenueAccountId = revenue
+                          Project = None
+                          WorkItem = None
+                          Discount = None
+                          Source = ManualLine
+                          Rate = None
+                          Tax = NotAssessed
+                          Details = None }
+
                 Ok
-                    { Description = l.Description.Trim()
-                      QuantityThousandths = hours
-                      UnitPrice = rate
-                      RevenueAccountId = revenue
-                      Project = None
-                      WorkItem = None
-                      Discount = None
-                      Source = ManualLine
-                      Rate = None
-                      Tax = (if l.Taxable then Taxable taxCode else NotAssessed)
-                      Details = None }
+                    { line with
+                        Description = l.Description.Trim()
+                        QuantityThousandths = hours
+                        UnitPrice = rate
+                        Tax = tax
+                        Details = details }
             | _ -> Error $"'{l.Description}' needs a description, a quantity and a rate such as 150.00")
 
-    match lines |> List.tryPick (function Error e -> Some e | Ok _ -> None), taxOf books form.Tax with
-    | Some why, _
-    | None, Error why -> Error why
-    | None, Ok _ when form.CustomerId = "" -> Error "Choose a customer."
-    | None, Ok tax ->
+    match lines |> List.tryPick (function Error e -> Some e | Ok _ -> None), taxOf books form.Tax, referencesOf form.References with
+    | Some why, _, _
+    | None, Error why, _
+    | None, Ok _, Error why -> Error why
+    | None, Ok _, Ok _ when form.CustomerId = "" -> Error "Choose a customer."
+    | None, Ok _, Ok _ when (match stored, form.BaseVersion with Some d, Some seen -> d.Version <> seen | _ -> false) ->
+        Error "Someone else changed this draft after you opened it. Discard your changes to see theirs, then make yours again."
+    | None, Ok tax, Ok references ->
         let draftId = form.DraftId |> Option.defaultWith (fun () -> nextId "D" (fun id -> books.Books.Drafts.ContainsKey id || books.Books.IssuedFrom.ContainsKey id))
-        let stored = books.Books.Drafts.TryFind draftId
         // The editor shows one tax; any other adjustment the draft holds stays.
         let kept = stored |> Option.map (fun d -> d.Adjustments |> List.filter (fun a -> match a.Kind with Tax _ -> false | _ -> true)) |> Option.defaultValue []
+        let given (text: string) = if text.Trim() = "" then None else Some(text.Trim())
+
+        let base' =
+            stored
+            |> Option.defaultValue
+                { DraftId = draftId
+                  CustomerId = form.CustomerId
+                  Currency = "USD"
+                  Lines = []
+                  Adjustments = []
+                  Discounts = []
+                  Terms = None
+                  DueDate = None
+                  Corrects = None
+                  EngagementId = None
+                  Details = noDetails
+                  Assumptions = []
+                  Recipients = None
+                  Version = 0
+                  Review = Editing }
 
         Ok
-            { DraftId = draftId
-              CustomerId = form.CustomerId
-              Currency = "USD"
-              Lines = lines |> List.choose Result.toOption
-              Adjustments = kept @ Option.toList tax
-              Discounts = []
-              Terms = None
-              DueDate = None
-              Corrects = None
-              EngagementId = None
-              Details =
-                { noDetails with
-                    PurchaseOrder = (if form.PurchaseOrder.Trim() = "" then None else Some(form.PurchaseOrder.Trim()))
-                    CustomerNotes = (if form.Notes.Trim() = "" then None else Some(form.Notes.Trim())) }
-              Assumptions = []
-              Recipients = None
-              Version = stored |> Option.map _.Version |> Option.defaultValue 0
-              Review = stored |> Option.map _.Review |> Option.defaultValue Editing }
+            { base' with
+                DraftId = draftId
+                CustomerId = form.CustomerId
+                Lines = lines |> List.choose Result.toOption
+                Adjustments = kept @ Option.toList tax
+                Details =
+                    { base'.Details with
+                        PurchaseOrder = given form.PurchaseOrder
+                        CustomerNotes = given form.Notes
+                        References = references } }
 
 let private formOf (ledger: Summa.Ledger.Ledger.Ledger) (counter: int) (draft: DraftInvoice) =
-    let lines, next =
+    let day (d: DateOnly) = d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+
+    let lines, afterLines =
         draft.Lines
+        |> List.indexed
         |> List.mapFold
-            (fun c l ->
+            (fun c (i, l) ->
                 let key, n = nextKey "line" c
+                let details = l.Details |> Option.defaultValue noLineDetails
 
                 { Key = key
                   Description = l.Description
                   Hours = Documents.quantityText l.QuantityThousandths
                   Rate = Documents.amountText l.UnitPrice |> fun t -> t.Replace(",", "")
-                  Taxable = (match l.Tax with Taxable _ -> true | _ -> false) },
+                  Taxable = (match l.Tax with Taxable _ -> true | _ -> false)
+                  Details =
+                    { DetailedDescription = details.DetailedDescription |> Option.defaultValue ""
+                      Unit = details.Unit |> Option.defaultValue ""
+                      ServiceFrom = details.ServicePeriod |> Option.map (fst >> day) |> Option.defaultValue ""
+                      ServiceTo = details.ServicePeriod |> Option.map (snd >> day) |> Option.defaultValue ""
+                      Category = details.Category |> Option.defaultValue ""
+                      CustomerCode = details.CustomerCode |> Option.defaultValue "" }
+                  Origin = Some i },
                 n)
             counter
+
+    let references, next =
+        draft.Details.References
+        |> List.mapFold
+            (fun c (kind, value) ->
+                let key, n = nextKey "reference" c
+                let name = clientReferenceKinds |> List.find (fst >> (=) kind) |> snd
+                { Key = key; Kind = name; Value = value }, n)
+            afterLines
 
     let tax =
         draft.Adjustments
@@ -905,7 +1064,9 @@ let private formOf (ledger: Summa.Ledger.Ledger.Ledger) (counter: int) (draft: D
       Lines = lines
       PurchaseOrder = draft.Details.PurchaseOrder |> Option.defaultValue ""
       Notes = draft.Details.CustomerNotes |> Option.defaultValue ""
-      Tax = tax },
+      Tax = tax
+      References = references
+      BaseVersion = Some draft.Version },
     next
 
 // ---- The editor's unsaved form, kept in the tab (WI-0044) ------------------------------
@@ -924,6 +1085,9 @@ let encodeEditor (counter: int) (form: DraftForm) =
           "customerId", str form.CustomerId
           "purchaseOrder", str form.PurchaseOrder
           "notes", str form.Notes
+          "baseVersion", (form.BaseVersion |> Option.map Codec.number |> Option.defaultValue Arca.Json.Null)
+          "references",
+          Arca.Json.Array(form.References |> List.map (fun r -> Arca.Json.objectOf [ "key", str r.Key; "kind", str r.Kind; "value", str r.Value ]))
           "lines",
           Arca.Json.Array(
               form.Lines
@@ -933,7 +1097,16 @@ let encodeEditor (counter: int) (form: DraftForm) =
                         "description", str l.Description
                         "hours", str l.Hours
                         "rate", str l.Rate
-                        "taxable", Arca.Json.Bool l.Taxable ])
+                        "taxable", Arca.Json.Bool l.Taxable
+                        "origin", (l.Origin |> Option.map Codec.number |> Option.defaultValue Arca.Json.Null)
+                        "details",
+                        Arca.Json.objectOf
+                            [ "detailedDescription", str l.Details.DetailedDescription
+                              "unit", str l.Details.Unit
+                              "serviceFrom", str l.Details.ServiceFrom
+                              "serviceTo", str l.Details.ServiceTo
+                              "category", str l.Details.Category
+                              "customerCode", str l.Details.CustomerCode ] ])
           )
           "tax",
           Arca.Json.objectOf
@@ -948,8 +1121,36 @@ let encodeEditor (counter: int) (form: DraftForm) =
     |> Arca.Json.canonicalText
 
 /// The kept form and its counter, or None when the text is not one (a
-/// kept form is only a convenience: one that cannot be read is dropped).
+/// kept form is only a convenience: one that cannot be read is dropped). A
+/// form kept before line details, references and the base version existed
+/// is read with none of them.
 let decodeEditor (text: string) : (int * DraftForm) option =
+    let optionalInteger name json =
+        match Codec.tryField name json with
+        | None -> Ok None
+        | Some _ -> Codec.integer name json |> Result.map Some
+
+    let details json =
+        match Codec.tryField "details" json with
+        | None -> Ok noLineDetailsForm
+        | Some d ->
+            Codec.decode {
+                let! detailed = Codec.text "detailedDescription" d
+                let! unit = Codec.text "unit" d
+                let! from = Codec.text "serviceFrom" d
+                let! until = Codec.text "serviceTo" d
+                let! category = Codec.text "category" d
+                let! code = Codec.text "customerCode" d
+
+                return
+                    { DetailedDescription = detailed
+                      Unit = unit
+                      ServiceFrom = from
+                      ServiceTo = until
+                      Category = category
+                      CustomerCode = code }
+            }
+
     let line json =
         Codec.decode {
             let! key = Codec.text "key" json
@@ -957,7 +1158,25 @@ let decodeEditor (text: string) : (int * DraftForm) option =
             let! hours = Codec.text "hours" json
             let! rate = Codec.text "rate" json
             let! taxable = Codec.flag "taxable" json
-            return { Key = key; Description = description; Hours = hours; Rate = rate; Taxable = taxable }
+            let! details = details json
+            let! origin = optionalInteger "origin" json
+
+            return
+                { Key = key
+                  Description = description
+                  Hours = hours
+                  Rate = rate
+                  Taxable = taxable
+                  Details = details
+                  Origin = origin }
+        }
+
+    let reference json =
+        Codec.decode {
+            let! key = Codec.text "key" json
+            let! kind = Codec.text "kind" json
+            let! value = Codec.text "value" json
+            return { Key = key; Kind = kind; Value = value }
         }
 
     let tax json =
@@ -994,6 +1213,8 @@ let decodeEditor (text: string) : (int * DraftForm) option =
             let! lines = Codec.list "lines" line json
             let! taxJson = Codec.field "tax" json
             let! tax = tax taxJson
+            let! references = (match Codec.tryField "references" json with None -> Ok [] | Some _ -> Codec.list "references" reference json)
+            let! baseVersion = optionalInteger "baseVersion" json
 
             return
                 counter,
@@ -1002,13 +1223,24 @@ let decodeEditor (text: string) : (int * DraftForm) option =
                   Lines = lines
                   PurchaseOrder = purchaseOrder
                   Notes = notes
-                  Tax = tax }
+                  Tax = tax
+                  References = references
+                  BaseVersion = baseVersion }
         })
     |> Result.toOption
     |> Option.filter (fun (_, form) -> not form.Lines.IsEmpty)
 
 let private editLine (key: string) (change: LineForm -> LineForm) (model: Model) =
     { model with Draft = { model.Draft with Lines = model.Draft.Lines |> List.map (fun l -> if l.Key = key then change l else l) } }, []
+
+/// Changes the details of the line the details panel shows; nothing when none is shown.
+let private editDetails (change: LineDetailsForm -> LineDetailsForm) (model: Model) =
+    match model.DetailsLine with
+    | Some key -> editLine key (fun l -> { l with Details = change l.Details }) model
+    | None -> model, []
+
+let private editReference (key: string) (change: ReferenceForm -> ReferenceForm) (model: Model) =
+    { model with Draft = { model.Draft with References = model.Draft.References |> List.map (fun r -> if r.Key = key then change r else r) } }, []
 
 // ---- Places (WI-0041) -------------------------------------------------------------------
 
@@ -1641,12 +1873,27 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
         { model with Draft = { model.Draft with Lines = model.Draft.Lines @ [ line ] }; Counter = counter }, []
     | LineRemoved key ->
         let rest = model.Draft.Lines |> List.filter (fun l -> l.Key <> key)
+        let model = if model.DetailsLine = Some key then { model with DetailsLine = None } else model
 
         if rest.IsEmpty then
             let line, counter = newLine model.Counter
             { model with Draft = { model.Draft with Lines = [ line ] }; Counter = counter }, []
         else
             { model with Draft = { model.Draft with Lines = rest } }, []
+    | LineDetailsOpened key -> { model with DetailsLine = Some key }, []
+    | LineDetailsClosed -> { model with DetailsLine = None }, []
+    | LineDetailedDescriptionChanged v -> editDetails (fun d -> { d with DetailedDescription = v }) model
+    | LineUnitChanged v -> editDetails (fun d -> { d with Unit = v }) model
+    | LineServiceFromChanged v -> editDetails (fun d -> { d with ServiceFrom = v }) model
+    | LineServiceToChanged v -> editDetails (fun d -> { d with ServiceTo = v }) model
+    | LineCategoryChanged v -> editDetails (fun d -> { d with Category = v }) model
+    | LineCustomerCodeChanged v -> editDetails (fun d -> { d with CustomerCode = v }) model
+    | ReferenceAdded ->
+        let key, counter = nextKey "reference" model.Counter
+        { model with Draft = { model.Draft with References = model.Draft.References @ [ { Key = key; Kind = "contract"; Value = "" } ] }; Counter = counter }, []
+    | ReferenceRemoved key -> { model with Draft = { model.Draft with References = model.Draft.References |> List.filter (fun r -> r.Key <> key) } }, []
+    | ReferenceKindChosen(key, v) -> editReference key (fun r -> { r with Kind = v }) model
+    | ReferenceValueChanged(key, v) -> editReference key (fun r -> { r with Value = v }) model
     | DraftPurchaseOrderChanged v -> { model with Draft = { model.Draft with PurchaseOrder = v } }, []
     | DraftNotesChanged v -> { model with Draft = { model.Draft with Notes = v } }, []
     | LineTaxableChanged(key, taxable) -> editLine key (fun l -> { l with Taxable = taxable }) model
@@ -1693,21 +1940,33 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                     let withDraft = { books with Books = saved }
                     let request = issueRequest manifest withDraft draft.DraftId (versionOf withDraft draft.DraftId) model.Today
 
+                    // The editor now holds the draft as stored, at its new version.
+                    let reopened (stored: Receivables) =
+                        stored.Books.Drafts.TryFind draft.DraftId
+                        |> Option.map (formOf stored.Books.Ledger model.Counter)
+                        |> Option.defaultValue ({ model.Draft with DraftId = Some draft.DraftId }, model.Counter)
+
                     let reviewed =
                         match Issuance.submitForReview (context ctx) request withDraft with
                         | Ok reviewed ->
+                            let form, counter = reopened reviewed
+
                             save
                                 { model with
                                     Books = Some reviewed
-                                    Draft = { model.Draft with DraftId = Some draft.DraftId }
+                                    Draft = form
+                                    Counter = counter
                                     Blockers = []
                                     Notice = Some "Ready to issue. Check the preview, then issue it."
                                     Error = None }
                         | Error blockers ->
+                            let form, counter = reopened withDraft
+
                             save
                                 { model with
                                     Books = Some withDraft
-                                    Draft = { model.Draft with DraftId = Some draft.DraftId }
+                                    Draft = form
+                                    Counter = counter
                                     Blockers = blockers
                                     Notice = Some "Saved as a draft. Resolve the items below before issuing."
                                     Error = None }
@@ -2453,6 +2712,16 @@ let private editsEditor =
     | LineAdded
     | LineRemoved _
     | LineTaxableChanged _
+    | LineDetailedDescriptionChanged _
+    | LineUnitChanged _
+    | LineServiceFromChanged _
+    | LineServiceToChanged _
+    | LineCategoryChanged _
+    | LineCustomerCodeChanged _
+    | ReferenceAdded
+    | ReferenceRemoved _
+    | ReferenceKindChosen _
+    | ReferenceValueChanged _
     | DraftPurchaseOrderChanged _
     | DraftNotesChanged _
     | DraftTaxCodeChanged _
@@ -3854,6 +4123,13 @@ let view (model: Model) : View =
           "docTerms", docText (fun d -> Documents.termsText d.Terms)
           "docPurchaseOrder", docText (fun d -> d.Details.PurchaseOrder |> Option.defaultValue "")
           "docHasPurchaseOrder", flag (doc |> Option.exists (fun d -> d.Details.PurchaseOrder.IsSome))
+          // The client's reference, service period and typed references, only those given (INV-DATA-013, 014).
+          "docReferences",
+          Items(
+              doc
+              |> Option.map (fun d -> Documents.referenceFacts d |> List.mapi (fun i (label, value) -> [ "key", Text(string i); "label", Text label; "value", Text value ]))
+              |> Option.defaultValue []
+          )
           "docSubtotal", docText (fun d -> Documents.amountText d.Subtotal)
           "docTotal", docText (fun d -> Documents.moneyText d.Total)
           // Taxes and other adjustments, as entered (INV-ADJ-005).
@@ -3874,6 +4150,8 @@ let view (model: Model) : View =
                   |> List.mapi (fun index l ->
                       [ "key", Text(string index)
                         "description", Text l.Description
+                        // Its details under it, only those given (INV-DATA-008).
+                        "details", Text(Documents.lineDetailsLines l.Details |> String.concat "\n")
                         "quantity", Text(Documents.quantityText l.QuantityThousandths)
                         "rate", Text(Documents.amountText l.UnitPrice)
                         "amount", Text(Documents.amountText l.Amount) ]))
@@ -4016,7 +4294,12 @@ let view (model: Model) : View =
     // from the draft as saved, or a new invoice has anything typed in it.
     let editorChanged =
         let content (form: DraftForm) =
-            form.CustomerId, form.PurchaseOrder, form.Notes, form.Tax, form.Lines |> List.map (fun l -> l.Description, l.Hours, l.Rate, l.Taxable)
+            form.CustomerId,
+            form.PurchaseOrder,
+            form.Notes,
+            form.Tax,
+            form.Lines |> List.map (fun l -> l.Description, l.Hours, l.Rate, l.Taxable, l.Details),
+            form.References |> List.map (fun r -> r.Kind, r.Value)
 
         match model.Place, books with
         | Routes.Draft draftId, Some b ->
@@ -4322,8 +4605,34 @@ let view (model: Model) : View =
                 "description", Text l.Description
                 "hours", Text l.Hours
                 "rate", Text l.Rate
-                "taxable", Flag l.Taxable ])
+                "taxable", Flag l.Taxable
+                "detailsNote", Text(if l.Details <> noLineDetailsForm then " (given)" else "") ])
       )
+      // The one details panel, for the line it shows (INV-DATA-008).
+      yield!
+          (let shown = model.DetailsLine |> Option.bind (fun key -> model.Draft.Lines |> List.tryFindIndex (fun l -> l.Key = key))
+           let detail (f: LineDetailsForm -> string) = text (shown |> Option.map (fun i -> f model.Draft.Lines[i].Details) |> Option.defaultValue "")
+
+           [ "hasDetailsLine", flag shown.IsSome
+             "detailsLinePosition", text (shown |> Option.map (fun i -> string (i + 1)) |> Option.defaultValue "")
+             "detailsLineDescription", text (shown |> Option.map (fun i -> model.Draft.Lines[i].Description) |> Option.defaultValue "")
+             "lineDetailedDescription", detail _.DetailedDescription
+             "lineUnit", detail _.Unit
+             "lineServiceFrom", detail _.ServiceFrom
+             "lineServiceTo", detail _.ServiceTo
+             "lineCategory", detail _.Category
+             "lineCustomerCode", detail _.CustomerCode ])
+      // Typed client references (INV-DATA-014), any kind any number of times.
+      "draftReferences",
+      Items(
+          model.Draft.References
+          |> List.mapi (fun i r ->
+              [ "key", Text r.Key
+                "position", Text(string (i + 1))
+                "kind", Text r.Kind
+                "value", Text r.Value ])
+      )
+      "hasDraftReferences", flag (not model.Draft.References.IsEmpty)
       // The tax the person enters (INV-ADJ-005): never worked out by Summa.
       "draftTaxCode", text model.Draft.Tax.Code
       "draftTaxAmount", text model.Draft.Tax.Amount
