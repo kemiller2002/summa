@@ -337,6 +337,22 @@ let readAllKnowing (turn: Turn) (known: Map<string, StoredObject>) (provider: St
                 |> bounded turn ReadWidth
     }
 
+/// The provider with its reads and listings pinned to one change token
+/// (Arca ARCA-API-006, arca#39): each goes to that commit with one request
+/// and no ref fetch, and together they are one consistent snapshot. Commits
+/// and the namespace's current state still go to the provider.
+let pinnedTo (pin: PinnedReads) (provider: StorageProvider) =
+    { provider with
+        Read = pin.Read
+        List = pin.List }
+
+/// The reads for content observed at `state`: pinned to its commit where the
+/// host offers pins, otherwise the provider's own (which resolve the branch).
+let readsAt (pins: ChangeToken -> PinnedReads option) (state: NamespaceState) (provider: StorageProvider) =
+    match pins state.RepositoryToken with
+    | Some pin -> pinnedTo pin provider
+    | None -> provider
+
 /// Every object under the folders, read afresh.
 let readAll (provider: StorageProvider) (ns: Namespace) : Async<Result<StoredObject list, CommandFailure<'e>>> =
     readAllKnowing Turn.now Map.empty provider ns

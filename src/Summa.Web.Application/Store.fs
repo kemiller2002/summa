@@ -28,6 +28,9 @@ open Summa.Web.Application.Bridge
 type Backend =
     { /// The provider serving a location.
       Provider: DataLocation -> StorageProvider
+      /// Reads pinned to a commit already observed at a location, where the
+      /// provider offers them (Arca ARCA-API-006); None reads unpinned.
+      Pins: DataLocation -> ChangeToken -> PinnedReads option
       /// What the signed-in credential can do at a location: whether it may
       /// read and write, and the repository's visibility. A refusal says why,
       /// for the person.
@@ -126,6 +129,9 @@ let gitHub (bridge: Bridge) (tokens: unit -> TokenProvider option) : Backend =
                 | None -> async.Return(Error TokenUnavailable.NoToken) }
 
     { Provider = fun location -> GitHubStorage.provider host (GitHubConfig.create location)
+      // One session per pin, so the reads of one refresh share its response
+      // cache; each read goes to the pinned commit with no ref fetch.
+      Pins = fun location token -> Some((GitHubStorage.connect host (GitHubConfig.create location)).PinAt token)
       Resolve =
         fun location ->
             async {
@@ -281,7 +287,7 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
                 |> Option.map (fun (_, objects) -> objects |> List.map (fun o -> RelativePath.render o.Path, o) |> Map.ofList)
                 |> Option.defaultValue Map.empty
 
-            match! Workspace.openBooksKnowing bridge.Turn known (providerOf ctx.Namespace) ctx.Config ctx.Binding ctx.Organization ctx.Person.ActorId with
+            match! Workspace.openBooksKnowing bridge.Turn known (backend.Pins ctx.Namespace.Location) (providerOf ctx.Namespace) ctx.Config ctx.Binding ctx.Organization ctx.Person.ActorId with
             | Error failure -> return BooksNotOpened(BooksUnreachable(describeFailure (widen failure)))
             | Ok(Workspace.Opened opened) ->
                 match opened.Read with
@@ -452,7 +458,7 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
                         |> Option.map (fun (_, objects) -> objects |> List.map (fun o -> RelativePath.render o.Path, o) |> Map.ofList)
                         |> Option.defaultValue Map.empty
 
-                    match! Commands.readAllKnowing bridge.Turn known provider ctx.Namespace with
+                    match! Commands.readAllKnowing bridge.Turn known (Commands.readsAt (backend.Pins ctx.Namespace.Location) token provider) ctx.Namespace with
                     | Error failure -> return Error failure
                     | Ok objects ->
                         lastRead <- Some(token, objects)

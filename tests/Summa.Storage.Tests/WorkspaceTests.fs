@@ -276,3 +276,43 @@ let ``reads run at most six at a time and finish within the answers, on the call
     // The same objects as read one by one.
     let direct = Commands.readAll store.Provider ns |> Async.RunSynchronously |> ok
     Assert.Equal<string list>(direct |> List.map (fun o -> RelativePath.render o.Path) |> List.sort, (match result with Some(Ok o, _) -> o | _ -> []) |> List.map (fun o -> RelativePath.render o.Path) |> List.sort)
+
+[<Fact>]
+let ``an opening reads every file and listing through a pin at the commit it observed, when the host offers pins`` () =
+    let store = founded ()
+    let provider = store.Provider
+    let mutable unpinned = 0
+    let mutable pinnedAt: ChangeToken list = []
+    let mutable pinnedReads = 0
+
+    // The provider's own reads count as unpinned; a pin records its token and reads.
+    let counted =
+        { provider with
+            Read = fun ns path -> (unpinned <- unpinned + 1; provider.Read ns path)
+            List = fun ns path -> (unpinned <- unpinned + 1; provider.List ns path) }
+
+    let pins (token: ChangeToken) : PinnedReads option =
+        pinnedAt <- pinnedAt @ [ token ]
+
+        Some
+            { At = token
+              NamespaceState = provider.NamespaceState
+              Read = fun ns path -> (pinnedReads <- pinnedReads + 1; provider.Read ns path)
+              List = fun ns path -> (pinnedReads <- pinnedReads + 1; provider.List ns path) }
+
+    let ns = Storage.organizationNamespace production (bindingOf production) "org_acme" |> ok
+    let observed = provider.NamespaceState ns |> Async.RunSynchronously |> ok
+
+    match Workspace.openBooksKnowing Commands.Turn.now Map.empty pins counted production (bindingOf production) acmeConfig kevin.PrincipalId |> Async.RunSynchronously |> ok with
+    | Workspace.Opened opened ->
+        // Pinned once, at the repository token the namespace state named.
+        Assert.Equal<ChangeToken list>([ observed.RepositoryToken ], pinnedAt)
+        Assert.Equal(Some observed, fst opened.Read)
+        // Only the two manifests are read before the state is observed; everything after goes through the pin.
+        Assert.Equal(2, unpinned)
+        Assert.True(pinnedReads >= Organization.startingChart.Length)
+        // The same books as an opening without pins.
+        match opening store kevin.PrincipalId with
+        | Workspace.Opened plain -> Assert.Equal<string list>(snd plain.Read |> List.map (fun o -> RelativePath.render o.Path), snd opened.Read |> List.map (fun o -> RelativePath.render o.Path))
+        | other -> failwith $"%A{other}"
+    | other -> failwith $"%A{other}"

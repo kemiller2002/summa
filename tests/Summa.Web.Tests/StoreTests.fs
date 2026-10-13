@@ -92,6 +92,7 @@ let private page (repository: InMemoryStore) (subject: string) (login: string) :
 
     let backend: Store.Backend =
         { Provider = fun _ -> (networkOf repository).Provider
+          Pins = fun _ _ -> None
           Resolve = fun _ -> async.Return(Ok snapshot) }
 
     { Now = fun () -> start
