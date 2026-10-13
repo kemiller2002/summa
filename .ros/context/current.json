@@ -2184,20 +2184,20 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "0876393cb15a2ef5760aa22a",
-        "recordedAt": "2026-10-13T12:11:21Z",
+        "id": "81f167a389ddde195768cc31",
+        "recordedAt": "2026-10-13T12:33:46Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
         "repository": "summa",
-        "branch": "feat/wi-0029-exports",
-        "commit": "7bc9a3548a352fc4e8665f171ee58814cc7e5dbc",
+        "branch": "feat/wi-0029-operations-views",
+        "commit": "6621671823ae8fc5965c57d4781aa26ea90f299c",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0029-exports",
-        "remoteCommit": "7bc9a3548a352fc4e8665f171ee58814cc7e5dbc",
-        "summary": "INV-EXP and INV-PERF tested, INV-INTL-002/003 tested: invoices CSV, invoice JSON/HTML exports with metadata, the 2,000-line scenario (DF-SUMMA-2026-0030)",
-        "nextAction": "INV-OPS, INV-ARCH, INV-REC, INV-INTL-001, INV-CONTRACT-002, SUM3-011, SUM2-031, served import preview, integration state in the app, export handling (SUM3-024), SUM3-006 scheduling; editor inputs for line details and references",
+        "remoteBranch": "feat/wi-0029-operations-views",
+        "remoteCommit": "6621671823ae8fc5965c57d4781aa26ea90f299c",
+        "summary": "INV-OPS: search by every INV-OPS-001 field (derived, not indexed), one timeline from the audit trail, drill-down links from settlement to payment/credit memo/entry and line sources, proposal-ready and source-conflict attention items (DF-SUMMA-2026-0031); 001-005 tested, 006 partial (no model for required PO or payment promise)",
+        "nextAction": "INV-ARCH, INV-REC, INV-INTL-001, INV-CONTRACT-002, SUM3-011, SUM2-031, served import preview, integration state in the app, export handling (SUM3-024), SUM3-006 scheduling; editor inputs for line details and references; INV-OPS-006 missing PO and payment promise",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"

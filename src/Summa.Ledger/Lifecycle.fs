@@ -212,6 +212,64 @@ let recordManual (context: Context) (authority: DeliveryAuthority) (attemptId: s
 let attempts (r: Receivables) (invoiceId: string) =
     r.Books.Deliveries |> Map.toList |> List.map snd |> List.filter (fun d -> d.InvoiceId = invoiceId) |> List.sortBy (fun d -> d.At, d.Id)
 
+/// Everything an invoice is found by (INV-OPS-001): its number and id, the
+/// customer, the amount, its dates, projects and engagement, the
+/// customer's references, the ids of its sources and who it was sent to.
+let searchTexts (r: Receivables) (invoice: IssuedInvoice) =
+    let iso (d: DateOnly) = d.ToString("yyyy-MM-dd", Globalization.CultureInfo.InvariantCulture)
+    let plain (m: Money) = (decimal m.Minor / 100m).ToString("0.00", Globalization.CultureInfo.InvariantCulture)
+
+    [ invoice.Number
+      invoice.InvoiceId
+      invoice.CustomerId
+      invoice.Customer.Name
+      invoice.Customer.BillingName
+      Documents.amountText invoice.Total
+      plain invoice.Total
+      iso invoice.IssueDate
+      iso invoice.DueDate
+      yield! invoice.Lines |> List.choose _.Project
+      yield! Option.toList invoice.EngagementId
+      yield! Option.toList invoice.Details.PurchaseOrder
+      yield! Option.toList invoice.Details.ClientReference
+      yield! invoice.Details.References |> List.map snd
+      for line in invoice.Lines do
+          match line.Source with
+          | ManualLine -> ()
+          | TimeSource references ->
+              for t in references do
+                  t.PublicationId
+                  t.ActivityId
+          | FixedFeeSource engagement -> engagement
+          | MilestoneSource(engagement, milestone) ->
+              engagement
+              milestone
+          | ExpenseSource expense -> expense
+      for attempt in attempts r invoice.InvoiceId do
+          yield! attempt.Recipients.To
+          yield! attempt.Recipients.Cc ]
+
+/// An invoice's activity, oldest first (INV-OPS-004): every audit event of
+/// the invoice and its draft, its review, delivery and follow-up, and of
+/// what settled it (allocations and their payments, credits applied,
+/// write-offs, credit memos against it), with who did it and when.
+let timeline (r: Receivables) (invoice: IssuedInvoice) =
+    let id = invoice.InvoiceId
+    let allocations = r.Allocations |> List.filter (fun a -> a.InvoiceId = id)
+
+    let subjects =
+        set
+            [ id
+              yield! r.Books.IssuedFrom |> Map.toList |> List.filter (snd >> (=) id) |> List.map fst
+              for a in allocations do
+                  a.Id
+                  a.PaymentId
+              yield! r.Applications |> List.filter (fun a -> a.InvoiceId = id) |> List.map _.Id
+              yield! r.WriteOffs |> Map.toList |> List.filter (fun (_, w) -> w.InvoiceId = id) |> List.map fst
+              yield! r.CreditMemos |> Map.toList |> List.filter (fun (_, m) -> m.InvoiceId = Some id) |> List.map fst ]
+
+    r.Books.Ledger.Audit |> List.filter (fun a -> subjects.Contains a.Subject) |> List.sortBy _.When
+
 /// The delivery dimension of an invoice (INV-STATE-005), from its latest attempt.
 type DeliveryState =
     /// The PDF the delivery needs is not generated yet.

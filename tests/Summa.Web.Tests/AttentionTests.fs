@@ -179,3 +179,67 @@ let ``invoices download as CSV from the CPA workspace, and one invoice as JSON o
     match run [ InvoiceExportRequested "html" ] invoice |> snd with
     | [ OfferDownload(_, "text/html", data) ] -> Assert.StartsWith("<!-- summa.invoice-export/1; ", Encoding.UTF8.GetString(Convert.FromBase64String data))
     | other -> failwith $"%A{other}"
+
+[<Fact>]
+let ``INV-OPS-006: invoice obligations feed the work queue, each with where to act`` () =
+    let context: Summa.Ledger.Ledger.Context = { Who = "agent"; When = december.Now; Source = "test"; CorrelationId = None; Provenance = None }
+    let ok r = match r with Ok v -> v | Error e -> failwith $"%A{e}"
+    let base' = books ()
+
+    // An invoice disputed, a draft waiting for approval, a proposal ready
+    // for review, the PDF of another invoice failed, and a source that
+    // Chrona corrected after it was invoiced.
+    let disputed = runAt october [ go "#/invoices/INV-0002?tab=payments"; FollowUpNoteChanged "Hours not agreed"; DisputeMarked ] base' |> fst
+    let opened = runAt october [ go "#/invoices/new?customer=CUST-0001" ] disputed |> fst
+    let key = opened.Draft.Lines.Head.Key
+    let awaiting = runAt october [ LineDescriptionChanged(key, "More work"); LineRateChanged(key, "75"); DraftSubmitted ] opened |> fst
+    let r = awaiting.Books.Value
+    let revenue = r.Books.Ledger.Accounts |> Map.findKey (fun _ a -> a.Code = "4000")
+
+    let request: Summa.Ledger.Billing.ProposalRequest =
+        { ProposalId = "P-1"
+          CustomerId = "CUST-0001"
+          EngagementId = None
+          Currency = "USD"
+          Time = []
+          Grouping = []
+          FixedFee = false
+          Milestones = []
+          Expenses = []
+          Manual = [ { r.Books.Invoices["INV-0001"].Lines.Head with RevenueAccountId = revenue } ]
+          Accounts = { TimeRevenue = revenue; FeeRevenue = revenue; ReimbursedExpenses = revenue } }
+
+    let r =
+        r
+        |> Summa.Ledger.Billing.propose context request |> ok
+        |> Summa.Ledger.Billing.markReady context false "P-1" |> ok
+        |> Summa.Ledger.Issuance.pdfFailed context "INV-0001" "renderer unavailable" |> ok
+
+    // A billing review as Chrona import raises it (Billing.importTime/withdrawTime, BillingTests).
+    let review: Summa.Ledger.Sources.BillingReview =
+        { Id = "RV-1"; PublicationId = "pub-1"; InvoiceId = "INV-0002"; Reason = "Chrona corrected time after it was invoiced"; RaisedAt = december.Now; Resolution = None }
+
+    let r = { r with Books = { r.Books with Reviews = r.Books.Reviews.Add(review.Id, review) } }
+    let work = run [ go "#/work" ] { awaiting with Books = Some r } |> fst
+    let rows = items "workItems" work
+    let row kind = rows |> List.filter (fun x -> field "kind" x = kind)
+
+    let expect kind (href: string) (text: string) =
+        match row kind with
+        | [ x ] ->
+            Assert.Equal(href, field "href" x)
+            Assert.Contains(text, field "text" x)
+        | other -> failwith $"{kind}: %A{other}"
+
+    expect "Proposal ready" "#/proposals/P-1" "P-1"
+    let waiting =
+        r.Books.Drafts |> Map.toList |> List.filter (fun (_, d) -> d.Review.IsSubmittedForReview) |> List.map fst |> List.exactlyOne
+
+    expect "Ready to issue" (Summa.Web.Engine.Routes.href (Summa.Web.Engine.Routes.Draft waiting)) "reviewed"
+    expect "Source conflict" "#/invoices/INV-0002?tab=payments" "Chrona corrected time"
+    expect "Delivery" "#/invoices/INV-0001?tab=payments" "the PDF failed: renderer unavailable"
+    expect "Disputed" "#/invoices/INV-0002?tab=payments" "Hours not agreed"
+    Assert.Contains("Overdue", rows |> List.map (field "kind"))
+    // A settled review leaves the queue.
+    let resolved = { r with Books = Summa.Ledger.Billing.resolveReview context "RV-1" "No action" r.Books |> ok }
+    Assert.Empty(run [ go "#/work" ] { awaiting with Books = Some resolved } |> fst |> items "workItems" |> List.filter (fun x -> field "kind" x = "Source conflict"))

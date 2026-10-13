@@ -1219,6 +1219,13 @@ let workItems (today: DateOnly) (r: Receivables) =
               "Unapplied payment", $"Payment {p.Id} has {Documents.moneyText (unallocated r p)} not yet applied.", Routes.href (Routes.Inbox(Some p.CustomerId))
       for id, why in Lifecycle.attention r do
           "Delivery", $"Invoice {number id}: {why}.", invoice id
+      // Proposals waiting for a person, and time corrected after it was invoiced (INV-OPS-006).
+      for KeyValue(id, p) in r.Books.Proposals do
+          if p.State = ReadyForReview then
+              "Proposal ready", $"Proposal {id} is ready for review.", Routes.href (Routes.Proposal id)
+      for KeyValue(_, review) in r.Books.Reviews do
+          if review.Resolution.IsNone then
+              "Source conflict", $"Invoice {number review.InvoiceId}: {review.Reason}.", invoice review.InvoiceId
       for KeyValue(id, a) in r.Books.Artifacts do
           if a.Kind = Sources.InvoicePdf && a.Status = Sources.Pending then
               "PDF", $"Invoice {number a.InvoiceId} has no stored PDF yet.", Routes.href (Routes.Invoice(a.InvoiceId, Routes.Document))
@@ -3443,7 +3450,7 @@ let view (model: Model) : View =
     let listed =
         invoices
         |> List.filter (fun i ->
-            containsText filters.Search [ i.Number; i.Customer.Name ]
+            containsText filters.Search (books |> Option.map (fun b -> Lifecycle.searchTexts b i) |> Option.defaultValue [ i.Number; i.Customer.Name ])
             && (filters.Status.IsEmpty || filters.Status.Contains(statusKey (statusOf i)))
             && filters.Customer |> Option.forall ((=) i.CustomerId)
             && filters.From |> Option.forall (fun d -> i.IssueDate >= d)
@@ -3491,11 +3498,8 @@ let view (model: Model) : View =
     let history =
         detail
         |> Option.map (fun (b, i) ->
-            let draft = b.Books.IssuedFrom |> Map.tryFindKey (fun _ invoiceId -> invoiceId = i.InvoiceId)
-
-            b.Books.Ledger.Audit
-            |> List.filter (fun a -> a.Subject = i.InvoiceId || Some a.Subject = draft)
-            |> List.sortBy _.When
+            // The invoice's whole activity, settlement included (INV-OPS-004).
+            Lifecycle.timeline b i
             |> List.mapi (fun index a ->
                 [ "key", Text(string index)
                   "when", Text(a.When.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture))
@@ -3525,6 +3529,27 @@ let view (model: Model) : View =
                     "selected", Text(if t = tab then "true" else "false") ])
           )
           "history", Items history
+          // Each line by its stable id, and where it came from (INV-OPS-005, INV-DATA-007).
+          "detailSources",
+          Items(
+              detail
+              |> Option.map (fun (_, i) ->
+                  identifiedLines i
+                  |> List.map (fun (lineId, l) ->
+                      let from =
+                          match l.Source with
+                          | ManualLine -> "Typed by hand"
+                          | TimeSource refs ->
+                              refs
+                              |> List.map (fun t -> $"Chrona time {t.PublicationId} (activity {t.ActivityId}, revision {t.Revision})")
+                              |> String.concat "; "
+                          | FixedFeeSource engagement -> $"Fixed fee of engagement {engagement}"
+                          | MilestoneSource(engagement, milestone) -> $"Milestone {milestone} of engagement {engagement}"
+                          | ExpenseSource expense -> $"Expense {expense}"
+
+                      [ "key", Text lineId; "line", Text lineId; "description", Text l.Description; "source", Text from ]))
+              |> Option.defaultValue []
+          )
           "hasHistory", flag (not history.IsEmpty)
           "docNumber", docText _.Number
           "docIssuer", docText _.Issuer.LegalName
@@ -3647,9 +3672,18 @@ let view (model: Model) : View =
                           | WriteOffRecorded reason -> $"Written off: {reason}"
                           | InvoiceVoided reason -> $"Voided: {reason}"
 
+                      // Each event drills down to what made it (INV-OPS-005).
+                      let place =
+                          match line.Event with
+                          | PaymentApplied(id, _)
+                          | PaymentReversed(id, _) -> Routes.Payment id
+                          | CreditApplied(FromCreditMemo id) -> Routes.CreditMemo id
+                          | _ -> Routes.JournalEntry line.JournalEntryId
+
                       [ "key", Text(string index)
                         "date", Text(Documents.dateText line.Date)
                         "reference", Text what
+                        "href", Text(Routes.href place)
                         "amount", money line.Effect
                         "balance", money line.Balance ]))
               |> Option.defaultValue []

@@ -377,3 +377,51 @@ let ``an invoice shows what settled it, and its journal entry is explained in pl
         Assert.Equal(Text "This entry was posted for invoice INV-0001: Invoice INV-2026-0001.", first |> List.pick (fun (n, v) -> if n = "text" then Some v else None))
         Assert.True(sentences.Length >= 3)
     | [] -> failwith "no explanation"
+
+[<Fact>]
+let ``INV-OPS-001: the invoice list finds an invoice by its PO, amount, date and customer, and nothing else`` () =
+    let issued = started () |> customer |> drafted |> run [ DraftPurchaseOrderChanged "PO-8812"; DraftSubmitted; DraftIssued ] |> fst
+    let list = run [ LocationChanged(address "#/invoices") ] issued |> fst
+    let numbers search = run [ InvoiceSearchChanged search ] list |> fst |> items "invoices" |> List.map (List.find (fst >> (=) "number") >> snd)
+
+    for search in [ "PO-8812"; "6037.50"; "6,037.50"; "2026-10-07"; "abc corp"; "INV-2026-0001"; "CUST-0001" ] do
+        Assert.Equal<Scalar list>([ Text "INV-2026-0001" ], numbers search)
+
+    Assert.Empty(numbers "PO-9999")
+
+[<Fact>]
+let ``INV-OPS-005: an invoice drills down to its journal entry and lines, its sources, and what settled it`` () =
+    let issued = started () |> customer |> drafted |> run [ DraftSubmitted; DraftIssued ] |> fst
+    let paid = run [ InvoiceTabChosen "payments"; PaymentAmountChanged "1000.00"; PaymentRecorded ] issued |> fst
+    let invoice = paid.Books.Value.Books.Invoices["INV-0001"]
+
+    // Invoice -> journal entry -> journal lines.
+    let entryHref = value "detailEntryHref" paid
+    Assert.Equal($"#/ledger/entries/{invoice.JournalEntryId}", entryHref)
+    let entry = run [ LocationChanged(address entryHref) ] paid |> fst
+    let lines = items "entryLines" entry
+    Assert.Equal(invoice.Lines.Length + 1, lines.Length)
+    Assert.True(lines |> List.forall (fun l -> l |> List.exists (fun (n, v) -> n = "href" && v <> Text "")))
+
+    // Invoice -> source lines -> where each came from.
+    let history = run [ LocationChanged(address "#/invoices/INV-0001?tab=history") ] paid |> fst
+
+    match items "detailSources" history |> List.map Map.ofList with
+    | [ source ] ->
+        Assert.Equal(Text "Assessment", source["description"])
+        Assert.Equal(Text "Typed by hand", source["source"])
+        Assert.NotEqual(Text "", source["line"])
+    | other -> failwith $"%A{other}"
+
+    // Invoice -> payments -> the payment and its allocation.
+    let settlement = run [ LocationChanged(address "#/invoices/INV-0001?tab=payments") ] paid |> fst
+
+    match items "detailPayments" settlement |> List.map Map.ofList with
+    | [ row ] ->
+        let paymentId = paid.Books.Value.Payments |> Map.keys |> Seq.exactlyOne
+        Assert.Equal(Text $"#/payments/{paymentId}", row["href"])
+
+        match row["href"] with
+        | Text href -> Assert.Equal("True", value "onPayment" (run [ LocationChanged(address href) ] settlement |> fst))
+        | other -> failwith $"%A{other}"
+    | other -> failwith $"%A{other}"
