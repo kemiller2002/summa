@@ -64,3 +64,4 @@
 | WI-0051 | Summa: local books encrypted at rest in the browser (SUM3-024 remainder) | captured | summa, security, encryption | medium |
 | WI-0052 | Summa: adopt Forma and Folio through Conditor 0.9.0 (step 1: echelon-current 1.19.0, step 2: 1.20.0) | complete | summa, foundations, forma, folio | medium |
 | WI-0053 | Summa: universal UI layout/action conformance (UI-LAYOUT-INTERACTION@1.0.0) for the accounting app, backlog and hub pages (https://github.com/kemiller2002/summa/issues/90) | complete | summa,ui,conformance,playwright | high |
+| WI-0054 | Summa: UI conformance follow-ups on #95 - CI watch, audit the merged .ros state, resolve the 6 UNKNOWN actions, recompose the 320px primary navigation (ULI-L09), record the Limen nested data-if unmount defect (https://github.com/kemiller2002/summa/issues/90) | ready | summa,ui,conformance | high |

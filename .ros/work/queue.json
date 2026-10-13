@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 54,
+  "nextSeq": 55,
   "items": [
     {
       "id": "WI-0001",
@@ -1280,6 +1280,29 @@
       "attachments": [],
       "createdAt": "2026-10-13T17:29:26.743Z",
       "updatedAt": "2026-10-13T18:51:09.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0054",
+      "title": "Summa: UI conformance follow-ups on #95 - CI watch, audit the merged .ros state, resolve the 6 UNKNOWN actions, recompose the 320px primary navigation (ULI-L09), record the Limen nested data-if unmount defect (https://github.com/kemiller2002/summa/issues/90)",
+      "description": null,
+      "tags": [
+        "summa,ui,conformance"
+      ],
+      "priority": "high",
+      "status": "ready",
+      "attachments": [],
+      "createdAt": "2026-10-13T18:52:19.108Z",
+      "updatedAt": "2026-10-13T18:52:24.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
