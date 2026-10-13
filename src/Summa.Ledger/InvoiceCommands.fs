@@ -1,11 +1,15 @@
-/// Version 1 of Summa's external invoice command contract (INV-CONTRACT-002):
+/// Version 1 of Summa's external invoice command contract (INV-CONTRACT-002,
+/// SUM3-011):
 /// a request names one domain command and a response names its outcome,
 /// both in a versioned envelope:
-/// `{"contract":"summa.invoice-commands","kind":"request","message":{...},"version":"1.0"}`.
+/// `{"contract":"summa.invoice-commands","kind":"request","message":{...},"version":"1.0"}`,
+/// each written at the oldest version that defines it
+/// (`docs/contracts/invoice-commands-1.1.md`).
 ///
 /// - The commands are domain operations, never record patches
 ///   (INV-CONTRACT-003): propose an invoice, submit a draft for review,
-///   issue a reviewed draft, void an invoice.
+///   issue a reviewed draft, void an invoice; and, from 1.1, record a payment
+///   and allocate it to an invoice (SUM3-011).
 /// - Who acts is not in the message. The host authenticates the caller and
 ///   passes its `Context`, so a message cannot claim to be someone else.
 /// - Encoding is canonical (`Summa.Contracts.Json`), so equal messages have
@@ -31,10 +35,11 @@ let Name = "summa.invoice-commands"
 [<Literal>]
 let Major = 1
 
+/// 1.1 adds `record-payment` and `allocate-payment` (SUM3-011).
 [<Literal>]
-let Minor = 0
+let Minor = 1
 
-/// `1.0`.
+/// `1.1`, the newest version this reader knows.
 let Version = $"{Major}.{Minor}"
 
 /// What an external caller asks Summa to do.
@@ -47,6 +52,19 @@ type Command =
     | IssueInvoice of draftId: string * expectedVersion: int * issueDate: DateOnly
     /// Void an unpaid invoice with a reason (`Corrections.voidInvoice`).
     | VoidInvoice of invoiceId: string * reason: string * date: DateOnly
+    /// Since 1.1: record a payment received (`Payments.recordPayment`).
+    | RecordPayment of Payment
+    /// Since 1.1: apply part of a payment to an invoice (`Payments.allocate`).
+    | AllocatePayment of allocationId: string * paymentId: string * invoiceId: string * amount: Money.Money
+
+/// The contract minor version that first defines a command. A message is
+/// written at the oldest version that defines it, so 1.0 messages keep
+/// their bytes and a 1.0 reader can read them.
+let sinceMinor =
+    function
+    | RecordPayment _
+    | AllocatePayment _ -> 1
+    | _ -> 0
 
 type Request = { RequestId: string; Command: Command }
 
@@ -72,8 +90,14 @@ type Response = { RequestId: string; Outcome: Outcome }
 
 // ---- Encoding --------------------------------------------------------------------------
 
-let private envelope (kind: string) (message: Json) =
-    Json.Object [ "contract", Json.String Name; "version", Json.String Version; "kind", Json.String kind; "message", message ]
+let private envelope (minor: int) (kind: string) (message: Json) =
+    Json.Object [ "contract", Json.String Name; "version", Json.String $"{Major}.{minor}"; "kind", Json.String kind; "message", message ]
+
+let private money (m: Money.Money) =
+    Json.Object [ "currency", Encode.text m.Currency; "minor", Json.Integer m.Minor ]
+
+let private methods =
+    [ Ach, "ach"; Check, "check"; Wire, "wire"; CreditCard, "credit-card"; Cash, "cash"; Other, "other" ]
 
 let private command =
     function
@@ -95,9 +119,26 @@ let private command =
               "issueDate", Encode.date date ]
     | VoidInvoice(invoice, reason, date) ->
         Json.Object [ "kind", Json.String "void-invoice"; "invoiceId", Encode.text invoice; "reason", Encode.text reason; "date", Encode.date date ]
+    | RecordPayment p ->
+        Json.Object
+            [ "kind", Json.String "record-payment"
+              "paymentId", Encode.text p.Id
+              "customerId", Encode.text p.CustomerId
+              "dateReceived", Encode.date p.DateReceived
+              "amount", money p.Amount
+              "method", Json.String(methods |> List.find (fun (m, _) -> m = p.Method) |> snd)
+              "reference", Encode.text p.Reference
+              "memo", Encode.optional Encode.text p.Memo ]
+    | AllocatePayment(allocation, payment, invoice, amount) ->
+        Json.Object
+            [ "kind", Json.String "allocate-payment"
+              "allocationId", Encode.text allocation
+              "paymentId", Encode.text payment
+              "invoiceId", Encode.text invoice
+              "amount", money amount ]
 
 let encodeRequest (request: Request) =
-    envelope "request" (Json.Object [ "requestId", Encode.text request.RequestId; "command", command request.Command ])
+    envelope (sinceMinor request.Command) "request" (Json.Object [ "requestId", Encode.text request.RequestId; "command", command request.Command ])
     |> Json.serialize
 
 let private outcome =
@@ -117,8 +158,9 @@ let private outcome =
               "reasons", reasons |> Encode.list (fun r -> Json.Object [ "code", Encode.text r.Code; "message", Encode.text r.Message ]) ]
     | Conflict current -> Json.Object [ "kind", Json.String "conflict"; "currentVersion", Encode.integer current ]
 
+/// Responses have not changed since 1.0, so they are written at 1.0.
 let encodeResponse (response: Response) =
-    envelope "response" (Json.Object [ "requestId", Encode.text response.RequestId; "outcome", outcome response.Outcome ])
+    envelope 0 "response" (Json.Object [ "requestId", Encode.text response.RequestId; "outcome", outcome response.Outcome ])
     |> Json.serialize
 
 // ---- Decoding --------------------------------------------------------------------------
@@ -137,9 +179,9 @@ let private name (path: string) (json: Json) =
 let private positive (path: string) (json: Json) =
     Decode.integer path json |> Result.bind (fun n -> if n >= 1 then Ok n else Decode.problem path "must be 1 or more")
 
-/// The envelope, its kind, and whether members a newer minor adds are
-/// tolerated (`strict` is false for a newer minor of major 1).
-let private open' (kind: string) (text: string) : Decoded<bool * Json> =
+/// The envelope checked, and the message's minor version: a minor newer than
+/// this reader's is read leniently, ignoring members it adds.
+let private open' (kind: string) (text: string) : Decoded<int * Json> =
     Json.parse text
     |> Result.mapError (fun message -> [ { Path = "$"; Message = message } ])
     |> Result.bind (fun json ->
@@ -150,7 +192,7 @@ let private open' (kind: string) (text: string) : Decoded<bool * Json> =
 
                 if not m.Success then Decode.problem "$.version" "must be major.minor, for example 1.0"
                 elif int m.Groups[1].Value <> Major then Decode.problem "$.version" $"major version {m.Groups[1].Value} is not supported; this reader reads {Major}.x"
-                else Ok(int m.Groups[2].Value <= Minor))
+                else Ok(int m.Groups[2].Value))
 
         let contract =
             Decode.member' Decode.text "$" "contract" json
@@ -160,15 +202,35 @@ let private open' (kind: string) (text: string) : Decoded<bool * Json> =
             Decode.member' Decode.text "$" "kind" json
             |> Result.bind (fun k -> if k = kind then Ok() else Decode.problem "$.kind" $"must be {kind}")
 
-        Decode.map2 (fun strict () -> strict) version (Decode.checks [ contract; kindOk ])
-        |> Result.bind (fun strict ->
-            Decode.closed strict "$" [ "contract"; "kind"; "message"; "version" ] json
+        Decode.map2 (fun minor () -> minor) version (Decode.checks [ contract; kindOk ])
+        |> Result.bind (fun minor ->
+            Decode.closed (minor <= Minor) "$" [ "contract"; "kind"; "message"; "version" ] json
             |> Result.bind (fun () -> Decode.field "$" "message" json)
-            |> Result.map (fun message -> strict, message)))
+            |> Result.map (fun message -> minor, message)))
 
-let private commandOf (strict: bool) (path: string) (json: Json) : Decoded<Command> =
+let private moneyOf (path: string) (json: Json) : Decoded<Money.Money> =
+    let currency =
+        Decode.member' Decode.text path "currency" json
+        |> Result.bind (fun c -> if currencyPattern.IsMatch c then Ok c else Decode.problem $"{path}.currency" "must be a three-letter ISO 4217 code")
+
+    let minor =
+        match Decode.field path "minor" json with
+        | Ok(Json.Integer n) when n > 0L -> Ok n
+        | Ok(Json.Integer _) -> Decode.problem $"{path}.minor" "must be more than zero"
+        | Ok _ -> Decode.problem $"{path}.minor" "must be a whole number of minor units"
+        | Error e -> Error e
+
+    Decode.closed true path [ "currency"; "minor" ] json
+    |> Result.bind (fun () -> Decode.map2 (fun c m -> ({ Currency = c; Minor = m }: Money.Money)) currency minor)
+
+let private commandOf (minor: int) (path: string) (json: Json) : Decoded<Command> =
+    let strict = minor <= Minor
     let get decode field = Decode.member' decode path field json
     let closed names = Decode.closed strict path ("kind" :: names) json
+
+    // A command a message's version does not define is refused at its kind.
+    let since (needed: int) (decoded: unit -> Decoded<Command>) =
+        if minor < needed then Decode.problem $"{path}.kind" $"needs version {Major}.{needed} or later" else decoded ()
 
     Decode.member' Decode.text path "kind" json
     |> Result.bind (function
@@ -209,18 +271,54 @@ let private commandOf (strict: bool) (path: string) (json: Json) : Decoded<Comma
                 <*> (get name "invoiceId")
                 <*> (get name "reason")
                 <*> (get Decode.date "date"))
+        | "record-payment" ->
+            since 1 (fun () ->
+                let method =
+                    get Decode.text "method"
+                    |> Result.bind (fun text ->
+                        match methods |> List.tryFind (fun (_, n) -> n = text) with
+                        | Some(m, _) -> Ok m
+                        | None -> Decode.problem $"{path}.method" "must be ach, check, wire, credit-card, cash or other")
+
+                closed [ "amount"; "customerId"; "dateReceived"; "memo"; "method"; "paymentId"; "reference" ]
+                |> Result.bind (fun () ->
+                    Ok(fun id customer date amount m reference memo ->
+                        RecordPayment
+                            { Id = id
+                              CustomerId = customer
+                              DateReceived = date
+                              Amount = amount
+                              Method = m
+                              Reference = reference
+                              Memo = memo })
+                    <*> get name "paymentId"
+                    <*> get name "customerId"
+                    <*> get Decode.date "dateReceived"
+                    <*> get moneyOf "amount"
+                    <*> method
+                    <*> get Decode.text "reference"
+                    <*> get (Decode.optional Decode.text) "memo"))
+        | "allocate-payment" ->
+            since 1 (fun () ->
+                closed [ "allocationId"; "amount"; "invoiceId"; "paymentId" ]
+                |> Result.bind (fun () ->
+                    Ok(fun a p i amount -> AllocatePayment(a, p, i, amount))
+                    <*> get name "allocationId"
+                    <*> get name "paymentId"
+                    <*> get name "invoiceId"
+                    <*> get moneyOf "amount"))
         | other -> Decode.problem $"{path}.kind" $"'{other}' is not a command of this contract")
 
 /// A request from untrusted text: every problem, each with its path.
 let decodeRequest (text: string) : Decoded<Request> =
     open' "request" text
-    |> Result.bind (fun (strict, message) ->
-        Decode.closed strict "$.message" [ "command"; "requestId" ] message
+    |> Result.bind (fun (minor, message) ->
+        Decode.closed (minor <= Minor) "$.message" [ "command"; "requestId" ] message
         |> Result.bind (fun () ->
             Decode.map2
                 (fun id command -> { RequestId = id; Command = command })
                 (Decode.member' name "$.message" "requestId" message)
-                (Decode.member' (commandOf strict) "$.message" "command" message)))
+                (Decode.member' (commandOf minor) "$.message" "command" message)))
 
 let private outcomeOf (strict: bool) (path: string) (json: Json) : Decoded<Outcome> =
     Decode.member' Decode.text path "kind" json
@@ -259,7 +357,8 @@ let private outcomeOf (strict: bool) (path: string) (json: Json) : Decoded<Outco
 /// A response from untrusted text.
 let decodeResponse (text: string) : Decoded<Response> =
     open' "response" text
-    |> Result.bind (fun (strict, message) ->
+    |> Result.bind (fun (minor, message) ->
+        let strict = minor <= Minor
         Decode.closed strict "$.message" [ "outcome"; "requestId" ] message
         |> Result.bind (fun () ->
             Decode.map2
@@ -270,12 +369,16 @@ let decodeResponse (text: string) : Decoded<Response> =
 // ---- Handling ---------------------------------------------------------------------------
 
 /// What the host supplies: the accounts proposals post to, the issue request
-/// for a draft (the organization's defaults), and the id of a void's entry.
+/// for a draft (the organization's defaults), the id of a void's entry, and
+/// the accounts and entry id an allocation posts to.
 [<NoEquality; NoComparison>]
 type Host =
     { Accounts: Billing.BillingAccounts
       IssueRequest: string -> int -> DateOnly -> IssueRequest
-      VoidEntryId: string -> string }
+      VoidEntryId: string -> string
+      CashAccountId: string
+      ReceivableAccountId: string
+      AllocationEntryId: string -> string }
 
 let private refusal code (problem: obj) = { Code = code; Message = $"%A{problem}" }
 
@@ -324,4 +427,21 @@ let handle (context: Context) (host: Host) (request: Request) (r: Receivables) :
         match Corrections.voidInvoice context voiding r with
         | Ok next -> next, Accepted { Kind = "invoice-void"; Id = invoiceId; Version = None; Number = None }
         | Error problems -> r, Refused(problems |> List.map (refusal "void-refused"))
+    | RecordPayment payment ->
+        match Payments.recordPayment context payment r with
+        | Ok next -> next, Accepted { Kind = "payment"; Id = payment.Id; Version = None; Number = None }
+        | Error problems -> r, Refused(problems |> List.map (refusal "payment-refused"))
+    | AllocatePayment(allocationId, paymentId, invoiceId, amount) ->
+        let allocation: AllocationRequest =
+            { AllocationId = allocationId
+              PaymentId = paymentId
+              InvoiceId = invoiceId
+              Amount = amount
+              JournalEntryId = host.AllocationEntryId allocationId
+              CashAccountId = host.CashAccountId
+              ReceivableAccountId = host.ReceivableAccountId }
+
+        match Payments.allocate context allocation r with
+        | Ok next -> next, Accepted { Kind = "allocation"; Id = allocationId; Version = None; Number = None }
+        | Error problems -> r, Refused(problems |> List.map (refusal "allocation-refused"))
     |> respond

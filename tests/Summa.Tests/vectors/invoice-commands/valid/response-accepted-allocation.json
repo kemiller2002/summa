@@ -1,0 +1,1 @@
+{"contract":"summa.invoice-commands","kind":"response","message":{"outcome":{"kind":"accepted","produced":{"id":"AL-1","kind":"allocation","number":null,"version":null}},"requestId":"req-0006"},"version":"1.0"}
