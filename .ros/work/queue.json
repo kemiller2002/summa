@@ -1276,10 +1276,10 @@
         "summa,ui,conformance,playwright"
       ],
       "priority": "high",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-13T17:29:26.743Z",
-      "updatedAt": "2026-10-13T17:29:30.000Z",
+      "updatedAt": "2026-10-13T18:51:09.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
