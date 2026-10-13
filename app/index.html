@@ -161,6 +161,11 @@
         <a class="summa-nav__link" data-bind-href="href" data-bind-aria-current="current" data-bind-data-route="id" data-text="label"></a>
       </template>
     </nav>
+    <!-- One search over the books, and the command palette (v0.4 §18-19): typing opens #/search. -->
+    <div class="summa-search" role="search">
+      <label class="ef-visually-hidden" for="global-search">Search the books or run a command</label>
+      <input id="global-search" type="search" placeholder="Search or run a command" autocomplete="off" data-event="globalSearchChanged" data-on="input" data-bind-value="globalSearch" />
+    </div>
     <div class="summa-header__actions">
       <!-- Every view is a link (WI-0041): this copies the address of the one shown. -->
       <button type="button" class="ef-button" data-variant="secondary" id="copy-link" data-event="linkCopyRequested">Copy link</button>
@@ -784,6 +789,32 @@
     </template>
 
     <!-- Invoice proposals, an agent's among them: inspect, then approve or abandon (v0.4 §42-43, INV-AGENT-004). -->
+    <!-- Search and the command palette (v0.4 §18-19): every result is a link. -->
+    <template data-if="onSearch">
+      <section class="ef-stack" aria-labelledby="search-title">
+        <h1 id="search-title">Search</h1>
+        <p id="search-summary" role="status" data-text="searchSummary"></p>
+        <template data-if="hasSearchCommands">
+          <div class="ef-stack">
+            <h2>Commands</h2>
+            <ul class="summa-palette" id="search-commands">
+              <template data-each="searchCommands" data-key="key"><li><a class="summa-link" data-bind-href="href" data-text="label"></a></li></template>
+            </ul>
+          </div>
+        </template>
+        <template data-if="hasSearchResults">
+          <div class="ef-stack">
+            <h2>In the books</h2>
+            <ul class="summa-search-results" id="search-results">
+              <template data-each="searchResults" data-key="key">
+                <li><span class="summa-search-kind" data-text="kind"></span> <a class="summa-link" data-bind-href="href" data-text="title"></a> <span data-text="detail"></span> <span class="summa-optional-note" data-text="matched"></span></li>
+              </template>
+            </ul>
+          </div>
+        </template>
+      </section>
+    </template>
+
     <template data-if="onProposals">
       <section class="ef-stack" aria-labelledby="proposals-title">
         <h1 id="proposals-title">Proposals</h1>
