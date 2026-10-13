@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-13T12:56:31Z",
+  "updatedAt": "2026-10-13T13:19:19Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -2350,13 +2350,24 @@
     {
       "id": "WI-0050",
       "type": "implementation",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-13T12:56:31Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "research/decisions/DF-SUMMA-2026-0033--reads-pinned-to-the-observed-commit.md"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Storage.Tests/WorkspaceTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-13T13:19:19Z",
       "telemetryExecutionIds": [
         "EXE-20261013T125632051Z-07e0596b"
-      ]
+      ],
+      "completedAt": "2026-10-13T13:19:19Z",
+      "conclusion": "Arca 0.5.0 adopted through Conditor (echelon-current 1.19.0, plan sha256:c3e3c5f1, isolated --home). Reads after an observed namespace state are pinned to its commit (no ref fetch): found 4.2-4.8 s to 3.2-3.4 s, issue 2.2-2.4 s to 1.2-1.3 s, reload 3.7-4.4 s to 2.5-3.1 s, reload sending a kept change 4.6-4.8 s to 2.6-2.9 s. The batched read-cache save has no use: Summa keeps no read-cache partitions."
     }
   ]
 }

@@ -1202,10 +1202,10 @@
         "performance"
       ],
       "priority": "medium",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-13T12:56:28Z",
-      "updatedAt": "2026-10-13T12:56:30Z",
+      "updatedAt": "2026-10-13T13:19:19Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
