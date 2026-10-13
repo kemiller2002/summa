@@ -79,6 +79,32 @@ test("filters, sort and search are in the address and survive a reload", async (
   await expect(page.locator("#invoice-count-text")).toHaveText("1 of 2 invoices");
 });
 
+test("the invoices list opens with what needs action first, saying why (SUM4-010)", async ({ app: { page } }) => {
+  // Acme is due on receipt; Beta has 30 days. Newest first would put Beta's invoice on top.
+  for (const [name, terms] of [["Acme", "0"], ["Beta", "30"]]) {
+    await nav(page, "Customers").click();
+    await page.fill("#customer-name", name);
+    await page.fill("#customer-address", "1 Main Street");
+    await page.fill("#customer-terms", terms);
+    await page.click("#add-customer");
+    await expect(page.locator("#notice")).toHaveText(`Customer ${name} added.`);
+  }
+  await issueInvoice(page, "CUST-0001", "100");
+  await issueInvoice(page, "CUST-0002", "250");
+  await nav(page, "Invoices").click();
+  await expect(page).toHaveURL(/#\/invoices$/);
+  await expect(page.locator("#invoice-sort")).toHaveValue("attention");
+  const rows = page.locator("#invoices-table tbody tr");
+  await expect(rows.nth(0).locator('[data-label="Customer"]')).toHaveText("Acme");
+  await expect(rows.nth(0).locator('[data-label="Needs attention"]')).toHaveText("Due today");
+  await expect(rows.nth(1).locator('[data-label="Customer"]')).toHaveText("Beta");
+  await expect(rows.nth(1).locator('[data-label="Needs attention"]')).toHaveText("");
+  // Another order is a choice away, and it is in the address.
+  await page.selectOption("#invoice-sort", "newest");
+  await expect(page).toHaveURL(/#\/invoices\?sort=newest$/);
+  await expect(rows.nth(0).locator('[data-label="Customer"]')).toHaveText("Beta");
+});
+
 test("Back returns to the previous place, not the previous filter", async ({ app: { page } }) => {
   await twoInvoices(page);
   await nav(page, "Home").click();

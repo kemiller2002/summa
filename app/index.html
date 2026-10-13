@@ -539,7 +539,7 @@
               <input id="invoice-to" type="date" data-event="invoiceToChanged" data-on="change" data-bind-value="invoiceTo" /></div>
             <div class="ef-field"><label class="ef-field__label" for="invoice-sort">Sort by</label>
               <select id="invoice-sort" data-event="invoiceSortChosen" data-bind-value="invoiceSort">
-                <option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="due">Due date</option><option value="number">Number</option><option value="customer">Customer</option>
+                <option value="attention">Needs attention first</option><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="due">Due date</option><option value="number">Number</option><option value="customer">Customer</option>
               </select></div>
             <fieldset class="summa-statuses"><legend>Status</legend>
               <template data-each="statusOptions" data-key="value">
@@ -554,13 +554,14 @@
           <div class="ef-data-grid" role="region" tabindex="0" aria-label="Issued invoices">
             <table class="summa-table" id="invoices-table">
               <caption class="ef-visually-hidden">Issued invoices</caption>
-              <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Issued</th><th scope="col">Due</th><th scope="col">Status</th><th scope="col" class="summa-number">Total</th><th scope="col" class="summa-number">Outstanding</th></tr></thead>
+              <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Issued</th><th scope="col">Due</th><th scope="col">Status</th><th scope="col">Needs attention</th><th scope="col" class="summa-number">Total</th><th scope="col" class="summa-number">Outstanding</th></tr></thead>
               <tbody>
                 <template data-each="invoices" data-key="id">
                   <tr>
                     <td data-label="Invoice"><a class="summa-link" data-bind-href="href" data-text="number"></a></td>
                     <td data-text="customer" data-label="Customer"></td><td data-text="issueDate" data-label="Issued"></td><td data-text="dueDate" data-label="Due"></td>
                     <td data-label="Status"><span class="ef-status-lozenge" data-bind-data-state="statusTone" data-text="status"></span> <span class="summa-timing" data-text="timing"></span></td>
+                    <td data-text="attention" data-label="Needs attention"></td>
                     <td class="summa-number" data-text="total" data-label="Total"></td><td class="summa-number" data-text="outstanding" data-label="Outstanding"></td>
                   </tr>
                 </template>

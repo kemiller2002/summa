@@ -32,6 +32,7 @@
     <Compile Include="BookCommandTests.fs" />
     <Compile Include="ConfirmationTests.fs" />
     <Compile Include="SmartDefaultsTests.fs" />
+    <Compile Include="ReceivablesAttentionTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
