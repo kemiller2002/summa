@@ -400,6 +400,8 @@ type Model =
       PromiseBy: string
       PromiseNote: string
       Receipt: ReceiptForm
+      /// The invoice chosen on a payment's page to apply it to (v0.4 §12).
+      PaymentApplyInvoice: string
       Pdf: PdfWork
       Blockers: Issuance.Blocker list
       Notice: string option
@@ -478,6 +480,7 @@ let initial =
       PromiseBy = ""
       PromiseNote = ""
       Receipt = { CustomerId = ""; Amount = ""; Date = ""; Method = "ach"; Reference = "" }
+      PaymentApplyInvoice = ""
       Pdf = PdfIdle
       SignIn = NotRequired
       KeepInTab = false
@@ -670,8 +673,12 @@ type Msg =
     | DisputeMarked
     | DisputeSettled
     | InboxCustomerChosen of string
-    /// Apply the payment's unapplied amount to its customer's open invoices, oldest due first.
+    /// Apply the payment as Summa suggests, only when one reading fits (v0.4 §12);
+    /// from the payment's own page the key is empty and the payment is the one shown.
     | InboxApplied of paymentId: string
+    | PaymentApplyInvoiceChosen of string
+    /// Apply the payment shown to the invoice chosen, up to what it owes.
+    | PaymentAppliedToChosen
     /// Keep the payment's unapplied amount as the customer's credit.
     | InboxCredited of paymentId: string
     | ReceiptCustomerChanged of string
@@ -834,6 +841,32 @@ let private command (model: Model) (notice: string) (run: Receivables -> Result<
     | _ -> { model with Error = Some "The books are not available."; Notice = None }, []
 
 let private describe (problems: 'a list) = problems |> List.map (fun p -> $"%A{p}") |> String.concat "; "
+
+/// The allocations that apply a payment to invoices, each with fresh ids.
+let private allocationRequests (manifest: Organization.OrganizationManifest) (books: Receivables) (payment: Payment) (applications: (string * Money) list) =
+    applications
+    |> List.fold
+        (fun (requests: AllocationRequest list) (invoiceId, amount) ->
+            let request: AllocationRequest =
+                { AllocationId = nextId "AL" (fun id -> books.Allocations |> List.exists (fun a -> a.Id = id) || requests |> List.exists (fun r -> r.AllocationId = id))
+                  PaymentId = payment.Id
+                  InvoiceId = invoiceId
+                  Amount = amount
+                  JournalEntryId = nextId "JE-PAY" (fun id -> books.Books.Ledger.Entries.ContainsKey id || requests |> List.exists (fun r -> r.JournalEntryId = id))
+                  CashAccountId = Organization.accountByCode books.Books.Ledger manifest.Accounting.CashAccount
+                  ReceivableAccountId = Organization.accountByCode books.Books.Ledger manifest.Accounting.ReceivablesAccount }
+
+            requests @ [ request ])
+        []
+
+/// What Summa suggests a payment pays, in words (v0.4 §12).
+let private suggestionText (suggestion: Matching.Suggestion) =
+    match suggestion with
+    | Matching.ApplyTo(applications, because) ->
+        let what = applications |> List.map (fun (i, m) -> $"{Documents.moneyText m} to {i.Number}") |> String.concat " and "
+        $"Apply {what}: {because}."
+    | Matching.Choose(_, because) -> $"Choose the invoice: {because}."
+    | Matching.NothingToApplyTo -> "No open invoice: keep it as credit."
 
 /// A payment promise problem as one sentence.
 let private promiseProblemText =
@@ -2567,41 +2600,46 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
             (if changed.Error.IsNone then { changed with FollowUpNote = "" } else changed), effects
         | _ -> model, []
     | InboxCustomerChosen v -> refineTo (Routes.Inbox(nonEmpty v)) model
-    | InboxApplied paymentId ->
+    | InboxApplied key ->
+        let paymentId =
+            match key, model.Place with
+            | "", Routes.Payment id -> id
+            | id, _ -> id
+
         match model.Manifest with
         | Some manifest ->
             command model $"Payment {paymentId} applied." (fun books ->
                 match books.Payments.TryFind paymentId with
                 | None -> Error $"There is no payment {paymentId}."
                 | Some payment ->
-                    let invoices = openInvoices (model.Today) books |> List.filter (fun i -> i.CustomerId = payment.CustomerId)
-
-                    // Oldest due first, each up to what it still owes, until the payment is used.
-                    let requests, _ =
-                        invoices
-                        |> List.fold
-                            (fun (requests, left: Money) (i: IssuedInvoice) ->
-                                let owed = outstanding books i
-                                let amount = if left.Minor < owed.Minor then left else owed
-
-                                if amount.Minor <= 0L then
-                                    requests, left
-                                else
-                                    let request: AllocationRequest =
-                                        { AllocationId = nextId "AL" (fun id -> books.Allocations |> List.exists (fun a -> a.Id = id) || requests |> List.exists (fun (r: AllocationRequest) -> r.AllocationId = id))
-                                          PaymentId = payment.Id
-                                          InvoiceId = i.InvoiceId
-                                          Amount = amount
-                                          JournalEntryId = nextId "JE-PAY" (fun id -> books.Books.Ledger.Entries.ContainsKey id || requests |> List.exists (fun (r: AllocationRequest) -> r.JournalEntryId = id))
-                                          CashAccountId = Organization.accountByCode books.Books.Ledger manifest.Accounting.CashAccount
-                                          ReceivableAccountId = Organization.accountByCode books.Books.Ledger manifest.Accounting.ReceivablesAccount }
-
-                                    requests @ [ request ], subtract left amount)
-                            ([], unallocated books payment)
-
-                    if requests.IsEmpty then Error $"{(books.Books.Customers.TryFind payment.CustomerId |> Option.map _.Name |> Option.defaultValue payment.CustomerId)} has no open invoice to apply it to. Keep it as credit instead."
-                    else Credits.allocateAcross (context ctx) requests books |> Result.mapError describe)
+                    match Matching.suggest books payment with
+                    | Matching.ApplyTo(applications, _) ->
+                        Credits.allocateAcross (context ctx) (allocationRequests manifest books payment (applications |> List.map (fun (i, m) -> i.InvoiceId, m))) books
+                        |> Result.mapError describe
+                    | Matching.Choose(_, because) -> Error $"Summa does not guess which invoice this pays: {because}. Choose the invoice on the payment's page."
+                    | Matching.NothingToApplyTo -> Error $"{books.Books.Customers.TryFind payment.CustomerId |> Option.map _.Name |> Option.defaultValue payment.CustomerId} has no open invoice to apply it to. Keep it as credit instead.")
         | None -> model, []
+    | PaymentApplyInvoiceChosen v -> { model with PaymentApplyInvoice = v }, []
+    | PaymentAppliedToChosen ->
+        match model.Manifest, model.Place with
+        | Some manifest, Routes.Payment paymentId ->
+            let applied, effects =
+                command model $"Payment {paymentId} applied." (fun books ->
+                    match books.Payments.TryFind paymentId with
+                    | None -> Error $"There is no payment {paymentId}."
+                    | Some payment ->
+                        match Matching.openFor books payment.CustomerId |> List.tryFind (fun i -> i.InvoiceId = model.PaymentApplyInvoice) with
+                        | None -> Error "Choose one of the customer's open invoices."
+                        | Some invoice ->
+                            let left = unallocated books payment
+                            let owed = outstanding books invoice
+                            let amount = if left.Minor <= owed.Minor then left else owed
+
+                            Credits.allocateAcross (context ctx) (allocationRequests manifest books payment [ invoice.InvoiceId, amount ]) books
+                            |> Result.mapError describe)
+
+            (if applied.Error.IsNone then { applied with PaymentApplyInvoice = "" } else applied), effects
+        | _ -> model, []
     | InboxCredited paymentId ->
         match model.Manifest with
         | Some manifest ->
@@ -2706,7 +2744,8 @@ let bookCommand (msg: Msg) : (Summa.Access.Access.Capability * string) option =
     | PdfStored _ -> open' Summa.Access.Access.IssueInvoice "record an invoice's PDF"
     | PaymentRecorded -> open' Summa.Access.Access.RecordPayment "record a payment"
     | ReceiptRecorded -> open' Summa.Access.Access.RecordPayment "record a payment on account"
-    | InboxApplied _ -> open' Summa.Access.Access.AllocatePayment "apply a payment"
+    | InboxApplied _
+    | PaymentAppliedToChosen -> open' Summa.Access.Access.AllocatePayment "apply a payment"
     | InboxCredited _ -> open' Summa.Access.Access.AllocatePayment "keep a payment as credit"
     | CreditMemoIssued -> open' Summa.Access.Access.CreateCreditMemo "issue a credit memo"
     | ReminderRecorded _ -> open' Summa.Access.Access.RecordPayment "record a reminder"
@@ -3233,6 +3272,22 @@ let private placeValues (model: Model) (shown: Screen) : View =
       "payReference", payText (fun _ p -> if p.Reference = "" then "-" else p.Reference)
       "payAmount", payText (fun _ p -> Documents.moneyText p.Amount)
       "payUnapplied", payText (fun b p -> Documents.moneyText (unallocated b p))
+      // What it pays, suggested only when one reading fits; otherwise the person chooses (v0.4 §12).
+      "paySuggestion", payText (fun b p -> if (unallocated b p).Minor > 0L then suggestionText (Matching.suggest b p) else "")
+      "payCanApplySuggested", Value(Flag(payment |> Option.exists (fun (b, p) -> match Matching.suggest b p with Matching.ApplyTo _ -> true | _ -> false)))
+      "payCanChoose", Value(Flag(payment |> Option.exists (fun (b, p) -> (unallocated b p).Minor > 0L && not (Matching.openFor b p.CustomerId).IsEmpty)))
+      "payApplyInvoice", Value(Text model.PaymentApplyInvoice)
+      "payApplyOptions",
+      itemsOf (
+          payment
+          |> Option.map (fun (b, p) ->
+              Matching.openFor b p.CustomerId
+              |> List.map (fun i ->
+                  [ "value", Text i.InvoiceId
+                    "label", Text $"{i.Number}, owes {Documents.moneyText (outstanding b i)}, due {Documents.dateText i.DueDate}"
+                    "selected", Flag(i.InvoiceId = model.PaymentApplyInvoice) ]))
+          |> Option.defaultValue []
+      )
       "payReversed", Value(Flag(payment |> Option.exists (fun (b, p) -> b.Reversals.ContainsKey p.Id)))
       "payAllocations",
       itemsOf (
@@ -3806,6 +3861,7 @@ let private attentionValues (model: Model) (shown: Screen) : View =
             |> List.sortBy (fun p -> p.DateReceived, p.Id)
             |> List.map (fun p ->
                 let openFor = openInvoices today b |> List.filter (fun i -> i.CustomerId = p.CustomerId)
+                let suggestion = Matching.suggest b p
 
                 [ "id", Text p.Id
                   "href", Text(Routes.href (Routes.Payment p.Id))
@@ -3814,7 +3870,10 @@ let private attentionValues (model: Model) (shown: Screen) : View =
                   "reference", Text(if p.Reference = "" then "-" else p.Reference)
                   "unapplied", Text(Documents.moneyText (unallocated b p))
                   "openInvoices", Text(match openFor.Length with 0 -> "No open invoices" | 1 -> "1 open invoice" | n -> $"{n} open invoices")
-                  "noApply", Flag openFor.IsEmpty ]))
+                  // What Summa suggests, only when one reading fits (v0.4 §12).
+                  "suggestion", Text(suggestionText suggestion)
+                  "noApply", Flag(match suggestion with Matching.ApplyTo _ -> false | _ -> true)
+                  "mustChoose", Flag(match suggestion with Matching.Choose _ -> true | _ -> false) ]))
         |> Option.defaultValue []
 
     // CPA workspace
