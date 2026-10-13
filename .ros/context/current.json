@@ -2381,21 +2381,21 @@
         "EXE-20261013T154712086Z-29141d0f"
       ],
       "latestCheckpoint": {
-        "id": "493ff482869a7a9efe4ce2f6",
-        "recordedAt": "2026-10-13T16:24:22Z",
+        "id": "909c7d6157d25cd65cfac003",
+        "recordedAt": "2026-10-13T17:21:46Z",
         "executionId": "EXE-20261013T154712086Z-29141d0f",
-        "stepId": "STEP-20261013T162336000Z-90e39a7e",
+        "stepId": "STEP-20261013T162848000Z-16b4fc9f",
         "repository": "summa",
-        "branch": "chore/wi-0052-forma-folio-step2",
-        "commit": "9e98cf53856cf82a7db78c7b60d387794222a4e5",
+        "branch": "chore/wi-0052-ordo-step3",
+        "commit": "cbeae862be94b9f709f8898d24a9994a2a57e21d",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "chore/wi-0052-forma-folio-step2",
-        "remoteCommit": "9e98cf53856cf82a7db78c7b60d387794222a4e5",
-        "summary": "Step 2 (echelon-current 1.20.0) applied through Conditor 0.10.0: stepwise check confirmed one step, forma 0.5.0 to 0.6.1 and folio 0.3.0 to 0.4.0 (plan sha256:f8dd882b); all .NET suites, limen strict and 53 browser tests pass; printed invoice and credit memo byte-identical; drift before and after recorded.",
-        "nextAction": "Open and gate the step 2 PR, then run step 3 (echelon-current 1.21.0, ordo 1.5.0 to 1.6.0) through Conditor 0.10.0 with a stepwise check.",
+        "remoteBranch": "chore/wi-0052-ordo-step3",
+        "remoteCommit": "cbeae862be94b9f709f8898d24a9994a2a57e21d",
+        "summary": "Step 3 (echelon-current 1.21.0) applied through Conditor 0.10.1 after the scripted clean: one step, ordo 1.5.0 to 1.6.0 with .echelon/foundations.json moved by Conditor (plan sha256:4dd4ccbd); drift and --check agree (every pin agrees); lock holds only tracked paths; ordo verify 1.6.0 exits 0; suites, limen, 53 browser tests pass; print identical. CI caught the missing baseline row (repaired).",
+        "nextAction": "Gate the step 3 PR, then step 4 (echelon-current 1.22.0, ordo 1.6.0 to 1.7.0) through Conditor 0.10.1 the same way.",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
