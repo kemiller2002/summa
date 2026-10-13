@@ -137,11 +137,12 @@ let ``an export names its period, the books' data version, its filters and its s
 
     Assert.Equal<string list>(
         [ "# Export: journal"
-          "# SchemaVersion: summa.export/1"
+          "# SchemaVersion: summa.export/2"
           "# GeneratedAt: 2027-01-15T14:30:00Z"
           "# AccountingPeriod: 2026-01-01..2026-12-31"
           $"# DataVersion: {version}"
-          "# Filters: currency=USD; year=2026" ],
+          "# Filters: currency=USD; year=2026"
+          "# Classification: confidential financial data" ],
         header
     )
 
