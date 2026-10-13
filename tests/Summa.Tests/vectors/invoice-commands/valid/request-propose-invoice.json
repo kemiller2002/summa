@@ -1,0 +1,1 @@
+{"contract":"summa.invoice-commands","kind":"request","message":{"command":{"currency":"USD","customerId":"CUST-ABC","engagementId":"ENG-1","kind":"propose-invoice","proposalId":"P-1","time":["pub-1","pub-2"]},"requestId":"req-0001"},"version":"1.0"}

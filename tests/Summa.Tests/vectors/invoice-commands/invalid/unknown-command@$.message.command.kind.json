@@ -1,0 +1,1 @@
+{"contract":"summa.invoice-commands","kind":"request","message":{"command":{"id":"INV-001","kind":"patch-invoice"},"requestId":"req-1"},"version":"1.0"}

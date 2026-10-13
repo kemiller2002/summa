@@ -2184,20 +2184,20 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "6dba1794e8b68bc688b8a072",
-        "recordedAt": "2026-10-13T14:05:14Z",
+        "id": "429f1d76c23e868876dba592",
+        "recordedAt": "2026-10-13T14:17:47Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
         "repository": "summa",
-        "branch": "feat/wi-0029-legal-fields",
-        "commit": "2b329b4c428690496981b5eec3ad10b67346f914",
+        "branch": "feat/wi-0029-command-contracts",
+        "commit": "8799c2cacaee95b22f557aff5ddff601a591f8c5",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0029-legal-fields",
-        "remoteCommit": "2b329b4c428690496981b5eec3ad10b67346f914",
-        "summary": "INV-INTL-001: typed legal fields (kind, ISO 3166 jurisdiction, value) on the organization (own record, kept once recorded) and the customer, validated, snapshotted at issue, shown only when present so earlier invoices keep their bytes (DF-SUMMA-2026-0035); INV-INTL tested",
-        "nextAction": "INV-CONTRACT-002, SUM3-011, SUM2-031, served import preview, integration state in the app, export handling (SUM3-024), SUM3-006 scheduling (runs generateDue), template screen; editor inputs for line details and references; INV-OPS-006 required PO and payment promise slices; INV-ARCH partials",
+        "remoteBranch": "feat/wi-0029-command-contracts",
+        "remoteCommit": "8799c2cacaee95b22f557aff5ddff601a591f8c5",
+        "summary": "INV-CONTRACT-002: summa.invoice-commands 1.0, versioned requests (propose, submit for review, issue, void) and responses (accepted, refused, conflict) with canonical JSON, golden vectors and a handler that runs each as its domain command (DF-SUMMA-2026-0036); no network endpoint yet; INV-CONTRACT stays partial for 004 events",
+        "nextAction": "SUM3-011, SUM2-031, served import preview, integration state in the app, export handling (SUM3-024), SUM3-006 scheduling (runs generateDue), template screen; editor inputs for line details and references; INV-OPS-006 required PO and payment promise; INV-CONTRACT-004 business events; INV-ARCH and INV-INTL-001 partials",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
