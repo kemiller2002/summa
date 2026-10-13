@@ -10,6 +10,7 @@
   <ItemGroup>
     <Compile Include="Support.fs" />
     <Compile Include="GapAnalysisTests.fs" />
+    <Compile Include="BaselineSourcesTests.fs" />
     <Compile Include="LedgerTests.fs" />
     <Compile Include="InvoicingTests.fs" />
     <Compile Include="PaymentsReportsTests.fs" />
