@@ -2184,20 +2184,20 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "1db69ab3adceea15bec4fc44",
-        "recordedAt": "2026-10-13T10:49:46Z",
+        "id": "384542b979935ef39fefece9",
+        "recordedAt": "2026-10-13T11:05:37Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
         "repository": "summa",
-        "branch": "perf/wi-0029-reads",
-        "commit": "3b994c189b674fd2f6bbfe328c661f698b958975",
+        "branch": "feat/wi-0029-failures",
+        "commit": "675d067bf822cf3d6520de1aaee519845ffb20ea",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "perf/wi-0029-reads",
-        "remoteCommit": "3b994c189b674fd2f6bbfe328c661f698b958975",
-        "summary": "SUM0-034: commands and openings read only what changed (token and revision reuse), at most six requests in flight, resumed on the page's turn (DF-SUMMA-2026-0025); measured 1.0-2.3 s per command instead of 3-5 s",
-        "nextAction": "INV-FAIL (failure classes with retry safety), INV-SEC capabilities, INV-CONTRACT-002, SUM3-011, SUM2-031, served import preview, integration state in the app, export handling, SUM3-006 scheduling, INV OPS/PERF/EXP/FX/INTL/ACC/REC/SET/DATA/ARCH; adopt arca#38/#39 via Conditor when released",
+        "remoteBranch": "feat/wi-0029-failures",
+        "remoteCommit": "675d067bf822cf3d6520de1aaee519845ffb20ea",
+        "summary": "INV-FAIL: every command failure classified (six classes), refusals say what is unchanged, whether retry is safe and what to do (DF-SUMMA-2026-0026)",
+        "nextAction": "INV-SEC capabilities, INV-CONTRACT-002, SUM3-011, SUM2-031, served import preview, integration state in the app, export handling, SUM3-006 scheduling, INV OPS/PERF/EXP/FX/INTL/ACC/REC/SET/DATA/ARCH",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
