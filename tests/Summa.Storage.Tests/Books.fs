@@ -52,7 +52,8 @@ let draft =
             Discount = None
             Source = Summa.Ledger.Sources.ManualLine
             Rate = None
-            Tax = NotAssessed } ]
+            Tax = NotAssessed
+            Details = None } ]
       Adjustments = [ { Kind = Fee; Label = "Processing fee"; Amount = usd 1250L } ]
       Discounts = []
       Terms = None

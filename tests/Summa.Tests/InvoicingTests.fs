@@ -29,7 +29,8 @@ let consulting hours rate =
       Discount = None
       Source = Summa.Ledger.Sources.ManualLine
       Rate = None
-      Tax = NotAssessed }
+      Tax = NotAssessed
+      Details = None }
 
 let draftFor lines =
     { DraftId = "D-1"

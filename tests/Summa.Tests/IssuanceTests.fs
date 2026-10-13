@@ -24,7 +24,8 @@ let private detailed =
               ClientReference = Some "ABC/ARCH"
               ServicePeriod = Some(DateOnly(2026, 9, 1), DateOnly(2026, 9, 30))
               CustomerNotes = Some "Thank you for your business."
-              InternalNotes = Some "Discounted travel internally" } }
+              InternalNotes = Some "Discounted travel internally"
+              References = [] } }
 
 let private drafted (draft: DraftInvoice) = start (saveDraft context draft books |> ok)
 

@@ -291,7 +291,8 @@ let private proposed () =
                 Discount = None
                 Source = ManualLine
                 Rate = None
-                Tax = NotAssessed } ]
+                Tax = NotAssessed
+                Details = None } ]
           Accounts = { TimeRevenue = revenue; FeeRevenue = revenue; ReimbursedExpenses = revenue } }
 
     match Summa.Ledger.Billing.propose agent request books with

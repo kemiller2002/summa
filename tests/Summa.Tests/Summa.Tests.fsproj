@@ -25,6 +25,7 @@
     <Compile Include="ProvenanceTests.fs" />
     <Compile Include="AgentRequestTests.fs" />
     <Compile Include="InvoiceAccountingTests.fs" />
+    <Compile Include="InvoiceDataTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

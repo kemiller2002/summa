@@ -49,7 +49,9 @@ type DocumentLine =
       Discount: Money
       Amount: Money
       Project: string option
-      Source: LineSource }
+      Source: LineSource
+      /// More of what it is, when someone said (INV-DATA-008).
+      Details: LineDetails option }
 
 /// The canonical customer-facing invoice (INV-DOC-001), from the issued
 /// snapshot only.
@@ -96,7 +98,8 @@ let ofInvoice (invoice: IssuedInvoice) : InvoiceDocument =
               Discount = lineDiscount l
               Amount = lineAmount l
               Project = l.Project
-              Source = l.Source })
+              Source = l.Source
+              Details = l.Details })
       Subtotal = invoice.Subtotal
       Discounts = invoice.Discounts |> List.map (fun d -> d.Label, discountOn invoice.Subtotal d.Rule)
       // A tax inside the prices is shown as included, so no reader adds it again.
@@ -144,6 +147,30 @@ let internal multiline (text: string) =
 let private row (label: string) (value: string) =
     $"<div><dt>{escape label}</dt><dd>{escape value}</dd></div>"
 
+let referenceLabel =
+    function
+    | ContractNumber -> "Contract number"
+    | EngagementNumber -> "Engagement number"
+    | VendorReference -> "Vendor reference"
+    | CostCenter -> "Cost center"
+    | MatterNumber -> "Matter number"
+
+/// A line's details as text under its description, only when given, so a
+/// line without them renders as before (INV-DATA-008).
+let private lineDetailsHtml (details: LineDetails option) =
+    match details with
+    | None -> ""
+    | Some d ->
+        [ d.DetailedDescription |> Option.map escape
+          d.Unit |> Option.map (fun u -> "Unit: " + escape u)
+          d.ServicePeriod |> Option.map (fun (a, b) -> $"Service period: {dateText a} to {dateText b}")
+          d.Category |> Option.map (fun c -> "Category: " + escape c)
+          d.CustomerCode |> Option.map (fun c -> "Your code: " + escape c) ]
+        |> List.choose id
+        |> function
+            | [] -> ""
+            | parts -> "<br><small>" + String.concat "<br>" parts + "</small>"
+
 let private renderV1 (doc: InvoiceDocument) =
     let details =
         [ Some(row "Invoice number" doc.Number)
@@ -153,6 +180,8 @@ let private renderV1 (doc: InvoiceDocument) =
           doc.Details.PurchaseOrder |> Option.map (row "Purchase order")
           doc.Details.ClientReference |> Option.map (row "Your reference")
           doc.Details.ServicePeriod |> Option.map (fun (a, b) -> row "Service period" $"{dateText a} to {dateText b}")
+          // Typed references, only when given, so earlier invoices render as before (INV-DATA-014).
+          yield! doc.Details.References |> List.map (fun (kind, value) -> Some(row (referenceLabel kind) value))
           doc.EngagementId |> Option.map (row "Engagement")
           doc.Corrects |> Option.map (row "Corrects invoice") ]
         |> List.choose id
@@ -163,7 +192,7 @@ let private renderV1 (doc: InvoiceDocument) =
         |> List.map (fun l ->
             let discount = if l.Discount.Minor = 0L then "" else amountText l.Discount
 
-            $"<tr><td>{escape l.Description}</td><td class=\"summa-number\">{quantityText l.QuantityThousandths}</td><td class=\"summa-number\">{amountText l.UnitPrice}</td><td class=\"summa-number\">{discount}</td><td class=\"summa-number\">{amountText l.Amount}</td></tr>")
+            $"<tr><td>{escape l.Description}{lineDetailsHtml l.Details}</td><td class=\"summa-number\">{quantityText l.QuantityThousandths}</td><td class=\"summa-number\">{amountText l.UnitPrice}</td><td class=\"summa-number\">{discount}</td><td class=\"summa-number\">{amountText l.Amount}</td></tr>")
         |> String.concat ""
 
     let totals =
@@ -329,6 +358,17 @@ let toJson (doc: InvoiceDocument) =
             w.WriteEndObject()
         | None -> w.WriteNull "servicePeriod"
 
+        if not doc.Details.References.IsEmpty then
+            w.WriteStartArray "clientReferences"
+
+            for kind, value in doc.Details.References do
+                w.WriteStartObject()
+                w.WriteString("kind", referenceLabel kind)
+                w.WriteString("value", value)
+                w.WriteEndObject()
+
+            w.WriteEndArray()
+
         writeOptional w "customerNotes" doc.Details.CustomerNotes
         writeOptional w "engagementId" doc.EngagementId
         writeOptional w "corrects" doc.Corrects
@@ -343,6 +383,27 @@ let toJson (doc: InvoiceDocument) =
             writeMoney w "amount" l.Amount
             writeOptional w "project" l.Project
             writeSource w l.Source
+
+            // Only when given, so earlier invoices' JSON is unchanged (INV-DATA-008).
+            match l.Details with
+            | Some d ->
+                w.WriteStartObject "details"
+                writeOptional w "detailedDescription" d.DetailedDescription
+                writeOptional w "unit" d.Unit
+
+                match d.ServicePeriod with
+                | Some(a, b) ->
+                    w.WriteStartObject "servicePeriod"
+                    w.WriteString("from", isoDate a)
+                    w.WriteString("to", isoDate b)
+                    w.WriteEndObject()
+                | None -> ()
+
+                writeOptional w "category" d.Category
+                writeOptional w "customerCode" d.CustomerCode
+                w.WriteEndObject()
+            | None -> ()
+
             w.WriteEndObject()
 
         w.WriteEndArray()
