@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 47,
+  "nextSeq": 54,
   "items": [
     {
       "id": "WI-0001",
@@ -1257,6 +1257,29 @@
       "attachments": [],
       "createdAt": "2026-10-13T15:47:04Z",
       "updatedAt": "2026-10-13T15:47:07Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0053",
+      "title": "Summa: universal UI layout/action conformance (UI-LAYOUT-INTERACTION@1.0.0) for the accounting app, backlog and hub pages (https://github.com/kemiller2002/summa/issues/90)",
+      "description": null,
+      "tags": [
+        "summa,ui,conformance,playwright"
+      ],
+      "priority": "high",
+      "status": "ready",
+      "attachments": [],
+      "createdAt": "2026-10-13T17:29:26.743Z",
+      "updatedAt": "2026-10-13T17:29:30.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
