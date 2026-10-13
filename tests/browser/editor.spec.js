@@ -94,6 +94,20 @@ test("line details and client references are entered in the editor and shown on 
   await expect(document).toContainText("CC-7");
 });
 
+test("a customer that requires a purchase order: the editor says so and issuing waits for it", async ({ app: { page } }) => {
+  await addCustomer(page, "ABC Corp");
+  await page.goto(page.url().replace(/#.*$/, "#/customers/CUST-0001"));
+  await page.check("#customer-po-required");
+  await expect(page.locator("#notice")).toHaveText("Invoices for this customer now need a purchase order.");
+  await typeLine(page, "Assessment", "10", "150.00");
+  await expect(page.locator("#draft-po-note")).toHaveText("Required: this customer's accounts payable needs a purchase order on every invoice.");
+  await page.click("#review-draft");
+  await expect(page.locator("#blockers")).toContainText("requires a purchase order on every invoice");
+  await page.fill("#draft-po", "PO-55");
+  await page.click("#review-draft");
+  await expect(page.locator("#notice")).toHaveText("Ready to issue. Check the preview, then issue it.");
+});
+
 test("proposals have their own place, empty until something proposes an invoice", async ({ app: { page } }) => {
   await nav(page, "Proposals").click();
   await expect(page).toHaveURL(/#\/proposals$/);

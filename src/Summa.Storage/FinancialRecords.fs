@@ -1319,6 +1319,8 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                      | TaxExempt(evidence, jurisdiction) ->
                          [ "tax", Json.objectOf [ "kind", Json.String "exempt"; "evidence", Json.String evidence; "jurisdiction", optionalString jurisdiction ] ])
                   @ legalFieldsMember c.LegalFields
+                  // Written only when required, so other customers keep their bytes (INV-OPS-006).
+                  @ (if c.RequiresPurchaseOrder then [ "requiresPurchaseOrder", Json.Bool true ] else [])
               )
           // The organization's legal fields, once it has recorded any (INV-INTL-001).
           match books.LegalFields with
@@ -1672,7 +1674,7 @@ let schemaVersionOf (record: FinancialRecord) =
         match value with
         | Json.Object members ->
             members
-            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || key = "change" || key = "deliveryResolved" || key = "postedFor" || key = "lineDetails" || key = "clientReferences" || key = "rounding" || key = "recurring" || key = "legalFields" || recordsTax inner)
+            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || key = "change" || key = "deliveryResolved" || key = "postedFor" || key = "lineDetails" || key = "clientReferences" || key = "rounding" || key = "recurring" || key = "legalFields" || key = "requiresPurchaseOrder" || recordsTax inner)
         | Json.Array items -> items |> List.exists recordsTax
         | _ -> false
 
@@ -1803,7 +1805,7 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
         }
     | "summa.customer" ->
         decode {
-            do! closed [ "active"; "billingAddress"; "billingName"; "defaultTerms"; "email"; "id"; "legalFields"; "name"; "paymentProfileId"; "tax" ] b
+            do! closed [ "active"; "billingAddress"; "billingName"; "defaultTerms"; "email"; "id"; "legalFields"; "name"; "paymentProfileId"; "requiresPurchaseOrder"; "tax" ] b
             let! id = text "id" b
             let! name = text "name" b
             let! billingName = text "billingName" b
@@ -1832,6 +1834,7 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                     }
 
             let! fields = legalFieldsOf b
+            let! requiresPo = (match Codec.tryField "requiresPurchaseOrder" b with None -> Ok false | Some _ -> flag "requiresPurchaseOrder" b)
 
             return
                 CustomerPart
@@ -1844,7 +1847,8 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                       PaymentProfileId = profile
                       Active = active
                       Tax = tax
-                      LegalFields = fields }
+                      LegalFields = fields
+                      RequiresPurchaseOrder = requiresPo }
         }
     | "summa.legal-fields" ->
         decode {

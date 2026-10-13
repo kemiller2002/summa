@@ -63,6 +63,8 @@ let private ofInvoiceProblem =
     | NegativeLine line -> [ blocker "negative-line" $"'{line}' has a negative quantity or price." "Use a credit memo or a discount instead of a negative line." ]
     | InvalidAdjustment why -> [ blocker "invalid-adjustment" $"An adjustment is invalid: {why}." "Correct the adjustment." ]
     | MixedCurrency what -> [ blocker "mixed-currency" $"{what}." "Use one currency for the whole invoice; Summa does not convert amounts." ]
+    | PurchaseOrderRequired c ->
+        [ blocker "missing-po" $"Customer {c} requires a purchase order on every invoice, and this draft has none." "Enter the customer's purchase order number." ]
     | IssueConflict(draft, invoice) ->
         [ blocker
               "issue-conflict"

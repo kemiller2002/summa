@@ -210,6 +210,9 @@ Refusal codes are an **open set**, in every 1.x version.
   (`refused`, so nothing changed) and the sentence.
 - New codes, such as `not-authorized` (added with the capability check),
   appear in responses at any 1.x version, and are not a version change.
+- `issue-invoice` is refused with the readiness codes of the draft. One
+  example is `missing-po`: the customer requires a purchase order on every
+  invoice and the draft has none (INV-OPS-006).
 - Only the outcome kinds (`accepted`, `refused` and `conflict`) are fixed
   by the version.
 

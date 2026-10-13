@@ -152,7 +152,10 @@ type Customer =
       /// Their tax status, as recorded (INV-ADJ-005).
       Tax: CustomerTax
       /// Their jurisdiction-specific legal fields, as recorded (INV-INTL-001).
-      LegalFields: LegalField list }
+      LegalFields: LegalField list
+      /// Their accounts payable rejects an invoice without a purchase order:
+      /// an invoice for them is not issued without one (INV-OPS-006).
+      RequiresPurchaseOrder: bool }
 
 /// An explicit discount (v0.2 §13). A discount is never a silently lowered
 /// unit price: the price stays and the discount is shown and posted.
@@ -498,6 +501,8 @@ type InvoiceProblem =
     /// The draft was already issued from a materially different request:
     /// another date, version or number (INV-CON-008).
     | IssueConflict of draftId: string * invoiceId: string
+    /// The customer requires a purchase order and the draft has none (INV-OPS-006).
+    | PurchaseOrderRequired of customerId: string
     /// An amount in another currency than the invoice's (INV-FX-002).
     | MixedCurrency of string
 
@@ -886,6 +891,7 @@ let private validateDraft (books: Books) (draft: DraftInvoice) =
       match books.Customers.TryFind draft.CustomerId with
       | None -> UnknownCustomer draft.CustomerId
       | Some c when not c.Active -> InactiveCustomer draft.CustomerId
+      | Some c when c.RequiresPurchaseOrder && draft.Details.PurchaseOrder.IsNone -> PurchaseOrderRequired draft.CustomerId
       | Some _ -> ()
       if not (isPositive (total draft)) then TotalNotPositive
       for line in draft.Lines do

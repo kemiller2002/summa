@@ -94,7 +94,9 @@ type CustomerForm =
       TaxStatus: string
       TaxJurisdiction: string
       /// The exemption certificate or reference, for an exempt customer.
-      TaxEvidence: string }
+      TaxEvidence: string
+      /// Their accounts payable needs a purchase order on every invoice (INV-OPS-006).
+      RequiresPurchaseOrder: bool }
 
 let emptyCustomer =
     { Name = ""
@@ -104,7 +106,8 @@ let emptyCustomer =
       TermsDays = ""
       TaxStatus = "not-assessed"
       TaxJurisdiction = ""
-      TaxEvidence = "" }
+      TaxEvidence = ""
+      RequiresPurchaseOrder = false }
 
 /// What a line says beyond its description and amount, as typed
 /// (INV-DATA-008). Every field may be left empty.
@@ -680,6 +683,9 @@ type Msg =
     | CustomerTaxStatusChosen of string
     | CustomerTaxJurisdictionChanged of string
     | CustomerTaxEvidenceChanged of string
+    | CustomerRequiresPurchaseOrderChanged of bool
+    /// The shown customer needs, or no longer needs, a purchase order on every invoice.
+    | CustomerPurchaseOrderRequirementSet of bool
     /// The editor's form this tab kept, or None (WI-0044).
     | EditorRead of string option
     /// Give up the editor's unsaved changes: the draft as saved, or an empty invoice.
@@ -1563,6 +1569,11 @@ let workItems (today: DateOnly) (r: Receivables) =
           match d.Review with
           | SubmittedForReview _ -> "Ready to issue", $"Draft {id} is reviewed and ready to issue.", Routes.href (Routes.Draft id)
           | Editing -> "Draft", $"Draft {id} is not yet submitted for review.", Routes.href (Routes.Draft id)
+          // A purchase order the customer requires and the draft lacks (INV-OPS-006).
+          match r.Books.Customers.TryFind d.CustomerId with
+          | Some c when c.RequiresPurchaseOrder && d.Details.PurchaseOrder.IsNone ->
+              "Missing PO", $"Draft {id} for {c.Name} needs the customer's purchase order before it can be issued.", Routes.href (Routes.Draft id)
+          | _ -> ()
       for i in openInvoices today r do
           match (Lifecycle.followUp r i.InvoiceId).Dispute with
           | Disputed(reason, _) -> "Disputed", $"Invoice {i.Number} is disputed: {reason}", invoice i.InvoiceId
@@ -1818,6 +1829,17 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
     | CustomerTaxStatusChosen _ -> model, []
     | CustomerTaxJurisdictionChanged v -> { model with Customer = { model.Customer with TaxJurisdiction = v } }, []
     | CustomerTaxEvidenceChanged v -> { model with Customer = { model.Customer with TaxEvidence = v } }, []
+    | CustomerRequiresPurchaseOrderChanged v -> { model with Customer = { model.Customer with RequiresPurchaseOrder = v } }, []
+    | CustomerPurchaseOrderRequirementSet required ->
+        match model.Place with
+        | Routes.Customer(id, _) ->
+            let notice = if required then "Invoices for this customer now need a purchase order." else "Invoices for this customer no longer need a purchase order."
+
+            command model notice (fun books ->
+                match books.Books.Customers.TryFind id with
+                | Some customer -> Ok { books with Books = saveCustomer (context ctx) { customer with RequiresPurchaseOrder = required } books.Books }
+                | None -> Error $"Customer {id} is not in these books.")
+        | _ -> model, []
     | CustomerAdded ->
         let form = model.Customer
 
@@ -1859,7 +1881,8 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                           PaymentProfileId = None
                           Active = true
                           Tax = tax
-                          LegalFields = [] }
+                          LegalFields = []
+                          RequiresPurchaseOrder = form.RequiresPurchaseOrder }
 
                     Ok { books with Books = saveCustomer (context ctx) customer books.Books })
 
@@ -3173,6 +3196,7 @@ let private placeValues (model: Model) (shown: Screen) : View =
       "custCredit", custText (fun b c -> Credits.available b c.Id |> List.map snd |> sum "USD" |> Documents.moneyText)
       "custNewInvoiceHref", custText (fun _ c -> Routes.href (Routes.NewInvoice(Some c.Id)))
       "custStatus", custText (fun _ c -> if c.Active then "Active" else "Inactive")
+      "custRequiresPurchaseOrder", flag (customer |> Option.exists (fun (_, c, _) -> c.RequiresPurchaseOrder))
       "customerTabs",
       tabs customerTab Routes.customerTabText [ Routes.CustomerInvoices, "Invoices"; Routes.CustomerPayments, "Payments"; Routes.CustomerCredits, "Credit memos" ]
       "onCustInvoicesTab", Value(Flag(customerTab = Routes.CustomerInvoices))
@@ -4566,6 +4590,7 @@ let view (model: Model) : View =
       "customerTaxJurisdiction", text model.Customer.TaxJurisdiction
       "customerTaxEvidence", text model.Customer.TaxEvidence
       "customerTaxExempt", flag (model.Customer.TaxStatus = "exempt")
+      "customerRequiresPurchaseOrder", flag model.Customer.RequiresPurchaseOrder
       "customerTaxOptions",
       Items(
           [ "not-assessed", "Not recorded"; "taxable", "Subject to tax"; "exempt", "Tax-exempt" ]
@@ -4593,6 +4618,14 @@ let view (model: Model) : View =
       "draftCustomer", text model.Draft.CustomerId
       "draftCustomerTerms", text draftCustomerTerms
       "draftPurchaseOrder", text model.Draft.PurchaseOrder
+      // The chosen customer needs a purchase order on every invoice (INV-OPS-006).
+      "draftPurchaseOrderNote",
+      text (
+          if books |> Option.bind (fun b -> b.Books.Customers.TryFind model.Draft.CustomerId) |> Option.exists _.RequiresPurchaseOrder then
+              "Required: this customer's accounts payable needs a purchase order on every invoice."
+          else
+              ""
+      )
       "draftNotes", text model.Draft.Notes
       "draftTotal", Value(money draftTotal)
       "draftLabel", text (model.Draft.DraftId |> Option.map (fun id -> $"Draft {id}") |> Option.defaultValue "New invoice")

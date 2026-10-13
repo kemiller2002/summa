@@ -18,7 +18,8 @@ let abc =
       PaymentProfileId = None
       Active = true
       Tax = TaxNotAssessed
-      LegalFields = [] }
+      LegalFields = []
+      RequiresPurchaseOrder = false }
 
 let consulting hours rate =
     { Description = "Architecture assessment"
@@ -159,3 +160,14 @@ let ``sending is recorded with time and recipient, and every step is audited`` (
     Assert.Equal((Some "ap@abc.example", DateTimeOffset(2026, 10, 8, 9, 0, 0, TimeSpan.Zero), ManuallySent), (List.tryHead attempt.Recipients.To, attempt.At, attempt.Outcome))
     let actions = sent.Ledger.Audit |> List.map _.What |> List.filter (fun w -> w.StartsWith "invoice" || w.StartsWith "customer")
     Assert.Equal<string list>([ "customer-saved"; "invoice-created"; "invoice-issued"; "invoice-sent" ], actions)
+
+[<Fact>]
+let ``INV-OPS-006: a customer that requires a purchase order is not invoiced without one`` () =
+    let strict = books |> saveCustomer context { abc with RequiresPurchaseOrder = true }
+    let without = saveDraft context (draftFor [ consulting 1000L 100L ]) strict |> ok
+    Assert.Equal<InvoiceProblem list>([ PurchaseOrderRequired "CUST-ABC" ], issue context request without |> refused)
+    Assert.Empty(without.Ledger.Entries)
+    // With the purchase order it is issued; a customer that does not require one never needed it.
+    let withPo = saveDraft context { draftFor [ consulting 1000L 100L ] with Details = { noDetails with PurchaseOrder = Some "PO-7" } } strict |> ok
+    Assert.True(Result.isOk (issue context request withPo))
+    Assert.True(Result.isOk (issue context request (withDraft (draftFor [ consulting 1000L 100L ]))))

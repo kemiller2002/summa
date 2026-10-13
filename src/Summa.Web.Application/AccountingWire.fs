@@ -149,6 +149,8 @@ let events: Map<string, string -> string -> Msg> =
           "customerTaxStatusChosen", (fun _ value -> CustomerTaxStatusChosen value)
           "customerTaxJurisdictionChanged", (fun _ value -> CustomerTaxJurisdictionChanged value)
           "customerTaxEvidenceChanged", (fun _ value -> CustomerTaxEvidenceChanged value)
+          "customerRequiresPurchaseOrderChanged", (fun _ value -> CustomerRequiresPurchaseOrderChanged(value = "true"))
+          "customerPurchaseOrderRequirementSet", (fun _ value -> CustomerPurchaseOrderRequirementSet(value = "true"))
           "editorDiscarded", (fun _ _ -> EditorDiscarded)
           "proposalApproved", (fun key _ -> ProposalApproved key)
           "proposalAbandoned", (fun key _ -> ProposalAbandoned key)
@@ -193,8 +195,8 @@ let events: Map<string, string -> string -> Msg> =
           "foreignUnsentSendRequested", (fun _ _ -> ForeignUnsentSendRequested)
           "foreignUnsentDiscardRequested", (fun _ _ -> ForeignUnsentDiscardRequested) ]
 
-/// Checkboxes inside a form: their events carry whether they are checked.
-let private stateEvents = set [ "lineTaxableChanged"; "draftTaxInclusiveChanged" ]
+/// Checkboxes: their events carry whether they are checked, never a toggle.
+let private stateEvents = set [ "lineTaxableChanged"; "draftTaxInclusiveChanged"; "customerRequiresPurchaseOrderChanged"; "customerPurchaseOrderRequirementSet" ]
 
 let private message (name: string) (key: string option) (value: string option) =
     match events |> Map.tryFind name with

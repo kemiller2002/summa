@@ -321,3 +321,32 @@ let ``SUM3-024: every financial export says it is confidential, and goes only to
             Assert.StartsWith("INV-", name)
             Assert.True((after.Books = invoice.Books))
         | _, other -> failwith $"{format}: %A{other}"
+
+[<Fact>]
+let ``INV-OPS-006: a customer that requires a purchase order: the editor says so, issuing waits for it, and the draft is in the work queue as Missing PO`` () =
+    // Marked on the customer's page; a new customer can be marked as it is added.
+    let marked = run [ go "#/customers/CUST-0001"; CustomerPurchaseOrderRequirementSet true ] (books ()) |> fst
+    Assert.Equal("Invoices for this customer now need a purchase order.", value "notice" marked)
+    Assert.Equal("True", value "custRequiresPurchaseOrder" marked)
+    Assert.True(marked.Books.Value.Books.Customers["CUST-0001"].RequiresPurchaseOrder)
+    let added = run [ go "#/customers"; CustomerNameChanged "Strict Co"; CustomerRequiresPurchaseOrderChanged true; CustomerAdded ] marked |> fst
+    Assert.True(added.Books.Value.Books.Customers["CUST-0002"].RequiresPurchaseOrder)
+
+    let opened = run [ go "#/invoices/new?customer=CUST-0001" ] marked |> fst
+    Assert.Equal("Required: this customer's accounts payable needs a purchase order on every invoice.", value "draftPurchaseOrderNote" opened)
+    let key = opened.Draft.Lines.Head.Key
+    let saved = run [ LineDescriptionChanged(key, "Work"); LineRateChanged(key, "100"); DraftSubmitted ] opened |> fst
+    Assert.Contains(saved.Blockers, fun b -> b.Code = "missing-po")
+    let draftId = saved.Draft.DraftId.Value
+
+    let missing = run [ go "#/work" ] saved |> fst |> items "workItems" |> List.filter (fun r -> field "kind" r = "Missing PO")
+    Assert.Equal(1, missing.Length)
+    Assert.Equal($"#/drafts/{draftId}", field "href" missing.Head)
+
+    // With the purchase order it is ready, and nothing is missing any more.
+    let ready = run [ go $"#/drafts/{draftId}"; DraftPurchaseOrderChanged "PO-55"; DraftSubmitted ] saved |> fst
+    Assert.Empty ready.Blockers
+    Assert.DoesNotContain("Missing PO", run [ go "#/work" ] ready |> fst |> items "workItems" |> List.map (field "kind"))
+    // Unmarked, the note goes.
+    let unmarked = run [ go "#/customers/CUST-0001"; CustomerPurchaseOrderRequirementSet false; go "#/invoices/new?customer=CUST-0001" ] ready |> fst
+    Assert.Equal("", value "draftPurchaseOrderNote" unmarked)

@@ -321,6 +321,7 @@
             <template data-if="customerTaxExempt"><div class="ef-field"><label class="ef-field__label" for="customer-tax-evidence">Exemption certificate or reference</label>
               <input id="customer-tax-evidence" type="text" required data-event="customerTaxEvidenceChanged" data-on="input" data-bind-value="customerTaxEvidence" /></div></template>
           </div>
+          <label class="summa-check"><input id="customer-requires-po" type="checkbox" data-event="customerRequiresPurchaseOrderChanged" data-on="change" data-bind-checked="customerRequiresPurchaseOrder" /> Their accounts payable needs a purchase order on every invoice</label>
           <div class="ef-actions"><button type="submit" class="ef-button" id="add-customer">Add customer</button></div>
         </form>
       </section>
@@ -339,7 +340,8 @@
               </select>
               <p class="ef-field__description">Terms: <span id="draft-terms" data-text="draftCustomerTerms"></span>. Tax: <span id="draft-customer-tax" data-text="draftCustomerTax"></span></p></div>
             <div class="ef-field"><label class="ef-field__label" for="draft-po">Purchase order</label>
-              <input id="draft-po" type="text" data-event="draftPurchaseOrderChanged" data-on="input" data-bind-value="draftPurchaseOrder" /></div>
+              <input id="draft-po" type="text" aria-describedby="draft-po-note" data-event="draftPurchaseOrderChanged" data-on="input" data-bind-value="draftPurchaseOrder" />
+              <p class="ef-field__description summa-optional-note" id="draft-po-note" data-text="draftPurchaseOrderNote"></p></div>
           </div>
           <table class="summa-table summa-lines" id="draft-lines">
             <caption>Lines</caption>
@@ -887,6 +889,7 @@
           <div><dt>Status</dt><dd data-text="custStatus"></dd></div>
         </dl>
         <p class="summa-pre" data-text="custAddress"></p>
+        <label class="summa-check"><input id="customer-po-required" type="checkbox" data-event="customerPurchaseOrderRequirementSet" data-on="change" data-bind-checked="custRequiresPurchaseOrder" /> Invoices for this customer need a purchase order</label>
         <p><a class="summa-link" id="customer-new-invoice" data-bind-href="custNewInvoiceHref">New invoice for this customer</a></p>
         <section class="ef-surface ef-stack" aria-labelledby="customer-legal-title" id="customer-legal">
           <h2 id="customer-legal-title">Legal fields on this customer's invoices</h2>
