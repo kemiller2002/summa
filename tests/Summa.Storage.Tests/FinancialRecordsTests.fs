@@ -383,3 +383,33 @@ let ``line details, client references and the rounding policy round-trip; an inv
     Assert.Empty reread.Problems
     Assert.Equal("summa.rounding/1", reread.State.Books.Invoices["INV-001"].Rounding)
     Assert.Equal({ original with Rounding = "summa.rounding/1" }, reread.State.Books.Invoices["INV-001"])
+
+[<Fact>]
+let ``INV-REC: recurring template versions and the proposals they made round-trip, one file per version`` () =
+    let template: Summa.Ledger.Invoicing.RecurringTemplate =
+        { Id = "RET-ABC"
+          Version = 1
+          CustomerId = abc.Id
+          EngagementId = None
+          Currency = "USD"
+          Schedule = Summa.Ledger.Invoicing.Monthly 15
+          Lines = draft.Lines
+          Terms = Some(Summa.Ledger.Invoicing.Net 15)
+          Recipients = Some { To = [ "ap@abc.example" ]; Cc = []; ReplyTo = None }
+          StartsOn = System.DateOnly(2026, 10, 1)
+          EndsOn = Some(System.DateOnly(2027, 9, 30))
+          Occurrences = Some 12
+          Active = true }
+
+    let r = full ()
+    let books = Summa.Ledger.Recurring.saveTemplate ledgerContext template r.Books |> ok
+    let books = Summa.Ledger.Recurring.saveTemplate ledgerContext { template with Version = 2; Schedule = Summa.Ledger.Invoicing.EveryWeeks 2; Terms = None; Recipients = None; EndsOn = None; Occurrences = None } books |> ok
+    let original, _ = Summa.Ledger.Recurring.generateDue ledgerContext (System.DateOnly(2026, 10, 7)) "RET-ABC" { r with Books = books } |> ok
+    let loaded = load (stored original)
+    Assert.Empty loaded.Problems
+    Assert.True((original.Books.Templates = loaded.State.Books.Templates))
+    Assert.True((original.Books.Proposals = loaded.State.Books.Proposals))
+    let paths = stored original |> List.map (fun o -> RelativePath.render o.Path) |> Set.ofList
+
+    for expected in [ "records/summa.recurring-template/RET-ABC-v1.json"; "records/summa.recurring-template/RET-ABC-v2.json"; "records/summa.proposal/RET-ABC-20261001.json" ] do
+        Assert.Contains(expected, paths)

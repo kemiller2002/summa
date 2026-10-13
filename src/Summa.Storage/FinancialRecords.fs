@@ -26,6 +26,7 @@
 /// | `summa.artifact` | `summa.artifact/<id>` | mutable (a generated artifact never changes) |
 /// | `summa.payment-profile` | `summa.payment-profile/<id>-v<version>` | immutable |
 /// | `summa.follow-up` | `summa.follow-up/<invoice id>` | mutable |
+/// | `summa.recurring-template` | `summa.recurring-template/<id>-v<version>` | immutable |
 ///
 /// Posted entries, issued invoices, payments, allocations and audit events
 /// are written once. A reversal is a new entry naming the one it reverses,
@@ -82,6 +83,7 @@ let reviewType = recordType "summa.billing-review"
 let artifactType = recordType "summa.artifact"
 let profileType = recordType "summa.payment-profile"
 let followUpType = recordType "summa.follow-up"
+let templateType = recordType "summa.recurring-template"
 
 /// Every financial record type, with its mutability and whether a record of
 /// it may ever be deleted.
@@ -114,14 +116,17 @@ let types: (RecordType * Mutability * bool) list =
       reviewType, Mutability.Mutable, false
       artifactType, Mutability.Mutable, false
       profileType, Mutability.Immutable, false
-      followUpType, Mutability.Mutable, false ]
+      followUpType, Mutability.Mutable, false
+      templateType, Mutability.Immutable, false ]
 
 /// The record types with a schema 2: tax as the person said it (customers,
 /// drafts, invoices, proposals; INV-ADJ-005), and where an action came from
 /// (audit events, proposal contributions; INV-AUD-002, INV-PROV-007), a
-/// follow-up's resolved delivery problem (INV-DEL-008), and the record a
-/// journal entry was posted for (INV-ACC-002).
-let private taxedTypes = set [ "summa.customer"; "summa.draft"; "summa.invoice"; "summa.proposal"; "summa.audit"; "summa.follow-up"; "summa.entry" ]
+/// follow-up's resolved delivery problem (INV-DEL-008), the record a
+/// journal entry was posted for (INV-ACC-002), the occurrence a recurring
+/// proposal was made for, and recurring template lines that record tax
+/// (INV-REC).
+let private taxedTypes = set [ "summa.customer"; "summa.draft"; "summa.invoice"; "summa.proposal"; "summa.audit"; "summa.follow-up"; "summa.entry"; "summa.recurring-template" ]
 
 /// Schema support for every financial record type: version 1, and version 2
 /// for the types that can record tax. A record is written at version 2 only
@@ -232,6 +237,18 @@ let private termsOf (value: Json) : Decoded<PaymentTerms> =
         | "net" -> closed [ "days"; "kind" ] value |> Result.bind (fun () -> integer "days" value |> Result.map Net)
         | "custom-date" -> closed [ "date"; "kind" ] value |> Result.bind (fun () -> date "date" value |> Result.map CustomDate)
         | other -> Error $"'{other}' is not a payment term")
+
+let private recurrence =
+    function
+    | Monthly day -> Json.objectOf [ "kind", Json.String "monthly"; "dayOfMonth", number day ]
+    | EveryWeeks weeks -> Json.objectOf [ "kind", Json.String "every-weeks"; "weeks", number weeks ]
+
+let private recurrenceOf (value: Json) : Decoded<Recurrence> =
+    text "kind" value
+    |> Result.bind (function
+        | "monthly" -> closed [ "dayOfMonth"; "kind" ] value |> Result.bind (fun () -> integer "dayOfMonth" value |> Result.map Monthly)
+        | "every-weeks" -> closed [ "kind"; "weeks" ] value |> Result.bind (fun () -> integer "weeks" value |> Result.map EveryWeeks)
+        | other -> Error $"'{other}' is not a recurrence")
 
 let private discount =
     function
@@ -1489,6 +1506,15 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                                        @ (c.Provenance |> Option.map (fun pv -> "provenance", provenanceJson pv) |> Option.toList)
                                    ))
                            ) ])
+                  // The occurrence a recurring template made it for (INV-REC-004).
+                  @ (p.Occurrence
+                     |> Option.map (fun o ->
+                         "recurring",
+                         Json.objectOf
+                             [ "templateId", Json.String o.TemplateId
+                               "templateVersion", number o.TemplateVersion
+                               "date", Json.String(dateText o.Date) ])
+                     |> Option.toList)
               )
           if not books.Rates.Rates.IsEmpty || not books.Rates.Roles.IsEmpty then
               yield
@@ -1547,6 +1573,22 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                     "label", Json.String p.Label
                     "methods", Json.Array(p.Methods |> List.map Json.String)
                     "instructions", Json.String p.Instructions ]
+          for KeyValue(_, t) in books.Templates ->
+              keyOf templateType [] $"{t.Id}-v{t.Version}",
+              Json.objectOf
+                  [ "id", Json.String t.Id
+                    "version", number t.Version
+                    "customerId", Json.String t.CustomerId
+                    "engagementId", optionalString t.EngagementId
+                    "currency", Json.String t.Currency
+                    "schedule", recurrence t.Schedule
+                    "lines", Json.Array(t.Lines |> List.map invoiceLine)
+                    "terms", optionalJson terms t.Terms
+                    "recipients", optionalJson recipients t.Recipients
+                    "startsOn", Json.String(dateText t.StartsOn)
+                    "endsOn", (t.EndsOn |> Option.map (dateText >> Json.String) |> Option.defaultValue Json.Null)
+                    "occurrences", (t.Occurrences |> Option.map number |> Option.defaultValue Json.Null)
+                    "active", Json.Bool t.Active ]
           for KeyValue(_, f) in books.FollowUps ->
               keyOf followUpType [] f.InvoiceId,
               Json.objectOf
@@ -1577,7 +1619,7 @@ let schemaVersionOf (record: FinancialRecord) =
         match value with
         | Json.Object members ->
             members
-            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || key = "change" || key = "deliveryResolved" || key = "postedFor" || key = "lineDetails" || key = "clientReferences" || key = "rounding" || recordsTax inner)
+            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || key = "change" || key = "deliveryResolved" || key = "postedFor" || key = "lineDetails" || key = "clientReferences" || key = "rounding" || key = "recurring" || recordsTax inner)
         | Json.Array items -> items |> List.exists recordsTax
         | _ -> false
 
@@ -1618,6 +1660,7 @@ type private Part =
     | InvoicePart of IssuedInvoice * draftId: string option
     | DeliveryPart of DeliveryAttempt
     | ProfilePart of PaymentProfile
+    | TemplatePart of RecurringTemplate
     | FollowUpPart of FollowUp
     | ObligationPart of Obligation
     | PaymentPart of Payment
@@ -1894,6 +1937,50 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                       Outcome = result
                       ProviderReference = reference
                       RetryOf = retryOf }
+        }
+    | "summa.recurring-template" ->
+        decode {
+            do!
+                closed
+                    [ "active"; "currency"; "customerId"; "endsOn"; "engagementId"; "id"; "lines"; "occurrences"; "recipients"; "schedule"; "startsOn"
+                      "terms"; "version" ]
+                    b
+
+            let! id = text "id" b
+            let! version = integer "version" b
+            let! customer = text "customerId" b
+            let! engagement = optionalText "engagementId" b
+            let! currency = text "currency" b
+            let! schedule = field "schedule" b |> Result.bind recurrenceOf
+            let! lines = list "lines" invoiceLineOf b
+            let! templateTerms = optionalOf termsOf "terms" b
+            let! sendTo = optionalOf recipientsOf "recipients" b
+            let! starts = date "startsOn" b
+            let! ends = optionalDate "endsOn" b
+
+            let! count =
+                match Json.field "occurrences" b with
+                | None
+                | Some Json.Null -> Ok None
+                | Some _ -> integer "occurrences" b |> Result.map Some
+
+            let! active = flag "active" b
+
+            return
+                TemplatePart
+                    { Id = id
+                      Version = version
+                      CustomerId = customer
+                      EngagementId = engagement
+                      Currency = currency
+                      Schedule = schedule
+                      Lines = lines
+                      Terms = templateTerms
+                      Recipients = sendTo
+                      StartsOn = starts
+                      EndsOn = ends
+                      Occurrences = count
+                      Active = active }
         }
     | "summa.payment-profile" ->
         decode {
@@ -2313,7 +2400,7 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
         }
     | "summa.proposal" ->
         decode {
-            do! closed [ "contributions"; "createdAt"; "currency"; "customerId"; "engagementId"; "grouping"; "id"; "lines"; "state" ] b
+            do! closed [ "contributions"; "createdAt"; "currency"; "customerId"; "engagementId"; "grouping"; "id"; "lines"; "recurring"; "state" ] b
             let! id = text "id" b
             let! customer = text "customerId" b
             let! engagement = optionalText "engagementId" b
@@ -2361,6 +2448,18 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                             })
                         b
 
+            let! occurrence =
+                match Codec.tryField "recurring" b with
+                | None -> Ok None
+                | Some o ->
+                    decode {
+                        do! closed [ "date"; "templateId"; "templateVersion" ] o
+                        let! template = text "templateId" o
+                        let! version = integer "templateVersion" o
+                        let! on = date "date" o
+                        return Some { TemplateId = template; TemplateVersion = version; Date = on }
+                    }
+
             return
                 ProposalPart
                     { Id = id
@@ -2371,7 +2470,8 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                       Grouping = grouping
                       State = state
                       CreatedAt = created
-                      Contributions = contributions }
+                      Contributions = contributions
+                      Occurrence = occurrence }
         }
     | "summa.rate-card" ->
         decode {
@@ -2521,7 +2621,8 @@ let private assemble (parts: Part list) : Receivables =
           Artifacts = parts |> List.choose (function ArtifactPart a -> Some(a.Id, a) | _ -> None) |> Map.ofList
           PaymentProfiles = parts |> List.choose (function ProfilePart p -> Some($"{p.Id}@{p.Version}", p) | _ -> None) |> Map.ofList
           Deliveries = parts |> List.choose (function DeliveryPart d -> Some(d.Id, d) | _ -> None) |> Map.ofList
-          FollowUps = parts |> List.choose (function FollowUpPart f -> Some(f.InvoiceId, f) | _ -> None) |> Map.ofList }
+          FollowUps = parts |> List.choose (function FollowUpPart f -> Some(f.InvoiceId, f) | _ -> None) |> Map.ofList
+          Templates = parts |> List.choose (function TemplatePart t -> Some($"{t.Id}@{t.Version}", t) | _ -> None) |> Map.ofList }
 
     { Books = books
       Payments = parts |> List.choose (function PaymentPart p -> Some(p.Id, p) | _ -> None) |> Map.ofList
