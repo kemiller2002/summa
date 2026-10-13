@@ -59,3 +59,4 @@
 | WI-0046 | Unsent changes keep their account: re-stamp after revise (Arca 0.4.0 bug, fixed in 0.4.1), and hold other sign-ins' and unattributed entries for the person to send or discard | complete |  | medium |
 | WI-0047 | Summa: fix delivery defects DEL-A-021 (manual send without authority), DEL-A-046 (one audit event for every outcome), DEL-P-007 (attention item cleared when a new send is queued) (INV-DEL, SUM3-031) | complete | summa, delivery, defect | high |
 | WI-0048 | Summa: books founded on GitHub have no ledger accounts, so no invoice can be submitted or issued there (escaped from WI-0037) | complete | summa, defect, github | high |
+| WI-0049 | Summa: measurement baseline sources index (docs/measurement/baseline-sources.md) | complete | summa, measurement | medium |
