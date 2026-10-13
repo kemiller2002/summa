@@ -75,6 +75,23 @@ Most of this was already true. None of it was asserted under the requirement's n
    script starts the shared kernel, the kernel does no arithmetic on
    amounts, and the rules are the F# engine's.
 
+## Classification
+
+Checked against each requirement's full text, the row is **partial**.
+
+- **Fully asserted:** 002, 005, 006 and 010.
+- **Narrower than the text:**
+  - 001: detection, not prevention, of outside mutation.
+  - 003: only Chrona time has an external owner.
+  - 004: explicit effects and no-bypass of the commands are not asserted.
+  - 007: the app's tables are not Forma's data grid, and it has no Forma
+    dialog or flyout.
+  - 008: deterministic PDF output is not asserted.
+  - 009: the deployment configuration is not in the data repository, and
+    local books live in the browser.
+
+Each remains open under WI-0029.
+
 ## Consequences
 
 - If a later change moves an owner's responsibility (for example, browser
