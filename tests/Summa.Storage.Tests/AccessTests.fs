@@ -37,10 +37,53 @@ let ``every capability the requirements name exists and round-trips by name`` ()
         [ "CreateDraftInvoice"; "IssueInvoice"; "RecordPayment"; "AllocatePayment"; "CreateCreditMemo"; "PostJournalEntry"
           "ReverseJournalEntry"; "ClosePeriod"; "ReopenPeriod"; "ManageOrganization"; "ManageUsers"; "ManageSettings"
           "ReversePayment"; "PostManualAdjustment"; "WriteOffReceivable"; "RefundCustomer"; "ImportSourceTime"; "RecordExpense"
-          "ProposeInvoice"; "OverrideRate"; "ManageBilling"; "OverrideInvoiceNumber" ] do
+          "ProposeInvoice"; "OverrideRate"; "ManageBilling"; "OverrideInvoiceNumber"; "DeliverInvoice" ] do
         Assert.Equal(Some name, capabilityOf name |> Option.map capabilityName)
 
     Assert.Equal(allCapabilities.Length, allCapabilities |> List.map capabilityName |> List.distinct |> List.length)
+
+/// INV-SEC-001's capabilities, and what governs each in Summa.
+let private invoiceSecurity =
+    [ "CreateInvoiceProposal", Some ProposeInvoice
+      "CreateDraftInvoice", Some CreateDraftInvoice
+      // Editing a draft is drafting: a draft has no financial effect until issued.
+      "EditDraftInvoice", Some CreateDraftInvoice
+      "OverrideRate", Some OverrideRate
+      // Approving is not a capability of its own but a gate: a different person
+      // holding IssueInvoice approves what someone else prepared (canApprove).
+      "ApproveInvoice", None
+      "IssueInvoice", Some IssueInvoice
+      "DeliverInvoice", Some DeliverInvoice
+      // A resend is a new delivery attempt (INV-DEL-006).
+      "ResendInvoice", Some DeliverInvoice
+      "VoidInvoice", Some VoidInvoice
+      "CreateCreditMemo", Some CreateCreditMemo
+      "ApplyCredit", Some ApplyCreditMemo
+      "WriteOffReceivable", Some WriteOffReceivable
+      "RefundCustomer", Some RefundCustomer
+      // Summa holds no sensitive payment instructions to view: a payment
+      // profile or record with a full account or card number is refused.
+      "ViewSensitivePaymentInstructions", None ]
+
+[<Fact>]
+let ``INV-SEC-001: every capability the invoice requirements name is governed, and distinct operations stay distinct`` () =
+    let governed = invoiceSecurity |> List.choose snd
+
+    for capability in governed do
+        Assert.Contains(capability, allCapabilities)
+
+    // Operations with different financial effect never share a capability.
+    let distinct = [ ProposeInvoice; CreateDraftInvoice; OverrideRate; IssueInvoice; DeliverInvoice; VoidInvoice; CreateCreditMemo; ApplyCreditMemo; WriteOffReceivable; RefundCustomer ]
+    Assert.Equal(distinct.Length, distinct |> List.distinct |> List.length)
+    Assert.True(distinct |> List.forall (fun c -> List.contains c governed))
+
+    // Approval is a person's, and never the preparer's.
+    Assert.True(defaultApprovalGates.Contains IssueInvoice)
+    Assert.Equal(Ok(), canApprove roster "org_acme" "github:3" "agent-1" IssueInvoice)
+    Assert.True(Result.isError (canApprove roster "org_acme" "github:3" "github:3" IssueInvoice))
+    // Voiding, applying credit, refunding and writing off are gated too.
+    for gated in [ VoidInvoice; ApplyCreditMemo; RefundCustomer; WriteOffReceivable; OverrideRate ] do
+        Assert.True(defaultApprovalGates.Contains gated, capabilityName gated)
 
 [<Fact>]
 let ``a person executes; an agent may only prepare a gated operation for a person to approve`` () =
