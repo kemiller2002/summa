@@ -59,21 +59,35 @@ test("a payment promise is recorded on the invoice and shown in follow-up", asyn
   await expect(page.locator("#follow-up-promise")).toHaveText("");
 });
 
-test("a payment received on account is applied from the inbox, oldest invoice first", async ({ app: { page } }) => {
+test("a payment is applied as suggested when one invoice fits, and a person chooses when none does", async ({ app: { page } }) => {
   await acmeWithInvoices(page);
   await nav(page, "Work").click();
   await page.click("#work-inbox");
   await expect(page).toHaveURL(/#\/inbox$/);
+  // 250.00 is exactly what one invoice owes: suggested, and applied in one step.
   await page.selectOption("#receipt-customer", "CUST-0001");
-  await page.fill("#receipt-amount", "300");
+  await page.fill("#receipt-amount", "250");
   await page.fill("#receipt-reference", "CHK-9");
   await page.click("#record-receipt");
-  await expect(page.locator("#inbox-table tbody tr")).toHaveCount(1);
+  await expect(page.locator("#inbox-table .summa-suggestion")).toHaveText(/^Apply 250\.00 USD to INV-\d{4}-0002: .* owes exactly 250\.00 USD\.$/);
   await page.click("#inbox-table .summa-apply");
   await expect(page.locator("#notice")).toHaveText("Payment PAY-0001 applied.");
   await expect(page.locator("#inbox-empty")).toBeVisible();
-  await nav(page, "Invoices").click();
-  await expect(page.locator("#invoices-table tbody tr", { hasText: "INV" }).first()).toBeVisible();
+
+  // With two invoices open, 60.00 fits neither and is not what they owe together: the person chooses.
+  await invoiceFor(page, "75");
+  await nav(page, "Work").click();
+  await page.click("#work-inbox");
+  await page.selectOption("#receipt-customer", "CUST-0001");
+  await page.fill("#receipt-amount", "60");
+  await page.click("#record-receipt");
+  await expect(page.locator("#inbox-table .summa-apply")).toBeDisabled();
+  await page.click("#inbox-table .summa-choose");
+  await expect(page).toHaveURL(/#\/payments\/PAY-0002$/);
+  await page.selectOption("#payment-apply-invoice", "INV-0001");
+  await page.click("#apply-chosen");
+  await expect(page.locator("#notice")).toHaveText("Payment PAY-0002 applied.");
+  await expect(page.locator("#payment-unapplied-text")).toHaveText("0.00 USD");
 });
 
 test("the CPA workspace downloads the year's trial balance as CSV", async ({ app: { page } }) => {

@@ -103,21 +103,40 @@ let ``reminders and disputes are follow-up only: the invoice and the books are u
     Assert.StartsWith("Dispute resolved on", value "fuDispute" settled)
 
 [<Fact>]
-let ``a payment received on account waits in the inbox, then is applied oldest first or kept as credit`` () =
+let ``SUM4-012: a payment received on account waits in the inbox, is applied as suggested only when one reading fits, else a person chooses`` () =
     let inbox = run [ go "#/inbox"; ReceiptCustomerChanged "CUST-0001"; ReceiptAmountChanged "300"; ReceiptReferenceChanged "CHK-9"; ReceiptRecorded ] (books ()) |> fst
     Assert.Equal("Payment recorded. Apply it, or keep it as credit.", value "notice" inbox)
     let row = items "inboxRows" inbox |> List.exactlyOne
     Assert.Equal("300.00 USD", field "unapplied" row)
     Assert.Equal("2 open invoices", field "openInvoices" row)
+    // 300.00 is neither invoice (100.00, 250.00) nor both (350.00): Summa does not guess.
+    Assert.Equal("Choose the invoice: no open invoice owes 300.00 USD, and it is not what they owe together.", field "suggestion" row)
+    Assert.Equal("True", field "noApply" row)
+    let refused = run [ InboxApplied "PAY-0001" ] inbox |> fst
+    Assert.StartsWith("Summa does not guess which invoice this pays", value "error" refused)
+    Assert.Equal(1, (items "inboxRows" refused).Length)
 
-    let applied = run [ InboxApplied "PAY-0001" ] inbox |> fst
-    Assert.Empty(items "inboxRows" applied)
+    // On the payment's page the person chooses: 100.00 to the first invoice, then the rest to the second.
+    let onPayment = run [ go "#/payments/PAY-0001" ] inbox |> fst
+    Assert.Equal("True", value "payCanChoose" onPayment)
+    let first = run [ PaymentApplyInvoiceChosen "INV-0001"; PaymentAppliedToChosen ] onPayment |> fst
+    Assert.Equal("Payment PAY-0001 applied.", value "notice" first)
+    // 200.00 left, and only one invoice open: one reading now fits.
+    Assert.Equal("Apply 200.00 USD to INV-2026-0002: INV-2026-0002 is the only open invoice.", value "paySuggestion" first)
+    let applied = run [ InboxApplied "" ] first |> fst
+    Assert.Empty(items "inboxRows" (run [ go "#/inbox" ] applied |> fst))
     let owed id = applied.Books.Value.Books.Invoices[id] |> Summa.Ledger.Payments.outstanding applied.Books.Value
-    // INV-0001 (100.00) is paid first, then 200.00 of INV-0002.
     Assert.Equal(0L, (owed "INV-0001").Minor)
     Assert.Equal(5000L, (owed "INV-0002").Minor)
 
-    let credited = run [ ReceiptCustomerChanged "CUST-0001"; ReceiptAmountChanged "40"; ReceiptRecorded; InboxCredited "PAY-0002" ] applied |> fst
+    // Exactly what one invoice owes: suggested and applied from the inbox.
+    let exact = run [ go "#/inbox"; ReceiptCustomerChanged "CUST-0001"; ReceiptAmountChanged "50"; ReceiptRecorded ] applied |> fst
+    Assert.Equal("Apply 50.00 USD to INV-2026-0002: INV-2026-0002 owes exactly 50.00 USD.", field "suggestion" (items "inboxRows" exact |> List.exactlyOne))
+    let paid = run [ InboxApplied "PAY-0002" ] exact |> fst
+    Assert.Equal(0L, (paid.Books.Value.Books.Invoices["INV-0002"] |> Summa.Ledger.Payments.outstanding paid.Books.Value).Minor)
+
+    // Nothing open: keep it as credit.
+    let credited = run [ ReceiptCustomerChanged "CUST-0001"; ReceiptAmountChanged "40"; ReceiptRecorded; InboxCredited "PAY-0003" ] paid |> fst
     Assert.Empty(items "inboxRows" credited)
     Assert.Equal("40.00 USD", value "custCredit" (run [ go "#/customers/CUST-0001" ] credited |> fst))
     Assert.Equal("Choose who paid.", value "error" (run [ ReceiptCustomerChanged ""; ReceiptAmountChanged "1"; ReceiptRecorded ] credited |> fst))
