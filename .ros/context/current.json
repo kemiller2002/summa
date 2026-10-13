@@ -2184,21 +2184,21 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "6d7418ee9cc330e5a13b5ed6",
-        "recordedAt": "2026-10-13T17:05:58Z",
+        "id": "9446daae29fd029df9fb1375",
+        "recordedAt": "2026-10-13T19:01:25Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
-        "stepId": "STEP-20261013T170340000Z-58094c40",
+        "stepId": "STEP-20261013T175532000Z-a92e3140",
         "repository": "summa",
-        "branch": "fix/wi-0029-routine-nonce",
-        "commit": "4c4b92bbe1416716ca510b9c8b81209b4bef18e1",
+        "branch": "feat/wi-0029-editor-details-references",
+        "commit": "10c786f38a0b5ce713807958e04274b22b93c808",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "fix/wi-0029-routine-nonce",
-        "remoteCommit": "4c4b92bbe1416716ca510b9c8b81209b4bef18e1",
-        "summary": "Slice 22: Backup.seal and Backup.take draw a 12-byte nonce from RandomNumberGenerator for every seal; the routine run and the financial migration no longer take a nonce; injection only through sealWith/takeWith/Routine.runWith for tests; tests prove two runs differ and the production source is not constant; DF-SUMMA-2026-0042 1.1.0; #89 recorded as an escaped defect.",
-        "nextAction": "Gate the nonce PR, then WI-0052 step 3 (1.21.0) with Conditor 0.10.1 from a scripted clean tree, then step 4 (1.22.0).",
+        "remoteBranch": "feat/wi-0029-editor-details-references",
+        "remoteCommit": "10c786f38a0b5ce713807958e04274b22b93c808",
+        "summary": "Slice 23: saving from the draft editor overlays the form on the stored draft (each row remembers its stored line), so a line's source, rate, project, discount and details and the draft's terms, due date, recipients, notes and references survive; a save on an older version is refused; line details are edited in one panel and typed references as rows; the printed invoice shows them only when given (print byte-identical without them); DF-SUMMA-2026-0043. Found and fixed: the editor discarded everything it did not show.",
+        "nextAction": "Gate the editor PR, then the INV-OPS-006 slices for required PO and payment promise.",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"

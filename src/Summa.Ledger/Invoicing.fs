@@ -312,6 +312,10 @@ type ClientReferenceKind =
     | CostCenter
     | MatterNumber
 
+/// Every client reference kind with its stable name, as records and forms state it.
+let clientReferenceKinds =
+    [ ContractNumber, "contract"; EngagementNumber, "engagement"; VendorReference, "vendor"; CostCenter, "cost-center"; MatterNumber, "matter" ]
+
 type InvoiceDetails =
     { PurchaseOrder: string option
       ClientReference: string option

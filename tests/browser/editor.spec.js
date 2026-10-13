@@ -59,6 +59,41 @@ test("a tax the person enters is added to the invoice and shown on the document"
   await expect(page.locator("#invoice-document .summa-adjustment dt")).toHaveText("Tax NY-8.875");
 });
 
+test("line details and client references are entered in the editor and shown on the invoice", async ({ app: { page } }) => {
+  await addCustomer(page, "ABC Corp");
+  const row = await typeLine(page, "Assessment", "10", "150.00");
+  await row.locator(".line-details").click();
+  await expect(page.locator("#line-details legend")).toHaveText("Details of line 1: Assessment");
+  await page.fill("#line-detailed-description", "Security assessment of the billing service");
+  await page.fill("#line-unit", "hours");
+  await page.fill("#line-service-from", "2026-09-01");
+  await page.fill("#line-service-to", "2026-09-30");
+  await page.fill("#line-customer-code", "ABC-4410");
+  await expect(row.locator(".line-details")).toContainText("Details (given)");
+  await page.click("#line-details-done");
+  await expect(page.locator("#line-details")).toHaveCount(0);
+
+  await page.click("#add-reference");
+  const reference = page.locator("#draft-reference-rows tbody tr").first();
+  await reference.locator(".reference-kind").selectOption("cost-center");
+  await reference.locator(".reference-value").fill("CC-7");
+
+  await page.click("#review-draft");
+  await expect(page.locator("#notice")).toHaveText("Ready to issue. Check the preview, then issue it.");
+  // Saved and shown again as stored.
+  await expect(page.locator("#draft-reference-rows .reference-kind")).toHaveValue("cost-center");
+  await row.locator(".line-details").click();
+  await expect(page.locator("#line-unit")).toHaveValue("hours");
+
+  await page.click("#issue-invoice");
+  const document = page.locator("#invoice-document");
+  await expect(document).toContainText("Security assessment of the billing service");
+  await expect(document).toContainText("Unit: hours");
+  await expect(document).toContainText("Your code: ABC-4410");
+  await expect(document.locator("dt", { hasText: "Cost center" })).toHaveCount(1);
+  await expect(document).toContainText("CC-7");
+});
+
 test("proposals have their own place, empty until something proposes an invoice", async ({ app: { page } }) => {
   await nav(page, "Proposals").click();
   await expect(page).toHaveURL(/#\/proposals$/);

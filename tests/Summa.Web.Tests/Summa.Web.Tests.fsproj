@@ -28,6 +28,7 @@
     <Compile Include="SignInTests.fs" />
     <Compile Include="StoreTests.fs" />
     <Compile Include="InterfaceTests.fs" />
+    <Compile Include="DraftEditorTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
