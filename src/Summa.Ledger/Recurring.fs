@@ -158,3 +158,20 @@ let generateDue (context: Context) (today: DateOnly) (templateId: string) (r: Re
                     { proposed with Books = books }, made @ [ id ]))
 
         due |> List.fold make (Ok(r, []))
+
+/// Every template's due occurrences at once, as a routine run makes them
+/// (SUM3-006). Each template is proposed on its own, in id order, so one that
+/// cannot propose holds back none of the others. Returns the books, the
+/// proposal ids made, and each refused template with why.
+let generateAllDue (context: Context) (today: DateOnly) (r: Receivables) =
+    r.Books.Templates
+    |> Map.toList
+    |> List.map (snd >> _.Id)
+    |> List.distinct
+    |> List.sort
+    |> List.fold
+        (fun (current, made, refused) templateId ->
+            match generateDue context today templateId current with
+            | Ok(next, ids) -> next, made @ ids, refused
+            | Error problems -> current, made, refused @ [ templateId, problems ])
+        (r, [], [])

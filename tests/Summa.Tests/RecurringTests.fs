@@ -125,3 +125,20 @@ let ``INV-REC-002: an accepted recurring proposal's draft takes the template ver
     Assert.Equal(Some(Net 15), draft.Terms)
     // A proposal no template made keeps the customer's defaults.
     Assert.Equal(None, (Billing.draftOf ready.Books { proposal with Occurrence = None } "D-9").Recipients)
+
+[<Fact>]
+let ``SUM3-006: a routine run proposes every template's due occurrences, and one that cannot propose holds back no other`` () =
+    let r = saved retainer
+    // A template that saveTemplate would refuse, planted to show the run isolates it.
+    let broken = { retainer with Id = "AAA-BROKEN"; CustomerId = "CUST-NONE" }
+    let r = { r with Books = { r.Books with Templates = r.Books.Templates.Add("AAA-BROKEN@1", broken) } }
+    let after, made, refused = generateAllDue (on (DateOnly(2026, 12, 20))) (DateOnly(2026, 12, 20)) r
+    Assert.Equal<string list>([ "RET-ABC-20261115"; "RET-ABC-20261215" ], made)
+    match refused with
+    | [ "AAA-BROKEN", [ ProposalRefused _ ] ] -> ()
+    | other -> failwith $"%A{other}"
+    Assert.False(after.Books.Proposals.ContainsKey "AAA-BROKEN-20261115")
+    // Again the same day: nothing new, and the broken template is still the only one refused.
+    let _, none, still = generateAllDue (on (DateOnly(2026, 12, 20))) (DateOnly(2026, 12, 20)) after
+    Assert.Empty none
+    Assert.Equal(1, still.Length)
