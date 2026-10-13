@@ -1,14 +1,14 @@
 {
   "schemaVersion": 4,
   "project": "summa",
-  "manifestSha256": "6cd0aa24607ff8892239b6b0efb71718a351740afc914a39ebee91edb8b56022",
+  "manifestSha256": "f3a2203f19472e2713f88caf41d891cd01915636cf7d2faac6f56df00c50a818",
   "manifest": {
     "schemaVersion": 1,
     "name": "summa",
     "registryAuthority": {
       "kind": "resolved-release-set",
       "path": ".conditor/authority/resolved-release-set.json",
-      "sha256": "48aeb43c667f9153eea3bdd16a0d600fa8f93dea109a4fa2411c458a393ffbc5"
+      "sha256": "788bcd4907d6ed239684694843d395939266183cb285230cd39f442e2c37ef37"
     },
     "components": [
       {
@@ -28,7 +28,7 @@
       },
       {
         "id": "arca",
-        "version": "0.4.1",
+        "version": "0.5.0",
         "required": true
       },
       {
@@ -77,11 +77,11 @@
     },
     {
       "id": "arca",
-      "version": "0.4.1",
+      "version": "0.5.0",
       "distribution": "nuget",
       "package": "EchelonFoundry.Arca.Core,EchelonFoundry.Arca.GitHub,EchelonFoundry.Arca.Limen",
       "authority": "registry-resolved-set",
-      "sourceReference": "nuget-feed:kemiller2002/arca@v0.4.1#sha256:76c1d7132147044421a5664c3c77cf339ec90a47044fb67ed79c0768de3bf368"
+      "sourceReference": "nuget-feed:kemiller2002/arca@v0.5.0#sha256:1cab5320290e6084f873e942465fe2289c8bc952b8ec7ce3a445ad24b8ac2e84"
     },
     {
       "id": "fides",
@@ -106,22 +106,15 @@
       "component": "ordo",
       "code": "SDE-STRUCT-001",
       "band": "conformance-concern",
-      "path": "src/Summa.Wasm/bin/Release/net10.0/wwwroot/_framework/dotnet.native.go6x1p5bpl.js",
-      "lineCount": 6773
-    },
-    {
-      "component": "ordo",
-      "code": "SDE-STRUCT-001",
-      "band": "conformance-concern",
       "path": "src/Summa.Web.Engine/Accounting.fs",
-      "lineCount": 4032
+      "lineCount": 4159
     },
     {
       "component": "ordo",
       "code": "SDE-STRUCT-001",
       "band": "justification-required",
       "path": "src/Summa.Storage/FinancialRecords.fs",
-      "lineCount": 2478
+      "lineCount": 2701
     },
     {
       "component": "ordo",
@@ -148,35 +141,70 @@
       "component": "ordo",
       "code": "SDE-STRUCT-001",
       "band": "strong-review",
-      "path": "src/Summa.Web.Application/AccountingWire.fs",
-      "lineCount": 1021
+      "path": "src/Summa.Ledger/Invoicing.fs",
+      "lineCount": 1067
     },
     {
       "component": "ordo",
       "code": "SDE-STRUCT-001",
-      "band": "review",
-      "path": "src/Summa.Ledger/Invoicing.fs",
-      "lineCount": 920
+      "band": "strong-review",
+      "path": "src/Summa.Web.Application/AccountingWire.fs",
+      "lineCount": 1024
     },
     {
       "component": "ordo",
       "code": "SDE-STRUCT-001",
       "band": "review",
       "path": "src/Summa.Ledger/Billing.fs",
-      "lineCount": 800
+      "lineCount": 813
     },
     {
       "component": "ordo",
       "code": "SDE-STRUCT-001",
       "band": "review",
       "path": "src/Summa.Web.Application/Store.fs",
-      "lineCount": 688
+      "lineCount": 734
+    },
+    {
+      "component": "ordo",
+      "code": "SDE-STRUCT-001",
+      "band": "review",
+      "path": "src/Summa.Storage/Commands.fs",
+      "lineCount": 549
+    },
+    {
+      "component": "ordo",
+      "code": "SDE-STRUCT-001",
+      "band": "review",
+      "path": "tests/Summa.Web.Tests/StoreTests.fs",
+      "lineCount": 530
     },
     {
       "component": "ordo",
       "code": "SDE-STRUCT-001",
       "band": "review",
       "path": "tests/Summa.Storage.Tests/CommandTests.fs",
+      "lineCount": 527
+    },
+    {
+      "component": "ordo",
+      "code": "SDE-STRUCT-001",
+      "band": "review",
+      "path": "src/Summa.Storage/Organization.fs",
+      "lineCount": 521
+    },
+    {
+      "component": "ordo",
+      "code": "SDE-STRUCT-001",
+      "band": "review",
+      "path": "src/Summa.Ledger/Payments.fs",
+      "lineCount": 507
+    },
+    {
+      "component": "ordo",
+      "code": "SDE-STRUCT-001",
+      "band": "review",
+      "path": "src/Summa.Ledger/Lifecycle.fs",
       "lineCount": 503
     }
   ]

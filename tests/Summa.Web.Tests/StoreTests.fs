@@ -86,12 +86,16 @@ let private networkOf (repository: InMemoryStore) =
         networks[repository] <- created
         created
 
+/// Pins a test hands the store, standing in for GitHub's (None: unpinned).
+let mutable private pinning: (ChangeToken -> PinnedReads option) option = None
+
 /// One page, signed in as `subject`, over the shared in-memory repository.
 let private page (repository: InMemoryStore) (subject: string) (login: string) : Wire.Env =
     let bridge = Bridge.Bridge()
 
     let backend: Store.Backend =
         { Provider = fun _ -> (networkOf repository).Provider
+          Pins = fun _ token -> pinning |> Option.bind (fun pins -> pins token)
           Resolve = fun _ -> async.Return(Ok snapshot) }
 
     { Now = fun () -> start
@@ -528,3 +532,61 @@ let ``INV-FAIL-002: a refused change says why, what is unchanged, whether to try
         "Someone else changed the same records first. The books show their change. Nothing was saved; the books are as they were. Trying again is safe. Try again: it is decided on the books as they then stand.",
         text
     )
+
+[<Fact>]
+let ``after a change is committed, the next read pins to the new commit and never reads through the earlier pin`` () =
+    let repository = InMemoryStore()
+    let provider = (networkOf repository).Provider
+    let events = Collections.Generic.List<string * ChangeToken>()
+
+    // Each pin records when it is taken and every read made through it.
+    let pins (token: ChangeToken) : PinnedReads option =
+        events.Add(("pin", token))
+
+        Some
+            { At = token
+              NamespaceState = provider.NamespaceState
+              Read = fun ns path -> (events.Add(("read", token)); provider.Read ns path)
+              List = fun ns path -> (events.Add(("read", token)); provider.List ns path) }
+
+    pinning <- Some pins
+
+    try
+        let first, firstSession, _ = openAs repository "583231" "octocat"
+        let firstSession, _ = send first firstSession [ "foundRequested", "" ]
+        let second, secondSession, _ = openAs repository "583231" "octocat"
+        let opened = events |> Seq.filter (fun (kind, _) -> kind = "pin") |> Seq.map snd |> Seq.last
+
+        // The first page commits a change: the repository moves to a new commit.
+        addCustomer first firstSession "Acme" |> ignore
+        let config = Summa.Storage.Deployment.parse configuration |> Result.defaultWith (fun e -> failwith $"%A{e}")
+        let binding = Summa.Storage.Storage.binding config |> Result.defaultWith (fun e -> failwith $"%A{e}")
+        let orgNs = Summa.Storage.Storage.organizationNamespace config binding "org_acme" |> Result.defaultWith (fun e -> failwith $"%A{e}")
+        let moved = (provider.NamespaceState orgNs |> Async.RunSynchronously |> Result.defaultWith (fun e -> failwith $"%A{e}")).RepositoryToken
+        Assert.NotEqual(opened, moved)
+
+        // The second page's next command reads the books as they stand: pinned at the new commit only.
+        let before = events.Count
+        let _, reply = addCustomer second secondSession "Globex"
+        Assert.False(flag "hasError" reply)
+        let during = events |> Seq.skip before |> List.ofSeq
+        Assert.Contains(("pin", moved), during)
+        Assert.DoesNotContain(("pin", opened), during)
+        Assert.NotEmpty(during |> List.filter (fun (kind, _) -> kind = "read"))
+        Assert.All(during |> List.filter (fun (kind, _) -> kind = "read"), fun (_, token) -> Assert.NotEqual(opened, token))
+
+        // Every read anywhere went through the pin taken last before it.
+        events
+        |> Seq.fold
+            (fun latest (kind, token) ->
+                match kind with
+                | "pin" -> Some token
+                | _ ->
+                    Assert.Equal(latest, Some token)
+                    latest)
+            None
+        |> ignore
+
+        Assert.Equal<(string * string) list>([ "CUST-0001", "Acme"; "CUST-0002", "Globex" ], storedCustomers repository)
+    finally
+        pinning <- None

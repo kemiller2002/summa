@@ -1191,6 +1191,31 @@
       },
       "source": "manual",
       "sourceReference": null
+    },
+    {
+      "id": "WI-0050",
+      "title": "Summa: adopt echelon-current 1.19.0 (Arca 0.5.0): batched read-cache save and pinned reads without a ref fetch",
+      "description": "Arca 0.5.0 (arca#38 ReadCacheStore batch save, arca#39 pinned GitHub reads skip the ref fetch) is selected in echelon-current 1.19.0. Adopt through Conditor (checked plan, isolated --home, no hand-edited pins); use the batch save wherever Summa saves many cache partitions; record before/after timings of the SUM0-034 browser scenarios (DF-SUMMA-2026-0025).",
+      "tags": [
+        "summa",
+        "arca",
+        "performance"
+      ],
+      "priority": "medium",
+      "status": "complete",
+      "attachments": [],
+      "createdAt": "2026-10-13T12:56:28Z",
+      "updatedAt": "2026-10-13T13:19:19Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
     }
   ]
 }

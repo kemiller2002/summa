@@ -60,3 +60,4 @@
 | WI-0047 | Summa: fix delivery defects DEL-A-021 (manual send without authority), DEL-A-046 (one audit event for every outcome), DEL-P-007 (attention item cleared when a new send is queued) (INV-DEL, SUM3-031) | complete | summa, delivery, defect | high |
 | WI-0048 | Summa: books founded on GitHub have no ledger accounts, so no invoice can be submitted or issued there (escaped from WI-0037) | complete | summa, defect, github | high |
 | WI-0049 | Summa: measurement baseline sources index (docs/measurement/baseline-sources.md) | complete | summa, measurement | medium |
+| WI-0050 | Summa: adopt echelon-current 1.19.0 (Arca 0.5.0): batched read-cache save and pinned reads without a ref fetch | complete | summa, arca, performance | medium |
