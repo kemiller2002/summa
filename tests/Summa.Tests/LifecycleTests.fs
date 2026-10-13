@@ -359,3 +359,56 @@ let ``INV-ARCH-004: invoice behaviour follows Ordo's principles: explicit state,
     Assert.True(Result.isError (issueInvoice context { request with DraftId = "D-2"; ExpectedVersion = 9 } reviewed))
     // Evidence: every transition leaves an audit event naming who did it.
     Assert.Contains(voided.Books.Ledger.Audit, fun a -> a.Subject = "INV-001" && a.What = "invoice-voided" && a.Who = context.Who)
+
+// ---- Payment promises (SUM4-016) ---------------------------------------------------------------
+
+[<Fact>]
+let ``SUM4-016: a payment promise is recorded with what was owed, and the invoice and the books are untouched`` () =
+    let r, _ = issued ()
+    let on = DateOnly(2026, 11, 2)
+    let promised = recordPromise context "INV-001" (usd 300000L) (DateOnly(2026, 11, 15)) "Jane, AP, by phone" on r |> ok
+    let p = (followUp promised "INV-001").Promise.Value
+    Assert.Equal(usd 300000L, p.Amount)
+    Assert.Equal(DateOnly(2026, 11, 15), p.By)
+    Assert.Equal(on, p.MadeOn)
+    Assert.Equal(usd 603750L, p.OutstandingWhenMade)
+    Assert.Equal("Jane, AP, by phone", p.Note)
+    Assert.True((r.Books.Invoices = promised.Books.Invoices))
+    Assert.True((r.Books.Ledger.Entries = promised.Books.Ledger.Entries))
+    Assert.Contains(promised.Books.Ledger.Audit, fun a -> a.What = "payment-promise-recorded" && a.Subject = "INV-001")
+
+    // A new promise replaces it; withdrawing removes it. Both stay in the audit trail.
+    let replaced = recordPromise context "INV-001" (usd 603750L) (DateOnly(2026, 11, 30)) "" on promised |> ok
+    Assert.Equal(usd 603750L, (followUp replaced "INV-001").Promise.Value.Amount)
+    let withdrawn = withdrawPromise context "INV-001" replaced |> ok
+    Assert.Equal(None, (followUp withdrawn "INV-001").Promise)
+    Assert.Contains(withdrawn.Books.Ledger.Audit, fun a -> a.What = "payment-promise-withdrawn")
+
+[<Fact>]
+let ``SUM4-016: a promise that cannot be kept is refused with why`` () =
+    let r, _ = issued ()
+    let on = DateOnly(2026, 11, 2)
+    let refusedWith amount by = recordPromise context "INV-001" amount by "" on r |> refused
+    Assert.Equal<PromiseProblem list>([ PromiseNotPositive ], refusedWith (usd 0L) on)
+    Assert.Equal<PromiseProblem list>([ PromiseMoreThanOwed(usd 603750L) ], refusedWith (usd 603751L) on)
+    Assert.Equal<PromiseProblem list>([ PromiseCurrency "USD" ], refusedWith { Minor = 100L; Currency = "EUR" } on)
+    Assert.Equal<PromiseProblem list>([ PromiseInThePast(DateOnly(2026, 11, 1)) ], refusedWith (usd 100L) (DateOnly(2026, 11, 1)))
+    Assert.Equal<PromiseProblem list>([ UnknownInvoiceToPromise "INV-9" ], recordPromise context "INV-9" (usd 100L) on "" on r |> refused)
+    let paid = r |> recordPayment context (payment "PAY-1" 603750L) |> ok |> allocate context (allocation "AL-1" "PAY-1" "INV-001" 603750L) |> ok
+    Assert.Equal<PromiseProblem list>([ NothingOwed "INV-001" ], recordPromise context "INV-001" (usd 100L) on "" on paid |> refused)
+
+[<Fact>]
+let ``SUM4-016: a promise is due until its date, kept once what is owed falls by the amount, and missed after its date otherwise`` () =
+    let r, _ = issued ()
+    let promised = recordPromise context "INV-001" (usd 300000L) (DateOnly(2026, 11, 15)) "" (DateOnly(2026, 11, 2)) r |> ok
+    let statusOn day books = promiseStatus books day "INV-001" |> Option.map snd
+    Assert.Equal(Some PromiseDue, statusOn (DateOnly(2026, 11, 15)) promised)
+    Assert.Equal(Some PromiseMissed, statusOn (DateOnly(2026, 11, 16)) promised)
+    // Part of it paid: still due, then missed.
+    let part = promised |> recordPayment context (payment "PAY-1" 100000L) |> ok |> allocate context (allocation "AL-1" "PAY-1" "INV-001" 100000L) |> ok
+    Assert.Equal(Some PromiseDue, statusOn (DateOnly(2026, 11, 10)) part)
+    Assert.Equal(Some PromiseMissed, statusOn (DateOnly(2026, 11, 16)) part)
+    // The rest of it paid, even late: kept.
+    let kept = part |> recordPayment context (payment "PAY-2" 200000L) |> ok |> allocate context (allocation "AL-2" "PAY-2" "INV-001" 200000L) |> ok
+    Assert.Equal(Some PromiseKept, statusOn (DateOnly(2026, 11, 16)) kept)
+    Assert.Equal(None, promiseStatus r (DateOnly(2026, 11, 16)) "INV-001")

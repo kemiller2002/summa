@@ -39,7 +39,7 @@ let private changesNoBooks =
           "DraftTaxAmountChanged"; "DraftTaxAccountChosen"; "DraftTaxJurisdictionChanged"; "DraftTaxRateChanged"; "DraftTaxRateSourceChanged"
           "DraftTaxEvidenceChanged"; "DraftTaxInclusiveChanged"; "CustomerTaxStatusChosen"; "CustomerTaxJurisdictionChanged"
           "CustomerTaxEvidenceChanged"; "CustomerRequiresPurchaseOrderChanged"; "EditorRead"; "EditorDiscarded"; "ProposalLineChosen"
-          "ProposalRateChanged"; "ProposalReasonChanged" ]
+          "ProposalRateChanged"; "ProposalReasonChanged"; "PromiseAmountChanged"; "PromiseByChanged"; "PromiseNoteChanged" ]
 
 /// One value of each message case; `bookCommand` looks only at the case.
 let private everyMessage () =

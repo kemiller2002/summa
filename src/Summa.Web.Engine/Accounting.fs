@@ -395,6 +395,10 @@ type Model =
       Artifacts: ArtifactStore
       /// The reason or resolution typed on an invoice's follow-up.
       FollowUpNote: string
+      /// A payment promise as typed on an invoice (SUM4-016): amount, date, note.
+      PromiseAmount: string
+      PromiseBy: string
+      PromiseNote: string
       Receipt: ReceiptForm
       Pdf: PdfWork
       Blockers: Issuance.Blocker list
@@ -470,6 +474,9 @@ let initial =
       Packs = { Files = false; Store = false }
       Artifacts = StoreClosed
       FollowUpNote = ""
+      PromiseAmount = ""
+      PromiseBy = ""
+      PromiseNote = ""
       Receipt = { CustomerId = ""; Amount = ""; Date = ""; Method = "ach"; Reference = "" }
       Pdf = PdfIdle
       SignIn = NotRequired
@@ -654,6 +661,12 @@ type Msg =
     /// A reminder was sent for this invoice, by whatever means.
     | ReminderRecorded of invoiceId: string
     | FollowUpNoteChanged of string
+    | PromiseAmountChanged of string
+    | PromiseByChanged of string
+    | PromiseNoteChanged of string
+    /// Record the customer's promise to pay this invoice (SUM4-016).
+    | PromiseRecorded
+    | PromiseWithdrawn
     | DisputeMarked
     | DisputeSettled
     | InboxCustomerChosen of string
@@ -821,6 +834,28 @@ let private command (model: Model) (notice: string) (run: Receivables -> Result<
     | _ -> { model with Error = Some "The books are not available."; Notice = None }, []
 
 let private describe (problems: 'a list) = problems |> List.map (fun p -> $"%A{p}") |> String.concat "; "
+
+/// A payment promise problem as one sentence.
+let private promiseProblemText =
+    function
+    | Lifecycle.UnknownInvoiceToPromise id -> $"There is no invoice {id}."
+    | Lifecycle.NothingOwed _ -> "Nothing is owed on this invoice, so there is nothing to promise."
+    | Lifecycle.PromiseNotPositive -> "A promise is for an amount greater than zero."
+    | Lifecycle.PromiseCurrency currency -> $"A promise is in the invoice's currency, {currency}."
+    | Lifecycle.PromiseMoreThanOwed owed -> $"The invoice owes {Documents.moneyText owed}; a promise cannot be for more."
+    | Lifecycle.PromiseInThePast by -> $"{Documents.dateText by} has already passed; a promise is for today or later."
+
+/// A promise and where it stands, in words.
+let private promiseText (promise: PaymentPromise, status: Lifecycle.PromiseStatus) =
+    let state =
+        match status with
+        | Lifecycle.PromiseDue -> "due"
+        | Lifecycle.PromiseKept -> "kept"
+        | Lifecycle.PromiseMissed -> "missed"
+
+    let note = if promise.Note = "" then "" else $" ({promise.Note})"
+    $"Promised {Documents.moneyText promise.Amount} by {Documents.dateText promise.By}{note}: {state}."
+
 
 /// The issue request for a draft, with the organization's defaults.
 let private issueRequest (manifest: Organization.OrganizationManifest) (books: Receivables) (draftId: string) (expectedVersion: int) (issueDate: DateOnly) =
@@ -1584,6 +1619,12 @@ let workItems (today: DateOnly) (r: Receivables) =
               "Unapplied payment", $"Payment {p.Id} has {Documents.moneyText (unallocated r p)} not yet applied.", Routes.href (Routes.Inbox(Some p.CustomerId))
       for id, why in Lifecycle.attention r do
           "Delivery", $"Invoice {number id}: {why}.", invoice id
+      // A promise to pay whose date passed without the payment (INV-OPS-006, SUM4-016).
+      for KeyValue(id, i) in r.Books.Invoices do
+          match Lifecycle.promiseStatus r today id with
+          | Some(p, Lifecycle.PromiseMissed) ->
+              "Payment promise missed", $"Invoice {i.Number}: {i.Customer.Name} promised {Documents.moneyText p.Amount} by {Documents.dateText p.By}, and it has not been paid.", invoice id
+          | _ -> ()
       // Proposals waiting for a person, and time corrected after it was invoiced (INV-OPS-006).
       for KeyValue(id, p) in r.Books.Proposals do
           if p.State = ReadyForReview then
@@ -2490,6 +2531,26 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
 
             Lifecycle.setCollection (context ctx) invoiceId (Reminded times) books |> Result.mapError describe)
     | FollowUpNoteChanged v -> { model with FollowUpNote = v }, []
+    | PromiseAmountChanged v -> { model with PromiseAmount = v }, []
+    | PromiseByChanged v -> { model with PromiseBy = v }, []
+    | PromiseNoteChanged v -> { model with PromiseNote = v }, []
+    | PromiseRecorded ->
+        match model.Place, parseAmount model.PromiseAmount, parseDate model.PromiseBy with
+        | Routes.Invoice _, None, _ -> { model with Error = Some "Enter the amount promised, such as 500.00."; Notice = None }, []
+        | Routes.Invoice _, _, None -> { model with Error = Some "Enter the date it was promised by, such as 2026-10-30."; Notice = None }, []
+        | Routes.Invoice(invoiceId, _), Some amount, Some by ->
+            let recorded, effects =
+                command model "Payment promise recorded. The invoice and the books are unchanged." (fun books ->
+                    Lifecycle.recordPromise (context ctx) invoiceId amount by model.PromiseNote model.Today books
+                    |> Result.mapError (List.map promiseProblemText >> String.concat " "))
+
+            (if recorded.Error.IsNone then { recorded with PromiseAmount = ""; PromiseBy = ""; PromiseNote = "" } else recorded), effects
+        | _ -> model, []
+    | PromiseWithdrawn ->
+        match model.Place with
+        | Routes.Invoice(invoiceId, _) ->
+            command model "Payment promise withdrawn." (fun books -> Lifecycle.withdrawPromise (context ctx) invoiceId books |> Result.mapError (fun () -> ""))
+        | _ -> model, []
     | DisputeMarked
     | DisputeSettled ->
         match model.Place with
@@ -2651,6 +2712,8 @@ let bookCommand (msg: Msg) : (Summa.Access.Access.Capability * string) option =
     | ReminderRecorded _ -> open' Summa.Access.Access.RecordPayment "record a reminder"
     | DisputeMarked
     | DisputeSettled -> open' Summa.Access.Access.RecordPayment "record a dispute"
+    | PromiseRecorded
+    | PromiseWithdrawn -> open' Summa.Access.Access.RecordPayment "record a payment promise"
     | PeriodClosed
     | PeriodLocked -> open' Summa.Access.Access.ClosePeriod "close a period"
     | PeriodReopened -> open' Summa.Access.Access.ReopenPeriod "reopen a period"
@@ -3723,7 +3786,8 @@ let private attentionValues (model: Model) (shown: Screen) : View =
                   "late", Text(if i.DueDate < today then $"{today.DayNumber - i.DueDate.DayNumber} days" else "Not due")
                   "outstanding", Text(Documents.moneyText (outstanding b i))
                   "collection", Text(collectionText follow.Collection)
-                  "dispute", Text(disputeText follow.Dispute) ]))
+                  "dispute", Text(disputeText follow.Dispute)
+                  "promise", Text(Lifecycle.promiseStatus b today i.InvoiceId |> Option.map promiseText |> Option.defaultValue "") ]))
         |> Option.defaultValue []
 
     // Inbox
@@ -4225,6 +4289,12 @@ let view (model: Model) : View =
           "fuNotDisputed",
           flag (detail |> Option.exists (fun (b, i) -> match (Lifecycle.followUp b i.InvoiceId).Dispute with Disputed _ -> false | _ -> true))
           "fuNote", text model.FollowUpNote
+          // The customer's promise to pay and where it stands (SUM4-016).
+          "fuPromise", text (detail |> Option.bind (fun (b, i) -> Lifecycle.promiseStatus b model.Today i.InvoiceId) |> Option.map promiseText |> Option.defaultValue "")
+          "fuHasPromise", flag (detail |> Option.exists (fun (b, i) -> (Lifecycle.followUp b i.InvoiceId).Promise.IsSome))
+          "promiseAmount", text model.PromiseAmount
+          "promiseBy", text model.PromiseBy
+          "promiseNote", text model.PromiseNote
           "detailEntryId", text (detail |> Option.map (fun (_, i) -> i.JournalEntryId) |> Option.defaultValue "")
           "detailEntryHref", text (detail |> Option.map (fun (_, i) -> Routes.href (Routes.JournalEntry i.JournalEntryId)) |> Option.defaultValue "")
           "detailCustomer", text (detail |> Option.map (fun (_, i) -> i.Customer.Name) |> Option.defaultValue "")

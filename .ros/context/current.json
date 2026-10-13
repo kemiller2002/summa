@@ -2184,21 +2184,21 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "2741105328e59cece604c1d5",
-        "recordedAt": "2026-10-13T19:45:42Z",
+        "id": "43c0d3e9ee98d8fd498be298",
+        "recordedAt": "2026-10-13T20:07:14Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
-        "stepId": "STEP-20261013T194410000Z-670632a6",
+        "stepId": "STEP-20261013T195503000Z-da2c610e",
         "repository": "summa",
-        "branch": "fix/wi-0029-po-book-command",
-        "commit": "0737cc57f1e35edc0153840c48d1576ea95152be",
+        "branch": "feat/wi-0029-payment-promise",
+        "commit": "9175ca9f09324f8ceb118e9d55a17fedde3d80b1",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "fix/wi-0029-po-book-command",
-        "remoteCommit": "0737cc57f1e35edc0153840c48d1576ea95152be",
-        "summary": "Slice 25: escaped defect from #98 fixed: CustomerPurchaseOrderRequirementSet is a book command (ManageBilling; committed on GitHub books); BookCommandTests now fails for any message neither in bookCommand nor listed as changing no books (verified to catch the defect); DF-SUMMA-2026-0044 1.1.0.",
-        "nextAction": "Gate the fix PR, then the payment promise slice (branch feat/wi-0029-payment-promise, stashed work in progress).",
+        "remoteBranch": "feat/wi-0029-payment-promise",
+        "remoteCommit": "9175ca9f09324f8ceb118e9d55a17fedde3d80b1",
+        "summary": "Slice 26: payment promises on the follow-up record (amount, by, made on, owed then, note), validated against the books, audited; kept/due/missed worked out from what the invoice owes; shown on the invoice and follow-up list; a missed promise in the work queue; book command needing RecordPayment; DF-SUMMA-2026-0045. INV-OPS partial to tested, SUM4-016 missing to partial; summary 181/38/16.",
+        "nextAction": "Gate the promise PR, then INV-ARCH-007.",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"

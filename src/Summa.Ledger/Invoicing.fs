@@ -653,6 +653,21 @@ type DeliveryResolution =
       By: string
       At: DateTimeOffset }
 
+/// A customer's promise to pay part or all of an invoice by a date
+/// (SUM4-016). It records what was promised and how much was outstanding
+/// when it was made, so whether it was kept is worked out from the books,
+/// never recorded by hand.
+type PaymentPromise =
+    { Amount: Money
+      /// The last day the customer said they would pay by.
+      By: DateOnly
+      /// The day the promise was recorded.
+      MadeOn: DateOnly
+      /// What the invoice still owed when the promise was made.
+      OutstandingWhenMade: Money
+      /// Who made it and how, in the person's words.
+      Note: string }
+
 /// The operational follow-up of an invoice (INV-STATE-006, INV-STATE-007):
 /// it never changes the invoice or the ledger.
 type FollowUp =
@@ -660,7 +675,9 @@ type FollowUp =
       Dispute: DisputeState
       Collection: CollectionStage
       /// The delivery problem a person last resolved, if any.
-      DeliveryResolved: DeliveryResolution option }
+      DeliveryResolved: DeliveryResolution option
+      /// The customer's current promise to pay, if any (SUM4-016).
+      Promise: PaymentPromise option }
 
 type Books =
     { Ledger: Ledger
