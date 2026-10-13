@@ -66,8 +66,13 @@ organization's own records.**
 1. `Organization.startingChart` is the one starting chart (twelve accounts)
    for every deployment. Local books use it as before
    (`LocalSnapshot.defaultChart` is the same list).
-2. `Workspace.startingRecords` adds each account as the founder, with an
-   audit event, and turns them into `summa.account` records.
+2. `Workspace.startingRecords` turns the starting chart into `summa.account`
+   records, with one audit event by the founder, `chart-founded`, that names
+   every account. Founding is one act. One event instead of twelve also
+   keeps the founding commit small: every open still reads every record
+   (SUM0-034). Twelve per-account events made a reload after an offline
+   change take 6.2–6.9 s instead of 4.0–4.6 s in the browser tests; with one
+   event it takes 4.5–5.2 s.
 3. `Governance.foundWith` writes those records in the same founding commit
    as the manifest and the administrator. Founding stays one commit, so it
    is all or nothing.

@@ -142,11 +142,12 @@ let openBooks
                             )
     }
 
-/// The starting chart as the organization's own account records, each added
-/// by the founder (DF-SUMMA-2026-0024): the accounts the manifest names exist
-/// from the first commit, so the books can be worked in at once, and nothing
-/// is assumed when they are read.
-let startingRecords (context: Storage.OperationContext) (founder: Principal) : Result<Change list, Diagnostic list> =
+/// The starting chart as the organization's own account records
+/// (DF-SUMMA-2026-0024): the accounts the manifest names exist from the
+/// first commit, so the books can be worked in at once, and nothing is
+/// assumed when they are read. Founding is one act, so it is one audit event
+/// by the founder naming every account, not one event per account.
+let startingRecords (context: Storage.OperationContext) (organizationId: string) (founder: Principal) : Result<Change list, Diagnostic list> =
     let ledgerContext: Summa.Ledger.Ledger.Context =
         { Who = founder.PrincipalId
           When = context.At
@@ -157,6 +158,11 @@ let startingRecords (context: Storage.OperationContext) (founder: Principal) : R
     Organization.startingChart
     |> List.fold (fun ledger account -> ledger |> Result.bind (Summa.Ledger.Ledger.addAccount ledgerContext account)) (Ok Summa.Ledger.Ledger.empty)
     |> Result.mapError (fun problems -> [ InvalidOrganizationManifest $"the starting chart cannot be opened: %A{problems}" ])
+    |> Result.map (fun ledger ->
+        let codes = Organization.startingChart |> List.map _.Code |> String.concat ", "
+
+        { ledger with Audit = [] }
+        |> Summa.Ledger.Ledger.auditChange ledgerContext "chart-founded" organizationId (Summa.Ledger.Ledger.applied None [ $"accounts: {codes}" ]))
     |> Result.bind (fun ledger -> FinancialRecords.toRecords (start (Summa.Ledger.Invoicing.openBooks ledger)))
     |> Result.bind FinancialRecords.contents
     |> Result.bind (fun records ->
@@ -208,7 +214,7 @@ let foundingOperations
                 return
                     applicationSetUp
                     |> Result.bind (fun first ->
-                        startingRecords context founder
+                        startingRecords context organization.Id founder
                         |> Result.bind (fun chart -> Governance.foundWith chart config binding visibility None context manifest founder)
                         |> Result.map (fun organizationSetUp -> first @ [ organizationSetUp ]))
                     |> Result.mapError Commands.Unstorable
