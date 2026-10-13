@@ -285,6 +285,10 @@ let ``a change made while GitHub cannot be reached is kept, shown, and sent when
     Assert.True(flag "hasUnsent" reply)
     Assert.Equal(0, session.Model.Unsaved)
 
+    // GitHub's integration state says so (SUM3-032): pending, with the books unchanged on GitHub.
+    let github () = integrationStates true session.Model.Unsent session.Model.Books.Value |> List.head
+    Assert.Equal(("GitHub", Summa.Storage.Integrations.Pending), (let n, s, _, _ = github () in n, s))
+
     // Still unreachable: sending again keeps it.
     let session, _ = send env session [ "sendUnsentRequested", "" ]
     Assert.Equal(1, waiting session)
@@ -294,6 +298,8 @@ let ``a change made while GitHub cannot be reached is kept, shown, and sent when
     Assert.Equal(0, waiting session)
     Assert.False(flag "hasUnsent" reply)
     Assert.Equal<(string * string) list>([ "CUST-0001", "Acme" ], storedCustomers repository)
+    let _, state, _, _ = integrationStates true session.Model.Unsent session.Model.Books.Value |> List.head
+    Assert.Equal(Summa.Storage.Integrations.Succeeded, state)
 
 [<Fact>]
 let ``unsent changes outlive the page in this browser, held by one tab at a time`` () =

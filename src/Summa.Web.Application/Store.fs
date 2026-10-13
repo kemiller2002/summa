@@ -398,7 +398,8 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
         { Waiting = waiting
           Blocked = blocked
           Note = if waiting > 0 then queueNote else None
-          Foreign = if foreignReleased then 0 else (foreignEntries ()).Length }
+          Foreign = if foreignReleased then 0 else (foreignEntries ()).Length
+          BlockedState = OfflineQueue.blocked queue |> Option.map (fun entry -> Integrations.ofQueued entry.State) }
 
     /// Takes this browser's unsent changes for this tab when no other tab
     /// holds them, and loads what an earlier page left (an entry that was

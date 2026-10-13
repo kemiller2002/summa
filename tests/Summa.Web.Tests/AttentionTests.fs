@@ -243,3 +243,58 @@ let ``INV-OPS-006: invoice obligations feed the work queue, each with where to a
     // A settled review leaves the queue.
     let resolved = { r with Books = Summa.Ledger.Billing.resolveReview context "RV-1" "No action" r.Books |> ok }
     Assert.Empty(run [ go "#/work" ] { awaiting with Books = Some resolved } |> fst |> items "workItems" |> List.filter (fun x -> field "kind" x = "Source conflict"))
+
+[<Fact>]
+let ``SUM3-032: each integration's state is shown in one vocabulary, with what to do, and an outage changes nothing`` () =
+    let r = (books ()).Books.Value
+    let names states = states |> List.map (fun (name, state, _, _) -> name, state)
+
+    // Local books, nothing sent or failed: every integration has succeeded.
+    Assert.Equal<(string * Summa.Storage.Integrations.IntegrationState) list>(
+        [ "Books storage", Summa.Storage.Integrations.Succeeded
+          "Invoice delivery", Summa.Storage.Integrations.Succeeded
+          "Time from Chrona", Summa.Storage.Integrations.Succeeded ],
+        integrationStates false noneUnsent r |> names
+    )
+
+    // On GitHub: changes waiting are pending; a refused change needs a person.
+    let waiting = { noneUnsent with Waiting = 2 }
+    Assert.Equal(Summa.Storage.Integrations.Pending, integrationStates true waiting r |> List.head |> fun (_, s, _, _) -> s)
+
+    let refused =
+        { noneUnsent with
+            Waiting = 1
+            Blocked = Some(1L, "add a customer", "GitHub refused it (forbidden).")
+            BlockedState = Some(Summa.Storage.Integrations.PermanentFailure "forbidden") }
+
+    match integrationStates true refused r |> List.head with
+    | "GitHub", Summa.Storage.Integrations.PermanentFailure _, detail, _ -> Assert.Equal("add a customer: GitHub refused it (forbidden).", detail)
+    | other -> failwith $"%A{other}"
+
+    // A failed delivery: retryable, or permanent for a bounce; the invoice is unchanged.
+    let context: Summa.Ledger.Ledger.Context = { Who = "local-person"; When = december.Now; Source = "test"; CorrelationId = None; Provenance = None }
+    let ok r = match r with Ok v -> v | Error e -> failwith $"%A{e}"
+    let attempt =
+        Summa.Ledger.Lifecycle.recordManual context (Summa.Ledger.Lifecycle.DeliveryAuthority(fun _ -> true)) "DL-1" "INV-0001" { To = [ "ap@acme.example" ]; Cc = []; ReplyTo = None } "email" r |> ok
+
+    let failedOutcome outcome = { attempt with Books = { attempt.Books with Deliveries = attempt.Books.Deliveries |> Map.map (fun _ d -> { d with Outcome = outcome }) } }
+    let delivery states = states |> List.item 1 |> fun (_, s, d, h) -> s, d, h
+
+    match integrationStates false noneUnsent (failedOutcome (Summa.Ledger.Invoicing.DeliveryFailed "timeout")) |> delivery with
+    | Summa.Storage.Integrations.Retryable "timeout", detail, href ->
+        Assert.Contains("sending it again may succeed", detail)
+        Assert.StartsWith("#/invoices/INV-0001", href)
+    | other -> failwith $"%A{other}"
+
+    let bounced = failedOutcome (Summa.Ledger.Invoicing.Bounced "mailbox unknown")
+
+    match integrationStates false noneUnsent bounced |> delivery with
+    | Summa.Storage.Integrations.PermanentFailure "mailbox unknown", detail, _ -> Assert.Contains("could not be delivered", detail)
+    | other -> failwith $"%A{other}"
+
+    Assert.True((bounced.Books.Invoices = r.Books.Invoices))
+    Assert.True((bounced.Books.Ledger.Entries = r.Books.Ledger.Entries))
+
+    // On the work page, as a table.
+    let work = run [ go "#/work" ] { (books ()) with Books = Some bounced } |> fst
+    Assert.Equal<string list>([ "Succeeded"; "Needs a person"; "Succeeded" ], items "integrations" work |> List.map (field "state"))

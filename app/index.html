@@ -1197,6 +1197,15 @@
             <template data-each="workItems" data-key="key"><li><span class="ef-status-lozenge" data-text="kind"></span> <a class="summa-link" data-bind-href="href" data-text="text"></a></li></template>
           </ul>
         </template>
+        <section class="ef-stack" aria-labelledby="integrations-title" id="integrations">
+          <h2 id="integrations-title">Integrations</h2>
+          <p>An outside system being unavailable never changes the books. Each one's state, and what to do.</p>
+          <table class="summa-table" id="integrations-table">
+            <caption class="ef-visually-hidden">Integration states</caption>
+            <thead><tr><th scope="col">System</th><th scope="col">State</th><th scope="col">Details</th></tr></thead>
+            <tbody><template data-each="integrations" data-key="key"><tr><td data-text="name"></td><td><span class="ef-status-lozenge" data-bind-data-state="stateKey" data-text="state"></span></td><td><a class="summa-link" data-bind-href="href" data-text="detail"></a></td></tr></template></tbody>
+          </table>
+        </section>
       </section>
     </template>
 
