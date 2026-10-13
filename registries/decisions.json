@@ -1451,6 +1451,47 @@
     "version": "1.0.0"
   },
   {
+    "created": "2026-10-13",
+    "id": "DF-SUMMA-2026-0033",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0033--reads-pinned-to-the-observed-commit.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261013T125632051Z-07e0596b": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "claude-opus-5-5",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-13T13:17:48.000Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Record the Arca 0.5.0 adoption decisions and measurements (WI-0050)"
+        }
+      }
+    },
+    "related_documents": [
+      "research/decisions/DF-SUMMA-2026-0025--commands-read-only-what-changed.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "performance",
+      "arca",
+      "storage"
+    ],
+    "title": "Reads pinned to the observed commit (Arca 0.5.0); no read cache to batch",
+    "updated": "2026-10-13",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-10-05",
     "id": "DF-SUMMA-FND-2026-0001",
     "owners": [

@@ -38,6 +38,7 @@ this file.
 | Limen F# routing package (limen-fsharp); Arca | Limen 0.9.0; Arca 0.2.1 | `dea81cb` | 2026-10-08 | WI-0042, PR #48 |
 | Praxis, Arca through Conditor 0.8.2 (echelon-current 1.17.0) | Praxis 3.11.0, Arca 0.4.0 | `7df0c80` | 2026-10-09 | WI-0045, PR #61 |
 | Arca (echelon-current 1.18.0) | 0.4.1 | `f763bf6` | 2026-10-09 | WI-0046, PR #62 |
+| Arca (echelon-current 1.19.0); pinned reads adopted | 0.5.0 | `5cef90f` | 2026-10-13 | WI-0050, PR #77 |
 | Visual Engineering | 1.0.1 (in the Conditor set since `f6cdac5`); context 0.1.0 synced in `7718b18` | — | — | — |
 
 ## Not adopted in this repository (as of 2026-10-13)
