@@ -115,6 +115,30 @@ let validateIdentity (id: string) (displayName: string) (slug: string) (currency
     | Ok _ when String.IsNullOrWhiteSpace zone -> Error(MissingField "timeZone")
     | Ok _ -> Ok()
 
+/// The chart a new organization starts with, wherever its books are kept.
+/// Account ids are their codes, which is how the manifest names its default
+/// accounts. It is written as the organization's own account records when
+/// the books are founded, never assumed when they are read (DF-SUMMA-2026-0024).
+let startingChart: Summa.Ledger.Ledger.Account list =
+    [ "1000", "Operating Cash", Summa.Ledger.Ledger.Asset
+      "1100", "Accounts Receivable", Summa.Ledger.Ledger.Asset
+      "2100", "Customer Credits", Summa.Ledger.Ledger.Liability
+      "2200", "Customer Deposits", Summa.Ledger.Ledger.Liability
+      "2300", "Sales Tax Payable", Summa.Ledger.Ledger.Liability
+      "3000", "Owner Equity", Summa.Ledger.Ledger.Equity
+      "3100", "Retained Earnings", Summa.Ledger.Ledger.Equity
+      "4000", "Consulting Revenue", Summa.Ledger.Ledger.Revenue
+      "4100", "Reimbursed Expenses", Summa.Ledger.Ledger.Revenue
+      "6100", "Software", Summa.Ledger.Ledger.Expense
+      "6200", "Travel", Summa.Ledger.Ledger.Expense
+      "6500", "Bad Debt", Summa.Ledger.Ledger.Expense ]
+    |> List.map (fun (code, name, kind) ->
+        { Id = code
+          Code = code
+          Name = name
+          Type = kind
+          Active = true })
+
 /// A new organization's manifest with Summa's defaults: calendar fiscal year,
 /// `INV` numbering, 30-day terms, accrual basis and the default chart's
 /// receivables (1100), revenue (4000), cash (1000), customer credits (2100),

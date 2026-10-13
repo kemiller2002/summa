@@ -91,16 +91,7 @@ let ``books at an older manifest schema wait for an administrator's migration`` 
     let store = founded ()
     let ns = Storage.organizationNamespace production (bindingOf production) "org_acme" |> ok
     let kevinActor = Summa.Access.Actor.person "583231" "kevin" "corr-1"
-
-    Commands.execute store.Provider defaultApprovalGates ns 3
-        { Actor = kevinActor
-          Capability = ManageSettings
-          Summary = "chart"
-          IdempotencyKey = "cmd-chart-0001"
-          Transition = fun r -> Ok { r with Books = Summa.Ledger.Invoicing.openBooks chart } }
-    |> Async.RunSynchronously
-    |> ok
-    |> ignore
+    // Founding wrote the starting chart, with 2100, 2200 and 6500 (DF-SUMMA-2026-0024).
 
     // As a schema 1 Summa left the manifest.
     let file = RelativePath.render ns.Root + "/records/summa.organization/org_acme.json"
