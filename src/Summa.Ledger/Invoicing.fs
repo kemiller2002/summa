@@ -387,6 +387,9 @@ type InvoiceProblem =
     /// A negative quantity or price; corrections use credit memos (INV-ADJ-004).
     | NegativeLine of string
     | InvalidAdjustment of string
+    /// The draft was already issued from a materially different request:
+    /// another date, version or number (INV-CON-008).
+    | IssueConflict of draftId: string * invoiceId: string
 
 /// Where an invoice proposal stands (v0.1 §17, v0.2 §15): approved time
 /// becomes a proposal, a person reviews it, and only then an invoice.
@@ -664,9 +667,10 @@ type IssueRequest =
       /// A number chosen by a person, checked for collisions (INV-NUM-009).
       NumberOverride: string option
       Numbering: NumberingPolicy
-      /// The draft version being issued; None issues whatever version is
-      /// current (INV-REV-006).
-      ExpectedVersion: int option
+      /// The draft version the person reviewed and is issuing. Required:
+      /// issuing any other version is refused as stale (INV-REV-006,
+      /// INV-CON-001, INV-CON-002).
+      ExpectedVersion: int
       Issuer: IssuerSnapshot
       Template: TemplateRef
       /// Why the person issuing approved it, when a policy asks (INV-REV-007).
@@ -759,11 +763,23 @@ let private revenueAdjustments (draft: DraftInvoice) =
         | _ -> true)
     |> adjustmentTotal draft.Currency
 
+/// A retry of an issue already done: the same request returns the invoice
+/// issued (INV-CON-007); one with another date, draft version or number is
+/// a conflict, never a guess (INV-CON-008). The ids a retry generates again
+/// are not input.
+let reissued (request: IssueRequest) (invoice: IssuedInvoice) =
+    let differs =
+        invoice.IssueDate <> request.IssueDate
+        || invoice.Approval.DraftVersion <> request.ExpectedVersion
+        || request.NumberOverride |> Option.exists ((<>) invoice.Number)
+
+    if differs then Error [ IssueConflict(request.DraftId, invoice.InvoiceId) ] else Ok invoice
+
 /// Issues a draft: invoice, AR/revenue entry and obligation, all or none.
 /// Retrying with the same draft id returns the invoice already issued.
 let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Books * IssuedInvoice, InvoiceProblem list> =
     match books.IssuedFrom.TryFind request.DraftId with
-    | Some invoiceId -> Ok(books, books.Invoices[invoiceId])
+    | Some invoiceId -> reissued request books.Invoices[invoiceId] |> Result.map (fun invoice -> books, invoice)
     | None ->
         match books.Drafts.TryFind request.DraftId with
         | None -> Error [ UnknownDraft request.DraftId ]
@@ -771,9 +787,7 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
             let number = request.NumberOverride |> Option.defaultValue (nextNumber request.Numbering request.IssueDate books)
 
             let problems =
-                (match request.ExpectedVersion with
-                 | Some expected when expected <> draft.Version -> [ StaleDraft draft.Version ]
-                 | _ -> [])
+                (if request.ExpectedVersion <> draft.Version then [ StaleDraft draft.Version ] else [])
                 @ validateDraft books draft
                 @ (if books.Invoices |> Map.exists (fun _ i -> i.Number = number) then [ DuplicateInvoiceNumber number ] else [])
 

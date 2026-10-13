@@ -479,13 +479,14 @@ let receivableAccounts (manifest: OrganizationManifest) (ledger: Summa.Ledger.Le
       BadDebt = byCode manifest.Accounting.BadDebtAccount }
 
 /// An issue request with the organization's defaults filled in; the caller
-/// supplies the draft, the date and the ids of what issuing creates.
-let issueRequest (manifest: OrganizationManifest) (ledger: Summa.Ledger.Ledger.Ledger) (draftId: string) (issueDate: DateOnly) (invoiceId: string) (journalEntryId: string) (obligationId: string) : Summa.Ledger.Invoicing.IssueRequest =
+/// supplies the draft and the version of it the person reviewed, the date
+/// and the ids of what issuing creates.
+let issueRequest (manifest: OrganizationManifest) (ledger: Summa.Ledger.Ledger.Ledger) (draftId: string) (expectedVersion: int) (issueDate: DateOnly) (invoiceId: string) (journalEntryId: string) (obligationId: string) : Summa.Ledger.Invoicing.IssueRequest =
     { DraftId = draftId
       IssueDate = issueDate
       NumberOverride = None
       Numbering = numbering manifest
-      ExpectedVersion = None
+      ExpectedVersion = expectedVersion
       Issuer = issuer manifest
       Template = Summa.Ledger.Documents.currentTemplate
       ApprovalReason = None

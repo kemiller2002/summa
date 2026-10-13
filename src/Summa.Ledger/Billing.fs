@@ -686,8 +686,9 @@ let accept (context: Context) (proposalId: string) (request: IssueRequest) (r: R
                   Version = 0
                   Review = Editing }
 
+            // The draft is made here, so the version issued is the one just saved.
             saveDraft context draft r.Books
-            |> Result.bind (issue context request)
+            |> Result.bind (fun books -> issue context { request with ExpectedVersion = books.Drafts[request.DraftId].Version } books)
             |> Result.mapError (Issuing >> List.singleton)
             |> Result.map (fun (books, invoice) ->
                 let books =

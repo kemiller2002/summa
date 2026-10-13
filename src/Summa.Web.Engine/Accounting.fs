@@ -462,6 +462,8 @@ type Msg =
     | DraftNotesChanged of string
     | DraftSubmitted
     | DraftIssued
+    /// Issue the draft at the version the person reviewed.
+    | DraftIssuedAt of version: int
     | PrintRequested
     | PaymentAmountChanged of string
     | PaymentDateChanged of string
@@ -683,11 +685,15 @@ let private command (model: Model) (notice: string) (run: Receivables -> Result<
 let private describe (problems: 'a list) = problems |> List.map (fun p -> $"%A{p}") |> String.concat "; "
 
 /// The issue request for a draft, with the organization's defaults.
-let private issueRequest (manifest: Organization.OrganizationManifest) (books: Receivables) (draftId: string) (issueDate: DateOnly) =
+let private issueRequest (manifest: Organization.OrganizationManifest) (books: Receivables) (draftId: string) (expectedVersion: int) (issueDate: DateOnly) =
     let invoiceId = nextId "INV" books.Books.Invoices.ContainsKey
     let entryId = nextId "JE-INV" books.Books.Ledger.Entries.ContainsKey
     let obligationId = nextId "OBL" books.Books.Obligations.ContainsKey
-    Organization.issueRequest manifest books.Books.Ledger draftId issueDate invoiceId entryId obligationId
+    Organization.issueRequest manifest books.Books.Ledger draftId expectedVersion issueDate invoiceId entryId obligationId
+
+/// The version of a draft in these books, as the person sees it now.
+let private versionOf (books: Receivables) (draftId: string) =
+    books.Books.Drafts.TryFind draftId |> Option.map _.Version |> Option.defaultValue 0
 
 let private nonEmptyText (text: string) = if text.Trim() = "" then None else Some(text.Trim())
 
@@ -1548,12 +1554,11 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
             match draftOf manifest books model.Draft with
             | Error why -> { model with Error = Some why; Notice = None }, []
             | Ok draft ->
-                let request = issueRequest manifest books draft.DraftId (model.Today)
-
                 match saveDraft (context ctx) draft books.Books with
                 | Error problems -> { model with Error = Some(describe problems); Notice = None }, []
                 | Ok saved ->
                     let withDraft = { books with Books = saved }
+                    let request = issueRequest manifest withDraft draft.DraftId (versionOf withDraft draft.DraftId) model.Today
 
                     let reviewed =
                         match Issuance.submitForReview (context ctx) request withDraft with
@@ -1581,10 +1586,17 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                         moved, effects @ more
                     | result, _ -> result
         | _ -> model, []
+    // Issued as the version the person saw: on GitHub the command is decided
+    // again on the books as they stand, and a draft changed since is refused
+    // as stale, never issued (INV-CON-001, INV-CON-002).
     | DraftIssued ->
+        match model.Books, model.Draft.DraftId with
+        | Some books, Some draftId -> apply ctx (DraftIssuedAt(versionOf books draftId)) model
+        | _ -> { model with Error = Some "Save and review the draft first." }, []
+    | DraftIssuedAt version ->
         match model.Manifest, model.Books, model.Draft.DraftId with
         | Some manifest, Some books, Some draftId ->
-            let request = issueRequest manifest books draftId (model.Today)
+            let request = issueRequest manifest books draftId version model.Today
 
             match Issuance.issueInvoice (context ctx) request books with
             | Ok(issued, invoice) ->
@@ -1612,7 +1624,8 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
         match model.Manifest, model.Books with
         | Some manifest, Some books ->
             let draftId = nextId "D" (fun id -> books.Books.Drafts.ContainsKey id || books.Books.IssuedFrom.ContainsKey id)
-            let request = issueRequest manifest books draftId (model.Today)
+            // `accept` makes the draft and issues the version it saved.
+            let request = issueRequest manifest books draftId 0 model.Today
 
             match
                 Billing.markReady (context ctx) false proposalId books
@@ -2107,7 +2120,8 @@ let bookCommand (msg: Msg) : (Summa.Access.Access.Capability * string) option =
     | CustomerAdded -> open' Summa.Access.Access.ManageBilling "add a customer"
     | EngagementAdded -> open' Summa.Access.Access.ManageBilling "add an engagement"
     | DraftSubmitted -> open' Summa.Access.Access.CreateDraftInvoice "save a draft invoice"
-    | DraftIssued -> open' Summa.Access.Access.IssueInvoice "issue an invoice"
+    | DraftIssued
+    | DraftIssuedAt _ -> open' Summa.Access.Access.IssueInvoice "issue an invoice"
     | PdfStored _ -> open' Summa.Access.Access.IssueInvoice "record an invoice's PDF"
     | PaymentRecorded -> open' Summa.Access.Access.RecordPayment "record a payment"
     | ReceiptRecorded -> open' Summa.Access.Access.RecordPayment "record a payment on account"
@@ -2141,7 +2155,17 @@ let replay (ctx: Ctx) (msg: Msg) (basis: Model) (stored: Receivables) : Result<R
 /// Books on GitHub change through the store: a message that changes them
 /// needs its capability, is shown at once, and is committed as a command
 /// (`CommitBooks`), never saved as a snapshot.
+/// The message as it is committed: what the person saw is pinned, so the
+/// replay on the books as they stand checks it. Issuing names the draft
+/// version on screen (INV-CON-001, INV-CON-002).
+let pinned (model: Model) (msg: Msg) =
+    match msg, model.Books, model.Draft.DraftId with
+    | DraftIssued, Some books, Some draftId -> DraftIssuedAt(versionOf books draftId)
+    | _ -> msg
+
 let private updateBooks (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
+    let msg = pinned model msg
+
     if not (onGitHub model) then
         apply ctx msg model
     else
@@ -2201,7 +2225,8 @@ let update (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect list =
     match msg with
     | _ when editsEditor msg && next.Draft <> model.Draft -> next, effects @ [ KeepEditor(Some(encodeEditor next.Counter next.Draft)) ]
     | DraftSubmitted
-    | DraftIssued when not (obj.ReferenceEquals(model.Books, next.Books)) -> { next with KeptEditor = None }, effects @ [ KeepEditor None ]
+    | DraftIssued
+    | DraftIssuedAt _ when not (obj.ReferenceEquals(model.Books, next.Books)) -> { next with KeptEditor = None }, effects @ [ KeepEditor None ]
     | _ -> next, effects
 
 // ---- View -----------------------------------------------------------------------------------
@@ -3970,7 +3995,7 @@ let view (model: Model) : View =
           (let preview =
               match model.Manifest, books, model.Draft.DraftId with
               | Some manifest, Some b, Some draftId when reviewedDraft ->
-                  Issuance.preview b (issueRequest manifest b draftId model.Today) |> Result.toOption |> Option.map fst
+                  Issuance.preview b (issueRequest manifest b draftId (versionOf b draftId) model.Today) |> Result.toOption |> Option.map fst
               | _ -> None
 
            let pv (f: Documents.InvoiceDocument -> string) = text (preview |> Option.map f |> Option.defaultValue "")
