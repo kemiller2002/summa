@@ -1117,6 +1117,31 @@
       },
       "source": "manual",
       "sourceReference": null
+    },
+    {
+      "id": "WI-0047",
+      "title": "Summa: fix delivery defects DEL-A-021 (manual send without authority), DEL-A-046 (one audit event for every outcome), DEL-P-007 (attention item cleared when a new send is queued) (INV-DEL, SUM3-031)",
+      "description": "Escaped defects in WI-0027's delivery lifecycle, found by the program lead's independent acceptance at summa@50cde4a (research-documents PR #12). User decision 2026-10-13: fix them as their own work item. Write a failing test for each first; keep the rest of INV-DEL-001..010 intact. Do not read the independent acceptance cases.",
+      "tags": [
+        "summa",
+        "delivery",
+        "defect"
+      ],
+      "priority": "high",
+      "status": "ready",
+      "attachments": [],
+      "createdAt": "2026-10-13T08:39:02Z",
+      "updatedAt": "2026-10-13T08:39:06Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
     }
   ]
 }
