@@ -194,6 +194,15 @@ module private Accounting =
           view (visit "#/periods")
           view (visit "#/periods/2026-10")
           view (step (visit "#/periods/2026-10") PeriodClosed)
+          // Legal fields recorded on the organization and a customer (INV-INTL-001).
+          view (
+              [ LegalKindChosen "vat-id"; LegalJurisdictionChanged "GB"; LegalValueChanged "GB1"; OrganizationLegalFieldAdded ]
+              |> List.fold step (visit "#/settings")
+          )
+          view (
+              [ LegalKindChosen "customer-tax-id"; LegalJurisdictionChanged "US-NY"; LegalValueChanged "NY-1"; CustomerLegalFieldAdded ]
+              |> List.fold step (visit "#/customers/CUST-0001")
+          )
           // What checking books on GitHub found.
           view (step (visit "#/settings") (BooksChecked [ "records/summa.customer/CUST-0001.json was edited outside Summa." ]))
           // A payment recorded but not applied blocks the month's close.

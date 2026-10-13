@@ -496,7 +496,7 @@
           <ef-print-document class="summa-document" id="invoice-document">
             <ef-print-header repeat="page"><span slot="left" data-text="docIssuer"></span><span slot="right">Invoice <span data-text="docNumber"></span></span></ef-print-header>
             <header class="summa-document__head">
-              <div><p class="summa-document__issuer" data-text="docIssuer"></p><p class="summa-pre" data-text="docIssuerAddress"></p><p data-text="docIssuerEmail"></p></div>
+              <div><p class="summa-document__issuer" data-text="docIssuer"></p><p class="summa-pre" data-text="docIssuerAddress"></p><p data-text="docIssuerEmail"></p><template data-each="docIssuerLegal" data-key="key"><p class="summa-legal" data-text="line"></p></template></div>
               <dl class="summa-document__facts">
                 <div><dt>Invoice number</dt><dd data-text="docNumber"></dd></div>
                 <div><dt>Issue date</dt><dd data-text="docIssueDate"></dd></div>
@@ -505,7 +505,7 @@
                 <template data-if="docHasPurchaseOrder"><div><dt>Purchase order</dt><dd data-text="docPurchaseOrder"></dd></div></template>
               </dl>
             </header>
-            <section aria-label="Bill to"><h2 class="summa-document__label">Bill to</h2><p data-text="docCustomer"></p><p class="summa-pre" data-text="docCustomerAddress"></p></section>
+            <section aria-label="Bill to"><h2 class="summa-document__label">Bill to</h2><p data-text="docCustomer"></p><p class="summa-pre" data-text="docCustomerAddress"></p><template data-each="docCustomerLegal" data-key="key"><p class="summa-legal" data-text="line"></p></template></section>
             <ef-print-table><table class="summa-table" id="invoice-lines">
               <caption>Invoice lines</caption>
               <thead><tr><th scope="col">Description</th><th scope="col" class="summa-number">Quantity</th><th scope="col" class="summa-number">Rate</th><th scope="col" class="summa-number">Amount</th></tr></thead>
@@ -520,6 +520,7 @@
             </dl></ef-print-keep>
             <section aria-label="Payment instructions"><h2 class="summa-document__label">Payment instructions</h2><p class="summa-pre" data-text="docPayment"></p></section>
             <template data-if="docHasNotes"><section aria-label="Notes"><h2 class="summa-document__label">Notes</h2><p class="summa-pre" data-text="docNotes"></p></section></template>
+            <template data-if="docHasStatutory"><section aria-label="Statutory information" id="invoice-statutory"><h2 class="summa-document__label">Statutory information</h2><template data-each="docStatutory" data-key="key"><p class="summa-pre" data-text="line"></p></template></section></template>
             <ef-print-footer repeat="page"><span slot="right"><ef-print-page-number format="page-of-pages"></ef-print-page-number></span></ef-print-footer>
           </ef-print-document>
           <section class="ef-surface ef-stack summa-screen-only" id="invoice-pdf-section" aria-labelledby="pdf-title">
@@ -800,6 +801,25 @@
         </dl>
         <p class="summa-pre" data-text="custAddress"></p>
         <p><a class="summa-link" id="customer-new-invoice" data-bind-href="custNewInvoiceHref">New invoice for this customer</a></p>
+        <section class="ef-surface ef-stack" aria-labelledby="customer-legal-title" id="customer-legal">
+          <h2 id="customer-legal-title">Legal fields on this customer's invoices</h2>
+          <table class="summa-table" id="customer-legal-fields">
+            <caption class="ef-visually-hidden">Recorded legal fields</caption>
+            <thead><tr><th scope="col">Field</th><th scope="col">Jurisdiction</th><th scope="col">Value</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
+            <tbody><template data-each="custLegalFields" data-key="key"><tr><td data-text="label"></td><td data-text="jurisdiction"></td><td data-text="value"></td><td><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="customerLegalFieldRemoved">Remove</button></td></tr></template></tbody>
+          </table>
+          <form class="ef-stack" id="customer-legal-form" data-event="customerLegalFieldAdded">
+            <div class="ef-field"><label class="ef-field__label" for="customer-legal-kind">Field</label>
+              <select id="customer-legal-kind" data-event="legalKindChosen" data-on="change">
+                <template data-each="customerLegalKinds" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
+              </select></div>
+            <div class="ef-field"><label class="ef-field__label" for="customer-legal-jurisdiction">Jurisdiction</label>
+              <input id="customer-legal-jurisdiction" type="text" data-event="legalJurisdictionChanged" data-on="input" data-bind-value="legalJurisdiction" /></div>
+            <div class="ef-field"><label class="ef-field__label" for="customer-legal-value">Value</label>
+              <input id="customer-legal-value" type="text" data-event="legalValueChanged" data-on="input" data-bind-value="legalValue" /></div>
+            <div class="ef-actions"><button type="submit" class="ef-button" id="add-customer-legal-field">Add legal field</button></div>
+          </form>
+        </section>
         <div class="summa-tabs" role="group" aria-label="Customer views">
           <template data-each="customerTabs" data-key="value">
             <button type="button" class="summa-tab" data-event="customerTabChosen" data-bind-aria-pressed="selected" data-bind-data-tab="value" data-text="label"></button>
@@ -1251,6 +1271,27 @@
             <p class="ef-field__description" id="company-payment-note">Printed on invoices. Show masked account numbers only, never a full account number.</p></div>
           <div class="ef-actions"><button type="submit" class="ef-button" id="save-company">Save</button></div>
         </form>
+        <section class="ef-surface ef-stack" aria-labelledby="legal-title" id="organization-legal">
+          <h2 id="legal-title">Legal fields on invoices</h2>
+          <p>Shown on new invoices exactly as recorded. Showing a field does not make an invoice compliant with any jurisdiction's law.</p>
+          <table class="summa-table" id="organization-legal-fields">
+            <caption class="ef-visually-hidden">Recorded legal fields</caption>
+            <thead><tr><th scope="col">Field</th><th scope="col">Jurisdiction</th><th scope="col">Value</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
+            <tbody><template data-each="legalFields" data-key="key"><tr><td data-text="label"></td><td data-text="jurisdiction"></td><td class="summa-pre" data-text="value"></td><td><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="organizationLegalFieldRemoved">Remove</button></td></tr></template></tbody>
+          </table>
+          <form class="ef-stack" id="organization-legal-form" data-event="organizationLegalFieldAdded">
+            <div class="ef-field"><label class="ef-field__label" for="legal-kind">Field</label>
+              <select id="legal-kind" data-event="legalKindChosen" data-on="change">
+                <template data-each="organizationLegalKinds" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
+              </select></div>
+            <div class="ef-field"><label class="ef-field__label" for="legal-jurisdiction">Jurisdiction</label>
+              <input id="legal-jurisdiction" type="text" aria-describedby="legal-jurisdiction-note" data-event="legalJurisdictionChanged" data-on="input" data-bind-value="legalJurisdiction" />
+              <p class="ef-field__description" id="legal-jurisdiction-note">A country code such as GB, or a subdivision such as US-NY.</p></div>
+            <div class="ef-field"><label class="ef-field__label" for="legal-value">Value</label>
+              <textarea id="legal-value" rows="2" data-event="legalValueChanged" data-on="input" data-bind-value="legalValue"></textarea></div>
+            <div class="ef-actions"><button type="submit" class="ef-button" id="add-legal-field">Add legal field</button></div>
+          </form>
+        </section>
         <template data-if="canCheckBooks">
           <section class="ef-surface ef-stack" aria-labelledby="check-title" id="books-check">
             <h2 id="check-title">Check the books against GitHub</h2>

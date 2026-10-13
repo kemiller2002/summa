@@ -76,3 +76,61 @@ let ``INV-INTL-003: no invoice claims compliance with a jurisdiction's tax or e-
 
     for claim in [ "complian"; "compliant"; "e-invoic"; "VAT invoice"; "tax invoice"; "certified"; "fiscal" ] do
         Assert.DoesNotContain(claim, text, StringComparison.OrdinalIgnoreCase)
+
+// ---- Configurable legal fields (INV-INTL-001) -------------------------------------------------
+
+let private vat: LegalField = { Kind = VatId; Jurisdiction = "GB"; Value = "GB123456789" }
+let private registration: LegalField = { Kind = BusinessRegistrationNumber; Jurisdiction = "GB"; Value = "01234567" }
+let private wording: LegalField = { Kind = StatutoryWording; Jurisdiction = "GB"; Value = "Registered in England and Wales." }
+let private customerTax: LegalField = { Kind = CustomerTaxId; Jurisdiction = "US-NY"; Value = "NY-998877" }
+
+[<Fact>]
+let ``INV-INTL-001: legal fields are typed, recorded as given, and checked for jurisdiction and party`` () =
+    Assert.Empty(legalFieldProblems false [ vat; registration; wording ])
+    Assert.Empty(legalFieldProblems true [ customerTax; { vat with Value = "DE999" ; Jurisdiction = "DE" } ])
+    Assert.Equal<LegalFieldProblem list>([ InvalidJurisdiction "England" ], legalFieldProblems false [ { vat with Jurisdiction = "England" } ])
+    Assert.Equal<LegalFieldProblem list>([ BlankLegalField VatId ], legalFieldProblems false [ { vat with Value = " " } ])
+    Assert.Equal<LegalFieldProblem list>([ NotForThisParty CustomerTaxId ], legalFieldProblems false [ customerTax ])
+    Assert.Equal<LegalFieldProblem list>([ NotForThisParty StatutoryWording ], legalFieldProblems true [ wording ])
+    Assert.Equal<LegalFieldProblem list>([ DuplicateLegalField(VatId, "GB") ], legalFieldProblems false [ vat; { vat with Value = "GB000" } ])
+    // The organization's are saved through the books, audited; refused ones change nothing.
+    let saved = saveLegalFields context [ vat; wording ] books |> ok
+    Assert.Equal<LegalField list>([ vat; wording ], organizationLegalFields saved)
+    Assert.Contains(saved.Ledger.Audit, fun a -> a.What = "legal-fields-saved")
+    Assert.True(Result.isError (saveLegalFields context [ customerTax ] saved))
+
+[<Fact>]
+let ``INV-INTL-001: an invoice shows the organization's and the customer's legal fields as they were at issue`` () =
+    let withFields =
+        saveLegalFields context [ vat; registration; wording ] books
+        |> ok
+        |> saveCustomer context { abc with LegalFields = [ customerTax ] }
+
+    let issuing = { request with Issuer = { request.Issuer with LegalFields = organizationLegalFields withFields } }
+    let after, invoice = issue context issuing (saveDraft context (draftFor [ consulting 10000L 15000L ]) withFields |> ok) |> ok
+    Assert.Equal<LegalField list>([ vat; registration; wording ], invoice.Issuer.LegalFields)
+    Assert.Equal<LegalField list>([ customerTax ], invoice.Customer.LegalFields)
+
+    let html = Documents.render (Documents.ofInvoice invoice) |> ok
+    Assert.Contains("VAT ID (GB): GB123456789", html)
+    Assert.Contains("Business registration number (GB): 01234567", html)
+    Assert.Contains("Customer tax ID (US-NY): NY-998877", html)
+    Assert.Contains("<h2 id=\"summa-statutory\">Statutory information</h2><p>Registered in England and Wales.</p>", html)
+    let json = Documents.toJson (Documents.ofInvoice invoice)
+    Assert.Contains("\"kind\":\"vat-id\",\"label\":\"VAT ID\",\"jurisdiction\":\"GB\",\"value\":\"GB123456789\"", json)
+    Assert.Contains("\"kind\":\"customer-tax-id\"", json)
+    // Later changes never reach the issued invoice.
+    let changed = saveCustomer context { abc with LegalFields = [] } (saveLegalFields context [] after |> ok)
+    Assert.Equal<LegalField list>([ customerTax ], changed.Invoices[invoice.InvoiceId].Customer.LegalFields)
+    Assert.Equal<LegalField list>([ vat; registration; wording ], changed.Invoices[invoice.InvoiceId].Issuer.LegalFields)
+
+    // Showing them claims no compliance (INV-INTL-003).
+    for claim in [ "complian"; "e-invoic"; "VAT invoice"; "tax invoice"; "certified"; "fiscal" ] do
+        Assert.DoesNotContain(claim, html + json, StringComparison.OrdinalIgnoreCase)
+
+[<Fact>]
+let ``INV-INTL-001: an invoice without legal fields renders exactly as before`` () =
+    let _, invoice = issued ()
+    let html = Documents.render (Documents.ofInvoice invoice) |> ok
+    Assert.DoesNotContain("Statutory information", html)
+    Assert.DoesNotContain("legalFields", Documents.toJson (Documents.ofInvoice invoice))

@@ -205,12 +205,31 @@ let private renderV1 (doc: InvoiceDocument) =
           yield $"<tr class=\"summa-due\"><th scope=\"row\">Amount due</th><td class=\"summa-number\">{moneyText doc.AmountDue}</td></tr>" ]
         |> String.concat ""
 
+    // Legal fields as recorded, only when there are any, so earlier
+    // documents render unchanged (INV-INTL-001). Statutory wording is its
+    // own section; the others sit with the party they belong to.
+    let legalLines (fields: LegalField list) =
+        fields
+        |> List.filter (fun f -> f.Kind <> StatutoryWording)
+        |> List.map (fun f -> $"{escape (legalFieldLabel f.Kind)} ({escape f.Jurisdiction}): {escape f.Value}")
+
     let issuerContact =
         [ Some(multiline doc.Issuer.Address)
           doc.Issuer.TaxId |> Option.map (fun t -> "Tax ID: " + escape t)
+          yield! legalLines doc.Issuer.LegalFields |> List.map Some
           (if String.IsNullOrWhiteSpace doc.Issuer.Email then None else Some(escape doc.Issuer.Email)) ]
         |> List.choose id
         |> String.concat "<br>"
+
+    let customerLegal =
+        legalLines doc.Customer.LegalFields |> List.map (fun line -> "<br>" + line) |> String.concat ""
+
+    let statutory =
+        match doc.Issuer.LegalFields |> List.filter (fun f -> f.Kind = StatutoryWording) with
+        | [] -> ""
+        | wording ->
+            let paragraphs = wording |> List.map (fun f -> $"<p>{multiline f.Value}</p>") |> String.concat ""
+            $"<section aria-labelledby=\"summa-statutory\"><h2 id=\"summa-statutory\">Statutory information</h2>{paragraphs}</section>"
 
     let payment =
         if String.IsNullOrWhiteSpace doc.Issuer.PaymentInstructions then
@@ -240,13 +259,14 @@ let private renderV1 (doc: InvoiceDocument) =
           "<main>\n"
           $"<header><h1>Invoice {escape doc.Number}</h1><p><strong>{escape doc.Issuer.LegalName}</strong><br>{issuerContact}</p></header>\n"
           $"<dl class=\"summa-details\">{details}</dl>\n"
-          $"<section aria-labelledby=\"summa-bill-to\"><h2 id=\"summa-bill-to\">Bill to</h2><p>{escape doc.Customer.BillingName}<br>{multiline doc.Customer.BillingAddress}</p></section>\n"
+          $"<section aria-labelledby=\"summa-bill-to\"><h2 id=\"summa-bill-to\">Bill to</h2><p>{escape doc.Customer.BillingName}<br>{multiline doc.Customer.BillingAddress}{customerLegal}</p></section>\n"
           "<ef-print-table><table><caption>Invoice lines</caption><thead><tr><th scope=\"col\">Description</th><th scope=\"col\">Quantity</th>"
           $"<th scope=\"col\">Rate ({escape doc.Currency})</th><th scope=\"col\">Discount</th><th scope=\"col\">Amount ({escape doc.Currency})</th></tr></thead>"
           $"<tbody>{lines}</tbody></table></ef-print-table>\n"
           $"<ef-print-keep><table class=\"summa-totals\"><caption>Totals</caption><tbody>{totals}</tbody></table></ef-print-keep>\n"
           payment
           notes
+          statutory
           "\n</main>\n"
           "<ef-print-footer repeat=\"page\"><span slot=\"left\">"
           $"{escape doc.Issuer.LegalName} - Invoice {escape doc.Number}</span><span slot=\"right\"><ef-print-page-number format=\"page-of-pages\"></ef-print-page-number></span></ef-print-footer>\n"
@@ -276,6 +296,30 @@ let private writeOptional (w: Utf8JsonWriter) (name: string) (value: string opti
     match value with
     | Some text -> w.WriteString(name, text)
     | None -> w.WriteNull name
+
+/// `legalFields`, only when there are any (INV-INTL-001).
+let private writeLegalFields (w: Utf8JsonWriter) (fields: LegalField list) =
+    if not fields.IsEmpty then
+        w.WriteStartArray "legalFields"
+
+        for f in fields do
+            w.WriteStartObject()
+            w.WriteString(
+                "kind",
+                match f.Kind with
+                | TaxRegistrationNumber -> "tax-registration-number"
+                | VatId -> "vat-id"
+                | BusinessRegistrationNumber -> "business-registration-number"
+                | CustomerTaxId -> "customer-tax-id"
+                | StatutoryWording -> "statutory-wording"
+            )
+
+            w.WriteString("label", legalFieldLabel f.Kind)
+            w.WriteString("jurisdiction", f.Jurisdiction)
+            w.WriteString("value", f.Value)
+            w.WriteEndObject()
+
+        w.WriteEndArray()
 
 let private writeSource (w: Utf8JsonWriter) (source: LineSource) =
     w.WriteStartObject "source"
@@ -339,6 +383,7 @@ let toJson (doc: InvoiceDocument) =
 
         w.WriteEndArray()
         writeOptional w "paymentProfile" doc.Issuer.PaymentProfile
+        writeLegalFields w doc.Issuer.LegalFields
         w.WriteEndObject()
         w.WriteStartObject "customer"
         w.WriteString("customerId", doc.Customer.CustomerId)
@@ -346,6 +391,7 @@ let toJson (doc: InvoiceDocument) =
         w.WriteString("billingName", doc.Customer.BillingName)
         w.WriteString("billingAddress", doc.Customer.BillingAddress)
         w.WriteString("email", doc.Customer.Email)
+        writeLegalFields w doc.Customer.LegalFields
         w.WriteEndObject()
         writeOptional w "purchaseOrder" doc.Details.PurchaseOrder
         writeOptional w "clientReference" doc.Details.ClientReference

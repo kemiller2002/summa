@@ -180,6 +180,26 @@ type CompanyForm =
       Email: string
       PaymentInstructions: string }
 
+/// A legal field being entered, for the organization or a customer
+/// (INV-INTL-001): its kind's key, jurisdiction and value, as typed.
+type LegalForm = { Kind: string; Jurisdiction: string; Value: string }
+
+let emptyLegal = { Kind = "vat-id"; Jurisdiction = ""; Value = "" }
+
+/// The kinds a person may record, by key; the organization's and a
+/// customer's differ.
+let legalKinds (forCustomer: bool) =
+    [ "tax-registration-number", TaxRegistrationNumber
+      "vat-id", VatId
+      "business-registration-number", BusinessRegistrationNumber
+      if forCustomer then "customer-tax-id", CustomerTaxId else "statutory-wording", StatutoryWording ]
+
+/// A field's key in lists and events: its kind and jurisdiction, which no
+/// two fields share, so removing one names it even if the list changed.
+let legalKey (f: LegalField) =
+    let kind = legalKinds true @ legalKinds false |> List.find (fun (_, k) -> k = f.Kind) |> fst
+    $"{kind}:{f.Jurisdiction}"
+
 /// The `data-files-input` the page's PDF picker carries.
 [<Literal>]
 let PdfInput = "invoicePdf"
@@ -299,6 +319,7 @@ type Model =
       Draft: DraftForm
       Payment: PaymentForm
       Company: CompanyForm
+      Legal: LegalForm
       Credit: CreditForm
       Engagement: EngagementForm
       Packs: Packs
@@ -361,6 +382,7 @@ let initial =
       Draft = draft
       Payment = { InvoiceId = ""; Amount = ""; Date = ""; Method = "ach"; Reference = "" }
       Company = { LegalName = ""; Address = ""; Email = ""; PaymentInstructions = "" }
+      Legal = emptyLegal
       Credit = { Amount = ""; Reason = "" }
       Engagement = { CustomerId = ""; Name = ""; FixedFee = "" }
       Packs = { Files = false; Store = false }
@@ -475,6 +497,13 @@ type Msg =
     | CompanyEmailChanged of string
     | CompanyPaymentChanged of string
     | CompanySaved
+    | LegalKindChosen of string
+    | LegalJurisdictionChanged of string
+    | LegalValueChanged of string
+    | OrganizationLegalFieldAdded
+    | OrganizationLegalFieldRemoved of key: string
+    | CustomerLegalFieldAdded
+    | CustomerLegalFieldRemoved of key: string
     | ResetConfirmed
     | CreditAmountChanged of string
     | CreditReasonChanged of string
@@ -691,7 +720,9 @@ let private issueRequest (manifest: Organization.OrganizationManifest) (books: R
     let invoiceId = nextId "INV" books.Books.Invoices.ContainsKey
     let entryId = nextId "JE-INV" books.Books.Ledger.Entries.ContainsKey
     let obligationId = nextId "OBL" books.Books.Obligations.ContainsKey
-    Organization.issueRequest manifest books.Books.Ledger draftId expectedVersion issueDate invoiceId entryId obligationId
+    let request = Organization.issueRequest manifest books.Books.Ledger draftId expectedVersion issueDate invoiceId entryId obligationId
+    // The organization's legal fields as they stand, snapshotted at issue (INV-INTL-001).
+    { request with Issuer = { request.Issuer with LegalFields = organizationLegalFields books.Books } }
 
 /// The version of a draft in these books, as the person sees it now.
 let private versionOf (books: Receivables) (draftId: string) =
@@ -1504,7 +1535,8 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                           DefaultTerms = terms
                           PaymentProfileId = None
                           Active = true
-                          Tax = tax }
+                          Tax = tax
+                          LegalFields = [] }
 
                     Ok { books with Books = saveCustomer (context ctx) customer books.Books })
 
@@ -1764,6 +1796,66 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
             | [] -> save { model with Manifest = Some changed; Notice = Some "Company details saved. New invoices will use them."; Error = None }
             | problems -> { model with Error = Some(problems |> List.map Diagnostics.describe |> String.concat "; ") }, []
         | None -> model, []
+    | LegalKindChosen v -> { model with Legal = { model.Legal with Kind = v } }, []
+    | LegalJurisdictionChanged v -> { model with Legal = { model.Legal with Jurisdiction = v } }, []
+    | LegalValueChanged v -> { model with Legal = { model.Legal with Value = v } }, []
+    | OrganizationLegalFieldAdded
+    | CustomerLegalFieldAdded ->
+        let forCustomer = (msg = CustomerLegalFieldAdded)
+
+        let customerId =
+            match model.Place with
+            | Routes.Customer(id, _) -> Some id
+            | _ -> None
+
+        match legalKinds forCustomer |> List.tryFind (fun (key, _) -> key = model.Legal.Kind), customerId with
+        | None, _ -> { model with Error = Some "Choose which legal field this is." }, []
+        | Some _, None when forCustomer -> { model with Error = Some "Open the customer to add a legal field." }, []
+        | Some(_, kind), _ ->
+            // Recorded as typed, trimmed; the jurisdiction in capitals. Summa infers none (INV-INTL-001).
+            let field: LegalField = { Kind = kind; Jurisdiction = model.Legal.Jurisdiction.Trim().ToUpperInvariant(); Value = model.Legal.Value.Trim() }
+
+            let words (problems: LegalFieldProblem list) =
+                problems
+                |> List.map (function
+                    | InvalidJurisdiction j -> $"'{j}' is not a jurisdiction: use a country code such as GB, or a subdivision such as US-NY"
+                    | BlankLegalField k -> $"{legalFieldLabel k} needs a value"
+                    | NotForThisParty k -> $"{legalFieldLabel k} cannot be recorded here"
+                    | DuplicateLegalField(k, j) -> $"{legalFieldLabel k} for {j} is already recorded")
+                |> String.concat "; "
+
+            let added, effects =
+                command model $"{legalFieldLabel kind} recorded." (fun books ->
+                    match customerId with
+                    | Some id when forCustomer ->
+                        match books.Books.Customers.TryFind id with
+                        | None -> Error $"Customer {id} is not in these books."
+                        | Some customer ->
+                            let fields = customer.LegalFields @ [ field ]
+
+                            match legalFieldProblems true fields with
+                            | [] -> Ok { books with Books = saveCustomer (context ctx) { customer with LegalFields = fields } books.Books }
+                            | problems -> Error(words problems)
+                    | _ ->
+                        saveLegalFields (context ctx) (organizationLegalFields books.Books @ [ field ]) books.Books
+                        |> Result.map (fun b -> { books with Books = b })
+                        |> Result.mapError words)
+
+            (if added.Error.IsNone then { added with Legal = { emptyLegal with Kind = model.Legal.Kind } } else added), effects
+    | OrganizationLegalFieldRemoved key ->
+        command model "Legal field removed." (fun books ->
+            saveLegalFields (context ctx) (organizationLegalFields books.Books |> List.filter (fun f -> legalKey f <> key)) books.Books
+            |> Result.map (fun b -> { books with Books = b })
+            |> Result.mapError (fun p -> $"%A{p}"))
+    | CustomerLegalFieldRemoved key ->
+        match model.Place with
+        | Routes.Customer(id, _) ->
+            command model "Legal field removed." (fun books ->
+                match books.Books.Customers.TryFind id with
+                | Some customer ->
+                    Ok { books with Books = saveCustomer (context ctx) { customer with LegalFields = customer.LegalFields |> List.filter (fun f -> legalKey f <> key) } books.Books }
+                | None -> Error $"Customer {id} is not in these books.")
+        | _ -> model, []
     | CreditAmountChanged v -> { model with Credit = { model.Credit with Amount = v } }, []
     | CreditReasonChanged v -> { model with Credit = { model.Credit with Reason = v } }, []
     | CreditMemoIssued ->
@@ -2167,6 +2259,10 @@ let bookCommand (msg: Msg) : (Summa.Access.Access.Capability * string) option =
     | PeriodLocked -> open' Summa.Access.Access.ClosePeriod "close a period"
     | PeriodReopened -> open' Summa.Access.Access.ReopenPeriod "reopen a period"
     | CompanySaved -> open' Summa.Access.Access.ManageSettings "change the company details"
+    | OrganizationLegalFieldAdded
+    | OrganizationLegalFieldRemoved _ -> open' Summa.Access.Access.ManageSettings "change the legal fields on invoices"
+    | CustomerLegalFieldAdded
+    | CustomerLegalFieldRemoved _ -> open' Summa.Access.Access.ManageBilling "change a customer's legal fields"
     | ProposalApproved _ -> open' Summa.Access.Access.IssueInvoice "issue an invoice from a proposal"
     | ProposalAbandoned _ -> open' Summa.Access.Access.ProposeInvoice "abandon an invoice proposal"
     | ProposalRateOverridden _ -> open' Summa.Access.Access.OverrideRate "change a proposed rate"
@@ -2290,6 +2386,32 @@ let private timingText =
 
 let private customerName (books: Receivables) (id: string) =
     books.Books.Customers.TryFind id |> Option.map _.Name |> Option.defaultValue id
+
+/// Legal fields as rows: key, label, jurisdiction and value.
+let private legalRows (fields: LegalField list) =
+    fields
+    |> List.map (fun f ->
+        [ "key", Text(legalKey f)
+          "label", Text(legalFieldLabel f.Kind)
+          "jurisdiction", Text f.Jurisdiction
+          "value", Text f.Value ])
+
+/// Legal fields as document lines: the statutory wording alone (`statutory`)
+/// or every other field as "Label (jurisdiction): value".
+let private legalLines (statutory: bool) (fields: LegalField list) =
+    fields
+    |> List.filter (fun f -> (f.Kind = StatutoryWording) = statutory)
+    |> List.map (fun f ->
+        [ "key", Text(legalKey f)
+          "line", Text(if statutory then f.Value else $"{legalFieldLabel f.Kind} ({f.Jurisdiction}): {f.Value}") ])
+
+/// The kinds offered as options, the chosen one selected.
+let private legalOptions (forCustomer: bool) (chosen: string) =
+    legalKinds forCustomer
+    |> List.map (fun (key, kind) ->
+        [ "value", Text key
+          "label", Text(legalFieldLabel kind)
+          "selected", Text(if key = chosen then "true" else "false") ])
 
 let private termsLabel =
     function
@@ -2650,6 +2772,8 @@ let private placeValues (model: Model) (shown: Screen) : View =
       )
       // One customer
       "custName", custText (fun _ c -> c.Name)
+      // The customer's legal fields, as recorded (INV-INTL-001).
+      "custLegalFields", itemsOf (customer |> Option.map (fun (_, c, _) -> legalRows c.LegalFields) |> Option.defaultValue [])
       "custBillingName", custText (fun _ c -> c.BillingName)
       "custEmail", custText (fun _ c -> if c.Email = "" then "-" else c.Email)
       "custAddress", custText (fun _ c -> c.BillingAddress)
@@ -3555,6 +3679,11 @@ let view (model: Model) : View =
           "docIssuer", docText _.Issuer.LegalName
           "docIssuerAddress", docText _.Issuer.Address
           "docIssuerEmail", docText _.Issuer.Email
+          // Legal fields as snapshotted at issue, only those recorded (INV-INTL-001).
+          "docIssuerLegal", Items(doc |> Option.map (fun d -> legalLines false d.Issuer.LegalFields) |> Option.defaultValue [])
+          "docCustomerLegal", Items(doc |> Option.map (fun d -> legalLines false d.Customer.LegalFields) |> Option.defaultValue [])
+          "docStatutory", Items(doc |> Option.map (fun d -> legalLines true d.Issuer.LegalFields) |> Option.defaultValue [])
+          "docHasStatutory", flag (doc |> Option.exists (fun d -> d.Issuer.LegalFields |> List.exists (fun f -> f.Kind = StatutoryWording)))
           "docCustomer", docText _.Customer.BillingName
           "docCustomerAddress", docText _.Customer.BillingAddress
           "docIssueDate", docText (fun d -> Documents.dateText d.IssueDate)
@@ -4151,7 +4280,14 @@ let view (model: Model) : View =
       "companyLegalName", text model.Company.LegalName
       "companyAddress", text model.Company.Address
       "companyEmail", text model.Company.Email
-      "companyPayment", text model.Company.PaymentInstructions ]
+      "companyPayment", text model.Company.PaymentInstructions
+      // Legal fields on invoices (INV-INTL-001).
+      "legalFields", Items(books |> Option.map (fun b -> legalRows (organizationLegalFields b.Books)) |> Option.defaultValue [])
+      "legalKind", text model.Legal.Kind
+      "legalJurisdiction", text model.Legal.Jurisdiction
+      "legalValue", text model.Legal.Value
+      "organizationLegalKinds", Items(legalOptions false model.Legal.Kind)
+      "customerLegalKinds", Items(legalOptions true model.Legal.Kind) ]
     @ detailValues
     @ placeValues model shown
     @ bookValues model shown

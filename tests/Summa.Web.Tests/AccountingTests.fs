@@ -425,3 +425,42 @@ let ``INV-OPS-005: an invoice drills down to its journal entry and lines, its so
         | Text href -> Assert.Equal("True", value "onPayment" (run [ LocationChanged(address href) ] settlement |> fst))
         | other -> failwith $"%A{other}"
     | other -> failwith $"%A{other}"
+
+[<Fact>]
+let ``INV-INTL-001: legal fields are recorded in Settings and on the customer, and the invoice shows them as recorded`` () =
+    let books = started () |> customer
+    let settings = run [ LocationChanged(address "#/settings") ] books |> fst
+    // A jurisdiction that is not a code is refused, with what to type.
+    let refused = run [ LegalKindChosen "vat-id"; LegalJurisdictionChanged "England"; LegalValueChanged "GB123456789"; OrganizationLegalFieldAdded ] settings |> fst
+    Assert.StartsWith("'ENGLAND' is not a jurisdiction", value "error" refused)
+    Assert.Empty(items "legalFields" refused)
+
+    let recorded =
+        run
+            [ LegalKindChosen "vat-id"; LegalJurisdictionChanged "gb"; LegalValueChanged " GB123456789 "; OrganizationLegalFieldAdded
+              LegalKindChosen "statutory-wording"; LegalJurisdictionChanged "GB"; LegalValueChanged "Registered in England and Wales."; OrganizationLegalFieldAdded ]
+            settings
+        |> fst
+
+    let texts name field model = items name model |> List.map (List.find (fst >> (=) field) >> snd >> (function Text t -> t | other -> $"%A{other}"))
+    Assert.Equal<string list>([ "vat-id:GB"; "statutory-wording:GB" ], texts "legalFields" "key" recorded)
+    // The customer's own, on the customer's page; a statutory wording is the organization's only.
+    let customerPage = run [ LocationChanged(address "#/customers/CUST-0001") ] recorded |> fst
+    Assert.Equal<string list>([ "tax-registration-number"; "vat-id"; "business-registration-number"; "customer-tax-id" ], texts "customerLegalKinds" "value" customerPage)
+    let withCustomer = run [ LegalKindChosen "customer-tax-id"; LegalJurisdictionChanged "US-NY"; LegalValueChanged "NY-998877"; CustomerLegalFieldAdded ] customerPage |> fst
+    Assert.Equal(1, (items "custLegalFields" withCustomer).Length)
+    // Issued, the document shows each, and the statutory wording in its own section.
+    let issued = withCustomer |> drafted |> run [ DraftSubmitted; DraftIssued ] |> fst
+    let line name = items name issued |> List.map (List.find (fst >> (=) "line") >> snd)
+    Assert.Equal<Scalar list>([ Text "VAT ID (GB): GB123456789" ], line "docIssuerLegal")
+    Assert.Equal<Scalar list>([ Text "Customer tax ID (US-NY): NY-998877" ], line "docCustomerLegal")
+    Assert.Equal<Scalar list>([ Text "Registered in England and Wales." ], line "docStatutory")
+    Assert.Equal("True", value "docHasStatutory" issued)
+    // Removing a field changes later invoices only.
+    let removed = run [ LocationChanged(address "#/settings"); OrganizationLegalFieldRemoved "vat-id:GB" ] issued |> fst
+    Assert.Equal(1, (items "legalFields" removed).Length)
+    let issuedWith: Summa.Ledger.Invoicing.LegalField list =
+        [ { Kind = Summa.Ledger.Invoicing.VatId; Jurisdiction = "GB"; Value = "GB123456789" }
+          { Kind = Summa.Ledger.Invoicing.StatutoryWording; Jurisdiction = "GB"; Value = "Registered in England and Wales." } ]
+
+    Assert.Equal<Summa.Ledger.Invoicing.LegalField list>(issuedWith, removed.Books.Value.Books.Invoices["INV-0001"].Issuer.LegalFields)

@@ -482,6 +482,17 @@ let private storedBooks (repository: InMemoryStore) =
     | Ok(Summa.Storage.Workspace.Opened opened) -> opened.Books.Books
     | other -> failwith $"%A{other}"
 
+/// The paths of the organization's stored files, relative to its folder.
+let private storedPaths (repository: InMemoryStore) =
+    let config = Summa.Storage.Deployment.parse configuration |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    let binding = Summa.Storage.Storage.binding config |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    let ns = Summa.Storage.Storage.organizationNamespace config binding "org_acme" |> Result.defaultWith (fun e -> failwith $"%A{e}")
+
+    Summa.Storage.Commands.readAll repository.Provider ns
+    |> Async.RunSynchronously
+    |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    |> List.map (fun o -> RelativePath.render o.Path)
+
 [<Fact>]
 let ``books founded on GitHub can be invoiced at once: the founder submits and issues an invoice through the page`` () =
     let repository = InMemoryStore()
@@ -532,6 +543,30 @@ let ``INV-FAIL-002: a refused change says why, what is unchanged, whether to try
         "Someone else changed the same records first. The books show their change. Nothing was saved; the books are as they were. Trying again is safe. Try again: it is decided on the books as they then stand.",
         text
     )
+
+[<Fact>]
+let ``INV-INTL-001: on GitHub, the organization's legal fields are one record, committed as recorded and kept when the last field is removed`` () =
+    browser <- None
+    let repository = InMemoryStore()
+    let page, session, _ = openAs repository "583231" "octocat"
+    let session, _ = send page session [ "foundRequested", "" ]
+    let session, _ = pump page session (locate "#/settings")
+
+    let session, reply =
+        send page session [ "legalKindChosen", "vat-id"; "legalJurisdictionChanged", "GB"; "legalValueChanged", "GB123456789"; "organizationLegalFieldAdded", "" ]
+
+    Assert.False(flag "hasError" reply)
+    Assert.Equal(0, session.Model.Unsaved)
+    let vat: Summa.Ledger.Invoicing.LegalField = { Kind = Summa.Ledger.Invoicing.VatId; Jurisdiction = "GB"; Value = "GB123456789" }
+    Assert.Equal(Some [ vat ], (storedBooks repository).LegalFields)
+    Assert.Contains("records/summa.legal-fields/organization.json", storedPaths repository)
+
+    let session, reply = pump page session (keyed "organizationLegalFieldRemoved" "vat-id:GB" "")
+    Assert.False(flag "hasError" reply)
+    Assert.Equal(0, session.Model.Unsaved)
+    Assert.Equal(Some [], (storedBooks repository).LegalFields)
+    // The record lists none now; it is not deleted (SUM3-034).
+    Assert.Contains("records/summa.legal-fields/organization.json", storedPaths repository)
 
 [<Fact>]
 let ``after a change is committed, the next read pins to the new commit and never reads through the earlier pin`` () =
