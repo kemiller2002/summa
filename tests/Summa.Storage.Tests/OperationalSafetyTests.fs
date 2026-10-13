@@ -310,3 +310,48 @@ let ``every financial record type has a retention, and only drafts are not kept 
         match Retention.ofType recordType with
         | Retention.Permanent _ -> Assert.False(deletable, RecordType.value recordType)
         | Retention.UntilResolved _ -> Assert.True(deletable, RecordType.value recordType)
+
+// ---- Failure handling (INV-FAIL-002, INV-FAIL-004) --------------------------------------------
+
+[<Fact>]
+let ``every command failure has a class, says what is unchanged, whether trying again is safe, and what to do`` () =
+    let pending: PendingReconciliation =
+        { IdempotencyKey = IdempotencyKey.create "op-unknown-0001" |> ok
+          Base = ChangeToken "base"
+          Candidate = None
+          Revisions = Map.empty }
+
+    let cases: (CommandFailure<string> * FailureClass * bool) list =
+        [ InvalidActor [], Authorization, true
+          NeedsApproval IssueInvoice, Authorization, true
+          StorageFailed(StorageFailure.Refused WriteRefusal.ReadOnlyAccess), Authorization, true
+          Untrustworthy [], IntegrityViolation, true
+          StorageFailed(StorageFailure.WrongLocation("a", "b")), IntegrityViolation, true
+          Rejected "the period is closed", PermanentOrValidation, true
+          Unstorable [], PermanentOrValidation, true
+          StorageFailed(StorageFailure.ObjectTooLarge("records/x.json", 2L, 1L)), PermanentOrValidation, true
+          StillConflicted 3, ConcurrencyConflict, true
+          StorageFailed(StorageFailure.Conflicted []), ConcurrencyConflict, true
+          StorageFailed(StorageFailure.StaleChangeToken(ChangeToken "a", ChangeToken "b")), ConcurrencyConflict, true
+          StorageFailed(StorageFailure.RateLimited(None, None)), Retryable, true
+          StorageFailed(StorageFailure.ProviderFailed("github", true, "502")), Retryable, true
+          StorageFailed(StorageFailure.ProviderFailed("github", false, "gone")), DependencyUnavailable, true
+          // The one failure after which the change may have been saved: never retried blindly.
+          Unknown pending, DependencyUnavailable, false
+          StorageFailed(StorageFailure.OutcomeUnknown pending), DependencyUnavailable, false ]
+
+    for failure, expected, safe in cases do
+        let report = classify failure
+        Assert.Equal(expected, report.Class)
+        Assert.Equal(safe, report.RetrySafe)
+        Assert.False(System.String.IsNullOrWhiteSpace report.Next)
+        let text = explain report
+
+        if safe then
+            Assert.StartsWith("Nothing was saved; the books are as they were. Trying again is safe.", text)
+        else
+            Assert.Contains("did not say whether the change was saved", text)
+            Assert.Contains("Do not try again until it is settled.", text)
+
+    // Every class of INV-FAIL-004 is reachable.
+    Assert.Equal(6, cases |> List.map (fun (_, c, _) -> c) |> List.distinct |> List.length)
