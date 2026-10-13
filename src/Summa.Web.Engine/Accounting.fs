@@ -1201,18 +1201,8 @@ let dateRange (today: DateOnly) (key: string) : (DateOnly * DateOnly) option =
 /// What a period close is blocked by (v0.4 §26): the trial balance at the
 /// month's end must balance, and every payment received in the month must
 /// be applied. Drafts are reported but do not block.
-let periodBlockers (r: Receivables) (year: int, month: int) =
-    let monthEnd = DateOnly(year, month, DateTime.DaysInMonth(year, month))
-    let tb = Reports.trialBalance "USD" monthEnd r.Books.Ledger
-
-    let unapplied =
-        r.Payments |> Map.toList |> List.map snd |> List.filter (fun p -> p.DateReceived.Year = year && p.DateReceived.Month = month && (unallocated r p).Minor > 0L)
-
-    [ if tb.TotalDebits <> tb.TotalCredits then "The trial balance at the month's end does not balance."
-      match unapplied.Length with
-      | 0 -> ()
-      | 1 -> "One payment received this month is not fully applied."
-      | n -> $"{n} payments received this month are not fully applied." ]
+/// What stops a month from closing (`Periods.closeBlockers`), in USD.
+let periodBlockers (r: Receivables) (period: int * int) = Periods.closeBlockers "USD" r period
 
 let private methodOf =
     function

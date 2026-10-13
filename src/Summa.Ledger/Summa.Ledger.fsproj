@@ -23,11 +23,11 @@
     <Compile Include="Recurring.fs" />
     <Compile Include="AgentRequests.fs" />
     <Compile Include="Issuance.fs" />
-    <Compile Include="InvoiceCommands.fs" />
     <Compile Include="Lifecycle.fs" />
     <Compile Include="ChronaImport.fs" />
     <Compile Include="Reports.fs" />
     <Compile Include="Periods.fs" />
+    <Compile Include="InvoiceCommands.fs" />
   </ItemGroup>
 
   <ItemGroup>

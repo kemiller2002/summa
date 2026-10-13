@@ -321,3 +321,21 @@ let cashBasis (currency: string) (from: DateOnly) (until: DateOnly) (cashAccount
       Expenses = totalExpenses
       NetIncome = subtract totalRevenue totalExpenses
       RevenueByAccount = revenue }
+
+/// What stops a month from closing (v0.2 §27): a trial balance at the
+/// month's end that does not balance, or a payment received in the month
+/// that is not fully applied. The same rules for a person and an external
+/// command (SUM2-031).
+let closeBlockers (currency: string) (r: Receivables) (year: int, month: int) =
+    let monthEnd = DateOnly(year, month, DateTime.DaysInMonth(year, month))
+    let tb = Reports.trialBalance currency monthEnd r.Books.Ledger
+
+    let unapplied =
+        r.Payments |> Map.toList |> List.map snd |> List.filter (fun p -> p.DateReceived.Year = year && p.DateReceived.Month = month && (unallocated r p).Minor > 0L)
+
+    [ if tb.TotalDebits <> tb.TotalCredits then "The trial balance at the month's end does not balance."
+      match unapplied.Length with
+      | 0 -> ()
+      | 1 -> "One payment received this month is not fully applied."
+      | n -> $"{n} payments received this month are not fully applied." ]
+

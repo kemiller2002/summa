@@ -4,12 +4,13 @@
 /// both in a versioned envelope:
 /// `{"contract":"summa.invoice-commands","kind":"request","message":{...},"version":"1.0"}`,
 /// each written at the oldest version that defines it
-/// (`docs/contracts/invoice-commands-1.1.md`).
+/// (`docs/contracts/invoice-commands-1.2.md`).
 ///
 /// - The commands are domain operations, never record patches
 ///   (INV-CONTRACT-003): propose an invoice, submit a draft for review,
-///   issue a reviewed draft, void an invoice; and, from 1.1, record a payment
-///   and allocate it to an invoice (SUM3-011).
+///   issue a reviewed draft, void an invoice; from 1.1, record a payment and
+///   allocate it (SUM3-011); from 1.2, apply a credit memo, reverse a payment
+///   and close an accounting period (SUM2-031).
 /// - Who acts is not in the message. The host authenticates the caller and
 ///   passes its `Context`, so a message cannot claim to be someone else.
 /// - Encoding is canonical (`Summa.Contracts.Json`), so equal messages have
@@ -35,11 +36,12 @@ let Name = "summa.invoice-commands"
 [<Literal>]
 let Major = 1
 
-/// 1.1 adds `record-payment` and `allocate-payment` (SUM3-011).
+/// 1.1 adds `record-payment` and `allocate-payment` (SUM3-011); 1.2 adds
+/// `apply-credit-memo`, `reverse-payment` and `close-period` (SUM2-031).
 [<Literal>]
-let Minor = 1
+let Minor = 2
 
-/// `1.1`, the newest version this reader knows.
+/// `1.2`, the newest version this reader knows.
 let Version = $"{Major}.{Minor}"
 
 /// What an external caller asks Summa to do.
@@ -56,6 +58,12 @@ type Command =
     | RecordPayment of Payment
     /// Since 1.1: apply part of a payment to an invoice (`Payments.allocate`).
     | AllocatePayment of allocationId: string * paymentId: string * invoiceId: string * amount: Money.Money
+    /// Since 1.2: apply part of a credit memo to an invoice (`Credits.apply`).
+    | ApplyCreditMemo of applicationId: string * creditMemoId: string * invoiceId: string * amount: Money.Money * date: DateOnly
+    /// Since 1.2: reverse a bounced or returned payment (`Credits.reversePayment`).
+    | ReversePayment of paymentId: string * reason: string * date: DateOnly
+    /// Since 1.2: close an accounting month, if nothing stops it (`Periods.closeBlockers`).
+    | ClosePeriod of year: int * month: int
 
 /// The contract minor version that first defines a command. A message is
 /// written at the oldest version that defines it, so 1.0 messages keep
@@ -64,6 +72,9 @@ let sinceMinor =
     function
     | RecordPayment _
     | AllocatePayment _ -> 1
+    | ApplyCreditMemo _
+    | ReversePayment _
+    | ClosePeriod _ -> 2
     | _ -> 0
 
 type Request = { RequestId: string; Command: Command }
@@ -136,6 +147,17 @@ let private command =
               "paymentId", Encode.text payment
               "invoiceId", Encode.text invoice
               "amount", money amount ]
+    | ApplyCreditMemo(application, memo, invoice, amount, date) ->
+        Json.Object
+            [ "kind", Json.String "apply-credit-memo"
+              "applicationId", Encode.text application
+              "creditMemoId", Encode.text memo
+              "invoiceId", Encode.text invoice
+              "amount", money amount
+              "date", Encode.date date ]
+    | ReversePayment(payment, reason, date) ->
+        Json.Object [ "kind", Json.String "reverse-payment"; "paymentId", Encode.text payment; "reason", Encode.text reason; "date", Encode.date date ]
+    | ClosePeriod(year, month) -> Json.Object [ "kind", Json.String "close-period"; "year", Encode.integer year; "month", Encode.integer month ]
 
 let encodeRequest (request: Request) =
     envelope (sinceMinor request.Command) "request" (Json.Object [ "requestId", Encode.text request.RequestId; "command", command request.Command ])
@@ -307,6 +329,35 @@ let private commandOf (minor: int) (path: string) (json: Json) : Decoded<Command
                     <*> get name "paymentId"
                     <*> get name "invoiceId"
                     <*> get moneyOf "amount"))
+        | "apply-credit-memo" ->
+            since 2 (fun () ->
+                closed [ "amount"; "applicationId"; "creditMemoId"; "date"; "invoiceId" ]
+                |> Result.bind (fun () ->
+                    Ok(fun a m i amount date -> ApplyCreditMemo(a, m, i, amount, date))
+                    <*> get name "applicationId"
+                    <*> get name "creditMemoId"
+                    <*> get name "invoiceId"
+                    <*> get moneyOf "amount"
+                    <*> get Decode.date "date"))
+        | "reverse-payment" ->
+            since 2 (fun () ->
+                closed [ "date"; "paymentId"; "reason" ]
+                |> Result.bind (fun () ->
+                    Ok(fun p r date -> ReversePayment(p, r, date))
+                    <*> get name "paymentId"
+                    <*> get name "reason"
+                    <*> get Decode.date "date"))
+        | "close-period" ->
+            since 2 (fun () ->
+                let year =
+                    get Decode.integer "year"
+                    |> Result.bind (fun y -> if y >= 1900 && y <= 9999 then Ok y else Decode.problem $"{path}.year" "must be a year from 1900 to 9999")
+
+                let month =
+                    get Decode.integer "month"
+                    |> Result.bind (fun m -> if m >= 1 && m <= 12 then Ok m else Decode.problem $"{path}.month" "must be from 1 to 12")
+
+                closed [ "month"; "year" ] |> Result.bind (fun () -> Decode.map2 (fun y m -> ClosePeriod(y, m)) year month))
         | other -> Decode.problem $"{path}.kind" $"'{other}' is not a command of this contract")
 
 /// A request from untrusted text: every problem, each with its path.
@@ -378,7 +429,13 @@ type Host =
       VoidEntryId: string -> string
       CashAccountId: string
       ReceivableAccountId: string
-      AllocationEntryId: string -> string }
+      AllocationEntryId: string -> string
+      /// The accounts credits, deposits and reversals post to (1.2).
+      Receivables: Credits.ReceivableAccounts
+      ApplicationEntryId: string -> string
+      ReversalEntryPrefix: string -> string
+      /// The currency a period's trial balance is checked in.
+      Currency: string }
 
 let private refusal code (problem: obj) = { Code = code; Message = $"%A{problem}" }
 
@@ -444,4 +501,32 @@ let handle (context: Context) (host: Host) (request: Request) (r: Receivables) :
         match Payments.allocate context allocation r with
         | Ok next -> next, Accepted { Kind = "allocation"; Id = allocationId; Version = None; Number = None }
         | Error problems -> r, Refused(problems |> List.map (refusal "allocation-refused"))
+    | ApplyCreditMemo(applicationId, memoId, invoiceId, amount, date) ->
+        let application: Credits.ApplicationRequest =
+            { ApplicationId = applicationId
+              Source = FromCreditMemo memoId
+              InvoiceId = invoiceId
+              Amount = amount
+              Date = date
+              JournalEntryId = host.ApplicationEntryId applicationId }
+
+        match Credits.apply context host.Receivables application r with
+        | Ok next -> next, Accepted { Kind = "application"; Id = applicationId; Version = None; Number = None }
+        | Error problems -> r, Refused(problems |> List.map (refusal "application-refused"))
+    | ReversePayment(paymentId, reason, date) ->
+        let reversal: Credits.ReversalRequest = { PaymentId = paymentId; Reason = reason; Date = date; JournalEntryPrefix = host.ReversalEntryPrefix paymentId }
+
+        match Credits.reversePayment context host.Receivables reversal r with
+        | Ok next -> next, Accepted { Kind = "payment-reversal"; Id = paymentId; Version = None; Number = None }
+        | Error problems -> r, Refused(problems |> List.map (refusal "reversal-refused"))
+    | ClosePeriod(year, month) ->
+        let period = $"{year:D4}-{month:D2}"
+
+        match periodState r.Books.Ledger (DateOnly(year, month, 1)), Periods.closeBlockers host.Currency r (year, month) with
+        | PeriodState.Locked, _ -> r, Refused [ { Code = "period-locked"; Message = $"{period} is locked; it cannot be closed again." } ]
+        | PeriodState.Closed, _ -> r, Accepted { Kind = "period"; Id = period; Version = None; Number = None }
+        | PeriodState.Open, [] ->
+            { r with Books = { r.Books with Ledger = closePeriod context (year, month) r.Books.Ledger } },
+            Accepted { Kind = "period"; Id = period; Version = None; Number = None }
+        | PeriodState.Open, blockers -> r, Refused(blockers |> List.map (fun why -> { Code = "period-not-ready"; Message = why }))
     |> respond

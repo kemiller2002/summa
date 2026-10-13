@@ -1,4 +1,4 @@
-/// The external invoice command contract, `summa.invoice-commands` 1.1
+/// The external invoice command contract, `summa.invoice-commands` 1.2
 /// (WI-0029 slice 15, INV-CONTRACT-002): versioned requests and responses,
 /// golden vectors, and each command run as a domain operation.
 module Summa.Tests.InvoiceCommandsTests
@@ -26,7 +26,7 @@ let private isResponse (text: string) = text.Contains "\"kind\":\"response\""
 [<Fact>]
 let ``INV-CONTRACT-002: every valid vector decodes, and encodes back to exactly its bytes`` () =
     let valid = vectors "valid"
-    Assert.True(valid.Length >= 10)
+    Assert.True(valid.Length >= 13)
 
     for name, text in valid do
         let again =
@@ -42,7 +42,7 @@ let ``INV-CONTRACT-002: every valid vector decodes, and encodes back to exactly 
 [<Fact>]
 let ``INV-CONTRACT-002: every invalid vector is refused at the path it names`` () =
     let invalid = vectors "invalid"
-    Assert.True(invalid.Length >= 16)
+    Assert.True(invalid.Length >= 20)
 
     for name, text in invalid do
         let path = name.Split('@', 2)[1]
@@ -57,7 +57,7 @@ let ``INV-CONTRACT-002: every invalid vector is refused at the path it names`` (
 [<Fact>]
 let ``INV-CONTRACT-002: a newer minor of major 1 is read, ignoring what it adds; the response names the request it answers`` () =
     let newer =
-        """{"contract":"summa.invoice-commands","kind":"request","message":{"command":{"draftId":"D-1","expectedVersion":1,"kind":"submit-for-review","note":"added in 1.2"},"priority":"high","requestId":"req-9"},"version":"1.2"}"""
+        """{"contract":"summa.invoice-commands","kind":"request","message":{"command":{"draftId":"D-1","expectedVersion":1,"kind":"submit-for-review","note":"added in 1.3"},"priority":"high","requestId":"req-9"},"version":"1.3"}"""
 
     Assert.Equal(Ok { RequestId = "req-9"; Command = SubmitForReview("D-1", 1) }, decodeRequest newer)
     let response = { RequestId = "req-9"; Outcome = Conflict 2 }
@@ -70,7 +70,11 @@ let private host: Host =
       VoidEntryId = fun invoiceId -> $"JE-VOID-{invoiceId}"
       CashAccountId = "cash"
       ReceivableAccountId = "ar"
-      AllocationEntryId = fun allocationId -> $"JE-AL-{allocationId}" }
+      AllocationEntryId = fun allocationId -> $"JE-AL-{allocationId}"
+      Receivables = { Cash = "cash"; Receivable = "ar"; CustomerCredits = "credits"; CustomerDeposits = "deposits"; BadDebt = "baddebt" }
+      ApplicationEntryId = fun applicationId -> $"JE-AP-{applicationId}"
+      ReversalEntryPrefix = fun paymentId -> $"JE-REV-{paymentId}"
+      Currency = "USD" }
 
 let private run (r: Receivables) (text: string) =
     match decodeRequest text with
@@ -163,3 +167,72 @@ let ``SUM3-011: a payment is recorded and allocated through the contract; an ove
     | other -> failwith $"%A{other}"
 
     Assert.True((same = allocated))
+
+// ---- Domain operations, not generic CRUD (SUM2-031, version 1.2) -----------------------------------
+
+/// Books with the liability and expense accounts credits and reversals post to.
+let private withCreditAccounts () =
+    let extra: Ledger.Account list =
+        [ { Id = "credits"; Code = "2100"; Name = "Customer Credits"; Type = Ledger.Liability; Active = true }
+          { Id = "deposits"; Code = "2200"; Name = "Customer Deposits"; Type = Ledger.Liability; Active = true }
+          { Id = "baddebt"; Code = "6500"; Name = "Bad Debt"; Type = Ledger.Expense; Active = true } ]
+
+    { books with Ledger = extra |> List.fold (fun l (a: Ledger.Account) -> Ledger.addAccount context a l |> ok) books.Ledger }
+
+[<Fact>]
+let ``SUM2-031: every operation the requirement names is a domain command of the contract, and no generic record operation is`` () =
+    let named =
+        [ IssueInvoice("D-1", 1, DateOnly(2026, 10, 7))
+          RecordPayment { Id = "PAY-1"; CustomerId = abc.Id; DateReceived = DateOnly(2026, 10, 20); Amount = usd 100L; Method = Ach; Reference = ""; Memo = None }
+          AllocatePayment("AL-1", "PAY-1", "INV-001", usd 100L)
+          VoidInvoice("INV-001", "Duplicate", DateOnly(2026, 10, 8))
+          ApplyCreditMemo("AP-1", "CM-1", "INV-001", usd 100L, DateOnly(2026, 10, 21))
+          ReversePayment("PAY-1", "Returned", DateOnly(2026, 10, 22))
+          ClosePeriod(2026, 10) ]
+
+    for command in named do
+        Assert.Equal(Ok { RequestId = "r"; Command = command }, decodeRequest (message "r" command))
+
+    // PUT, PATCH and DELETE on records are not commands of the contract.
+    for kind in [ "put-invoice"; "patch-payment"; "delete-journal-entry" ] do
+        let text = (message "r" (SubmitForReview("D-1", 1))).Replace("\"submit-for-review\"", $"\"{kind}\"")
+
+        match decodeRequest text with
+        | Error problems -> Assert.Contains(problems, fun p -> p.Path = "$.message.command.kind")
+        | Ok _ -> failwith $"{kind} was accepted"
+
+[<Fact>]
+let ``SUM2-031: a credit memo is applied, a payment reversed and a period closed through the contract, each by its business rules`` () =
+    let issued, invoice = issue context request (saveDraft context (draftFor [ consulting 10000L 15000L ]) (withCreditAccounts ()) |> ok) |> ok
+    let receivables: Credits.ReceivableAccounts = { Cash = "cash"; Receivable = "ar"; CustomerCredits = "credits"; CustomerDeposits = "deposits"; BadDebt = "baddebt" }
+
+    let memo: CreditMemo =
+        { Id = "CM-1"; CustomerId = abc.Id; InvoiceId = Some invoice.InvoiceId; Amount = usd 20000L; RevenueAccountId = "revenue"; Reason = "Goodwill"; IssueDate = DateOnly(2026, 10, 9); JournalEntryId = "JE-CM-1"; Lines = [] }
+
+    let r = start issued |> Credits.issueCreditMemo context receivables memo |> ok
+    let applied, application = run r (message "req-1" (ApplyCreditMemo("AP-1", "CM-1", invoice.InvoiceId, usd 20000L, DateOnly(2026, 10, 10))))
+    Assert.Equal(Accepted { Kind = "application"; Id = "AP-1"; Version = None; Number = None }, application.Outcome)
+    Assert.Equal(usd 130000L, outstanding applied invoice)
+
+    // A payment received in October and not fully applied stops October from closing.
+    let paid = applied |> recordPayment context { PaymentsReportsTests.payment "PAY-1" 50000L with CustomerId = abc.Id } |> ok
+    let blocked, notReady = run paid (message "req-2" (ClosePeriod(2026, 10)))
+
+    match notReady.Outcome with
+    | Refused [ reason ] -> Assert.Equal("period-not-ready", reason.Code)
+    | other -> failwith $"%A{other}"
+
+    Assert.True((blocked = paid))
+    let allocated = paid |> allocate context (PaymentsReportsTests.allocation "AL-1" "PAY-1" invoice.InvoiceId 50000L) |> ok
+    let closed, closing = run allocated (message "req-3" (ClosePeriod(2026, 10)))
+    Assert.Equal(Accepted { Kind = "period"; Id = "2026-10"; Version = None; Number = None }, closing.Outcome)
+    Assert.Equal(Ledger.Closed, Ledger.periodState closed.Books.Ledger (DateOnly(2026, 10, 1)))
+    // Closing again is the same; a locked period is not closed again.
+    Assert.Equal(closing.Outcome, (run closed (message "req-4" (ClosePeriod(2026, 10))) |> snd).Outcome)
+    let locked = { closed with Books = { closed.Books with Ledger = Ledger.lockPeriod context (2026, 10) closed.Books.Ledger } }
+    Assert.Equal("period-locked", (match (run locked (message "req-5" (ClosePeriod(2026, 10))) |> snd).Outcome with Refused [ r ] -> r.Code | other -> $"%A{other}"))
+    // A reversal undoes the payment's allocation by new entries; the payment stays in history.
+    let reversed, reversal = run allocated (message "req-6" (ReversePayment("PAY-1", "Returned: insufficient funds", DateOnly(2026, 10, 22))))
+    Assert.Equal(Accepted { Kind = "payment-reversal"; Id = "PAY-1"; Version = None; Number = None }, reversal.Outcome)
+    Assert.True(reversed.Payments.ContainsKey "PAY-1")
+    Assert.Equal(usd 130000L, outstanding reversed invoice)
