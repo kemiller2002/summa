@@ -83,6 +83,10 @@ Summa had only the issuer's single tax ID.
 
 ## Consequences
 
-- Fields that are particular to one template or a recurring template are
-  not separately configurable. The organization's and the customer's
-  fields apply to every invoice.
+- **INV-INTL-001 is partial.** The requirement names invoice templates as
+  one of the places that must allow jurisdiction-specific fields.
+  - A print template or a recurring template cannot yet carry its own
+    fields, for example statutory wording that differs per template.
+  - Only the organization's and the customer's fields apply, and the
+    template renders them.
+  - Per-template fields remain open under WI-0029.
