@@ -190,3 +190,30 @@ let ``start-up reads Summa's application manifest and refuses books that need a 
     match Workspace.checkApplication store.Provider (bindingOf production) |> Async.RunSynchronously with
     | Error(Commands.Untrustworthy problems) -> Assert.Contains("need Summa 9.0.0", problems |> List.map describe |> String.concat " ")
     | other -> failwith $"%A{other}"
+
+[<Fact>]
+let ``founding writes the starting chart as the organization's accounts, with one audit event naming each account`` () =
+    let store = founded ()
+
+    match opening store kevin.PrincipalId with
+    | Workspace.Opened opened ->
+        let ledger = opened.Books.Books.Ledger
+        // Every account of the starting chart is the organization's own record.
+        Assert.Equal<Summa.Ledger.Ledger.Account list>(Organization.startingChart, ledger.Accounts |> Map.toList |> List.map snd |> List.sortBy _.Code)
+
+        // One event by the founder, and it names every account it created: code, name and type.
+        match ledger.Audit |> List.filter (fun a -> a.What = "chart-founded") with
+        | [ founding ] ->
+            Assert.Equal(kevin.PrincipalId, founding.Who)
+            Assert.Equal("org_acme", founding.Subject)
+            let named = founding.Change |> Option.map _.Changed |> Option.defaultValue []
+            Assert.Equal(Organization.startingChart.Length, named.Length)
+
+            for account in Organization.startingChart do
+                Assert.Contains($"account {account.Code}: {account.Name} ({account.Type})", named)
+
+            Assert.Contains("account 4000: Consulting Revenue (Revenue)", named)
+        | other -> failwith $"%A{other}"
+
+        Assert.DoesNotContain(ledger.Audit, fun a -> a.What = "account-saved")
+    | other -> failwith $"%A{other}"

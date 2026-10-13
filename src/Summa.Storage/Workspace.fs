@@ -159,10 +159,11 @@ let startingRecords (context: Storage.OperationContext) (organizationId: string)
     |> List.fold (fun ledger account -> ledger |> Result.bind (Summa.Ledger.Ledger.addAccount ledgerContext account)) (Ok Summa.Ledger.Ledger.empty)
     |> Result.mapError (fun problems -> [ InvalidOrganizationManifest $"the starting chart cannot be opened: %A{problems}" ])
     |> Result.map (fun ledger ->
-        let codes = Organization.startingChart |> List.map _.Code |> String.concat ", "
+        // Every account it creates, by code, name and type.
+        let created = Organization.startingChart |> List.map (fun a -> $"account {a.Code}: {a.Name} ({a.Type})")
 
         { ledger with Audit = [] }
-        |> Summa.Ledger.Ledger.auditChange ledgerContext "chart-founded" organizationId (Summa.Ledger.Ledger.applied None [ $"accounts: {codes}" ]))
+        |> Summa.Ledger.Ledger.auditChange ledgerContext "chart-founded" organizationId (Summa.Ledger.Ledger.applied None created))
     |> Result.bind (fun ledger -> FinancialRecords.toRecords (start (Summa.Ledger.Invoicing.openBooks ledger)))
     |> Result.bind FinancialRecords.contents
     |> Result.bind (fun records ->

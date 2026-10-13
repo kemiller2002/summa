@@ -67,8 +67,11 @@ organization's own records.**
    for every deployment. Local books use it as before
    (`LocalSnapshot.defaultChart` is the same list).
 2. `Workspace.startingRecords` turns the starting chart into `summa.account`
-   records, with one audit event by the founder, `chart-founded`, that names
-   every account. Founding is one act. One event instead of twelve also
+   records, with one audit event by the founder, `chart-founded`. It names
+   every account it creates by code, name and type (for example
+   `account 4000: Consulting Revenue (Revenue)`), so the audit trail is as
+   complete as twelve per-account events would be (`WorkspaceTests`).
+   Founding is one act. One event instead of twelve also
    keeps the founding commit small: every open still reads every record
    (SUM0-034). Twelve per-account events made a reload after an offline
    change take 6.2–6.9 s instead of 4.0–4.6 s in the browser tests; with one
