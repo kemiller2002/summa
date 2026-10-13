@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-13T08:39:06Z",
+  "updatedAt": "2026-10-13T08:54:15Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -2256,10 +2256,23 @@
     {
       "id": "WI-0047",
       "type": "bug",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-13T08:39:06Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Lifecycle.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/LifecycleTests.fs"
+        },
+        {
+          "type": "decision",
+          "path": "research/decisions/DF-SUMMA-2026-0022--delivery-authority-outcome-events-and-attention.md"
+        }
+      ],
+      "updatedAt": "2026-10-13T08:54:15Z",
       "telemetryExecutionIds": [
         "EXE-20261013T083907443Z-4a0e1018"
       ],
@@ -2282,7 +2295,9 @@
           "status": "verified",
           "mechanism": "git-remote-observation"
         }
-      }
+      },
+      "completedAt": "2026-10-13T08:54:15Z",
+      "conclusion": "DEL-A-021, DEL-A-046 and DEL-P-007 fixed (escaped from WI-0027, PR #39). Each reproduced first: DEL-A-046 and DEL-P-007 as failing assertions, DEL-A-021 as a compile failure (the API had no authority input). 497 .NET tests pass."
     }
   ]
 }
