@@ -1345,10 +1345,10 @@
         "summa,ui,conformance,merge"
       ],
       "priority": "high",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-13T23:10:19.538Z",
-      "updatedAt": "2026-10-13T23:10:20.000Z",
+      "updatedAt": "2026-10-13T23:57:09.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
