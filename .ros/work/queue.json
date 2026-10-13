@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 55,
+  "nextSeq": 56,
   "items": [
     {
       "id": "WI-0001",
@@ -1303,6 +1303,29 @@
       "attachments": [],
       "createdAt": "2026-10-13T18:52:19.108Z",
       "updatedAt": "2026-10-13T19:28:31.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0055",
+      "title": "Summa: merge origin/main (#98-#101) into the UI conformance branch (#95) with a verified scripted union of Praxis state; re-run every suite (https://github.com/kemiller2002/summa/issues/90)",
+      "description": null,
+      "tags": [
+        "summa,ui,conformance,merge"
+      ],
+      "priority": "high",
+      "status": "ready",
+      "attachments": [],
+      "createdAt": "2026-10-13T20:53:52.273Z",
+      "updatedAt": "2026-10-13T20:53:52.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
