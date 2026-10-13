@@ -127,3 +127,51 @@ let feedback (r: Payments.Receivables) : Feedback list =
                     Reason = review.Reason
                     At = review.RaisedAt }
           | _ -> () ]
+
+// ---- Import safety: parse, validate, preview, accept, apply (SUM3-025) ------------------
+
+/// What receiving a batch of messages does, before anything is applied.
+type ImportSummary =
+    { /// Publication ids that change the books.
+      Accepted: string list
+      /// Publication ids refused, and why.
+      Rejected: (string * string) list
+      /// Publication ids already received: they change nothing.
+      Duplicates: string list
+      /// Accepted publication ids, and what a person should know about them.
+      Warnings: (string * string) list }
+
+let private idOf =
+    function
+    | BillableTimePublished t -> t.PublicationId
+    | PublicationWithdrawn w -> w.PublicationId
+
+/// Parses, validates and previews a batch, in order, on the books as they
+/// stand: what each message would do, and the books as they would be after
+/// the accepted ones. Nothing is applied: the books passed in are
+/// unchanged, and the caller accepts the result by committing it, or not.
+let preview (context: Context) (messages: Publication list) (r: Payments.Receivables) : ImportSummary * Payments.Receivables =
+    let empty = { Accepted = []; Rejected = []; Duplicates = []; Warnings = [] }
+
+    messages
+    |> List.fold
+        (fun (summary, books: Payments.Receivables) message ->
+            let id = idOf message
+
+            match receive context message books with
+            | Error(InvalidMessage problems) ->
+                { summary with Rejected = summary.Rejected @ [ id, problems |> List.map (fun p -> $"%A{p}") |> String.concat "; " ] }, books
+            | Error(Refused problems) ->
+                { summary with Rejected = summary.Rejected @ [ id, problems |> List.map (fun p -> $"%A{p}") |> String.concat "; " ] }, books
+            | Ok next when obj.ReferenceEquals(next, books) || next = books -> { summary with Duplicates = summary.Duplicates @ [ id ] }, books
+            | Ok next ->
+                let warnings =
+                    [ if next.Books.Reviews.Count > books.Books.Reviews.Count then
+                          id, "it corrects time already invoiced: a billing review was raised, and the invoice is unchanged"
+                      match message with
+                      | BillableTimePublished t when (toSourceTime t).Origin = Sources.OriginUnknown -> id, "Chrona does not know where this time came from"
+                      | BillableTimePublished t when not (toSourceTime t).Approved -> id, "the time is not approved, so it cannot be billed yet"
+                      | _ -> () ]
+
+                { summary with Accepted = summary.Accepted @ [ id ]; Warnings = summary.Warnings @ warnings }, next)
+        (empty, r)

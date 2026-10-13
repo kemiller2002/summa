@@ -84,6 +84,39 @@ let eventOf (at: DateTimeOffset) (request: Request<'e>) (result: Result<Outcome,
       Attempts = attempts
       Duplicate = duplicate }
 
+let private base' (at: DateTimeOffset) (actor: Summa.Access.Actor.Actor) command capability =
+    { At = at
+      CorrelationId = actor.CorrelationId
+      Command = command
+      Capability = capability
+      Actor = actor.ActorId
+      ActorKind = Summa.Access.Access.kindName actor.Kind
+      ExecutionId = actor.ExecutionId
+      SourceSystem = actor.SourceSystem
+      Entities = []
+      Outcome = "committed"
+      Category = Succeeded
+      Attempts = 1
+      Duplicate = false }
+
+/// The event for a batch an integration sent (Chrona's publications): a
+/// message refused is an integration failure; one already received is a
+/// duplicate.
+let importEvent (at: DateTimeOffset) (actor: Summa.Access.Actor.Actor) (summary: Summa.Ledger.ChronaImport.ImportSummary) =
+    { base' at actor "chrona-import" "ImportSourceTime" with
+        Entities = summary.Accepted
+        Outcome = $"accepted {summary.Accepted.Length}, rejected {summary.Rejected.Length}, duplicates {summary.Duplicates.Length}"
+        Category = (if summary.Rejected.IsEmpty then Succeeded else Technical)
+        Duplicate = summary.Accepted.IsEmpty && not summary.Duplicates.IsEmpty }
+
+/// The event for a step that ends like a command, such as a migration.
+let stepEvent (at: DateTimeOffset) (actor: Summa.Access.Actor.Actor) (command: string) (result: Result<'a, CommandFailure<'e>>) =
+    match result with
+    | Ok _ -> base' at actor command "ManageOrganization"
+    | Error failure ->
+        let text, category = failureOutcome failure
+        { base' at actor command "ManageOrganization" with Outcome = text; Category = category }
+
 /// The event as one structured log line (JSON).
 let toJson (e: CommandEvent) =
     let optional (v: string option) = v |> Option.map Json.String |> Option.defaultValue Json.Null

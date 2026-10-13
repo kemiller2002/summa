@@ -27,6 +27,9 @@ type Diagnostic =
     | ImmutableRecordChanged of path: string
     | IncompatibleSchema of recordType: string * detail: string
     | MigrationUnsafe of detail: string
+    // Sensitive data --------------------------------------------------------
+    /// A record would hold what Summa never stores (SUM3-022, SUM3-023).
+    | SensitiveData of path: string * what: string
 
 /// The diagnostic's stable code.
 let code =
@@ -51,6 +54,7 @@ let code =
     | ImmutableRecordChanged _ -> "SUMMA.INTEGRITY.IMMUTABLE_CHANGED"
     | IncompatibleSchema _ -> "SUMMA.INTEGRITY.INCOMPATIBLE_SCHEMA"
     | MigrationUnsafe _ -> "SUMMA.INTEGRITY.MIGRATION_UNSAFE"
+    | SensitiveData _ -> "SUMMA.STORAGE.SENSITIVE_DATA"
 
 /// One sentence for people.
 let describe =
@@ -75,3 +79,4 @@ let describe =
     | ImmutableRecordChanged path -> $"'{path}' is a posted record that was changed after it was written."
     | IncompatibleSchema(recordType, detail) -> $"{recordType}: {detail}."
     | MigrationUnsafe detail -> $"The migration is not safe: {detail}."
+    | SensitiveData(path, what) -> $"'{path}' would hold {what}. Summa does not store it: keep only a reference, such as the last four digits."

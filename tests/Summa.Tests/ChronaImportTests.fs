@@ -127,3 +127,31 @@ let ``feedback reports invoiced time, voids and open reviews, and every message 
     for message in invoiced @ messages do
         Assert.Empty(Validate.feedback message)
         Assert.True(Result.isOk (Codec.decodeFeedback (Codec.encodeFeedback message)))
+
+// ---- Import safety: parse, validate, preview, accept, apply (WI-0029, SUM3-025, SUM3-033) -----
+
+[<Fact>]
+let ``a batch is previewed first: accepted, rejected, duplicates and warnings, with nothing applied`` () =
+    let r = priced () |> receiveAll [ BillableTimePublished(published "pub-0" "act-0" 1) ]
+
+    let batch =
+        [ BillableTimePublished(published "pub-1" "act-1" 1)
+          BillableTimePublished { published "pub-2" "act-2" 1 with BillableMinutes = -1 }
+          BillableTimePublished(published "pub-0" "act-0" 1)
+          BillableTimePublished { published "pub-3" "act-3" 1 with Origin = Unknown }
+          BillableTimePublished(published "pub-1" "act-1" 1) ]
+
+    let summary, wouldBe = ChronaImport.preview context batch r
+    Assert.Equal<string list>([ "pub-1"; "pub-3" ], summary.Accepted)
+    Assert.Equal<string list>([ "pub-2" ], summary.Rejected |> List.map fst)
+    // Delivered more than once, the same event has one effect (SUM3-033).
+    Assert.Equal<string list>([ "pub-0"; "pub-1" ], summary.Duplicates)
+    Assert.Equal<string list>([ "pub-3" ], summary.Warnings |> List.map fst)
+    // Nothing was applied: the books passed in are as they were.
+    Assert.False(r.Books.Time.ContainsKey "pub-1")
+    Assert.True(wouldBe.Books.Time.ContainsKey "pub-1")
+    Assert.False(wouldBe.Books.Time.ContainsKey "pub-2")
+    // Accepting is applying exactly what was previewed; previewing again finds only duplicates.
+    let again, same = ChronaImport.preview context batch wouldBe
+    Assert.Empty(again.Accepted)
+    Assert.Equal(wouldBe, same)
