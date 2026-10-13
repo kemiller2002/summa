@@ -1177,10 +1177,10 @@
         "measurement"
       ],
       "priority": "medium",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-13T10:55:33Z",
-      "updatedAt": "2026-10-13T10:55:33Z",
+      "updatedAt": "2026-10-13T10:58:43Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

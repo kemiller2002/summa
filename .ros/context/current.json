@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-13T10:55:33Z",
+  "updatedAt": "2026-10-13T10:58:43Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -2328,13 +2328,24 @@
     {
       "id": "WI-0049",
       "type": "documentation",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-13T10:55:33Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "docs/measurement/baseline-sources.md"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/BaselineSourcesTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-13T10:58:43Z",
       "telemetryExecutionIds": [
         "EXE-20261013T105534706Z-8256bebc"
-      ]
+      ],
+      "completedAt": "2026-10-13T10:58:43Z",
+      "conclusion": "Index of measurement baseline sources: Praxis records, telemetry, PR and CI history, capability adoption commits (each verified to exist), and what is missing; a test keeps it in step with Conditor's selection. Research was done 09:25-10:00Z while PRs #67 and #68 ran CI, overlapping WI-0048/WI-0029."
     }
   ]
 }
