@@ -202,7 +202,7 @@ and a whole number of minor units, here 1,000.00. It is never a decimal.
 
 | Field | Type | Rule |
 |---|---|---|
-| `reasons` | list | At least one reason. Each is `{code, message}`: a stable code (for example `void-refused`, `payment-refused`, `allocation-refused`, `application-refused`, `reversal-refused`, `period-not-ready` or `period-locked`) and a sentence. |
+| `reasons` | list | At least one reason. Each is `{code, message}`: a stable code (for example `not-authorized`, `void-refused`, `payment-refused`, `allocation-refused`, `application-refused`, `reversal-refused`, `period-not-ready` or `period-locked`) and a sentence. |
 
 **`conflict`**: the draft is not at the version the caller named, and
 nothing changed. Review the current version, then send the command again
@@ -232,6 +232,20 @@ The message never says who is acting.
 
 - The host authenticates the caller and runs the command as that caller,
   with that caller's capabilities.
+- A command is refused with `not-authorized`, and nothing changes, unless
+  the caller's role grants its capability:
+
+  | Command | Capability |
+  |---|---|
+  | `propose-invoice` | ProposeInvoice |
+  | `submit-for-review` | CreateDraftInvoice |
+  | `issue-invoice` | IssueInvoice |
+  | `void-invoice` | VoidInvoice |
+  | `record-payment` | RecordPayment |
+  | `allocate-payment` | AllocatePayment |
+  | `apply-credit-memo` | ApplyCreditMemo |
+  | `reverse-payment` | ReversePayment |
+  | `close-period` | ClosePeriod |
 - A message cannot claim another identity.
 - Summa records the authenticated actor in the audit trail of whatever the
   command changes.

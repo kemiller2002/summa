@@ -12,7 +12,9 @@
 ///   allocate it (SUM3-011); from 1.2, apply a credit memo, reverse a payment
 ///   and close an accounting period (SUM2-031).
 /// - Who acts is not in the message. The host authenticates the caller and
-///   passes its `Context`, so a message cannot claim to be someone else.
+///   passes its `Context` and capabilities (`Caller`), so a message cannot
+///   claim to be someone else, and each command is refused unless the
+///   caller holds the capability the page requires for the same action.
 /// - Encoding is canonical (`Summa.Contracts.Json`), so equal messages have
 ///   equal bytes. Decoding treats the text as untrusted: every problem is
 ///   reported with its JSON path. A newer minor of major 1 is read, ignoring
@@ -419,6 +421,27 @@ let decodeResponse (text: string) : Decoded<Response> =
 
 // ---- Handling ---------------------------------------------------------------------------
 
+/// The authenticated caller, as the host established it: who acts, and the
+/// capabilities their role grants in these books.
+type Caller =
+    { Context: Context
+      Capabilities: Set<Summa.Access.Access.Capability> }
+
+/// The capability a command needs: the one the page requires for the same
+/// action, or, for actions the page does not offer, the capability of the
+/// same name.
+let capabilityOf (command: Command) : Summa.Access.Access.Capability =
+    match command with
+    | ProposeInvoice _ -> Summa.Access.Access.ProposeInvoice
+    | SubmitForReview _ -> Summa.Access.Access.CreateDraftInvoice
+    | IssueInvoice _ -> Summa.Access.Access.IssueInvoice
+    | VoidInvoice _ -> Summa.Access.Access.VoidInvoice
+    | RecordPayment _ -> Summa.Access.Access.RecordPayment
+    | AllocatePayment _ -> Summa.Access.Access.AllocatePayment
+    | ApplyCreditMemo _ -> Summa.Access.Access.ApplyCreditMemo
+    | ReversePayment _ -> Summa.Access.Access.ReversePayment
+    | ClosePeriod _ -> Summa.Access.Access.ClosePeriod
+
 /// What the host supplies: the accounts proposals post to, the issue request
 /// for a draft (the organization's defaults), the id of a void's entry, and
 /// the accounts and entry id an allocation posts to.
@@ -444,10 +467,17 @@ let private ofBlockers (draftId: string) (r: Receivables) (blockers: Issuance.Bl
     | Some _, Some draft -> Conflict draft.Version
     | _ -> Refused(blockers |> List.map (fun b -> { Code = b.Code; Message = $"{b.Explanation} {b.Resolution}" }))
 
-/// Runs one request as the host's authenticated `context`: the books after
-/// it (unchanged unless accepted) and the response.
-let handle (context: Context) (host: Host) (request: Request) (r: Receivables) : Receivables * Response =
+/// Runs one request as the host's authenticated caller: the books after it
+/// (unchanged unless accepted) and the response. A caller without the
+/// command's capability is refused before anything runs.
+let handle (caller: Caller) (host: Host) (request: Request) (r: Receivables) : Receivables * Response =
     let respond (books, outcome) = books, { RequestId = request.RequestId; Outcome = outcome }
+    let context = caller.Context
+    let needed = capabilityOf request.Command
+
+    if not (caller.Capabilities.Contains needed) then
+        respond (r, Refused [ { Code = "not-authorized"; Message = $"This needs the {Summa.Access.Access.capabilityName needed} capability, which the caller's role does not grant." } ])
+    else
 
     match request.Command with
     | ProposeInvoice(proposalId, customerId, engagementId, currency, time) ->

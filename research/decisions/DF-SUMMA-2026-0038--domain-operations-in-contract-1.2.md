@@ -63,6 +63,28 @@ lived in the web engine, where an external caller would not meet it.
    DELETE of records; an unknown command kind is refused. The store already
    refuses deleting or rewriting posted records (SUM0-027).
 
+4. **Every command checks its capability (escaped defect, fixed here).**
+   - **Defect:** \`InvoiceCommands.handle\`, from #80 (1.0) and #81 (1.1),
+     took only a \`Context\`, which carries no capabilities. Every command
+     therefore ran for any caller the host authenticated, whatever their
+     role. The 1.0 contract document already promised that the caller's
+     capabilities apply. Found at review of #82, before any host called
+     \`handle\`.
+   - **Fix:** \`handle\` now takes a \`Caller\` (the context plus the
+     capabilities the caller's role grants). Before anything runs, it
+     refuses a command whose capability is missing (\`not-authorized\`),
+     leaving the books unchanged.
+   - **Capabilities:** \`capabilityOf\` names each one. Where the page
+     offers the action, it is the page's capability (CreateDraftInvoice,
+     IssueInvoice, RecordPayment, AllocatePayment, ClosePeriod). Otherwise
+     it is the capability of the same name (ProposeInvoice, VoidInvoice,
+     ApplyCreditMemo, ReversePayment).
+   - **Test:** a table test runs all nine commands of 1.0 to 1.2 without
+     their capability and expects the refusal with the books unchanged. A
+     temporary removal of the check made it fail.
+   - **Signature change:** \`handle context host request books\` becomes
+     \`handle caller host request books\`.
+
 ## Consequences
 
 - Agents and integrations can act only through legal business transitions.

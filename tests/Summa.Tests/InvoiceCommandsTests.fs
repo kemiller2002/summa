@@ -76,10 +76,13 @@ let private host: Host =
       ReversalEntryPrefix = fun paymentId -> $"JE-REV-{paymentId}"
       Currency = "USD" }
 
+/// A caller whose role grants every capability, so a test sees the domain's answer.
+let private everything: Caller = { Context = context; Capabilities = Set.ofList Summa.Access.Access.allCapabilities }
+
 let private run (r: Receivables) (text: string) =
     match decodeRequest text with
     | Ok parsed ->
-        let next, response = handle context host parsed r
+        let next, response = handle everything host parsed r
         next, decodeResponse (encodeResponse response) |> Result.defaultWith (fun e -> failwith $"%A{e}")
     | Error problems -> failwith $"%A{problems}"
 
@@ -236,3 +239,41 @@ let ``SUM2-031: a credit memo is applied, a payment reversed and a period closed
     Assert.Equal(Accepted { Kind = "payment-reversal"; Id = "PAY-1"; Version = None; Number = None }, reversal.Outcome)
     Assert.True(reversed.Payments.ContainsKey "PAY-1")
     Assert.Equal(usd 130000L, outstanding reversed invoice)
+
+// ---- Capabilities (SUM2-031, INV-SEC-001) ------------------------------------------------------
+
+[<Fact>]
+let ``every command, 1.0 to 1.2, is refused for a caller without the capability the page requires, and the books are unchanged`` () =
+    let issued, invoice = issue context request (saveDraft context (draftFor [ consulting 10000L 15000L ]) (withCreditAccounts ()) |> ok) |> ok
+    let drafted = start (saveDraft context { draftFor [ consulting 1000L 10000L ] with DraftId = "D-2" } (withCreditAccounts ()) |> ok)
+    let r = start issued |> recordPayment context { PaymentsReportsTests.payment "PAY-1" 50000L with CustomerId = abc.Id } |> ok
+
+    let table: (Command * Summa.Access.Access.Capability * Receivables) list =
+        [ ProposeInvoice("P-1", abc.Id, None, "USD", [ "pub-1" ]), Summa.Access.Access.ProposeInvoice, r
+          SubmitForReview("D-2", 1), Summa.Access.Access.CreateDraftInvoice, drafted
+          IssueInvoice("D-2", 1, DateOnly(2026, 10, 7)), Summa.Access.Access.IssueInvoice, drafted
+          VoidInvoice(invoice.InvoiceId, "Duplicate", DateOnly(2026, 10, 8)), Summa.Access.Access.VoidInvoice, start issued
+          RecordPayment { PaymentsReportsTests.payment "PAY-2" 100L with CustomerId = abc.Id }, Summa.Access.Access.RecordPayment, r
+          AllocatePayment("AL-1", "PAY-1", invoice.InvoiceId, usd 100L), Summa.Access.Access.AllocatePayment, r
+          ApplyCreditMemo("AP-1", "CM-1", invoice.InvoiceId, usd 100L, DateOnly(2026, 10, 10)), Summa.Access.Access.ApplyCreditMemo, r
+          ReversePayment("PAY-1", "Returned", DateOnly(2026, 10, 22)), Summa.Access.Access.ReversePayment, r
+          ClosePeriod(2026, 9), Summa.Access.Access.ClosePeriod, r ]
+
+    // Every command of the contract is in the table, each with the page's capability.
+    Assert.Equal(9, table.Length)
+
+    for command, capability, books in table do
+        Assert.Equal(capability, capabilityOf command)
+        let request = { RequestId = "req-x"; Command = command }
+        let without = { everything with Capabilities = everything.Capabilities.Remove capability }
+        let after, response = handle without host request books
+
+        match response.Outcome with
+        | Refused [ reason ] -> Assert.Equal("not-authorized", reason.Code)
+        | other -> failwith $"%A{command} without {capability}: %A{other}"
+
+        Assert.True((after = books), $"%A{command} changed the books without {capability}")
+        // With the capability, it is not refused for authority.
+        match (handle everything host request books |> snd).Outcome with
+        | Refused reasons -> Assert.DoesNotContain(reasons, fun r -> r.Code = "not-authorized")
+        | _ -> ()
