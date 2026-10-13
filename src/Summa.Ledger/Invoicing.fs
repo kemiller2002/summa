@@ -468,6 +468,13 @@ type Contribution =
       At: DateTimeOffset
       Provenance: Provenance option }
 
+/// The scheduled occurrence of a recurring template a proposal was made
+/// for (INV-REC-004), and the template version it used (INV-REC-003).
+type Occurrence =
+    { TemplateId: string
+      TemplateVersion: int
+      Date: DateOnly }
+
 type Proposal =
     { Id: string
       CustomerId: string
@@ -479,7 +486,40 @@ type Proposal =
       State: ProposalState
       CreatedAt: DateTimeOffset
       /// Everyone who contributed, oldest first.
-      Contributions: Contribution list }
+      Contributions: Contribution list
+      /// Set when a recurring template made it.
+      Occurrence: Occurrence option }
+
+/// When a recurring template falls due (INV-REC-002).
+type Recurrence =
+    /// On this day of every month (1 to 28, so every month has it).
+    | Monthly of dayOfMonth: int
+    /// Every this many weeks, on the weekday the template starts.
+    | EveryWeeks of weeks: int
+
+/// A recurring billing definition (INV-REC-001, 002). It is a template, not
+/// an invoice: each scheduled occurrence becomes an invoice proposal for a
+/// person to review, never an issued invoice. A version is never changed;
+/// editing makes the next version, which only later proposals use
+/// (INV-REC-003). Its next generation date is derived, never stored.
+type RecurringTemplate =
+    { Id: string
+      Version: int
+      CustomerId: string
+      EngagementId: string option
+      Currency: string
+      Schedule: Recurrence
+      /// The lines each proposal starts from, at their fixed prices: the
+      /// template's pricing rule.
+      Lines: InvoiceLine list
+      Terms: PaymentTerms option
+      /// Who each invoice should go to by default.
+      Recipients: Recipients option
+      StartsOn: DateOnly
+      EndsOn: DateOnly option
+      /// Stops after this many occurrences, when given.
+      Occurrences: int option
+      Active: bool }
 
 /// A versioned payment instructions profile (INV-PAYINST-001). A version
 /// is never changed; editing makes a new version, so invoices keep what
@@ -580,7 +620,9 @@ type Books =
       /// Payment profiles by `id@version`.
       PaymentProfiles: Map<string, PaymentProfile>
       Deliveries: Map<string, DeliveryAttempt>
-      FollowUps: Map<string, FollowUp> }
+      FollowUps: Map<string, FollowUp>
+      /// Recurring templates by `id@version` (INV-REC).
+      Templates: Map<string, RecurringTemplate> }
 
 let openBooks (ledger: Ledger) =
     { Ledger = ledger
@@ -599,7 +641,8 @@ let openBooks (ledger: Ledger) =
       Artifacts = Map.empty
       PaymentProfiles = Map.empty
       Deliveries = Map.empty
-      FollowUps = Map.empty }
+      FollowUps = Map.empty
+      Templates = Map.empty }
 
 let private termsWords =
     function

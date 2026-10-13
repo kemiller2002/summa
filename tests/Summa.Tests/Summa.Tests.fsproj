@@ -28,6 +28,7 @@
     <Compile Include="InvoiceDataTests.fs" />
     <Compile Include="InvoiceScaleTests.fs" />
     <Compile Include="OperationsViewsTests.fs" />
+    <Compile Include="RecurringTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

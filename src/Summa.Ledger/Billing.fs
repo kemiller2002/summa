@@ -535,7 +535,8 @@ let buildProposal (context: Context) (request: ProposalRequest) (r: Receivables)
                   Grouping = request.Grouping
                   State = Proposed
                   CreatedAt = context.When
-                  Contributions = [ contribution context "proposed" ] }
+                  Contributions = [ contribution context "proposed" ]
+                  Occurrence = None }
 
 /// Proposes an invoice and reserves its sources. Retrying the same
 /// proposal changes nothing; reusing its id for another is refused.
@@ -663,6 +664,29 @@ let abandon (context: Context) (proposalId: string) (r: Receivables) =
 /// invoice in the same transition, and its sources are consumed
 /// (INV-CHR-006). If anything fails nothing changes and the sources stay
 /// reserved (INV-CHR-007). Idempotent.
+/// The draft a proposal becomes when accepted. A recurring proposal's
+/// draft takes the terms and delivery defaults of the template version that
+/// made it (INV-REC-002).
+let draftOf (books: Books) (p: Proposal) (draftId: string) =
+    let template =
+        p.Occurrence |> Option.bind (fun o -> books.Templates.TryFind $"{o.TemplateId}@{o.TemplateVersion}")
+
+    { DraftId = draftId
+      CustomerId = p.CustomerId
+      Currency = p.Currency
+      Lines = p.Lines |> List.map _.Line
+      Adjustments = []
+      Discounts = []
+      Terms = template |> Option.bind _.Terms
+      DueDate = None
+      Corrects = None
+      EngagementId = p.EngagementId
+      Details = noDetails
+      Assumptions = []
+      Recipients = template |> Option.bind _.Recipients
+      Version = 0
+      Review = Editing }
+
 let accept (context: Context) (proposalId: string) (request: IssueRequest) (r: Receivables) =
     match r.Books.Proposals.TryFind proposalId with
     | Some { State = Accepted invoiceId } -> Ok(r, r.Books.Invoices[invoiceId])
@@ -672,22 +696,7 @@ let accept (context: Context) (proposalId: string) (request: IssueRequest) (r: R
         match changedSources r p with
         | _ :: _ as changed -> Error [ SourcesChanged changed ]
         | [] ->
-            let draft =
-                { DraftId = request.DraftId
-                  CustomerId = p.CustomerId
-                  Currency = p.Currency
-                  Lines = p.Lines |> List.map _.Line
-                  Adjustments = []
-                  Discounts = []
-                  Terms = None
-                  DueDate = None
-                  Corrects = None
-                  EngagementId = p.EngagementId
-                  Details = noDetails
-                  Assumptions = []
-                  Recipients = None
-                  Version = 0
-                  Review = Editing }
+            let draft = draftOf r.Books p request.DraftId
 
             // The draft is made here, so the version issued is the one just saved.
             saveDraft context draft r.Books
