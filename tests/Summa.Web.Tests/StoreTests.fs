@@ -520,3 +520,11 @@ let ``books founded on GitHub can be invoiced at once: the founder submits and i
     Assert.Equal(1000_00L, invoice.Total.Minor)
     // The receivable and the revenue were posted to the organization's own accounts.
     Assert.Contains(books.Ledger.Entries.Values, fun e -> e.Lines |> List.exists (fun l -> l.AccountId = "4000"))
+
+[<Fact>]
+let ``INV-FAIL-002: a refused change says why, what is unchanged, whether to try again, and what to do`` () =
+    let text = Summa.Web.Application.Store.describeFailure (Summa.Storage.Commands.StorageFailed(StorageFailure.Conflicted []))
+    Assert.Equal(
+        "Someone else changed the same records first. The books show their change. Nothing was saved; the books are as they were. Trying again is safe. Try again: it is decided on the books as they then stand.",
+        text
+    )

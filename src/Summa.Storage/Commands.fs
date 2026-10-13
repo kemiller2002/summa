@@ -45,6 +45,75 @@ type CommandFailure<'e> =
     | Unknown of PendingReconciliation
     | StorageFailed of StorageFailure
 
+/// What kind of failure a command met (INV-FAIL-004).
+type FailureClass =
+    /// It may pass if tried again later, unchanged.
+    | Retryable
+    /// The command itself is refused: trying it again changes nothing.
+    | PermanentOrValidation
+    /// The actor may not, or a person must approve it first.
+    | Authorization
+    /// Someone else changed the same books first.
+    | ConcurrencyConflict
+    /// GitHub (or another dependency) could not be reached or did not answer.
+    | DependencyUnavailable
+    /// The stored books cannot be trusted as they are.
+    | IntegrityViolation
+
+/// What a person is told about a failed command beside why (INV-FAIL-002):
+/// its class, what remains as it was, whether trying again is safe, and
+/// what to do next.
+type FailureReport =
+    { Class: FailureClass
+      Unchanged: string
+      RetrySafe: bool
+      Next: string }
+
+let private nothingWritten = "Nothing was saved; the books are as they were."
+
+/// The report for a command's failure. Every failure leaves the books as
+/// they were, except an unknown outcome: GitHub may have saved the change,
+/// so it is reconciled before anything is sent again, never retried blindly.
+let classify (failure: CommandFailure<'e>) : FailureReport =
+    let report cls safe next = { Class = cls; Unchanged = nothingWritten; RetrySafe = safe; Next = next }
+
+    match failure with
+    | InvalidActor _ -> report Authorization true "Sign in again."
+    | NotAuthorized _ -> report Authorization true "Ask an administrator for the capability, or ask someone who has it."
+    | NeedsApproval _ -> report Authorization true "Ask a person who may approve it."
+    | Untrustworthy _ -> report IntegrityViolation true "Check the books and correct the records named; nothing can be changed until they pass."
+    | Incompatible _ -> report PermanentOrValidation true "Use the Summa version these books were written by, or have an administrator migrate them."
+    | Rejected _ -> report PermanentOrValidation true "Correct what is named, then try again."
+    | Unstorable _ -> report PermanentOrValidation true "Correct what is named; a posted record is corrected with a new record."
+    | StillConflicted _ -> report ConcurrencyConflict true "Try again: it is decided on the books as they then stand."
+    | Unknown _ ->
+        { Class = DependencyUnavailable
+          Unchanged = "GitHub did not say whether the change was saved; nothing else changed."
+          RetrySafe = false
+          Next = "Reload. Summa finds out whether it was saved before anything is sent again." }
+    | StorageFailed failure ->
+        match failure with
+        | StorageFailure.Conflicted _
+        | StorageFailure.StaleChangeToken _
+        | StorageFailure.StaleNamespaceToken _ -> report ConcurrencyConflict true "Try again: it is decided on the books as they then stand."
+        | StorageFailure.OutcomeUnknown _ ->
+            { Class = DependencyUnavailable
+              Unchanged = "GitHub did not say whether the change was saved; nothing else changed."
+              RetrySafe = false
+              Next = "Reload. Summa finds out whether it was saved before anything is sent again." }
+        | StorageFailure.Refused _ -> report Authorization true "Ask for write access to the data repository, or to its branch."
+        | StorageFailure.RateLimited _ -> report Retryable true "Wait a minute, then try again."
+        | StorageFailure.ProviderFailed(_, true, _) -> report Retryable true "Try again shortly."
+        | StorageFailure.ProviderFailed(_, false, _) -> report DependencyUnavailable true "Try again later; if it keeps failing, tell your administrator."
+        | StorageFailure.ObjectTooLarge _ -> report PermanentOrValidation true "Make the record smaller; a document goes to artifact storage, not the books."
+        | StorageFailure.WrongLocation _ -> report IntegrityViolation true "Tell your administrator: the deployment points at the wrong place."
+        | StorageFailure.IntegrityRefused _ -> report IntegrityViolation true "Check the books; the record named was refused as it is."
+
+/// The report as sentences, to follow the reason (INV-FAIL-002).
+let explain (report: FailureReport) =
+    let retry = if report.RetrySafe then "Trying again is safe." else "Do not try again until it is settled."
+    $"{report.Unchanged} {retry} {report.Next}"
+
 /// A command: who, which capability it needs, its one-line summary, its
 /// idempotency key, and the pure transition.
 [<NoEquality; NoComparison>]

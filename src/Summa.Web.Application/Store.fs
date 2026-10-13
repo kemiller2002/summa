@@ -167,20 +167,24 @@ let lock (bridge: Bridge) (request: QueueLockRequest) : Async<QueueLockOutcome> 
 let describeFailure (failure: Commands.CommandFailure<string>) =
     let all (diagnostics: Diagnostics.Diagnostic list) = diagnostics |> List.map Diagnostics.describe |> String.concat " "
 
-    match failure with
-    | Commands.InvalidActor _ -> "Summa cannot act for this sign-in."
-    | Commands.NotAuthorized _ -> "Your role in these books does not include this."
-    | Commands.NeedsApproval _ -> "This needs a person's approval."
-    | Commands.Untrustworthy problems -> "The books failed their checks: " + all problems
-    | Commands.Incompatible _ -> "These books were written by another version of Summa; this one cannot change them."
-    | Commands.Rejected why -> why
-    | Commands.Unstorable problems -> "The change cannot be stored: " + all problems
-    | Commands.StillConflicted attempts -> $"Others kept changing the books; the change was decided {attempts} times and not saved. Try again."
-    | Commands.Unknown _ -> "GitHub did not say whether the change was saved. Reload to see the books as they stand."
-    | Commands.StorageFailed(StorageFailure.Conflicted _) -> "Someone else changed the same records first. The books show their change; try yours again."
-    | Commands.StorageFailed(StorageFailure.Refused _) -> "GitHub refused the write: your account cannot write to this repository or branch."
-    | Commands.StorageFailed(StorageFailure.RateLimited _) -> "GitHub asked Summa to slow down. Try again in a minute."
-    | Commands.StorageFailed _ -> "GitHub could not be reached, or refused the request."
+    let why =
+        match failure with
+        | Commands.InvalidActor _ -> "Summa cannot act for this sign-in."
+        | Commands.NotAuthorized _ -> "Your role in these books does not include this."
+        | Commands.NeedsApproval _ -> "This needs a person's approval."
+        | Commands.Untrustworthy problems -> "The books failed their checks: " + all problems
+        | Commands.Incompatible _ -> "These books were written by another version of Summa; this one cannot change them."
+        | Commands.Rejected why -> why
+        | Commands.Unstorable problems -> "The change cannot be stored: " + all problems
+        | Commands.StillConflicted attempts -> $"Others kept changing the books; the change was decided {attempts} times and not saved."
+        | Commands.Unknown _ -> "GitHub did not answer in time."
+        | Commands.StorageFailed(StorageFailure.Conflicted _) -> "Someone else changed the same records first. The books show their change."
+        | Commands.StorageFailed(StorageFailure.Refused _) -> "GitHub refused the write: your account cannot write to this repository or branch."
+        | Commands.StorageFailed(StorageFailure.RateLimited _) -> "GitHub asked Summa to slow down."
+        | Commands.StorageFailed _ -> "GitHub could not be reached, or refused the request."
+
+    // What remains, whether trying again is safe and what to do (INV-FAIL-002).
+    why + " " + Commands.explain (Commands.classify failure)
 
 let private widen (failure: Commands.CommandFailure<unit>) : Commands.CommandFailure<string> =
     match failure with
