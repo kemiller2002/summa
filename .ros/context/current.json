@@ -2184,20 +2184,20 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "fe4380368b25a4d8ec305282",
-        "recordedAt": "2026-10-13T13:36:18Z",
+        "id": "6dba1794e8b68bc688b8a072",
+        "recordedAt": "2026-10-13T14:05:14Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
         "repository": "summa",
-        "branch": "feat/wi-0029-architecture",
-        "commit": "e4011f58ee020075e1c442ad2949d83c59105a3b",
+        "branch": "feat/wi-0029-legal-fields",
+        "commit": "2b329b4c428690496981b5eec3ad10b67346f914",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0029-architecture",
-        "remoteCommit": "e4011f58ee020075e1c442ad2949d83c59105a3b",
-        "summary": "INV-ARCH: each of 001-010 asserted by a test named by its id, where its owner shows (records, domain, repository and page files); outside edits of issued records are detected and block rather than claimed prevented (DF-SUMMA-2026-0034)",
-        "nextAction": "INV-INTL-001, INV-CONTRACT-002, SUM3-011, SUM2-031, served import preview, integration state in the app, export handling (SUM3-024), SUM3-006 scheduling (runs generateDue), template screen; editor inputs for line details and references; INV-OPS-006 required PO and payment promise slices",
+        "remoteBranch": "feat/wi-0029-legal-fields",
+        "remoteCommit": "2b329b4c428690496981b5eec3ad10b67346f914",
+        "summary": "INV-INTL-001: typed legal fields (kind, ISO 3166 jurisdiction, value) on the organization (own record, kept once recorded) and the customer, validated, snapshotted at issue, shown only when present so earlier invoices keep their bytes (DF-SUMMA-2026-0035); INV-INTL tested",
+        "nextAction": "INV-CONTRACT-002, SUM3-011, SUM2-031, served import preview, integration state in the app, export handling (SUM3-024), SUM3-006 scheduling (runs generateDue), template screen; editor inputs for line details and references; INV-OPS-006 required PO and payment promise slices; INV-ARCH partials",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
