@@ -2184,20 +2184,20 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "ffd895cf1102410159e94f2f",
-        "recordedAt": "2026-10-13T11:13:35Z",
+        "id": "3cf3440bee4725cd9dfc1a92",
+        "recordedAt": "2026-10-13T11:34:32Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
         "repository": "summa",
-        "branch": "feat/wi-0029-security",
-        "commit": "7a7e73bb32ae3dff8879007e07d08d99187d12a6",
+        "branch": "feat/wi-0029-accounting",
+        "commit": "c7b619830cb6a027198de724abb3ee965242adde",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0029-security",
-        "remoteCommit": "7a7e73bb32ae3dff8879007e07d08d99187d12a6",
-        "summary": "INV-SEC: capability mapping pinned by test, approval is the person-only gate (DF-SUMMA-2026-0027); evidence for 002-006",
-        "nextAction": "INV-CONTRACT-002, SUM3-011, SUM2-031, served import preview, integration state in the app, export handling, SUM3-006 scheduling, INV OPS/PERF/EXP/FX/INTL/ACC/REC/SET/DATA/ARCH",
+        "remoteBranch": "feat/wi-0029-accounting",
+        "remoteCommit": "c7b619830cb6a027198de724abb3ee965242adde",
+        "summary": "INV-ACC, INV-SET, INV-FX tested per requirement: structured entry reference, settlement timeline, entry explanations, mixed-currency refusal (DF-SUMMA-2026-0028)",
+        "nextAction": "INV-OPS, INV-PERF, INV-INTL, INV-EXP, INV-DATA, INV-ARCH, INV-REC, INV-CONTRACT-002, SUM3-011, SUM2-031, served import preview, integration state in the app, export handling, SUM3-006 scheduling",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"

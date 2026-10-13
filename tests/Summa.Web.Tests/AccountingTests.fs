@@ -356,3 +356,24 @@ let ``INV-CON-002: issuing a draft someone changed since it was reviewed here is
     Assert.Empty(refused.Books.Value.Books.Invoices)
     // The version on screen once the page has the change issues.
     Assert.True(Result.isOk (replay ctx (DraftIssuedAt 2) reviewed stored))
+
+[<Fact>]
+let ``an invoice shows what settled it, and its journal entry is explained in plain words`` () =
+    let issued = started () |> customer |> drafted |> run [ DraftSubmitted; DraftIssued ] |> fst
+    let paid = run [ InvoiceTabChosen "payments"; PaymentAmountChanged "1000.00"; PaymentRecorded ] issued |> fst
+
+    match items "detailPayments" paid with
+    | [ row ] ->
+        let field name = row |> List.pick (fun (n, v) -> if n = name then Some v else None)
+        Assert.Equal(Text "-1,000.00 USD", field "amount")
+        Assert.Equal(Text "5,037.50 USD", field "balance")
+    | other -> failwith $"%A{other}"
+
+    let entryId = paid.Books.Value.Books.Invoices["INV-0001"].JournalEntryId
+    let entry = run [ LocationChanged(address $"#/ledger/entries/{entryId}") ] paid |> fst
+
+    match items "entryExplanation" entry with
+    | first :: _ as sentences ->
+        Assert.Equal(Text "This entry was posted for invoice INV-0001: Invoice INV-2026-0001.", first |> List.pick (fun (n, v) -> if n = "text" then Some v else None))
+        Assert.True(sentences.Length >= 3)
+    | [] -> failwith "no explanation"

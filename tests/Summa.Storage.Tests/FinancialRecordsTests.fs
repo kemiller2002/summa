@@ -283,11 +283,12 @@ let ``adjusting and closing entries keep their kind through storage`` () =
 [<Fact>]
 let ``tax as the person recorded it is stored at schema 2, and books without tax keep their schema 1 records`` () =
     // Books that record no tax: every record is written exactly as schema 1
-    // wrote it, but an audit event that says what a change did (INV-AUD-002),
+    // wrote it, but an audit event that says what a change did (INV-AUD-002)
+    // and an entry that names the invoice it was posted for (INV-ACC-002),
     // which schema 1 had no field for.
     let says (record: FinancialRecord) =
         match record.Body with
-        | Json.Object members -> members |> List.exists (fst >> (=) "change")
+        | Json.Object members -> members |> List.exists (fun (key, _) -> key = "change" || key = "postedFor")
         | _ -> false
 
     let records = toRecords (full ()) |> ok

@@ -71,6 +71,7 @@ let ``an overpayment becomes the customer's credit, never revenue, and can pay a
     let later = secondInvoice credited
     let applied = apply context accountsFor { ApplicationId = "AP-1"; Source = FromCredit "CR-1"; InvoiceId = "INV-002"; Amount = usd 40000L; Date = day; JournalEntryId = "JE-AP-1" } later |> ok
     Assert.Equal(Paid, status applied applied.Books.Invoices["INV-002"])
+    Assert.Equal<SettlementEvent list>([ CreditApplied(FromCredit "CR-1") ], settlement applied applied.Books.Invoices["INV-002"] |> List.map _.Event)
     Assert.Equal(Some(usd 55000L), remaining applied (FromCredit "CR-1"))
     Assert.Equal<CreditProblem list>([ NothingUnallocated "PAY-1" ], creditUnapplied context accountsFor { CreditId = "CR-2"; PaymentId = "PAY-1"; Date = day; JournalEntryId = "JE-CR-2" } applied |> refused)
     balancesOk applied
@@ -131,6 +132,11 @@ let ``a bounced payment reverses its effects, keeps its history and reopens the 
     Assert.Equal<CreditProblem list>([ AlreadyReversed "PAY-1" ], reversePayment context accountsFor { PaymentId = "PAY-1"; Reason = "again"; Date = day; JournalEntryPrefix = "X" } reversed |> refused)
     // The money it carried cannot be allocated again.
     Assert.True(Result.isError (allocate context (allocation "AL-2" "PAY-1" "INV-001" 1L) reversed))
+    // The settlement timeline keeps both: paid, then reopened (INV-SET-006).
+    let timeline = settlement reversed reversed.Books.Invoices["INV-001"]
+    Assert.Equal<SettlementEvent list>([ PaymentApplied("PAY-1", (payment "PAY-1" 0L).Reference); PaymentReversed("PAY-1", "Returned ACH R01") ], timeline |> List.map _.Event)
+    Assert.Equal<Money list>([ usd 0L; usd 605000L ], timeline |> List.map _.Balance)
+    Assert.Equal(outstanding reversed reversed.Books.Invoices["INV-001"], (List.last timeline).Balance)
     balancesOk reversed
 
 [<Fact>]

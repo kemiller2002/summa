@@ -118,9 +118,10 @@ let types: (RecordType * Mutability * bool) list =
 
 /// The record types with a schema 2: tax as the person said it (customers,
 /// drafts, invoices, proposals; INV-ADJ-005), and where an action came from
-/// (audit events, proposal contributions; INV-AUD-002, INV-PROV-007), and a
-/// follow-up's resolved delivery problem (INV-DEL-008).
-let private taxedTypes = set [ "summa.customer"; "summa.draft"; "summa.invoice"; "summa.proposal"; "summa.audit"; "summa.follow-up" ]
+/// (audit events, proposal contributions; INV-AUD-002, INV-PROV-007), a
+/// follow-up's resolved delivery problem (INV-DEL-008), and the record a
+/// journal entry was posted for (INV-ACC-002).
+let private taxedTypes = set [ "summa.customer"; "summa.draft"; "summa.invoice"; "summa.proposal"; "summa.audit"; "summa.follow-up"; "summa.entry" ]
 
 /// Schema support for every financial record type: version 1, and version 2
 /// for the types that can record tax. A record is written at version 2 only
@@ -1167,7 +1168,11 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                     "source", Json.String e.Source
                     "reverses", optionalString e.Reverses
                     "postedAt", Json.String(preciseTimestamp e.PostedAt)
-                    "idempotencyKey", optionalString (keyFor e.Id) ]
+                    "idempotencyKey", optionalString (keyFor e.Id)
+                    // Written only when named, so other entries keep their bytes (INV-ACC-002).
+                    match e.Reference with
+                    | Some r -> "postedFor", Json.objectOf [ "kind", Json.String r.Kind; "id", Json.String r.Id ]
+                    | None -> () ]
           for KeyValue(_, c) in books.Customers ->
               keyOf customerType [] c.Id,
               Json.objectOf (
@@ -1506,7 +1511,7 @@ let schemaVersionOf (record: FinancialRecord) =
         match value with
         | Json.Object members ->
             members
-            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || key = "change" || key = "deliveryResolved" || recordsTax inner)
+            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || key = "change" || key = "deliveryResolved" || key = "postedFor" || recordsTax inner)
         | Json.Array items -> items |> List.exists recordsTax
         | _ -> false
 
@@ -1598,7 +1603,7 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
         }
     | "summa.entry" ->
         decode {
-            do! closed [ "date"; "description"; "id"; "idempotencyKey"; "lines"; "postedAt"; "reverses"; "source" ] b
+            do! closed [ "date"; "description"; "id"; "idempotencyKey"; "lines"; "postedAt"; "postedFor"; "reverses"; "source" ] b
             let! id = text "id" b
             let! date = date "date" b
             let! description = text "description" b
@@ -1607,6 +1612,17 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
             let! reverses = optionalText "reverses" b
             let! postedAt = preciseInstant "postedAt" b
             let! key = optionalText "idempotencyKey" b
+
+            let! reference =
+                match Codec.tryField "postedFor" b with
+                | None -> Ok None
+                | Some r ->
+                    decode {
+                        do! closed [ "id"; "kind" ] r
+                        let! kind = text "kind" r
+                        let! id = text "id" r
+                        return Some { Kind = kind; Id = id }
+                    }
 
             return
                 EntryPart(
@@ -1617,6 +1633,7 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                       Source = source
                       State = Posted
                       Reverses = reverses
+                      Reference = reference
                       PostedAt = postedAt },
                     key
                 )

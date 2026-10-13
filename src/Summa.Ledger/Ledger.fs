@@ -73,6 +73,10 @@ type EntryState =
     | Posted
     | Reversed of by: string
 
+/// The record an entry was posted for, by kind and id (INV-ACC-002): a
+/// structured reference, beside the human-readable `Source`.
+type EntryReference = { Kind: string; Id: string }
+
 type PostedEntry =
     { Id: string
       Date: DateOnly
@@ -82,6 +86,8 @@ type PostedEntry =
       State: EntryState
       /// The entry this one reverses, if it is a reversal.
       Reverses: string option
+      /// The record it was posted for, when one is named.
+      Reference: EntryReference option
       PostedAt: DateTimeOffset }
 
 type PeriodState =
@@ -283,6 +289,7 @@ let post (context: Context) (key: string) (entryId: string) (draft: EntryDraft) 
                   Source = draft.Source
                   State = Posted
                   Reverses = None
+                  Reference = None
                   PostedAt = context.When }
 
             Ok(
@@ -293,6 +300,10 @@ let post (context: Context) (key: string) (entryId: string) (draft: EntryDraft) 
                 |> audit context "journal-entry-posted" entryId,
                 entry
             )
+
+/// Names the record a just-posted entry was posted for (INV-ACC-002).
+let referTo (reference: EntryReference) (entryId: string) (ledger: Ledger) =
+    { ledger with Entries = ledger.Entries |> Map.change entryId (Option.map (fun e -> { e with Reference = Some reference })) }
 
 /// Corrects a posted entry by posting its mirror image on `date`; the
 /// original stays, marked Reversed (§1.3).
