@@ -1600,6 +1600,7 @@
       }
     },
     "related_documents": [
+      "docs/contracts/invoice-commands-1.0.md",
       "research/decisions/DF-SUMMA-2026-0001--summa-owns-the-chrona-contract-and-stores-through-arca.md",
       "research/decisions/DF-SUMMA-2026-0023--issue-requires-the-reviewed-version.md"
     ],

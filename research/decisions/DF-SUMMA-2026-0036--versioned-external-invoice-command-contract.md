@@ -11,6 +11,7 @@ review_cycle: on-trigger
 supersedes: []
 superseded_by: []
 related_documents:
+  - docs/contracts/invoice-commands-1.0.md
   - research/decisions/DF-SUMMA-2026-0001--summa-owns-the-chrona-contract-and-stores-through-arca.md
   - research/decisions/DF-SUMMA-2026-0023--issue-requires-the-reviewed-version.md
 tags: [contracts, commands, versioning]
@@ -71,6 +72,12 @@ application. Only the Chrona billing seam had a wire contract.
 5. **Idempotency.** `requestId` is the caller's key, returned in the
    response. Repeating an issue request returns the same invoice and
    changes nothing, because issuing is idempotent per draft (INV-CON-007).
+
+6. **A readable contract.** External callers read
+   [`docs/contracts/invoice-commands-1.0.md`](../../docs/contracts/invoice-commands-1.0.md),
+   not Summa's source. It covers the envelope, each command and outcome
+   with its fields, the versioning rule, and the rule that identity comes
+   from the host.
 
 ## Consequences
 
