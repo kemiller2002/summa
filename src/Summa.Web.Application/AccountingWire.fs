@@ -105,6 +105,8 @@ let events: Map<string, string -> string -> Msg> =
           "disputeSettled", (fun _ _ -> DisputeSettled)
           "inboxCustomerChosen", (fun _ value -> InboxCustomerChosen value)
           "inboxApplied", (fun key _ -> InboxApplied key)
+          "paymentApplyInvoiceChosen", (fun _ value -> PaymentApplyInvoiceChosen value)
+          "paymentAppliedToChosen", (fun _ _ -> PaymentAppliedToChosen)
           "inboxCredited", (fun key _ -> InboxCredited key)
           "receiptCustomerChanged", (fun _ value -> ReceiptCustomerChanged value)
           "receiptAmountChanged", (fun _ value -> ReceiptAmountChanged value)

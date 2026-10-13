@@ -1086,6 +1086,19 @@
           <div><dt>Amount</dt><dd id="payment-amount-text" data-text="payAmount"></dd></div>
           <div><dt>Not applied</dt><dd id="payment-unapplied-text" data-text="payUnapplied"></dd></div>
         </dl>
+        <template data-if="payCanChoose">
+          <section class="ef-surface ef-stack" id="payment-apply" aria-labelledby="payment-apply-title">
+            <h2 id="payment-apply-title">Apply this payment</h2>
+            <p id="payment-suggestion" data-text="paySuggestion"></p>
+            <template data-if="payCanApplySuggested"><div class="ef-actions"><button type="button" class="ef-button" id="apply-suggested" data-event="inboxApplied">Apply as suggested</button></div></template>
+            <div class="ef-field"><label class="ef-field__label" for="payment-apply-invoice">Or apply it to</label>
+              <select id="payment-apply-invoice" data-event="paymentApplyInvoiceChosen" data-bind-value="payApplyInvoice">
+                <option value="">Choose an open invoice</option>
+                <template data-each="payApplyOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
+              </select></div>
+            <div class="ef-actions"><button type="button" class="ef-button" data-variant="secondary" id="apply-chosen" data-event="paymentAppliedToChosen">Apply to this invoice</button></div>
+          </section>
+        </template>
         <div class="ef-data-grid" role="region" tabindex="0" aria-label="Applied to">
           <table class="summa-table" id="payment-allocations">
             <caption>Applied to</caption>
@@ -1419,7 +1432,7 @@
             <table class="summa-table" id="inbox-table">
               <caption class="ef-visually-hidden">Payments not fully applied</caption>
               <thead><tr><th scope="col">Payment</th><th scope="col">Received</th><th scope="col">Customer</th><th scope="col">Reference</th><th scope="col" class="summa-number">Not applied</th><th scope="col">Open invoices</th><th scope="col"><span class="ef-visually-hidden">Actions</span></th></tr></thead>
-              <tbody><template data-each="inboxRows" data-key="id"><tr><td data-label="Payment"><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date" data-label="Received"></td><td data-text="customer" data-label="Customer"></td><td data-text="reference" data-label="Reference"></td><td class="summa-number" data-text="unapplied" data-label="Not applied"></td><td data-text="openInvoices" data-label="Open invoices"></td><td class="summa-row-actions" data-label="Actions"><button type="button" class="ef-button summa-apply" data-event="inboxApplied" data-bind-disabled="noApply">Apply to oldest invoices</button> <button type="button" class="ef-button summa-credit" data-variant="secondary" data-event="inboxCredited">Keep as credit</button></td></tr></template></tbody>
+              <tbody><template data-each="inboxRows" data-key="id"><tr><td data-label="Payment"><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date" data-label="Received"></td><td data-text="customer" data-label="Customer"></td><td data-text="reference" data-label="Reference"></td><td class="summa-number" data-text="unapplied" data-label="Not applied"></td><td data-label="Open invoices"><span data-text="openInvoices"></span><br /><span class="summa-suggestion" data-text="suggestion"></span></td><td class="summa-row-actions" data-label="Actions"><button type="button" class="ef-button summa-apply" data-event="inboxApplied" data-bind-disabled="noApply">Apply as suggested</button> <a class="summa-link summa-choose" data-bind-href="href">Choose an invoice</a> <button type="button" class="ef-button summa-credit" data-variant="secondary" data-event="inboxCredited">Keep as credit</button></td></tr></template></tbody>
             </table>
           </div>
         </template>
