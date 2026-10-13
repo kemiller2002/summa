@@ -347,7 +347,8 @@
             <tbody>
               <template data-each="draftLines" data-key="key">
                 <tr>
-                  <td><label class="ef-visually-hidden">Line <span data-text="position"></span> description<input type="text" class="line-description" data-event="lineDescriptionChanged" data-on="input" data-bind-value="description" /></label></td>
+                  <td><label class="ef-visually-hidden">Line <span data-text="position"></span> description<input type="text" class="line-description" data-event="lineDescriptionChanged" data-on="input" data-bind-value="description" /></label>
+                    <button type="button" class="ef-button line-details" data-variant="secondary" data-event="lineDetailsOpened">Details<span data-text="detailsNote"></span><span class="ef-visually-hidden"> for line <span data-text="position"></span></span></button></td>
                   <td><label class="ef-visually-hidden">Line <span data-text="position"></span> quantity<input type="text" inputmode="decimal" class="line-hours" data-event="lineHoursChanged" data-on="input" data-bind-value="hours" /></label></td>
                   <td><label class="ef-visually-hidden">Line <span data-text="position"></span> rate<input type="text" inputmode="decimal" class="line-rate" data-event="lineRateChanged" data-on="input" data-bind-value="rate" /></label></td>
                   <td><label class="summa-check"><input type="checkbox" class="line-taxable" data-event="lineTaxableChanged" data-on="change" data-bind-checked="taxable" /><span class="ef-visually-hidden">Line <span data-text="position"></span> is taxable</span></label></td>
@@ -356,6 +357,26 @@
               </template>
             </tbody>
           </table>
+          <template data-if="hasDetailsLine">
+            <fieldset class="ef-stack summa-line-details" id="line-details">
+              <legend>Details of line <span data-text="detailsLinePosition"></span>: <span data-text="detailsLineDescription"></span></legend>
+              <div class="summa-fields">
+                <div class="ef-field"><label class="ef-field__label" for="line-detailed-description">Detailed description</label>
+                  <textarea id="line-detailed-description" rows="2" data-event="lineDetailedDescriptionChanged" data-on="input" data-bind-value="lineDetailedDescription"></textarea></div>
+                <div class="ef-field"><label class="ef-field__label" for="line-unit">Unit</label>
+                  <input id="line-unit" type="text" placeholder="hours, days, items" data-event="lineUnitChanged" data-on="input" data-bind-value="lineUnit" /></div>
+                <div class="ef-field"><label class="ef-field__label" for="line-service-from">Service from</label>
+                  <input id="line-service-from" type="date" data-event="lineServiceFromChanged" data-on="input" data-bind-value="lineServiceFrom" /></div>
+                <div class="ef-field"><label class="ef-field__label" for="line-service-to">Service to</label>
+                  <input id="line-service-to" type="date" data-event="lineServiceToChanged" data-on="input" data-bind-value="lineServiceTo" /></div>
+                <div class="ef-field"><label class="ef-field__label" for="line-category">Category</label>
+                  <input id="line-category" type="text" data-event="lineCategoryChanged" data-on="input" data-bind-value="lineCategory" /></div>
+                <div class="ef-field"><label class="ef-field__label" for="line-customer-code">Customer code</label>
+                  <input id="line-customer-code" type="text" data-event="lineCustomerCodeChanged" data-on="input" data-bind-value="lineCustomerCode" /></div>
+              </div>
+              <div class="ef-actions"><button type="button" class="ef-button" data-variant="secondary" id="line-details-done" data-event="lineDetailsClosed">Done</button></div>
+            </fieldset>
+          </template>
           <div class="ef-actions"><button type="button" class="ef-button" data-variant="secondary" id="add-line" data-event="lineAdded">Add line</button>
             <p class="summa-total">Total <strong id="draft-total" data-text="draftTotal"></strong></p></div>
           <fieldset class="ef-stack summa-tax" id="draft-tax">
@@ -380,6 +401,32 @@
                 <input id="draft-tax-evidence" type="text" data-event="draftTaxEvidenceChanged" data-on="input" data-bind-value="draftTaxEvidence" /></div>
             </div>
             <label class="summa-check"><input id="draft-tax-inclusive" type="checkbox" data-event="draftTaxInclusiveChanged" data-on="change" data-bind-checked="draftTaxInclusive" /> The line prices already include this tax</label>
+          </fieldset>
+          <fieldset class="ef-stack summa-references" id="draft-references">
+            <legend>Client references</legend>
+            <p class="ef-field__description" id="draft-references-note">References the customer asks to see beside the purchase order, such as a contract or cost center.</p>
+            <template data-if="hasDraftReferences">
+              <table class="summa-table" id="draft-reference-rows">
+                <caption class="ef-visually-hidden">Client references</caption>
+                <thead><tr><th scope="col">Kind</th><th scope="col">Reference</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
+                <tbody>
+                  <template data-each="draftReferences" data-key="key">
+                    <tr>
+                      <td><label class="ef-visually-hidden">Reference <span data-text="position"></span> kind<select class="reference-kind" data-event="referenceKindChosen" data-bind-value="kind">
+                        <option value="contract">Contract number</option>
+                        <option value="engagement">Engagement number</option>
+                        <option value="vendor">Vendor reference</option>
+                        <option value="cost-center">Cost center</option>
+                        <option value="matter">Matter number</option>
+                      </select></label></td>
+                      <td><label class="ef-visually-hidden">Reference <span data-text="position"></span><input type="text" class="reference-value" data-event="referenceValueChanged" data-on="input" data-bind-value="value" /></label></td>
+                      <td><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="referenceRemoved">Remove</button></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </template>
+            <div class="ef-actions"><button type="button" class="ef-button" data-variant="secondary" id="add-reference" aria-describedby="draft-references-note" data-event="referenceAdded">Add reference</button></div>
           </fieldset>
           <div class="ef-field"><label class="ef-field__label" for="draft-notes">Note to the customer</label>
             <textarea id="draft-notes" rows="2" data-event="draftNotesChanged" data-on="input" data-bind-value="draftNotes"></textarea></div>
@@ -503,6 +550,7 @@
                 <div><dt>Due date</dt><dd data-text="docDueDate"></dd></div>
                 <div><dt>Payment terms</dt><dd data-text="docTerms"></dd></div>
                 <template data-if="docHasPurchaseOrder"><div><dt>Purchase order</dt><dd data-text="docPurchaseOrder"></dd></div></template>
+                <template data-each="docReferences" data-key="key"><div class="summa-document__reference"><dt data-text="label"></dt><dd data-text="value"></dd></div></template>
               </dl>
             </header>
             <section aria-label="Bill to"><h2 class="summa-document__label">Bill to</h2><p data-text="docCustomer"></p><p class="summa-pre" data-text="docCustomerAddress"></p><template data-each="docCustomerLegal" data-key="key"><p class="summa-legal" data-text="line"></p></template></section>
@@ -510,7 +558,7 @@
               <caption>Invoice lines</caption>
               <thead><tr><th scope="col">Description</th><th scope="col" class="summa-number">Quantity</th><th scope="col" class="summa-number">Rate</th><th scope="col" class="summa-number">Amount</th></tr></thead>
               <tbody>
-                <template data-each="docLines" data-key="key"><tr><td data-text="description"></td><td class="summa-number" data-text="quantity"></td><td class="summa-number" data-text="rate"></td><td class="summa-number" data-text="amount"></td></tr></template>
+                <template data-each="docLines" data-key="key"><tr><td><span data-text="description"></span><small class="summa-line-note" data-text="details"></small></td><td class="summa-number" data-text="quantity"></td><td class="summa-number" data-text="rate"></td><td class="summa-number" data-text="amount"></td></tr></template>
               </tbody>
             </table></ef-print-table>
             <ef-print-keep><dl class="summa-document__totals">

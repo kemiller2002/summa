@@ -533,8 +533,7 @@ let private proposalStateOf (value: Json) : Decoded<ProposalState> =
             | other, _ -> Error $"'{other}' is not a proposal state with the invoice it needs"
     }
 
-let private referenceKinds =
-    [ ContractNumber, "contract"; EngagementNumber, "engagement"; VendorReference, "vendor"; CostCenter, "cost-center"; MatterNumber, "matter" ]
+let private referenceKinds = clientReferenceKinds
 
 let private referenceKindName (kind: ClientReferenceKind) = referenceKinds |> List.find (fst >> (=) kind) |> snd
 

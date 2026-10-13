@@ -146,10 +146,19 @@ let ``the kept form reads back as it was written`` () =
     let form =
         { DraftId = Some "D-0007"
           CustomerId = "CUST-0002"
-          Lines = [ { Key = "line-4"; Description = "Audit \"phase 1\""; Hours = "2.5"; Rate = "180"; Taxable = true } ]
+          Lines =
+            [ { Key = "line-4"
+                Description = "Audit \"phase 1\""
+                Hours = "2.5"
+                Rate = "180"
+                Taxable = true
+                Details = { noLineDetailsForm with Unit = "hours"; ServiceFrom = "2026-09-01"; ServiceTo = "2026-09-3" }
+                Origin = Some 0 } ]
           PurchaseOrder = "PO-9"
           Notes = "Thanks"
-          Tax = { noTax with Code = "NY-8.875"; Amount = "39.94"; Inclusive = true; Rate = "8.875" } }
+          Tax = { noTax with Code = "NY-8.875"; Amount = "39.94"; Inclusive = true; Rate = "8.875" }
+          References = [ { Key = "reference-5"; Kind = "cost-center"; Value = "CC-7" } ]
+          BaseVersion = Some 3 }
 
     Assert.Equal(Some(12, form), decodeEditor (encodeEditor 12 form))
 

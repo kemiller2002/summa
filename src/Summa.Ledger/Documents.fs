@@ -157,19 +157,32 @@ let referenceLabel =
 
 /// A line's details as text under its description, only when given, so a
 /// line without them renders as before (INV-DATA-008).
-let private lineDetailsHtml (details: LineDetails option) =
+/// A line's details as the lines of text shown under its description, only
+/// those given (INV-DATA-008): unescaped, for any renderer to escape.
+let lineDetailsLines (details: LineDetails option) =
     match details with
-    | None -> ""
+    | None -> []
     | Some d ->
-        [ d.DetailedDescription |> Option.map escape
-          d.Unit |> Option.map (fun u -> "Unit: " + escape u)
+        [ d.DetailedDescription
+          d.Unit |> Option.map (fun u -> "Unit: " + u)
           d.ServicePeriod |> Option.map (fun (a, b) -> $"Service period: {dateText a} to {dateText b}")
-          d.Category |> Option.map (fun c -> "Category: " + escape c)
-          d.CustomerCode |> Option.map (fun c -> "Your code: " + escape c) ]
+          d.Category |> Option.map (fun c -> "Category: " + c)
+          d.CustomerCode |> Option.map (fun c -> "Your code: " + c) ]
         |> List.choose id
-        |> function
-            | [] -> ""
-            | parts -> "<br><small>" + String.concat "<br>" parts + "</small>"
+
+/// The invoice's references after its purchase order, as labelled facts,
+/// only those given: the client's reference, the service period, then each
+/// typed reference (INV-DATA-013, INV-DATA-014). Unescaped.
+let referenceFacts (doc: InvoiceDocument) =
+    [ doc.Details.ClientReference |> Option.map (fun v -> "Your reference", v)
+      doc.Details.ServicePeriod |> Option.map (fun (a, b) -> "Service period", $"{dateText a} to {dateText b}")
+      yield! doc.Details.References |> List.map (fun (kind, value) -> Some(referenceLabel kind, value)) ]
+    |> List.choose id
+
+let private lineDetailsHtml (details: LineDetails option) =
+    match lineDetailsLines details with
+    | [] -> ""
+    | parts -> "<br><small>" + String.concat "<br>" (parts |> List.map escape) + "</small>"
 
 let private renderV1 (doc: InvoiceDocument) =
     let details =
@@ -178,10 +191,8 @@ let private renderV1 (doc: InvoiceDocument) =
           Some(row "Due date" (dateText doc.DueDate))
           Some(row "Payment terms" (termsText doc.Terms))
           doc.Details.PurchaseOrder |> Option.map (row "Purchase order")
-          doc.Details.ClientReference |> Option.map (row "Your reference")
-          doc.Details.ServicePeriod |> Option.map (fun (a, b) -> row "Service period" $"{dateText a} to {dateText b}")
           // Typed references, only when given, so earlier invoices render as before (INV-DATA-014).
-          yield! doc.Details.References |> List.map (fun (kind, value) -> Some(row (referenceLabel kind) value))
+          yield! referenceFacts doc |> List.map (fun (label, value) -> Some(row label value))
           doc.EngagementId |> Option.map (row "Engagement")
           doc.Corrects |> Option.map (row "Corrects invoice") ]
         |> List.choose id
