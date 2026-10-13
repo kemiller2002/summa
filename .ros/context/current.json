@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-13T13:19:19Z",
+  "updatedAt": "2026-10-13T15:47:11Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -2368,6 +2368,37 @@
       ],
       "completedAt": "2026-10-13T13:19:19Z",
       "conclusion": "Arca 0.5.0 adopted through Conditor (echelon-current 1.19.0, plan sha256:c3e3c5f1, isolated --home). Reads after an observed namespace state are pinned to its commit (no ref fetch): found 4.2-4.8 s to 3.2-3.4 s, issue 2.2-2.4 s to 1.2-1.3 s, reload 3.7-4.4 s to 2.5-3.1 s, reload sending a kept change 4.6-4.8 s to 2.6-2.9 s. The batched read-cache save has no use: Summa keeps no read-cache partitions."
+    },
+    {
+      "id": "WI-0052",
+      "type": "implementation",
+      "state": "active",
+      "semanticState": "active",
+      "evidence": [],
+      "updatedAt": "2026-10-13T15:47:11Z",
+      "telemetryExecutionIds": [
+        "EXE-20261013T154712086Z-29141d0f"
+      ],
+      "latestCheckpoint": {
+        "id": "110ffbecdea985a028c20ba1",
+        "recordedAt": "2026-10-13T15:58:35Z",
+        "executionId": "EXE-20261013T154712086Z-29141d0f",
+        "repository": "summa",
+        "branch": "chore/wi-0052-forma-folio-step1",
+        "commit": "1aa8c56c4921e2bf0bc1be965eea82a7877c08e9",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "chore/wi-0052-forma-folio-step1",
+        "remoteCommit": "1aa8c56c4921e2bf0bc1be965eea82a7877c08e9",
+        "summary": "Step 1 (echelon-current 1.19.0): Conditor 0.9.0 verified (checksums, attestation); forma 0.4.1 and folio 0.3.0 declared; plan sha256:a5329d5e authorized with isolated --home; Forma 0.5.0 written by Conditor; print screenshots of invoice and credit memo byte-identical; golden vectors unchanged",
+        "nextAction": "Merge step 1 (PR #86); step 2 against 1.20.0 (forma 0.6.1, folio 0.4.0); then 1.21.0 (ordo 1.6.0) and 1.22.0 (ordo 1.7.0), one PR each",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      }
     }
   ]
 }

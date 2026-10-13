@@ -16,7 +16,9 @@ let private names =
           "visual-engineering", "Visual Engineering"
           "arca", "Arca"
           "fides", "Fides"
-          "limen-fsharp", "Limen" ]
+          "limen-fsharp", "Limen"
+          "forma", "Forma"
+          "folio", "Folio" ]
 
 [<Fact>]
 let ``every component Conditor selects is in the baseline index at its version`` () =
