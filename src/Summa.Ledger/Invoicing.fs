@@ -390,6 +390,8 @@ type InvoiceProblem =
     /// The draft was already issued from a materially different request:
     /// another date, version or number (INV-CON-008).
     | IssueConflict of draftId: string * invoiceId: string
+    /// An amount in another currency than the invoice's (INV-FX-002).
+    | MixedCurrency of string
 
 /// Where an invoice proposal stands (v0.1 §17, v0.2 §15): approved time
 /// becomes a proposal, a person reviews it, and only then an invoice.
@@ -683,12 +685,35 @@ type IssueRequest =
       JournalEntryId: string
       ObligationId: string }
 
+/// Every amount in another currency than the draft's. An invoice has one
+/// currency in this scope, and amounts are never converted (INV-FX-002,
+/// INV-FX-003).
+let private currencyProblems (draft: DraftInvoice) =
+    let other (label: string) (m: Money) =
+        if m.Currency <> draft.Currency then [ MixedCurrency $"{label} is in {m.Currency}, not {draft.Currency}" ] else []
+
+    [ for line in draft.Lines do
+          yield! other $"'{line.Description}'" line.UnitPrice
+
+          match line.Discount with
+          | Some(Fixed m) -> yield! other $"the discount on '{line.Description}'" m
+          | _ -> ()
+      for d in draft.Discounts do
+          match d.Rule with
+          | Fixed m -> yield! other $"the discount '{d.Label}'" m
+          | _ -> ()
+      for a in draft.Adjustments do
+          yield! other $"'{a.Label}'" a.Amount ]
+
 let private validateDraft (books: Books) (draft: DraftInvoice) =
+  match currencyProblems draft with
+  // Nothing is totalled across currencies: the currencies are the problem.
+  | _ :: _ as found -> found
+  | [] ->
     [ if draft.Lines.IsEmpty then NoLines
       elif draft.Lines |> List.forall (fun l -> (lineAmount l).Minor = 0L) then NoSubstantiveLine
       for line in draft.Lines do
           if line.QuantityThousandths < 0L || line.UnitPrice.Minor < 0L then NegativeLine line.Description
-          if line.UnitPrice.Currency <> draft.Currency then InvalidDiscount $"'{line.Description}' is priced in {line.UnitPrice.Currency}, not {draft.Currency}"
       match books.Customers.TryFind draft.CustomerId with
       | None -> UnknownCustomer draft.CustomerId
       | Some c when not c.Active -> InactiveCustomer draft.CustomerId
@@ -852,6 +877,10 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
                 match post context $"issue:{request.DraftId}" request.JournalEntryId entry books.Ledger with
                 | Error problems -> Error [ LedgerProblems problems ]
                 | Ok(ledger, posted) ->
+                    // The entry names the invoice it was posted for, by id (INV-ACC-002).
+                    let reference = { Kind = "invoice"; Id = request.InvoiceId }
+                    let ledger = ledger |> referTo reference posted.Id
+                    let posted = { posted with Reference = Some reference }
                     let invoice =
                         { InvoiceId = request.InvoiceId
                           Number = number

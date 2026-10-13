@@ -215,6 +215,59 @@ let outstanding (r: Receivables) (invoice: IssuedInvoice) =
     else
         subtract (subtract invoice.Total (amountPaid r invoice)) (writtenOff r invoice)
 
+/// One event in an invoice's settlement (INV-SET-006).
+type SettlementEvent =
+    | PaymentApplied of paymentId: string * reference: string
+    /// The payment came back (bounced or reversed): its allocation no longer counts.
+    | PaymentReversed of paymentId: string * reason: string
+    | CreditApplied of source: CreditSource
+    | WriteOffRecorded of reason: string
+    | InvoiceVoided of reason: string
+
+/// An event with its date, its effect on what is owed (negative reduces
+/// it) and what was owed after it.
+type SettlementLine =
+    { Date: DateOnly
+      Event: SettlementEvent
+      Effect: Money
+      Balance: Money
+      JournalEntryId: string }
+
+/// Everything that settled or unsettled an invoice, in date order, from its
+/// total down to what it owes now (INV-SET-006). The last balance is the
+/// invoice's outstanding amount (INV-SET-001).
+let settlement (r: Receivables) (invoice: IssuedInvoice) : SettlementLine list =
+    let mine = r.Allocations |> List.filter (fun a -> a.InvoiceId = invoice.InvoiceId)
+    let negate (m: Money) = { m with Minor = -m.Minor }
+
+    let events =
+        [ for a in mine do
+              let payment = r.Payments[a.PaymentId]
+              yield payment.DateReceived, 0, a.Id, PaymentApplied(payment.Id, payment.Reference), negate a.Amount, a.JournalEntryId
+
+              match r.Reversals.TryFind a.PaymentId with
+              | Some reversal ->
+                  yield reversal.Date, 1, a.Id, PaymentReversed(payment.Id, reversal.Reason), a.Amount, (reversal.JournalEntryIds |> List.tryHead |> Option.defaultValue "")
+              | None -> ()
+          for a in r.Applications |> List.filter (fun a -> a.InvoiceId = invoice.InvoiceId) do
+              yield a.Date, 0, a.Id, CreditApplied a.Source, negate a.Amount, a.JournalEntryId
+          for KeyValue(id, w) in r.WriteOffs do
+              if w.InvoiceId = invoice.InvoiceId then
+                  yield w.Date, 0, id, WriteOffRecorded w.Reason, negate w.Amount, w.JournalEntryId ]
+        |> List.sortBy (fun (date, order, id, _, _, _) -> date, order, id)
+
+    let lines, owed =
+        events
+        |> List.fold
+            (fun (lines, owed) (date, _, _, event, effect, entry) ->
+                let after = add owed effect
+                lines @ [ { Date = date; Event = event; Effect = effect; Balance = after; JournalEntryId = entry } ], after)
+            ([], invoice.Total)
+
+    match r.Voids.TryFind invoice.InvoiceId with
+    | Some v -> lines @ [ { Date = v.Date; Event = InvoiceVoided v.Reason; Effect = negate owed; Balance = zero invoice.Currency; JournalEntryId = v.JournalEntryId } ]
+    | None -> lines
+
 /// What of a payment is neither allocated nor recognised as a credit. A
 /// reversed payment has nothing left to allocate.
 let unallocated (r: Receivables) (payment: Payment) =

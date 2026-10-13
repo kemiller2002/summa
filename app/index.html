@@ -537,11 +537,11 @@
           <template data-if="onPaymentsTab">
 
           <section class="ef-surface ef-stack summa-screen-only" aria-labelledby="payments-title">
-            <h2 id="payments-title">Payments</h2>
+            <h2 id="payments-title">Payments and settlement</h2>
             <table class="summa-table" id="invoice-payments">
-              <caption class="ef-visually-hidden">Payments applied</caption>
-              <thead><tr><th scope="col">Received</th><th scope="col">Reference</th><th scope="col" class="summa-number">Amount</th></tr></thead>
-              <tbody><template data-each="detailPayments" data-key="key"><tr><td data-text="date"></td><td data-text="reference"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
+              <caption class="ef-visually-hidden">Everything that settled this invoice, oldest first</caption>
+              <thead><tr><th scope="col">Date</th><th scope="col">What</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Owed after</th></tr></thead>
+              <tbody><template data-each="detailPayments" data-key="key"><tr><td data-text="date"></td><td data-text="reference"></td><td class="summa-number" data-text="amount"></td><td class="summa-number" data-text="balance"></td></tr></template></tbody>
             </table>
             <template data-if="canRecordPayment">
               <form class="ef-stack" id="payment-form" data-event="paymentRecorded" aria-labelledby="payment-form-title">
@@ -989,6 +989,10 @@
         </dl>
         <template data-if="hasEntryOrigin"><p>Posted by <a class="summa-link" id="entry-origin" data-bind-href="entryOriginHref" data-text="entryOrigin"></a></p></template>
         <template data-if="entryReverses"><p>Reverses <a class="summa-link" data-bind-href="entryReversesHref" data-text="entryReversesId"></a></p></template>
+        <section class="ef-stack" aria-labelledby="entry-explained-title">
+          <h2 id="entry-explained-title">In plain words</h2>
+          <ul id="entry-explanation"><template data-each="entryExplanation" data-key="key"><li data-text="text"></li></template></ul>
+        </section>
         <table class="summa-table" id="entry-lines">
           <caption>Lines</caption>
           <thead><tr><th scope="col">Account</th><th scope="col">Memo</th><th scope="col" class="summa-number">Debit</th><th scope="col" class="summa-number">Credit</th></tr></thead>

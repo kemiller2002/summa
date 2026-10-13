@@ -2972,6 +2972,13 @@ let private bookValues (model: Model) (shown: Screen) : View =
       "entryReverses", flagOf (entry |> Option.exists (fun (_, e) -> e.Reverses.IsSome))
       "entryReversesHref", textOf (entry |> Option.bind (fun (_, e) -> e.Reverses) |> Option.map (fun id -> Routes.href (Routes.JournalEntry id)) |> Option.defaultValue "")
       "entryReversesId", entryText (fun e -> e.Reverses |> Option.defaultValue "")
+      // The entry in business language, on demand (INV-ACC-006).
+      "entryExplanation",
+      Items(
+          entry
+          |> Option.map (fun (l, e) -> Explanations.entry l e |> List.mapi (fun i sentence -> [ "key", Text(string i); "text", Text sentence ]))
+          |> Option.defaultValue []
+      )
       "entryLines",
       Items(
           entry
@@ -3598,19 +3605,28 @@ let view (model: Model) : View =
           text (detail |> Option.map (fun (b, i) -> statusText (status b i)) |> Option.defaultValue "")
           "detailOutstanding", text (detail |> Option.map (fun (b, i) -> Documents.moneyText (outstanding b i)) |> Option.defaultValue "")
           "canRecordPayment", flag (detail |> Option.exists (fun (b, i) -> (outstanding b i).Minor > 0L))
+          // Everything that settled the invoice, with what it owed after each (INV-SET-006).
           "detailPayments",
           Items(
               detail
               |> Option.map (fun (b, i) ->
-                  liveAllocations b
-                  |> List.filter (fun a -> a.InvoiceId = i.InvoiceId)
-                  |> List.map (fun a ->
-                      let p = b.Payments[a.PaymentId]
+                  settlement b i
+                  |> List.mapi (fun index line ->
+                      let what =
+                          match line.Event with
+                          | PaymentApplied(id, reference) -> if reference = "" then $"Payment {id}" else $"Payment {id} ({reference})"
+                          | PaymentReversed(id, reason) -> $"Payment {id} reversed: {reason}"
+                          | CreditApplied(FromCredit id) -> $"Credit {id} applied"
+                          | CreditApplied(FromDeposit id) -> $"Deposit {id} applied"
+                          | CreditApplied(FromCreditMemo id) -> $"Credit memo {id} applied"
+                          | WriteOffRecorded reason -> $"Written off: {reason}"
+                          | InvoiceVoided reason -> $"Voided: {reason}"
 
-                      [ "key", Text a.Id
-                        "date", Text(Documents.dateText p.DateReceived)
-                        "reference", Text(if p.Reference = "" then "-" else p.Reference)
-                        "amount", money a.Amount ]))
+                      [ "key", Text(string index)
+                        "date", Text(Documents.dateText line.Date)
+                        "reference", Text what
+                        "amount", money line.Effect
+                        "balance", money line.Balance ]))
               |> Option.defaultValue []
           ) ]
 
