@@ -76,6 +76,19 @@ sensitivity.
   supersedes those versions.
 - A CPA reading an older `summa.export/1` file still reads the same
   columns; only the header line was added.
-- Storage where supported: a local or demo deployment keeps its books in
-  this browser's storage, which browsers do not encrypt at rest. GitHub
-  encrypts GitHub-backed books.
+- **SUM3-024 stays partial** (coordinator's ruling on #85), with two
+  remainders:
+  1. **Encrypted storage where supported.**
+     - A local or demo deployment keeps its books unencrypted in this
+       browser's localStorage.
+     - Browsers support app-level encryption at rest (WebCrypto with a
+       user-held key over IndexedDB), so this is not met.
+     - It needs a key-handling design, brought for approval before
+       building: WI-0051.
+  2. **Encrypted backups.**
+     - `Summa.Operations.Backup` seals the organization folder with
+       AES-256-GCM, but only a financial migration takes one today.
+     - No routine backup is produced; scheduling it is SUM3-006.
+     - Summa produces no export of the books themselves, only the CPA and
+       invoice exports this record covers.
+  GitHub encrypts GitHub-backed books.

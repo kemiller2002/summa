@@ -1216,6 +1216,31 @@
       },
       "source": "manual",
       "sourceReference": null
+    },
+    {
+      "id": "WI-0051",
+      "title": "Summa: local books encrypted at rest in the browser (SUM3-024 remainder)",
+      "description": "Coordinator ruling on #85: browsers support app-level encryption at rest (WebCrypto with a user-held key over IndexedDB), so local/demo books kept unencrypted in localStorage do not meet 'encrypted storage where supported'. Needs a key-handling design (key derivation, where the key lives, unlock and lock, loss and recovery, migration of existing unencrypted snapshots) brought to the coordinator for approval before building. Also related: routine encrypted backups are scheduled under SUM3-006.",
+      "tags": [
+        "summa",
+        "security",
+        "encryption"
+      ],
+      "priority": "medium",
+      "status": "captured",
+      "attachments": [],
+      "createdAt": "2026-10-13T15:39:36Z",
+      "updatedAt": "2026-10-13T15:39:36Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
     }
   ]
 }
