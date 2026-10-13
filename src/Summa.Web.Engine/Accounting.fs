@@ -3384,6 +3384,20 @@ let private placeValues (model: Model) (shown: Screen) : View =
       )
       // Credit on the invoice shown
       "creditAmount", Value(Text model.Credit.Amount)
+      // What issuing the credit memo does, said before it is done (v0.4 §38).
+      "confirmCreditText",
+      Value(
+          Text(
+              match model.Place, model.Books with
+              | Routes.Invoice(invoiceId, _), Some b ->
+                  match b.Books.Invoices.TryFind invoiceId, parseAmount model.Credit.Amount with
+                  | Some i, Some amount ->
+                      $"Issue a credit memo for {Documents.moneyText amount} against {i.Number}? It reduces what {i.Customer.Name} owes, is posted to the books and is sent as its own document. It cannot be withdrawn."
+                  | Some i, None -> $"Issue a credit memo against {i.Number}? Enter the amount to credit first."
+                  | None, _ -> ""
+              | _ -> ""
+          )
+      )
       "creditReason", Value(Text model.Credit.Reason)
       // Engagements
       "engagements", itemsOf listedEngagements
@@ -3782,6 +3796,13 @@ let private bookValues (model: Model) (shown: Screen) : View =
       "nextYearHref", textOf (Routes.href (Routes.Periods(Some(year + 1))))
       "months", Items monthRows
       "periodLabel", textOf (period |> Option.map (snd >> monthLabel) |> Option.defaultValue "")
+      // What closing, locking or reopening the month does, said before it is done (v0.4 §38).
+      "confirmCloseText",
+      textOf (period |> Option.map (fun (_, p) -> $"Close {monthLabel p}? Nothing more can be posted to {monthLabel p}, so its reports stay as they are, until an accountant reopens it.") |> Option.defaultValue "")
+      "confirmLockText",
+      textOf (period |> Option.map (fun (_, p) -> $"Lock {monthLabel p}? It stays closed, and the lock says its numbers are final, for example once they are filed or handed to the accountant.") |> Option.defaultValue "")
+      "confirmReopenText",
+      textOf (period |> Option.map (fun (_, p) -> $"Reopen {monthLabel p}? Entries can be posted to it again, so reports already given for {monthLabel p} may no longer match the books.") |> Option.defaultValue "")
       "periodState", textOf (periodState |> Option.map periodStateText |> Option.defaultValue "")
       "periodYearHref", textOf (period |> Option.map (fun (_, (y, _)) -> Routes.href (Routes.Periods(Some y))) |> Option.defaultValue "")
       "periodEntries", Items periodEntries
@@ -4068,6 +4089,10 @@ let private proposalValues (model: Model) (shown: Screen) : View =
       "propState", propText (fun _ p -> proposalStateText p.State)
       "propPreparedBy", propText (fun _ p -> preparedBy p)
       "propTotal", propText (fun _ p -> Documents.moneyText (proposalTotal p))
+      // What approving does, said before it is done (v0.4 §38).
+      "confirmApproveText",
+      propText (fun b p ->
+          $"Approve proposal {p.Id} and issue it to {customerName b p.CustomerId} for {Documents.moneyText (proposalTotal p)}? It becomes an invoice with the next number, which never changes, and is posted to the books. To correct it afterwards, issue a credit memo.")
       "propByAgent",
       Value(Flag(shownProposal |> Option.exists (fun (_, p) -> p.Contributions |> List.exists (fun c -> c.Provenance |> Option.exists (fun v -> v.ActorKind = "agent")))))
       "propIssuedHref",
@@ -4772,6 +4797,12 @@ let view (model: Model) : View =
       )
       "draftNotes", text model.Draft.Notes
       "draftTotal", Value(money draftTotal)
+      // What issuing does, said before it is done (v0.4 §38).
+      "confirmIssueText",
+      text (
+          let customer = books |> Option.bind (fun b -> b.Books.Customers.TryFind model.Draft.CustomerId) |> Option.map _.Name |> Option.defaultValue "the customer"
+          $"Issue this invoice to {customer} for {Documents.moneyText draftTotal}? It gets the next invoice number, which never changes, and is posted to the books. To correct it afterwards, issue a credit memo."
+      )
       "draftLabel", text (model.Draft.DraftId |> Option.map (fun id -> $"Draft {id}") |> Option.defaultValue "New invoice")
       "draftLines",
       Items(

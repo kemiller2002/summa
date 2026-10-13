@@ -31,14 +31,16 @@ async function issueInvoice(page, customerLabel, description, rate) {
   await page.getByRole("textbox", { name: "Line 1 description" }).fill(description);
   await page.getByRole("textbox", { name: "Line 1 rate" }).fill(rate);
   await page.getByRole("button", { name: "Save and review" }).click();
-  await page.getByRole("button", { name: "Issue invoice" }).click();
+  // Issuing asks first (WI-0044): the editor's button opens a dialog.
+  await page.getByRole("button", { name: "Issue invoice…" }).click();
+  await page.getByRole("dialog", { name: "Issue this invoice?" }).getByRole("button", { name: "Issue invoice", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: /^Invoice INV-/ })).toBeVisible();
 }
 
 const EDITOR_HEAD = [field("combobox", "Customer"), field("textbox", "Purchase order")];
 const TAX = [field("textbox", "Tax code"), field("textbox", "Tax amount"), field("textbox", "Rate (%)"), field("combobox", "Liability account")];
 const LINE = [field("textbox", "Line 1 description"), field("textbox", "Line 1 quantity"), field("textbox", "Line 1 rate")];
-const EDITOR_ACTIONS = [field("button", "Save and review"), field("button", "Issue invoice")];
+const EDITOR_ACTIONS = [field("button", "Save and review"), field("button", "Issue invoice…")];
 const CUSTOMER = [field("textbox", "Name"), field("textbox", "Billing name"), field("textbox", "Billing email"), field("textbox", "Payment terms (days)")];
 
 test("@ui-conformance invoice editor: declared peer fields share a top edge, or stack in order (ULI-L01, ULI-L09, ULI-L10)", async ({ app: { page, origin } }) => {
@@ -119,7 +121,7 @@ test("@ui-conformance a disabled Issue says why, and the invoice workflow has ob
   });
 
   await page.getByRole("link", { name: "New invoice", exact: true }).click();
-  const issue = page.getByRole("button", { name: "Issue invoice" });
+  const issue = page.getByRole("button", { name: "Issue invoice…" });
   await expect(issue).toBeDisabled();
   await expect(issue).toHaveAccessibleDescription("Issue is available after Save and review has checked this invoice.");
   // With no customer chosen the field says what choosing one shows, not
@@ -136,6 +138,17 @@ test("@ui-conformance a disabled Issue says why, and the invoice workflow has ob
     outcome: { kind: "visible", target: field("heading", /^Preview: invoice/), expected: true }
   });
   await expect(issue).toBeEnabled();
+  // Issue asks first; Not yet leaves the draft where it is.
+  const draftUrl = page.url();
+  await expectActionOutcome(page, {
+    ruleId: "ULI-A02",
+    action: field("button", "Issue invoice…"),
+    outcome: { kind: "visible", target: field("dialog", "Issue this invoice?"), expected: true }
+  });
+  await page.getByRole("button", { name: "Not yet" }).click();
+  await expect(page.getByRole("dialog", { name: "Issue this invoice?" })).toHaveCount(0);
+  await expect(page).toHaveURL(draftUrl);
+  await issue.click();
   await expectActionOutcome(page, {
     ruleId: "ULI-A02",
     action: field("button", "Issue invoice"),

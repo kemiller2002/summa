@@ -23,6 +23,7 @@ async function issueInvoice(page) {
   await expect(page.locator("#invoice-preview")).toBeVisible();
   await expect(page.locator("#preview-total")).toHaveText("1,000.00 USD");
   await page.click("#issue-invoice");
+  await page.click("#confirm-issue");
   await expect(page).toHaveURL(/#\/invoices\/INV-0001$/);
 }
 
@@ -79,6 +80,7 @@ test("a long invoice prints across pages with repeated headers, whole rows and t
   }
   await page.click("#review-draft");
   await page.click("#issue-invoice");
+  await page.click("#confirm-issue");
   await expect(page.locator("#invoice-lines tbody tr")).toHaveCount(60);
 
   await page.emulateMedia({ media: "print" });

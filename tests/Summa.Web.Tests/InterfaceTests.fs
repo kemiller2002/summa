@@ -333,6 +333,12 @@ let ``a proposal shows its lines, how it was made and who contributed, before an
     Assert.Contains("tax: nothing is recorded for the customer", items "propAssumptions" shown |> List.map (fun r -> string r["text"]) |> String.concat " ")
     Assert.Equal<Scalar list>([ Text "Agent summa-agent (anthropic claude), run EXE-summa.42" ], items "propContributions" shown |> List.map (fun r -> r["who"]))
     Assert.Equal<Scalar list>([ Text "P-1" ], items "propActions" shown |> List.map (fun r -> r["id"]))
+    // Approving issues an invoice: it asks first and says so (SUM4-038).
+    let total = value "propTotal" shown
+    Assert.Equal(
+        $"Approve proposal P-1 and issue it to ABC Corp for {total}? It becomes an invoice with the next number, which never changes, and is posted to the books. To correct it afterwards, issue a credit memo.",
+        value "confirmApproveText" shown
+    )
 
 [<Fact>]
 let ``a person approves the proposal and it is issued as one invoice, the person's contribution appended`` () =

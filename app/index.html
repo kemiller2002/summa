@@ -496,7 +496,17 @@
           </template>
           <div class="ef-actions">
             <button type="submit" class="ef-button" data-variant="secondary" id="review-draft">Save and review</button>
-            <button type="button" class="ef-button" id="issue-invoice" aria-describedby="issue-invoice-hint" data-event="draftIssued" data-bind-disabled="cannotIssue">Issue invoice</button>
+            <button type="button" class="ef-button" id="issue-invoice" aria-describedby="issue-invoice-hint" commandfor="issue-dialog" command="show-modal" data-bind-disabled="cannotIssue">Issue invoice…</button>
+            <dialog class="ef-dialog" id="issue-dialog" aria-labelledby="issue-dialog-title" aria-describedby="issue-dialog-text">
+              <div class="ef-dialog__body">
+                <h2 id="issue-dialog-title">Issue this invoice?</h2>
+                <p id="issue-dialog-text" data-text="confirmIssueText"></p>
+              </div>
+              <div class="ef-dialog__actions">
+                <button type="button" class="ef-button" data-variant="secondary" id="issue-dialog-cancel" commandfor="issue-dialog" command="close">Not yet</button>
+                <button type="button" class="ef-button" id="confirm-issue" data-event="draftIssued" commandfor="issue-dialog" command="close">Issue invoice</button>
+              </div>
+            </dialog>
             <template data-if="editorChanged"><button type="button" class="ef-button" data-variant="secondary" id="discard-changes" data-event="editorDiscarded">Discard unsaved changes</button></template>
           </div>
           <!-- A disabled Issue says why (ULI-A04): only a reviewed draft is issued. -->
@@ -694,7 +704,7 @@
               </table>
             </div>
             <template data-if="canRecordPayment">
-              <form class="ef-stack" id="credit-form" data-event="creditMemoIssued" aria-labelledby="credit-form-title">
+              <form class="ef-stack" id="credit-form" aria-labelledby="credit-form-title">
                 <h3 id="credit-form-title">Issue a credit memo</h3>
                 <p class="ef-field__description">The invoice stays as issued. A credit memo reduces what is owed, and the customer receives it as its own document.</p>
                 <div class="summa-fields">
@@ -703,7 +713,17 @@
                   <div class="ef-field"><label class="ef-field__label" for="credit-reason">Reason, as the customer will read it</label>
                     <input id="credit-reason" type="text" required data-event="creditReasonChanged" data-on="input" data-bind-value="creditReason" /></div>
                 </div>
-                <div class="ef-actions"><button type="submit" class="ef-button" data-variant="secondary" id="issue-credit">Issue credit memo</button></div>
+                <div class="ef-actions"><button type="button" class="ef-button" data-variant="secondary" id="issue-credit" commandfor="credit-dialog" command="show-modal">Issue credit memo…</button></div>
+                <dialog class="ef-dialog" id="credit-dialog" aria-labelledby="credit-dialog-title" aria-describedby="credit-dialog-text">
+              <div class="ef-dialog__body">
+                <h2 id="credit-dialog-title">Issue this credit memo?</h2>
+                <p id="credit-dialog-text" data-text="confirmCreditText"></p>
+              </div>
+              <div class="ef-dialog__actions">
+                <button type="button" class="ef-button" data-variant="secondary" id="credit-dialog-cancel" commandfor="credit-dialog" command="close">Not yet</button>
+                <button type="button" class="ef-button" id="confirm-credit" data-event="creditMemoIssued" commandfor="credit-dialog" command="close">Issue credit memo</button>
+              </div>
+            </dialog>
               </form>
             </template>
           </section>
@@ -889,7 +909,17 @@
               <div class="ef-actions"><button type="submit" class="ef-button" data-variant="secondary" id="override-rate">Change rate</button></div>
             </form>
             <div class="ef-actions" id="proposal-actions">
-              <button type="button" class="ef-button" id="approve-proposal" data-event="proposalApproved">Approve and issue invoice</button>
+              <button type="button" class="ef-button" id="approve-proposal" commandfor="approve-dialog" command="show-modal">Approve and issue invoice…</button>
+            <dialog class="ef-dialog" id="approve-dialog" aria-labelledby="approve-dialog-title" aria-describedby="approve-dialog-text">
+              <div class="ef-dialog__body">
+                <h2 id="approve-dialog-title">Approve and issue?</h2>
+                <p id="approve-dialog-text" data-text="confirmApproveText"></p>
+              </div>
+              <div class="ef-dialog__actions">
+                <button type="button" class="ef-button" data-variant="secondary" id="approve-dialog-cancel" commandfor="approve-dialog" command="close">Not yet</button>
+                <button type="button" class="ef-button" id="confirm-approve" data-event="proposalApproved" commandfor="approve-dialog" command="close">Approve and issue invoice</button>
+              </div>
+            </dialog>
               <button type="button" class="ef-button" data-variant="secondary" id="abandon-proposal" data-event="proposalAbandoned">Abandon proposal</button>
             </div>
           </div>
@@ -1354,10 +1384,40 @@
           </div>
         </template>
         <div class="ef-actions">
-          <template data-if="canClosePeriod"><button type="button" class="ef-button" id="close-period" data-event="periodClosed">Close period</button></template>
-          <template data-if="canLockPeriod"><button type="button" class="ef-button" data-variant="secondary" id="lock-period" data-event="periodLocked">Lock period</button></template>
-          <template data-if="canReopenPeriod"><button type="button" class="ef-button" data-variant="danger" id="reopen-period" data-event="periodReopened">Reopen period</button></template>
+          <template data-if="canClosePeriod"><button type="button" class="ef-button" id="close-period" commandfor="close-dialog" command="show-modal">Close period…</button></template>
+          <template data-if="canLockPeriod"><button type="button" class="ef-button" data-variant="secondary" id="lock-period" commandfor="lock-dialog" command="show-modal">Lock period…</button></template>
+          <template data-if="canReopenPeriod"><button type="button" class="ef-button" data-variant="danger" id="reopen-period" commandfor="reopen-dialog" command="show-modal">Reopen period…</button></template>
         </div>
+        <dialog class="ef-dialog" id="close-dialog" aria-labelledby="close-dialog-title" aria-describedby="close-dialog-text">
+              <div class="ef-dialog__body">
+                <h2 id="close-dialog-title">Close this month?</h2>
+                <p id="close-dialog-text" data-text="confirmCloseText"></p>
+              </div>
+              <div class="ef-dialog__actions">
+                <button type="button" class="ef-button" data-variant="secondary" id="close-dialog-cancel" commandfor="close-dialog" command="close">Keep it open</button>
+                <button type="button" class="ef-button" id="confirm-close" data-event="periodClosed" commandfor="close-dialog" command="close">Close period</button>
+              </div>
+            </dialog>
+        <dialog class="ef-dialog" id="lock-dialog" aria-labelledby="lock-dialog-title" aria-describedby="lock-dialog-text">
+              <div class="ef-dialog__body">
+                <h2 id="lock-dialog-title">Lock this month?</h2>
+                <p id="lock-dialog-text" data-text="confirmLockText"></p>
+              </div>
+              <div class="ef-dialog__actions">
+                <button type="button" class="ef-button" data-variant="secondary" id="lock-dialog-cancel" commandfor="lock-dialog" command="close">Not yet</button>
+                <button type="button" class="ef-button" id="confirm-lock" data-event="periodLocked" commandfor="lock-dialog" command="close">Lock period</button>
+              </div>
+            </dialog>
+        <dialog class="ef-dialog" id="reopen-dialog" aria-labelledby="reopen-dialog-title" aria-describedby="reopen-dialog-text">
+              <div class="ef-dialog__body">
+                <h2 id="reopen-dialog-title">Reopen this month?</h2>
+                <p id="reopen-dialog-text" data-text="confirmReopenText"></p>
+              </div>
+              <div class="ef-dialog__actions">
+                <button type="button" class="ef-button" data-variant="secondary" id="reopen-dialog-cancel" commandfor="reopen-dialog" command="close">Keep it closed</button>
+                <button type="button" class="ef-button" data-variant="danger" id="confirm-reopen" data-event="periodReopened" commandfor="reopen-dialog" command="close">Reopen period</button>
+              </div>
+            </dialog>
         <div class="ef-data-grid" role="region" tabindex="0" aria-label="Entries">
           <table class="summa-table" id="period-entries">
             <caption>Entries</caption>

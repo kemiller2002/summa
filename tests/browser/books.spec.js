@@ -18,6 +18,7 @@ async function invoicePartlyPaid(page) {
   await row.locator(".line-rate").fill("1000");
   await page.click("#review-draft");
   await page.click("#issue-invoice");
+  await page.click("#confirm-issue");
   await page.click('.summa-tab[data-tab="payments"]');
   await page.fill("#payment-amount", "400");
   await page.click("#record-payment");
@@ -75,10 +76,12 @@ test("a period is closed from its own page and says so", async ({ app: { page } 
   await page.locator(`#periods-table a[href="#/periods/${month}"]`).click();
   await expect(page).toHaveURL(new RegExp(`#/periods/${month}$`));
   await page.click("#close-period");
+  await page.click("#confirm-close");
   await expect(page.locator("#period-state")).toHaveText("Closed");
   await page.reload();
   await running(page);
   await expect(page.locator("#period-state")).toHaveText("Closed");
   await page.click("#reopen-period");
+  await page.click("#confirm-reopen");
   await expect(page.locator("#period-state")).toHaveText("Open");
 });
