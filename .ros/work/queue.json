@@ -1241,6 +1241,32 @@
       },
       "source": "manual",
       "sourceReference": null
+    },
+    {
+      "id": "WI-0052",
+      "title": "Summa: adopt Forma and Folio through Conditor 0.9.0 (step 1: echelon-current 1.19.0, step 2: 1.20.0)",
+      "description": "Coordinator direction: declare forma 0.4.1 and folio 0.3.0 in conditor.json and upgrade --current against echelon-current 1.19.0 with Conditor 0.9.0 (verified checksums and attestation, isolated --home): Forma goes to 0.5.0, Folio is declared. Then against 1.20.0: Forma 0.6.1, Folio 0.4.0. Each step: full tests, invoice golden vectors byte-stable or every change explained, printed invoice and credit memo checked; pins, lockfiles and foundations.json written by the tooling only.",
+      "tags": [
+        "summa",
+        "foundations",
+        "forma",
+        "folio"
+      ],
+      "priority": "medium",
+      "status": "ready",
+      "attachments": [],
+      "createdAt": "2026-10-13T15:47:04Z",
+      "updatedAt": "2026-10-13T15:47:07Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
     }
   ]
 }
