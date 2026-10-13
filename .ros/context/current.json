@@ -2184,20 +2184,20 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "3cf3440bee4725cd9dfc1a92",
-        "recordedAt": "2026-10-13T11:34:32Z",
+        "id": "b2e45357567d246d3f3fc268",
+        "recordedAt": "2026-10-13T11:54:25Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
         "repository": "summa",
-        "branch": "feat/wi-0029-accounting",
-        "commit": "c7b619830cb6a027198de724abb3ee965242adde",
+        "branch": "feat/wi-0029-invoice-data",
+        "commit": "0b1f31851c4e91e4f19182b20e39630486104298",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0029-accounting",
-        "remoteCommit": "c7b619830cb6a027198de724abb3ee965242adde",
-        "summary": "INV-ACC, INV-SET, INV-FX tested per requirement: structured entry reference, settlement timeline, entry explanations, mixed-currency refusal (DF-SUMMA-2026-0028)",
-        "nextAction": "INV-OPS, INV-PERF, INV-INTL, INV-EXP, INV-DATA, INV-ARCH, INV-REC, INV-CONTRACT-002, SUM3-011, SUM2-031, served import preview, integration state in the app, export handling, SUM3-006 scheduling",
+        "remoteBranch": "feat/wi-0029-invoice-data",
+        "remoteCommit": "0b1f31851c4e91e4f19182b20e39630486104298",
+        "summary": "INV-DATA tested per requirement: derived line ids, optional line details, typed client references, recorded rounding policy (DF-SUMMA-2026-0029)",
+        "nextAction": "INV-OPS, INV-PERF, INV-INTL, INV-EXP, INV-ARCH, INV-REC, INV-CONTRACT-002, SUM3-011, SUM2-031, served import preview, integration state in the app, export handling, SUM3-006 scheduling; editor inputs for line details and references",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
