@@ -28,6 +28,21 @@ type DeliveryProblem =
     | UnknownAttempt of string
     | AttemptIdReused of string
     | OutcomeNotAllowed of from: DeliveryOutcome * ``to``: DeliveryOutcome
+    /// The actor does not hold the delivery capability (INV-DEL-005).
+    | NotAuthorizedToDeliver of actor: string
+    /// There is no failed or bounced delivery to resolve.
+    | NoDeliveryProblem of invoiceId: string
+
+/// Whether an actor may deliver invoices: send, resend, record a manual
+/// send and resolve a delivery problem. The caller builds it from the
+/// organization's roster (the `DeliverInvoice` capability); every delivery
+/// action an actor takes checks it against `Context.Who`. Provider outcomes
+/// are reports, not actions, and are recorded by `recordOutcome`.
+[<NoEquality; NoComparison>]
+type DeliveryAuthority = DeliveryAuthority of mayDeliver: (string -> bool)
+
+let private authorizing (DeliveryAuthority mayDeliver) (context: Context) (action: unit -> Result<Receivables, DeliveryProblem list>) =
+    if mayDeliver context.Who then action () else Error [ NotAuthorizedToDeliver context.Who ]
 
 type DeliveryRequest =
     { AttemptId: string
@@ -48,16 +63,34 @@ let private needsPdf =
     | AttachAndLink -> true
     | LinkOnly -> false
 
-let private save (context: Context) what subject (attempt: DeliveryAttempt) (r: Receivables) =
+let private save (context: Context) what subject change (attempt: DeliveryAttempt) (r: Receivables) =
     { r with
         Books =
             { r.Books with
                 Deliveries = r.Books.Deliveries.Add(attempt.Id, attempt)
-                Ledger = audit context what subject r.Books.Ledger } }
+                Ledger = auditChange context what subject change r.Books.Ledger } }
+
+/// The audit event for an attempt reaching an outcome: one per outcome.
+let outcomeEvent =
+    function
+    | Queued -> "invoice-delivery-queued"
+    | SentToProvider -> "invoice-delivery-sent-to-provider"
+    | ProviderAccepted -> "invoice-delivery-accepted-by-provider"
+    | Delivered -> "invoice-delivery-delivered"
+    | DeliveryFailed _ -> "invoice-delivery-failed"
+    | Bounced _ -> "invoice-delivery-bounced"
+    | ManuallySent -> "invoice-delivered-manually"
+
+let private outcomeName (outcome: DeliveryOutcome) =
+    match outcome with
+    | DeliveryFailed _ -> "DeliveryFailed"
+    | Bounced _ -> "Bounced"
+    | other -> $"%A{other}"
 
 /// Queues a delivery of an issued invoice. Retrying the same attempt id
 /// changes nothing (INV-DEL-009).
-let send (context: Context) (request: DeliveryRequest) (r: Receivables) =
+let send (context: Context) (authority: DeliveryAuthority) (request: DeliveryRequest) (r: Receivables) =
+    authorizing authority context <| fun () ->
     match r.Books.Deliveries.TryFind request.AttemptId, r.Books.Invoices.TryFind request.InvoiceId with
     | Some existing, _ when existing.InvoiceId = request.InvoiceId && existing.Recipients = request.Recipients -> Ok r
     | Some _, _ -> Error [ AttemptIdReused request.AttemptId ]
@@ -79,8 +112,9 @@ let send (context: Context) (request: DeliveryRequest) (r: Receivables) =
             Ok(
                 save
                     context
-                    "invoice-delivery-queued"
+                    (outcomeEvent Queued)
                     invoice.InvoiceId
+                    None
                     { Id = request.AttemptId
                       InvoiceId = invoice.InvoiceId
                       At = context.When
@@ -96,12 +130,14 @@ let send (context: Context) (request: DeliveryRequest) (r: Receivables) =
             )
 
 /// Sends again to the same recipients as a new attempt naming the old one.
-let resend (context: Context) (attemptId: string) (fromAttempt: string) (r: Receivables) =
+let resend (context: Context) (authority: DeliveryAuthority) (attemptId: string) (fromAttempt: string) (r: Receivables) =
+    authorizing authority context <| fun () ->
     match r.Books.Deliveries.TryFind fromAttempt with
     | None -> Error [ UnknownAttempt fromAttempt ]
     | Some earlier ->
         send
             context
+            authority
             { AttemptId = attemptId
               InvoiceId = earlier.InvoiceId
               Recipients = earlier.Recipients
@@ -134,8 +170,9 @@ let recordOutcome (context: Context) (attemptId: string) (outcome: DeliveryOutco
         Ok(
             save
                 context
-                "invoice-delivery-updated"
+                (outcomeEvent outcome)
                 attempt.InvoiceId
+                (applied None [ $"outcome: {outcomeName attempt.Outcome} -> {outcomeName outcome}" ])
                 { attempt with
                     Outcome = outcome
                     ProviderReference = providerReference |> Option.orElse attempt.ProviderReference }
@@ -143,7 +180,8 @@ let recordOutcome (context: Context) (attemptId: string) (outcome: DeliveryOutco
         )
 
 /// Records a delivery made outside Summa, as such (INV-DEL-005).
-let recordManual (context: Context) (attemptId: string) (invoiceId: string) (recipients: Recipients) (how: string) (r: Receivables) =
+let recordManual (context: Context) (authority: DeliveryAuthority) (attemptId: string) (invoiceId: string) (recipients: Recipients) (how: string) (r: Receivables) =
+    authorizing authority context <| fun () ->
     match r.Books.Deliveries.TryFind attemptId, r.Books.Invoices.TryFind invoiceId with
     | Some existing, _ when existing.Outcome = ManuallySent && existing.InvoiceId = invoiceId -> Ok r
     | Some _, _ -> Error [ AttemptIdReused attemptId ]
@@ -153,8 +191,9 @@ let recordManual (context: Context) (attemptId: string) (invoiceId: string) (rec
         Ok(
             save
                 context
-                "invoice-delivered-manually"
+                (outcomeEvent ManuallySent)
                 invoiceId
+                None
                 { Id = attemptId
                   InvoiceId = invoiceId
                   At = context.When
@@ -201,13 +240,33 @@ let deliveryState (r: Receivables) (invoiceId: string) =
         | Bounced _ -> BouncedBack
         | ManuallySent -> SentManually
 
+/// The failed or bounced attempt an invoice still owes a person: the latest
+/// one, unless a later attempt was delivered or sent by hand, or a person
+/// resolved it. Queuing or handing a new attempt to the provider is not a
+/// delivery, so the obligation stays until one succeeds (INV-DEL-008).
+let deliveryProblem (r: Receivables) (invoiceId: string) =
+    let all = attempts r invoiceId
+    let failed (a: DeliveryAttempt) = match a.Outcome with DeliveryFailed _ | Bounced _ -> true | _ -> false
+    let succeeded (a: DeliveryAttempt) = match a.Outcome with Delivered | ManuallySent -> true | _ -> false
+
+    match all |> List.tryFindIndexBack failed with
+    | None -> None
+    | Some at ->
+        let problem = all[at]
+        let resolved =
+            r.Books.FollowUps.TryFind invoiceId
+            |> Option.bind _.DeliveryResolved
+            |> Option.exists (fun resolution -> resolution.AttemptId = problem.Id)
+
+        if resolved || all |> List.skip (at + 1) |> List.exists succeeded then None else Some problem
+
 /// What needs a person's attention (INV-DEL-008, INV-DOC-015): a failed or
-/// bounced delivery, or a PDF that failed.
+/// bounced delivery not since delivered or resolved, or a PDF that failed.
 let attention (r: Receivables) =
     [ for KeyValue(id, _) in r.Books.Invoices do
-          match deliveryState r id with
-          | Failed -> id, "the last delivery failed"
-          | BouncedBack -> id, "the last delivery bounced"
+          match deliveryProblem r id |> Option.map _.Outcome with
+          | Some(DeliveryFailed _) -> id, "the last delivery failed"
+          | Some(Bounced _) -> id, "the last delivery bounced"
           | _ -> ()
 
           match r.Books.Artifacts.TryFind $"{id}-pdf" with
@@ -221,7 +280,8 @@ let followUp (r: Receivables) (invoiceId: string) =
     |> Option.defaultValue
         { InvoiceId = invoiceId
           Dispute = NotDisputed
-          Collection = NoFollowUp }
+          Collection = NoFollowUp
+          DeliveryResolved = None }
 
 let private setFollowUp (context: Context) what (f: FollowUp) (r: Receivables) =
     if not (r.Books.Invoices.ContainsKey f.InvoiceId) then
@@ -244,6 +304,17 @@ let resolveDispute (context: Context) (invoiceId: string) (resolution: string) (
 
 let setCollection (context: Context) (invoiceId: string) (stage: CollectionStage) (r: Receivables) =
     setFollowUp context "invoice-collection-changed" { followUp r invoiceId with Collection = stage } r
+
+/// A person resolves a failed or bounced delivery without a new one, for
+/// example when the customer collected the invoice. The attempts and the
+/// invoice are unchanged; a later failure is a new problem (INV-DEL-008).
+let resolveDeliveryProblem (context: Context) (authority: DeliveryAuthority) (invoiceId: string) (note: string) (r: Receivables) =
+    authorizing authority context <| fun () ->
+    match deliveryProblem r invoiceId with
+    | None -> Error [ NoDeliveryProblem invoiceId ]
+    | Some problem ->
+        let resolution: DeliveryResolution = { AttemptId = problem.Id; Note = note; By = context.Who; At = context.When }
+        setFollowUp context "invoice-delivery-problem-resolved" { followUp r invoiceId with DeliveryResolved = Some resolution } r
 
 // ---- State dimensions and actions ------------------------------------------------------------
 

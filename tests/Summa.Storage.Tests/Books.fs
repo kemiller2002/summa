@@ -307,7 +307,7 @@ let withLifecycle () =
         { AttemptId = "DL-1"; InvoiceId = "INV-001"; Recipients = { To = [ "ap@abc.example" ]; Cc = []; ReplyTo = None }; Channel = SecureLink; Policy = LinkOnly; MessageTemplate = "invoice-email/1"; RetryOf = None }
 
     r
-    |> Summa.Ledger.Lifecycle.send ledgerContext request
+    |> Summa.Ledger.Lifecycle.send ledgerContext (Summa.Ledger.Lifecycle.DeliveryAuthority(fun who -> who = ledgerContext.Who)) request
     |> ok
     |> Summa.Ledger.Lifecycle.recordOutcome ledgerContext "DL-1" (DeliveryFailed "smtp 550") (Some "msg-1")
     |> ok

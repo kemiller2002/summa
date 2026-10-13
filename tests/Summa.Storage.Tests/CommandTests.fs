@@ -501,3 +501,27 @@ let ``books with an erased financial record are refused, never kept on without i
     match readAll store.Provider ns |> Async.RunSynchronously with
     | Error(Untrustworthy [ Diagnostics.InvalidStoredRecord(_, why) ]) -> Assert.Contains("erased", why)
     | other -> failwith $"%A{other}"
+
+[<Fact>]
+let ``delivery authority is the roster's DeliverInvoice capability, checked against the actor`` () =
+    let membership id kind grant =
+        id, { Principal = { PrincipalId = id; Kind = kind; DisplayName = id }; Capabilities = Grants.forKind kind grant; Revision = 1 }
+
+    let roster =
+        { OrganizationId = "org_acme"
+          Members = Map.ofList [ membership "clerk" Human Grants.bookkeeper; membership "reader" Human Grants.viewer ] }
+
+    let authority = deliveryAuthority roster
+    let r = withLifecycle ()
+    let request: Summa.Ledger.Lifecycle.DeliveryRequest =
+        { AttemptId = "DL-9"; InvoiceId = "INV-001"; Recipients = { To = [ "ap@abc.example" ]; Cc = []; ReplyTo = None }; Channel = SecureLink; Policy = LinkOnly; MessageTemplate = "invoice-email/1"; RetryOf = None }
+
+    let as' who = { ledgerContext with Who = who }
+    Assert.True(Result.isOk (Summa.Ledger.Lifecycle.recordManual (as' "clerk") authority "DL-M" "INV-001" request.Recipients "handed over" r))
+
+    for who in [ "reader"; "stranger" ] do
+        match Summa.Ledger.Lifecycle.recordManual (as' who) authority "DL-M" "INV-001" request.Recipients "handed over" r with
+        | Error [ Summa.Ledger.Lifecycle.NotAuthorizedToDeliver actor ] -> Assert.Equal(who, actor)
+        | other -> failwith $"%A{other}"
+
+        Assert.True(Result.isError (Summa.Ledger.Lifecycle.send (as' who) authority request r))

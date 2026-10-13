@@ -52,6 +52,9 @@ let private delivery id policy =
       MessageTemplate = "invoice-email/1"
       RetryOf = None }
 
+/// The test context's actor holds the delivery capability.
+let private delivers = DeliveryAuthority(fun who -> who = context.Who)
+
 let private pdfStored (r: Receivables) =
     recordPdf context "INV-001" { Reference = "artifacts://test/INV-001.pdf"; Sha256 = String('b', 64); Size = 1024L; Renderer = "folio-p0" } r |> ok
 
@@ -59,10 +62,10 @@ let private pdfStored (r: Receivables) =
 let ``delivery is separate from issue: attempts move forward and never claim more than the provider said`` () =
     let r, _ = issued ()
     Assert.Equal(NotPrepared, deliveryState r "INV-001")
-    Assert.Equal<DeliveryProblem list>([ PdfNotReady(Some ArtifactStatus.Pending) ], send context (delivery "DL-1" AttachPdf) r |> refused)
+    Assert.Equal<DeliveryProblem list>([ PdfNotReady(Some ArtifactStatus.Pending) ], send context delivers (delivery "DL-1" AttachPdf) r |> refused)
     let ready = pdfStored r
     Assert.Equal(ReadyToSend, deliveryState ready "INV-001")
-    let queued = send context (delivery "DL-1" AttachPdf) ready |> ok
+    let queued = send context delivers (delivery "DL-1" AttachPdf) ready |> ok
     Assert.Equal(Pending, deliveryState queued "INV-001")
     let accepted = queued |> recordOutcome context "DL-1" SentToProvider (Some "msg-1") |> ok |> recordOutcome context "DL-1" ProviderAccepted None |> ok
     // Accepted by the provider is Sent, not Delivered; it never goes backwards.
@@ -73,24 +76,24 @@ let ``delivery is separate from issue: attempts move forward and never claim mor
     Assert.Equal(BouncedBack, deliveryState bounced "INV-001")
     Assert.Equal<(string * string) list>([ "INV-001", "the last delivery bounced" ], attention bounced)
     // A resend is a new attempt for the same invoice: no new invoice, no new entry.
-    let resent = resend context "DL-2" "DL-1" bounced |> ok
+    let resent = resend context delivers "DL-2" "DL-1" bounced |> ok
     Assert.Equal(Some "DL-1", resent.Books.Deliveries["DL-2"].RetryOf)
     Assert.True((bounced.Books.Invoices = resent.Books.Invoices))
     Assert.Equal(bounced.Books.Ledger.Entries.Count, resent.Books.Ledger.Entries.Count)
     Assert.Equal(DeliveredByProvider, deliveryState (recordOutcome context "DL-2" Delivered (Some "msg-2") resent |> ok) "INV-001")
     // Retrying the same attempt changes nothing.
-    Assert.Equal(resent, resend context "DL-2" "DL-1" resent |> ok)
+    Assert.Equal(resent, resend context delivers "DL-2" "DL-1" resent |> ok)
 
 [<Fact>]
 let ``a delivery needs valid recipients and a live invoice; a manual send is recorded as such`` () =
     let r, _ = issued ()
-    Assert.Equal<DeliveryProblem list>([ InvalidRecipient "not an address" ], send context { delivery "DL-1" LinkOnly with Recipients = to' "not an address" } r |> refused)
-    let manual = recordManual context "DL-M" "INV-001" (to' "ap@abc.example") "posted by mail" r |> ok
+    Assert.Equal<DeliveryProblem list>([ InvalidRecipient "not an address" ], send context delivers { delivery "DL-1" LinkOnly with Recipients = to' "not an address" } r |> refused)
+    let manual = recordManual context delivers "DL-M" "INV-001" (to' "ap@abc.example") "posted by mail" r |> ok
     Assert.Equal(SentManually, deliveryState manual "INV-001")
     Assert.Equal(Manual "posted by mail", manual.Books.Deliveries["DL-M"].Channel)
     let voidRequest: Corrections.VoidRequest = { InvoiceId = "INV-001"; Reason = "Duplicate"; Date = DateOnly(2026, 10, 8); JournalEntryId = "JE-VOID-1" }
     let voided = Corrections.voidInvoice context voidRequest r |> ok
-    Assert.Equal<DeliveryProblem list>([ VoidedInvoice "INV-001" ], send context (delivery "DL-1" LinkOnly) voided |> refused)
+    Assert.Equal<DeliveryProblem list>([ VoidedInvoice "INV-001" ], send context delivers (delivery "DL-1" LinkOnly) voided |> refused)
 
 [<Fact>]
 let ``state dimensions are independent: disputed, overdue and partly paid at once, with the books untouched`` () =
@@ -120,7 +123,7 @@ let private actionsMatchCommands (r: Receivables) =
     let canVoid = Corrections.voidInvoice context voidRequest r |> Result.isOk
     let writeOff: WriteOff = { Id = "WO-CHECK"; InvoiceId = "INV-001"; Amount = usd 1L; Reason = "Check"; Date = DateOnly(2026, 10, 30); JournalEntryId = "JE-CHECK-WO" }
     let canWriteOff = Credits.writeOff context accounts writeOff r |> Result.isOk
-    let canDeliver = send context (delivery "DL-CHECK" LinkOnly) r |> Result.isOk
+    let canDeliver = send context delivers (delivery "DL-CHECK" LinkOnly) r |> Result.isOk
 
     let canPay =
         r
@@ -261,3 +264,74 @@ let ``review shows assumptions; the approval keeps its reason; discounts keep th
     Assert.Equal(Some "Within the agreed cap", invoice.Approval.Reason)
     Assert.Equal(Some "Approved by K. Miller", invoice.Discounts.Head.Reason)
     Assert.Equal<string list>(prepared.Assumptions, invoice.Assumptions)
+
+// ---- Delivery defects found by independent acceptance (WI-0047) ---------------------------
+
+let private deliveryEvents (r: Receivables) =
+    r.Books.Ledger.Audit |> List.filter (fun a -> a.Subject = "INV-001" && a.What.StartsWith "invoice-deliver") |> List.map _.What
+
+[<Fact>]
+let ``DEL-A-046: each delivery outcome is audited as its own event`` () =
+    let queued = send context delivers (delivery "DL-1" AttachPdf) (pdfStored (fst (issued ()))) |> ok
+    let step outcome attempt (r: Receivables) = recordOutcome context attempt outcome None r |> ok
+    let delivered = queued |> step SentToProvider "DL-1" |> step ProviderAccepted "DL-1" |> step Delivered "DL-1"
+    Assert.Equal<string list>(
+        [ "invoice-delivery-queued"; "invoice-delivery-sent-to-provider"; "invoice-delivery-accepted-by-provider"; "invoice-delivery-delivered" ],
+        deliveryEvents delivered)
+    let failed = queued |> step (DeliveryFailed "smtp 550") "DL-1"
+    Assert.Equal("invoice-delivery-failed", List.last (deliveryEvents failed))
+    let bounced = queued |> step SentToProvider "DL-1" |> step (Bounced "mailbox full") "DL-1"
+    Assert.Equal("invoice-delivery-bounced", List.last (deliveryEvents bounced))
+    // Each outcome event says what changed.
+    let last = bounced.Books.Ledger.Audit |> List.last
+    Assert.Equal<string list>([ "outcome: SentToProvider -> Bounced" ], last.Change |> Option.map _.Changed |> Option.defaultValue [])
+
+[<Fact>]
+let ``DEL-P-007: a failed delivery stays in the attention queue until a later attempt succeeds`` () =
+    let queued = send context delivers (delivery "DL-1" AttachPdf) (pdfStored (fst (issued ()))) |> ok
+    let failed = recordOutcome context "DL-1" (DeliveryFailed "smtp 550") None queued |> ok
+    Assert.Equal<(string * string) list>([ "INV-001", "the last delivery failed" ], attention failed)
+    // Queuing a new send is not a delivery: the obligation stays.
+    let resent = resend context delivers "DL-2" "DL-1" failed |> ok
+    Assert.Equal<(string * string) list>([ "INV-001", "the last delivery failed" ], attention resent)
+    let handedOver = recordOutcome context "DL-2" SentToProvider None resent |> ok |> recordOutcome context "DL-2" ProviderAccepted None |> ok
+    Assert.Equal<(string * string) list>([ "INV-001", "the last delivery failed" ], attention handedOver)
+    // Delivered clears it.
+    Assert.Empty(attention (recordOutcome context "DL-2" Delivered None handedOver |> ok))
+
+/// Only `ap-clerk` holds the delivery capability.
+let private clerkOnly = DeliveryAuthority(fun who -> who = "ap-clerk")
+let private asClerk = { context with Who = "ap-clerk" }
+let private asOutsider = { context with Who = "outsider" }
+
+[<Fact>]
+let ``DEL-A-021: a manual send needs the same delivery authority as a send, and is refused without it`` () =
+    let r = pdfStored (fst (issued ()))
+    Assert.Equal<DeliveryProblem list>(
+        [ NotAuthorizedToDeliver "outsider" ],
+        recordManual asOutsider clerkOnly "DL-M" "INV-001" (to' "ap@abc.example") "posted by mail" r |> refused)
+    Assert.Equal<DeliveryProblem list>([ NotAuthorizedToDeliver "outsider" ], send asOutsider clerkOnly (delivery "DL-1" AttachPdf) r |> refused)
+    let manual = recordManual asClerk clerkOnly "DL-M" "INV-001" (to' "ap@abc.example") "posted by mail" r |> ok
+    Assert.Equal(SentManually, deliveryState manual "INV-001")
+    Assert.Equal("ap-clerk", manual.Books.Deliveries["DL-M"].Actor)
+    // Nothing was written for the refused attempts: no record, no audit event.
+    Assert.Equal(r.Books.Ledger.Audit.Length + 1, manual.Books.Ledger.Audit.Length)
+    let failed = send asClerk clerkOnly (delivery "DL-1" AttachPdf) r |> ok |> recordOutcome context "DL-1" (DeliveryFailed "smtp 550") None |> ok
+    Assert.Equal<DeliveryProblem list>([ NotAuthorizedToDeliver "outsider" ], resend asOutsider clerkOnly "DL-2" "DL-1" failed |> refused)
+    Assert.Equal<DeliveryProblem list>([ NotAuthorizedToDeliver "outsider" ], resolveDeliveryProblem asOutsider clerkOnly "INV-001" "phoned the customer" failed |> refused)
+
+[<Fact>]
+let ``DEL-P-007: a person may resolve a delivery problem explicitly, and a later failure raises it again`` () =
+    let failed = send asClerk clerkOnly (delivery "DL-1" AttachPdf) (pdfStored (fst (issued ()))) |> ok |> recordOutcome context "DL-1" (Bounced "mailbox full") None |> ok
+    Assert.Equal<(string * string) list>([ "INV-001", "the last delivery bounced" ], attention failed)
+    let resolved = resolveDeliveryProblem asClerk clerkOnly "INV-001" "customer collected it in person" failed |> ok
+    Assert.Empty(attention resolved)
+    Assert.Equal("invoice-delivery-problem-resolved", (List.last resolved.Books.Ledger.Audit).What)
+    // The invoice and the attempts are unchanged; only the follow-up records the resolution.
+    Assert.True((failed.Books.Deliveries = resolved.Books.Deliveries))
+    Assert.Equal(Some "DL-1", (followUp resolved "INV-001").DeliveryResolved |> Option.map _.AttemptId)
+    // Nothing to resolve is refused.
+    Assert.Equal<DeliveryProblem list>([ NoDeliveryProblem "INV-001" ], resolveDeliveryProblem asClerk clerkOnly "INV-001" "again" resolved |> refused)
+    // A later failure is a new problem.
+    let again = resend asClerk clerkOnly "DL-2" "DL-1" resolved |> ok |> recordOutcome context "DL-2" (DeliveryFailed "smtp 421") None |> ok
+    Assert.Equal<(string * string) list>([ "INV-001", "the last delivery failed" ], attention again)

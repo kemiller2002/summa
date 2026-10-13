@@ -995,6 +995,48 @@
     "version": "1.0.0"
   },
   {
+    "created": "2026-10-13",
+    "id": "DF-SUMMA-2026-0022",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0022--delivery-authority-outcome-events-and-attention.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261013T083907443Z-4a0e1018": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "claude-opus-5-5",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-13T08:51:06.000Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Record the delivery defect fixes (WI-0047)"
+        }
+      }
+    },
+    "related_documents": [
+      "research/decisions/DF-SUMMA-2026-0021--sensitive-data-integration-states-and-retention.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "delivery",
+      "access",
+      "audit",
+      "defects"
+    ],
+    "title": "Delivery authority, one audit event per outcome, and attention until delivered or resolved",
+    "updated": "2026-10-13",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-10-05",
     "id": "DF-SUMMA-FND-2026-0001",
     "owners": [

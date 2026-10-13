@@ -57,6 +57,9 @@ type Capability =
     | ManageBilling
     /// Choose an invoice's number instead of the next one (INV-NUM-009).
     | OverrideInvoiceNumber
+    /// Send, resend or record a manual send of an issued invoice, and
+    /// resolve a delivery problem (INV-DEL-005, INV-DEL-008).
+    | DeliverInvoice
 
 let allCapabilities =
     [ ViewFinancials
@@ -84,7 +87,8 @@ let allCapabilities =
       ProposeInvoice
       OverrideRate
       ManageBilling
-      OverrideInvoiceNumber ]
+      OverrideInvoiceNumber
+      DeliverInvoice ]
 
 /// The capability's stable name, as records and diagnostics state it.
 let capabilityName (capability: Capability) = $"%A{capability}"
@@ -114,7 +118,7 @@ module Grants =
     /// Day-to-day receivables: drafts, payments and allocation.
     let bookkeeper =
         viewer
-        + set [ CreateDraftInvoice; RecordPayment; AllocatePayment; ExportData; ImportSourceTime; RecordExpense; ProposeInvoice ]
+        + set [ CreateDraftInvoice; RecordPayment; AllocatePayment; ExportData; ImportSourceTime; RecordExpense; ProposeInvoice; DeliverInvoice ]
 
     /// Everything that changes the books.
     let accountant =
