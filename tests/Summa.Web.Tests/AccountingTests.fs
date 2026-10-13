@@ -464,3 +464,46 @@ let ``INV-INTL-001: legal fields are recorded in Settings and on the customer, a
           { Kind = Summa.Ledger.Invoicing.StatutoryWording; Jurisdiction = "GB"; Value = "Registered in England and Wales." } ]
 
     Assert.Equal<Summa.Ledger.Invoicing.LegalField list>(issuedWith, removed.Books.Value.Books.Invoices["INV-0001"].Issuer.LegalFields)
+
+/// One canonical Chrona message from the contract's golden vectors.
+let private chronaVector (name: string) =
+    Summa.Contracts.GoldenVectors.valid |> List.find (fun v -> v.Name = name) |> _.Text
+
+[<Fact>]
+let ``SUM3-025: a pasted Chrona batch is parsed, validated and previewed with its summary, and applied only when accepted`` () =
+    let books = started () |> customer
+    let page = run [ LocationChanged(address "#/proposals") ] books |> fst
+    let timer = chronaVector "billable-time-published-timer-approved"
+    let unknown = chronaVector "billable-time-published-duration-unknown-origin"
+    let batch = String.concat "\n" [ timer; unknown; timer; "{not json"; "" ]
+    let previewed = run [ ImportTextChanged batch; ImportPreviewed ] page |> fst
+    let ids name = items name previewed |> List.map (List.find (fst >> (=) "id") >> snd)
+    // Accepted, rejected (by line), duplicates and warnings, before anything is applied.
+    Assert.Equal(2, (ids "importAccepted").Length)
+    Assert.Equal<Scalar list>([ Text "line 4" ], ids "importRejected")
+    Assert.Equal(1, (ids "importDuplicates").Length)
+    Assert.Contains(Text "Chrona does not know where this time came from", items "importWarnings" previewed |> List.map (List.find (fst >> (=) "reason") >> snd))
+    Assert.Equal("2 accepted, 1 rejected, 1 duplicates, 1 warnings.", value "importSummary" previewed)
+    Assert.True(previewed.Books.Value.Books.Time.IsEmpty)
+    // Accepting applies exactly what was previewed.
+    let accepted = run [ ImportAccepted ] previewed |> fst
+    Assert.Equal("2 publications imported.", value "notice" accepted)
+    Assert.Equal(2, accepted.Books.Value.Books.Time.Count)
+    Assert.Equal("False", value "hasImportPreview" accepted)
+    // Accepting again, or accepting what was never previewed, applies nothing more.
+    let again = run [ ImportTextChanged timer; ImportAccepted ] accepted |> fst
+    Assert.Equal("Preview the batch before accepting it.", value "error" again)
+    let duplicate = run [ ImportPreviewed; ImportAccepted ] again |> fst
+    Assert.Equal("Nothing in the batch changes the books.", value "error" duplicate)
+    Assert.Equal(2, duplicate.Books.Value.Books.Time.Count)
+
+[<Fact>]
+let ``SUM3-025: a preview made before the books changed is not applied; it must be previewed again`` () =
+    let books = started () |> customer
+    let timer = chronaVector "billable-time-published-timer-approved"
+    let previewed = run [ LocationChanged(address "#/proposals"); ImportTextChanged timer; ImportPreviewed ] books |> fst
+    // The same time arrives another way before this preview is accepted.
+    let imported = Summa.Ledger.ChronaImport.preview { Who = "other"; When = ctx.Now; Source = "test"; CorrelationId = None; Provenance = None } [ (Summa.Contracts.ChronaBilling.V1.Codec.decodePublication timer |> Result.defaultWith (fun e -> failwith $"%A{e}")) ] previewed.Books.Value |> snd
+    let stale = run [ ImportAccepted ] { previewed with Books = Some imported } |> fst
+    Assert.Equal("The books changed since the preview. Preview the batch again before accepting it.", value "error" stale)
+    Assert.True((stale.Books.Value = imported))

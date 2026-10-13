@@ -180,6 +180,37 @@ type CompanyForm =
       Email: string
       PaymentInstructions: string }
 
+/// A batch of Chrona publications pasted for import (SUM3-025): the text,
+/// and the preview a person saw before accepting it.
+type ImportForm =
+    { Text: string
+      Previewed: ChronaImport.ImportSummary option }
+
+let emptyImport = { Text = ""; Previewed = None }
+
+/// Parses a pasted batch, one canonical Chrona message per line, and
+/// previews it on the books as they stand: lines that do not parse are
+/// rejected by line number; nothing is applied (`ChronaImport.preview`).
+let previewImport (context: Context) (text: string) (books: Receivables) =
+    let lines =
+        text.Split('\n')
+        |> Array.mapi (fun i line -> i + 1, line.Trim())
+        |> Array.filter (fun (_, line) -> line <> "")
+        |> List.ofArray
+
+    let parsed = lines |> List.map (fun (n, line) -> n, Summa.Contracts.ChronaBilling.V1.Codec.decodePublication line)
+
+    let unreadable =
+        parsed
+        |> List.choose (fun (n, decoded) ->
+            match decoded with
+            | Error problems -> Some($"line {n}", problems |> List.map (fun p -> $"{p.Path}: {p.Message}") |> String.concat "; ")
+            | Ok _ -> None)
+
+    let messages = parsed |> List.choose (fun (_, decoded) -> Result.toOption decoded)
+    let summary, after = ChronaImport.preview context messages books
+    { summary with Rejected = unreadable @ summary.Rejected }, after
+
 /// A legal field being entered, for the organization or a customer
 /// (INV-INTL-001): its kind's key, jurisdiction and value, as typed.
 type LegalForm = { Kind: string; Jurisdiction: string; Value: string }
@@ -320,6 +351,7 @@ type Model =
       Payment: PaymentForm
       Company: CompanyForm
       Legal: LegalForm
+      Import: ImportForm
       Credit: CreditForm
       Engagement: EngagementForm
       Packs: Packs
@@ -383,6 +415,7 @@ let initial =
       Payment = { InvoiceId = ""; Amount = ""; Date = ""; Method = "ach"; Reference = "" }
       Company = { LegalName = ""; Address = ""; Email = ""; PaymentInstructions = "" }
       Legal = emptyLegal
+      Import = emptyImport
       Credit = { Amount = ""; Reason = "" }
       Engagement = { CustomerId = ""; Name = ""; FixedFee = "" }
       Packs = { Files = false; Store = false }
@@ -497,6 +530,12 @@ type Msg =
     | CompanyEmailChanged of string
     | CompanyPaymentChanged of string
     | CompanySaved
+    | ImportTextChanged of string
+    /// Parse, validate and preview the pasted batch; nothing is applied.
+    | ImportPreviewed
+    /// Apply what was previewed, if the books still give the same preview.
+    | ImportAccepted
+    | ImportDiscarded
     | LegalKindChosen of string
     | LegalJurisdictionChanged of string
     | LegalValueChanged of string
@@ -1786,6 +1825,29 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
             | [] -> save { model with Manifest = Some changed; Notice = Some "Company details saved. New invoices will use them."; Error = None }
             | problems -> { model with Error = Some(problems |> List.map Diagnostics.describe |> String.concat "; ") }, []
         | None -> model, []
+    | ImportTextChanged v -> { model with Import = { Text = v; Previewed = None } }, []
+    | ImportDiscarded -> { model with Import = emptyImport; Error = None }, []
+    | ImportPreviewed ->
+        match model.Books with
+        | Some books when model.Import.Text.Trim() <> "" ->
+            let summary, _ = previewImport (context ctx) model.Import.Text books
+            { model with Import = { model.Import with Previewed = Some summary }; Error = None }, []
+        | Some _ -> { model with Error = Some "Paste the batch Chrona exported, one message per line." }, []
+        | None -> model, []
+    | ImportAccepted ->
+        match model.Import.Previewed with
+        | None -> { model with Error = Some "Preview the batch before accepting it." }, []
+        | Some seen ->
+            let accepted, effects =
+                command model $"{seen.Accepted.Length} publications imported." (fun books ->
+                    // Applied only as previewed: books that changed since give another preview.
+                    let summary, after = previewImport (context ctx) model.Import.Text books
+
+                    if summary <> seen then Error "The books changed since the preview. Preview the batch again before accepting it."
+                    elif summary.Accepted.IsEmpty then Error "Nothing in the batch changes the books."
+                    else Ok after)
+
+            (if accepted.Error.IsNone then { accepted with Import = emptyImport } else accepted), effects
     | LegalKindChosen v -> { model with Legal = { model.Legal with Kind = v } }, []
     | LegalJurisdictionChanged v -> { model with Legal = { model.Legal with Jurisdiction = v } }, []
     | LegalValueChanged v -> { model with Legal = { model.Legal with Value = v } }, []
@@ -2249,6 +2311,7 @@ let bookCommand (msg: Msg) : (Summa.Access.Access.Capability * string) option =
     | PeriodLocked -> open' Summa.Access.Access.ClosePeriod "close a period"
     | PeriodReopened -> open' Summa.Access.Access.ReopenPeriod "reopen a period"
     | CompanySaved -> open' Summa.Access.Access.ManageSettings "change the company details"
+    | ImportAccepted -> open' Summa.Access.Access.ImportSourceTime "import time from Chrona"
     | OrganizationLegalFieldAdded
     | OrganizationLegalFieldRemoved _ -> open' Summa.Access.Access.ManageSettings "change the legal fields on invoices"
     | CustomerLegalFieldAdded
@@ -3463,6 +3526,24 @@ let private proposalValues (model: Model) (shown: Screen) : View =
       "proposals", rows listed
       "hasProposals", Value(Flag(not listed.IsEmpty))
       "noProposals", Value(Flag listed.IsEmpty)
+      // Importing time from Chrona: parse, validate, preview, accept, apply (SUM3-025).
+      "importText", Value(Text model.Import.Text)
+      "hasImportPreview", Value(Flag model.Import.Previewed.IsSome)
+      "importSummary",
+      Value(
+          Text(
+              match model.Import.Previewed with
+              | Some p -> $"{p.Accepted.Length} accepted, {p.Rejected.Length} rejected, {p.Duplicates.Length} duplicates, {p.Warnings.Length} warnings."
+              | None -> ""
+          )
+      )
+      "cannotAcceptImport", Value(Flag(not (model.Import.Previewed |> Option.exists (fun p -> not p.Accepted.IsEmpty))))
+      "importAccepted", Items(model.Import.Previewed |> Option.map (fun p -> p.Accepted |> List.map (fun id -> [ "key", Text id; "id", Text id ])) |> Option.defaultValue [])
+      "importRejected",
+      Items(model.Import.Previewed |> Option.map (fun p -> p.Rejected |> List.mapi (fun i (id, why) -> [ "key", Text(string i); "id", Text id; "reason", Text why ])) |> Option.defaultValue [])
+      "importDuplicates", Items(model.Import.Previewed |> Option.map (fun p -> p.Duplicates |> List.map (fun id -> [ "key", Text id; "id", Text id ])) |> Option.defaultValue [])
+      "importWarnings",
+      Items(model.Import.Previewed |> Option.map (fun p -> p.Warnings |> List.mapi (fun i (id, why) -> [ "key", Text(string i); "id", Text id; "reason", Text why ])) |> Option.defaultValue [])
       "propId", propText (fun _ p -> p.Id)
       "propCustomer", propText (fun b p -> customerName b p.CustomerId)
       "propCustomerHref", propText (fun _ p -> Routes.href (Routes.Customer(p.CustomerId, Routes.CustomerInvoices)))
