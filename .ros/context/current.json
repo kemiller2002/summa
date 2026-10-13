@@ -2380,20 +2380,21 @@
         "EXE-20261013T154712086Z-29141d0f"
       ],
       "latestCheckpoint": {
-        "id": "110ffbecdea985a028c20ba1",
-        "recordedAt": "2026-10-13T15:58:35Z",
+        "id": "493ff482869a7a9efe4ce2f6",
+        "recordedAt": "2026-10-13T16:24:22Z",
         "executionId": "EXE-20261013T154712086Z-29141d0f",
+        "stepId": "STEP-20261013T162336000Z-90e39a7e",
         "repository": "summa",
-        "branch": "chore/wi-0052-forma-folio-step1",
-        "commit": "1aa8c56c4921e2bf0bc1be965eea82a7877c08e9",
+        "branch": "chore/wi-0052-forma-folio-step2",
+        "commit": "9e98cf53856cf82a7db78c7b60d387794222a4e5",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "chore/wi-0052-forma-folio-step1",
-        "remoteCommit": "1aa8c56c4921e2bf0bc1be965eea82a7877c08e9",
-        "summary": "Step 1 (echelon-current 1.19.0): Conditor 0.9.0 verified (checksums, attestation); forma 0.4.1 and folio 0.3.0 declared; plan sha256:a5329d5e authorized with isolated --home; Forma 0.5.0 written by Conditor; print screenshots of invoice and credit memo byte-identical; golden vectors unchanged",
-        "nextAction": "Merge step 1 (PR #86); step 2 against 1.20.0 (forma 0.6.1, folio 0.4.0); then 1.21.0 (ordo 1.6.0) and 1.22.0 (ordo 1.7.0), one PR each",
+        "remoteBranch": "chore/wi-0052-forma-folio-step2",
+        "remoteCommit": "9e98cf53856cf82a7db78c7b60d387794222a4e5",
+        "summary": "Step 2 (echelon-current 1.20.0) applied through Conditor 0.10.0: stepwise check confirmed one step, forma 0.5.0 to 0.6.1 and folio 0.3.0 to 0.4.0 (plan sha256:f8dd882b); all .NET suites, limen strict and 53 browser tests pass; printed invoice and credit memo byte-identical; drift before and after recorded.",
+        "nextAction": "Open and gate the step 2 PR, then run step 3 (echelon-current 1.21.0, ordo 1.5.0 to 1.6.0) through Conditor 0.10.0 with a stepwise check.",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
