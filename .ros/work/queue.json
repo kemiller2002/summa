@@ -1322,10 +1322,10 @@
         "summa,ui,conformance,merge"
       ],
       "priority": "high",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-13T20:53:52.273Z",
-      "updatedAt": "2026-10-13T20:53:52.000Z",
+      "updatedAt": "2026-10-13T23:09:48.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
