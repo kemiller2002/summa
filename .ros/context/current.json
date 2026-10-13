@@ -2381,21 +2381,21 @@
         "EXE-20261013T154712086Z-29141d0f"
       ],
       "latestCheckpoint": {
-        "id": "909c7d6157d25cd65cfac003",
-        "recordedAt": "2026-10-13T17:21:46Z",
+        "id": "ee1eab8850eb6680b4705b8f",
+        "recordedAt": "2026-10-13T17:42:25Z",
         "executionId": "EXE-20261013T154712086Z-29141d0f",
-        "stepId": "STEP-20261013T162848000Z-16b4fc9f",
+        "stepId": "STEP-20261013T173343000Z-9d0005d5",
         "repository": "summa",
-        "branch": "chore/wi-0052-ordo-step3",
-        "commit": "cbeae862be94b9f709f8898d24a9994a2a57e21d",
+        "branch": "chore/wi-0052-ordo-step4",
+        "commit": "fe569ff57270b208066561456efa4b35a0ee0ad0",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "chore/wi-0052-ordo-step3",
-        "remoteCommit": "cbeae862be94b9f709f8898d24a9994a2a57e21d",
-        "summary": "Step 3 (echelon-current 1.21.0) applied through Conditor 0.10.1 after the scripted clean: one step, ordo 1.5.0 to 1.6.0 with .echelon/foundations.json moved by Conditor (plan sha256:4dd4ccbd); drift and --check agree (every pin agrees); lock holds only tracked paths; ordo verify 1.6.0 exits 0; suites, limen, 53 browser tests pass; print identical. CI caught the missing baseline row (repaired).",
-        "nextAction": "Gate the step 3 PR, then step 4 (echelon-current 1.22.0, ordo 1.6.0 to 1.7.0) through Conditor 0.10.1 the same way.",
+        "remoteBranch": "chore/wi-0052-ordo-step4",
+        "remoteCommit": "fe569ff57270b208066561456efa4b35a0ee0ad0",
+        "summary": "Step 4 (echelon-current 1.22.0) applied through Conditor 0.10.1 after the scripted clean: one step, ordo 1.6.0 to 1.7.0 with foundations.json moved (plan sha256:889c325b); drift now ok for every component, --check says every pin agrees, lock has no untracked paths; ordo verify 1.7.0 exits 0; all suites, limen, 53 browser tests pass; print identical. The first push again lacked the baseline row (second CI-caught failure), repaired in fe569ff.",
+        "nextAction": "Gate the step 4 PR; WI-0052 is then complete. Next: editor inputs for line details and references (WI-0029).",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
