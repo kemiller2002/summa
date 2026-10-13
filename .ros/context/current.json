@@ -2184,20 +2184,21 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "bcc9ae74174bb19be881dd08",
-        "recordedAt": "2026-10-13T15:38:27Z",
+        "id": "552e1ce1ee69aa2b3c4cd6dd",
+        "recordedAt": "2026-10-13T16:54:36Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
+        "stepId": "STEP-20261013T164051000Z-a06204e4",
         "repository": "summa",
-        "branch": "feat/wi-0029-sensitive-exports",
-        "commit": "b26bcb4be22b66200238df82ce032dc53b890462",
+        "branch": "feat/wi-0029-sum3-006-routine-jobs",
+        "commit": "2ad6675f2eb166676bb1c99000dde31dcd748b0c",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0029-sensitive-exports",
-        "remoteCommit": "b26bcb4be22b66200238df82ce032dc53b890462",
-        "summary": "SUM3-024: financial exports handled as sensitive files: ExportData capability on GitHub books (buttons hidden, requests refused), every CSV/JSON/HTML marked confidential (summa.export/2, summa.invoice-export/2), only offered for download and never kept, named without customer data (DF-SUMMA-2026-0041)",
-        "nextAction": "adopt echelon-current 1.20.0 (Forma 0.6.1, Folio 0.4.0) once confirmed live; SUM3-006 scheduling (runs generateDue), template screen; editor inputs for line details and references; INV-OPS-006 required PO and payment promise; INV-CONTRACT-004 events; versioned agent request envelope; SUM3-016 served telemetry; SUM4-026 integration blockers; INV-ARCH and INV-INTL-001 partials",
+        "remoteBranch": "feat/wi-0029-sum3-006-routine-jobs",
+        "remoteCommit": "2ad6675f2eb166676bb1c99000dde31dcd748b0c",
+        "summary": "Slice 21 (SUM3-006): Summa.Operations.Routine.run proposes every template's due occurrences as an admitted ScheduledProcess (automation, ProposeInvoice only, isolated per template, no second proposal), keeps a sealed backup only after its restore verifies, prunes under retention and reports the recovery point; DF-SUMMA-2026-0042; SUM3-006 stays partial until a deployment schedules the run (WI-0036).",
+        "nextAction": "Gate the SUM3-006 PR, then the editor inputs for line details and references.",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
