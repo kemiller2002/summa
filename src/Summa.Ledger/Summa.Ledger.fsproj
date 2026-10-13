@@ -6,7 +6,9 @@
        (dates, ids and the performer arrive as arguments), and no package
        dependencies beyond FSharp.Core. It references Summa.Contracts, the
        dependency-free Chrona billing contract Summa owns, to read Chrona's
-       publications and derive its feedback. -->
+       publications and derive its feedback, and Summa.Access, the
+       dependency-free capability model, so the external command contract
+       checks each command's capability itself (SUM2-031). -->
 
   <ItemGroup>
     <Compile Include="Money.fs" />
@@ -23,14 +25,15 @@
     <Compile Include="Recurring.fs" />
     <Compile Include="AgentRequests.fs" />
     <Compile Include="Issuance.fs" />
-    <Compile Include="InvoiceCommands.fs" />
     <Compile Include="Lifecycle.fs" />
     <Compile Include="ChronaImport.fs" />
     <Compile Include="Reports.fs" />
     <Compile Include="Periods.fs" />
+    <Compile Include="InvoiceCommands.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../Summa.Contracts/Summa.Contracts.fsproj" />
+    <ProjectReference Include="../Summa.Access/Summa.Access.fsproj" />
   </ItemGroup>
 </Project>
