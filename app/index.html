@@ -542,7 +542,7 @@
             <table class="summa-table" id="invoice-payments">
               <caption class="ef-visually-hidden">Everything that settled this invoice, oldest first</caption>
               <thead><tr><th scope="col">Date</th><th scope="col">What</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Owed after</th></tr></thead>
-              <tbody><template data-each="detailPayments" data-key="key"><tr><td data-text="date"></td><td data-text="reference"></td><td class="summa-number" data-text="amount"></td><td class="summa-number" data-text="balance"></td></tr></template></tbody>
+              <tbody><template data-each="detailPayments" data-key="key"><tr><td data-text="date"></td><td><a class="summa-link" data-bind-href="href" data-text="reference"></a></td><td class="summa-number" data-text="amount"></td><td class="summa-number" data-text="balance"></td></tr></template></tbody>
             </table>
             <template data-if="canRecordPayment">
               <form class="ef-stack" id="payment-form" data-event="paymentRecorded" aria-labelledby="payment-form-title">
@@ -605,6 +605,11 @@
                 <caption class="ef-visually-hidden">What happened to this invoice</caption>
                 <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th><th scope="col">Changed</th></tr></thead>
                 <tbody><template data-each="history" data-key="key"><tr><td data-text="when"></td><td data-text="who"></td><td data-text="what"></td><td data-text="changed"></td></tr></template></tbody>
+              </table>
+              <table class="summa-table" id="invoice-sources">
+                <caption>Where each line came from</caption>
+                <thead><tr><th scope="col">Line</th><th scope="col">Description</th><th scope="col">Source</th></tr></thead>
+                <tbody><template data-each="detailSources" data-key="key"><tr><td data-text="line"></td><td data-text="description"></td><td data-text="source"></td></tr></template></tbody>
               </table>
             </section>
           </template>
