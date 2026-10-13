@@ -2153,21 +2153,21 @@
         "EXE-20261009T024702576Z-bcf1e384"
       ],
       "latestCheckpoint": {
-        "id": "508302d1ca3d15935d3ab250",
-        "recordedAt": "2026-10-13T22:13:17Z",
+        "id": "92c72d8de5fab946de7439bc",
+        "recordedAt": "2026-10-13T22:39:55Z",
         "executionId": "EXE-20261009T024702576Z-bcf1e384",
-        "stepId": "STEP-20261013T215938000Z-0683e974",
+        "stepId": "STEP-20261013T222136000Z-e897ed8d",
         "repository": "summa",
-        "branch": "feat/wi-0044-confirmations",
-        "commit": "51f51d0ac65936f716b077b9790382dfd04cfd79",
+        "branch": "feat/wi-0044-smart-defaults",
+        "commit": "a23f67d7ebcf0a322f3fb69a4f9ea26823ec8909",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0044-confirmations",
-        "remoteCommit": "51f51d0ac65936f716b077b9790382dfd04cfd79",
-        "summary": "SUM4-038 tested: issue, approve-and-issue, credit memo, close, lock and reopen each ask first in a Forma dialog saying what will happen; routine actions do not; void/refund/write-off/reversal are contract-only; ArchitectureTests requires every high-impact event to be sent from a dialog; DF-SUMMA-2026-0048; summary 183/38/14.",
-        "nextAction": "Gate the confirmation PR, then SUM4-005 smart invoice defaults.",
+        "remoteBranch": "feat/wi-0044-smart-defaults",
+        "remoteCommit": "a23f67d7ebcf0a322f3fb69a4f9ea26823ec8909",
+        "summary": "SUM4-005 tested: choosing a customer on a new invoice proposes its billing details, terms (engagement before customer before organization), the organization's revenue account, its only engagement, and the rate the rate card resolves, all shown on the editor; rates fill only empty lines and an opened draft keeps what it holds; projects out of scope (no project records); DF-SUMMA-2026-0049; summary 184/38/13.",
+        "nextAction": "Gate the smart-defaults PR, then SUM4-010 attention-first receivables.",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
