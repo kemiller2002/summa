@@ -468,3 +468,36 @@ a.summa-new {
 .summa-route {
   display: contents;
 }
+
+/* Primary navigation on a narrow screen (ULI-L09): a disclosure. The menu
+   button sits beside the brand; opened, the sections are a full-width list
+   of 2.75rem targets in their usual order. From 40rem up the button is not
+   shown and every section stays in view. */
+.summa-menu-button {
+  display: none;
+}
+
+@media (max-width: 40rem) {
+  .summa-header {
+    justify-content: space-between;
+  }
+
+  .summa-menu-button {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .summa-nav {
+    flex: 1 1 100%;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .summa-nav[data-open="false"] {
+    display: none;
+  }
+
+  .summa-header__actions {
+    flex: 1 1 100%;
+  }
+}

@@ -176,16 +176,27 @@ const NAVIGATION = [
 
 test("@ui-conformance every primary navigation link reaches its real destination at 320 and 1280, with intact labels (ULI-A01, ULI-L06)", async ({ app: { page } }) => {
   const nav = page.getByRole("navigation", { name: "Primary" });
+  const menu = page.getByRole("button", { name: "Menu" });
   for (const width of [320, 1280]) {
     await setWidth(page, width);
+    const narrow = width < 640;
+    if (narrow) await menu.click();
     await expect(nav.getByRole("link")).toHaveText(NAVIGATION.map(([label]) => label));
     for (const [label, url, heading] of NAVIGATION) {
+      // On a narrow screen the sections are behind the menu, which closes
+      // on arrival, so it is opened for each destination.
+      if (narrow && (await menu.getAttribute("aria-expanded")) !== "true") await menu.click();
       const link = nav.getByRole("link", { name: label, exact: true });
       // ULI-L06: the label is whole, not cropped.
       expect(await link.evaluate((a) => a.scrollWidth <= a.clientWidth && a.getBoundingClientRect().right <= document.documentElement.clientWidth), `${label} @${width}`).toBe(true);
       await link.click();
       await expect(page).toHaveURL(url);
       await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toHaveText(heading);
+      // Arrival closed the narrow menu; reopened, it marks where the person is.
+      if (narrow) {
+        await expect(menu).toHaveAttribute("aria-expanded", "false");
+        await menu.click();
+      }
       await expect(link).toHaveAttribute("aria-current", "page");
       await expect(page.getByRole("heading", { name: "Nothing is at this link" })).toHaveCount(0);
     }
@@ -332,4 +343,96 @@ test("@ui-conformance remaining enabled actions have observable outcomes (ULI-A0
   await expect(remove).toHaveCount(1);
   await remove.click();
   await expect(legal.getByRole("cell", { name: "GB123456789" })).toHaveCount(0);
+});
+
+// Formerly UNKNOWN in the evidence record (summa#95 follow-up, WI-0054).
+test("@ui-conformance an invoice's dispute is recorded and resolved, each with its own outcome (ULI-A02, ULI-A07)", async ({ app: { page } }) => {
+  await addCustomer(page, "Acme");
+  await issueInvoice(page, "Acme", "Assessment", "300");
+  await page.getByRole("button", { name: "Payments", exact: true }).click();
+  const note = page.getByRole("textbox", { name: "What the customer disputes, or how it was resolved" });
+
+  // Without a note nothing is recorded, and the page says why.
+  await page.getByRole("button", { name: "Mark disputed" }).click();
+  await expect(page.getByRole("alert")).toHaveText("Say what the customer disputes.");
+  await expect(page.getByRole("button", { name: "Resolve the dispute" })).toHaveCount(0);
+
+  await note.fill("Hours on 3 March");
+  await expectActionOutcome(page, { action: field("button", "Mark disputed"), outcome: { kind: "visible", target: field("button", "Resolve the dispute"), expected: true } });
+  await expect(page.getByRole("status")).toContainText("Dispute recorded.");
+  await note.fill("Hours confirmed by the customer");
+  await expectActionOutcome(page, { action: field("button", "Resolve the dispute"), outcome: { kind: "visible", target: field("button", "Mark disputed"), expected: true } });
+  await expect(page.getByRole("status")).toContainText("Dispute resolved.");
+});
+
+test("@ui-conformance a follow-up row's Reminder sent is named for its invoice and records the reminder (ULI-A02, ULI-A06)", async ({ app: { page, origin } }) => {
+  await addCustomer(page, "Acme");
+  await issueInvoice(page, "Acme", "Assessment", "300");
+  await open(page, origin, "#/follow-up");
+  await page.getByRole("button", { name: "All open" }).click();
+  const reminder = page.getByRole("button", { name: "Reminder sent for INV-2026-0001" });
+  await expect(reminder).toBeVisible();
+  await reminder.click();
+  await expect(page.getByRole("status")).toContainText("Reminder recorded.");
+  await open(page, origin, "#/invoices/INV-0001?tab=payments");
+  await expect(page.locator("#follow-up-collection")).toContainText(/[Rr]eminde/);
+});
+
+test("@ui-conformance Print or save as PDF opens the browser's print dialog for the invoice (ULI-A02)", async ({ app: { page } }) => {
+  await addCustomer(page, "Acme");
+  await issueInvoice(page, "Acme", "Assessment", "300");
+  // The outcome is the browser's own: window.print. It is observed by
+  // counting calls, without opening a native dialog in the test browser.
+  await page.evaluate(() => {
+    window.__printCalls = 0;
+    window.print = () => { window.__printCalls += 1; };
+  });
+  await page.getByRole("button", { name: "Print or save as PDF" }).click();
+  await expect.poll(() => page.evaluate(() => window.__printCalls)).toBe(1);
+  // What prints is the invoice's Folio document, and the screen controls do not.
+  await page.emulateMedia({ media: "print" });
+  await expect(page.getByRole("button", { name: "Print or save as PDF" })).toBeHidden();
+  await expect(page.locator("ef-print-document")).toBeVisible();
+});
+
+test("@ui-conformance at 320 and 390 the primary sections fold behind a Menu disclosure; from 768 they are always shown (ULI-L09, ULI-A06, ULI-A08)", async ({ app: { page } }) => {
+  const nav = page.getByRole("navigation", { name: "Primary" });
+  const menu = page.getByRole("button", { name: "Menu" });
+  const main = page.getByRole("main").getByRole("heading", { level: 1 });
+  for (const width of [320, 390]) {
+    await setWidth(page, width);
+    await settleFontsAndFrames(page);
+    // Closed: one header row, and the page's own heading in the first screen.
+    await expect(menu).toHaveAttribute("aria-expanded", "false");
+    await expect(menu).toHaveAttribute("aria-controls", "primary-nav");
+    await expect(nav.getByRole("link")).toHaveCount(0);
+    expect((await main.boundingBox()).y, `h1 top @${width}`).toBeLessThan(400);
+    // Opened (by keyboard): every section, in order, one per row, full width.
+    await menu.focus();
+    await page.keyboard.press("Enter");
+    await expect(menu).toHaveAttribute("aria-expanded", "true");
+    await expect(nav.getByRole("link")).toHaveText(NAVIGATION.map(([label]) => label));
+    const boxes = await nav.getByRole("link").evaluateAll((links) => links.map((a) => a.getBoundingClientRect().toJSON()));
+    for (let i = 1; i < boxes.length; i += 1) expect(boxes[i].top, `section ${i + 1} below section ${i}`).toBeGreaterThanOrEqual(boxes[i - 1].bottom - 1);
+    for (const box of boxes) expect(box.height).toBeGreaterThanOrEqual(44);
+    await expectNoHorizontalOverflow(page, `open menu @${width}`);
+    // Tab moves from the menu button into the sections.
+    await page.keyboard.press("Tab");
+    await expect(nav.getByRole("link", { name: "Home", exact: true })).toBeFocused();
+    // Choosing a section goes there and closes the menu.
+    await nav.getByRole("link", { name: "Customers", exact: true }).click();
+    await expect(page).toHaveURL(/#\/customers$/);
+    await expect(menu).toHaveAttribute("aria-expanded", "false");
+    await expect(nav.getByRole("link")).toHaveCount(0);
+    // The menu button closes it again without navigating.
+    await menu.click();
+    await menu.click();
+    await expect(nav.getByRole("link")).toHaveCount(0);
+    await expect(page).toHaveURL(/#\/customers$/);
+  }
+  for (const width of [768, 1280]) {
+    await setWidth(page, width);
+    await expect(menu).toBeHidden();
+    await expect(nav.getByRole("link")).toHaveCount(NAVIGATION.length);
+  }
 });

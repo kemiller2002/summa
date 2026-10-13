@@ -347,6 +347,9 @@ type Model =
       Page: Limen.Routing.PageLocation option
       /// The link to copy by hand when the browser refused to copy it.
       CopyFallback: string option
+      /// Whether the narrow-screen menu of primary sections is open
+      /// (ULI-L09). Closed again by any arrival at a place.
+      MenuOpen: bool
       Today: DateOnly
       Customer: CustomerForm
       Draft: DraftForm
@@ -411,6 +414,7 @@ let initial =
       Router = Limen.Routing.Navigation.initial
       Page = None
       CopyFallback = None
+      MenuOpen = false
       Today = DateOnly(2000, 1, 1)
       Customer = emptyCustomer
       Draft = draft
@@ -489,6 +493,8 @@ type Msg =
     | Saved of ok: bool
     | LinkCopyRequested
     | LinkCopied of ok: bool
+    /// The narrow-screen menu button: opens or closes the primary sections.
+    | MenuToggled
     | InvoiceSearchChanged of string
     | InvoiceStatusToggled of string
     | InvoiceCustomerChosen of string
@@ -1369,7 +1375,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
     | Started page ->
         let started, effects = adopt page { model with Configuration = Configuring; Storage = Loading }
         started, LoadConfiguration :: ReadEditor :: effects
-    | LocationChanged page -> adopt page model
+    | LocationChanged page -> adopt page { model with MenuOpen = false }
     | ConfigurationRead(Error why) ->
         { model with Configuration = Misconfigured $"The deployment's configuration could not be read ({why})." }, []
     | ConfigurationRead(Ok document) ->
@@ -1534,6 +1540,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
             Unsaved = max 0 (model.Unsaved - 1)
             Error = Some "This browser could not save the books. The last change is shown but may be lost on reload." },
         []
+    | MenuToggled -> { model with MenuOpen = not model.MenuOpen }, []
     | LinkCopyRequested ->
         match model.Page, model.Router.Current with
         | Some page, Some location -> model, [ CopyText(Limen.Routing.Link.share Routes.mode page location) ]
@@ -4186,6 +4193,7 @@ let view (model: Model) : View =
           | _ -> ""
       )
       "hasCopyFallback", flag model.CopyFallback.IsSome
+      "menuOpen", text (if model.MenuOpen then "true" else "false")
       "copyFallback", text (model.CopyFallback |> Option.defaultValue "")
       "navigation",
       Items(

@@ -146,7 +146,11 @@
 <div class="summa-shell">
   <header class="summa-header">
     <p class="summa-brand"><span class="summa-brand__mark" aria-hidden="true">Σ</span><span data-text="organizationName"></span></p>
-    <nav class="summa-nav" aria-label="Primary">
+    <!-- Below 40rem the primary sections fold behind a disclosure button
+         (ULI-L09): one row for brand and menu instead of six rows of links.
+         The engine owns whether it is open and closes it on arrival. -->
+    <button type="button" class="ef-button summa-menu-button" data-variant="secondary" id="menu-button" aria-controls="primary-nav" data-bind-aria-expanded="menuOpen" data-event="menuToggled">Menu</button>
+    <nav class="summa-nav" id="primary-nav" aria-label="Primary" data-bind-data-open="menuOpen">
       <template data-each="navigation" data-key="id">
         <a class="summa-nav__link" data-bind-href="href" data-bind-aria-current="current" data-bind-data-route="id" data-text="label"></a>
       </template>
@@ -1231,7 +1235,7 @@
           <table class="summa-table" id="follow-up-table">
             <caption class="ef-visually-hidden">Invoices to follow up</caption>
             <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Due</th><th scope="col">Late</th><th scope="col">Follow-up</th><th scope="col" class="summa-number">Outstanding</th><th scope="col"><span class="ef-visually-hidden">Actions</span></th></tr></thead>
-            <tbody><template data-each="followRows" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="customer"></td><td data-text="dueDate"></td><td data-text="late"></td><td><span data-text="collection"></span> <span data-text="dispute"></span></td><td class="summa-number" data-text="outstanding"></td><td><button type="button" class="ef-button summa-remind" data-variant="secondary" data-event="reminderRecorded">Reminder sent</button></td></tr></template></tbody>
+            <tbody><template data-each="followRows" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="customer"></td><td data-text="dueDate"></td><td data-text="late"></td><td><span data-text="collection"></span> <span data-text="dispute"></span></td><td class="summa-number" data-text="outstanding"></td><td><button type="button" class="ef-button summa-remind" data-variant="secondary" data-event="reminderRecorded">Reminder sent<span class="ef-visually-hidden"> for <span data-text="number"></span></span></button></td></tr></template></tbody>
           </table>
         </template>
       </section>

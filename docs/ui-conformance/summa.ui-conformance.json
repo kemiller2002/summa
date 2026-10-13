@@ -456,9 +456,11 @@
             "name": "Print or save as PDF"
           },
           "intent": "Open the browser print dialog",
-          "expectedOutcome": "Native print dialog with Folio's document",
-          "status": "unknown",
-          "evidence": []
+          "expectedOutcome": "window.print is called once; under print media the screen controls are hidden and the Folio document is shown",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: Print or save as PDF opens the browser's print dialog"
+          ]
         },
         {
           "id": "header-sign-out",
@@ -467,9 +469,11 @@
             "name": "Sign out <login>"
           },
           "intent": "Sign out of GitHub books",
-          "expectedOutcome": "Returns to the sign-in gate",
-          "status": "unknown",
-          "evidence": []
+          "expectedOutcome": "Sign-in gate is shown and stays after a reload",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.github.spec.js: Sign out in the header ends the session"
+          ]
         },
         {
           "id": "foreign-unsent",
@@ -478,9 +482,13 @@
             "name": "Send them as me / Discard them / Give this change up"
           },
           "intent": "Resolve unsent changes of another sign-in or a blocked change",
-          "expectedOutcome": "Unsent notice changes accordingly",
-          "status": "unknown",
-          "evidence": []
+          "expectedOutcome": "Held until chosen; Send them as me commits it; Discard them commits nothing; Give this change up leaves GitHub's version untouched",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.github.spec.js: a change another sign-in left is held; Send them as me sends it",
+            "tests/browser/ui-conformance.github.spec.js: ... can be discarded",
+            "tests/browser/ui-conformance.github.spec.js: a kept change GitHub moved under waits ..."
+          ]
         },
         {
           "id": "settle-dispute",
@@ -489,20 +497,24 @@
             "name": "Resolve the dispute"
           },
           "intent": "Close a dispute",
-          "expectedOutcome": "Dispute cleared",
-          "status": "unknown",
-          "evidence": []
+          "expectedOutcome": "Refused without a note (alert); with a note, Mark disputed and Resolve the dispute replace each other with a notice",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: an invoice's dispute is recorded and resolved"
+          ]
         },
         {
           "id": "follow-up-reminder",
           "control": {
             "role": "button",
-            "name": "Reminder sent"
+            "name": "Reminder sent for <invoice number>"
           },
           "intent": "Record a reminder from the follow-up list",
-          "expectedOutcome": "Row updated",
-          "status": "unknown",
-          "evidence": []
+          "expectedOutcome": "Notice 'Reminder recorded.' and the invoice's collection state shows the reminder",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: a follow-up row's Reminder sent is named for its invoice"
+          ]
         },
         {
           "id": "gates",
@@ -511,9 +523,38 @@
             "name": "Confirm me as administrator / Update the books"
           },
           "intent": "First-administrator and migration gates",
-          "expectedOutcome": "Gate passes to the books",
-          "status": "unknown",
-          "evidence": []
+          "expectedOutcome": "Confirm commits the member record and opens the books; Update commits manifest schema 2 and opens the books",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.github.spec.js: books with no listed administrator open only after a listed one confirms",
+            "tests/browser/ui-conformance.github.spec.js: books written by an earlier Summa are updated in one commit"
+          ]
+        },
+        {
+          "id": "check-books",
+          "control": {
+            "role": "button",
+            "name": "Check the books"
+          },
+          "intent": "Audit the books on GitHub for outside edits",
+          "expectedOutcome": "The check's result is listed",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.github.spec.js: Check the books reads GitHub and reports the result"
+          ]
+        },
+        {
+          "id": "menu",
+          "control": {
+            "role": "button",
+            "name": "Menu"
+          },
+          "intent": "Show the primary sections on a narrow screen",
+          "expectedOutcome": "aria-expanded toggles; the 13 sections are listed one per row; choosing one navigates and closes the menu",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: at 320 and 390 the primary sections fold behind a Menu disclosure"
+          ]
         }
       ],
       "evidence": [
@@ -525,8 +566,7 @@
         "Right-to-left and translated text (ULI-L05): not exercised",
         "Print/PDF geometry of the Folio invoice (ULI-L12): tests/browser/pdf.spec.js covers content, not page geometry",
         "Dialog geometry: the app has no modal dialogs",
-        "Browser zoom beyond 200% root text",
-        "Actions marked unknown above"
+        "Browser zoom beyond 200% root text"
       ]
     },
     {
@@ -818,5 +858,5 @@
     }
   ],
   "exceptions": [],
-  "notes": "Measured on branch feat/ui-conformance-2026-10 against base 11a5e09 (WI-0053, summa#90). Surface status is fail only because of the open Forma-owned ULI-L02 control-height defect (forma: :where(input, textarea, select) leaves box-sizing to the UA, so a text input is 50 CSS px and a select 46.4). Every other declared group and asserted action passes. Visual Engineering context 1.0.1 (npx @echelon-foundry/visual-engineering verify passed). Baseline defects repaired in this change: ULI-L01 peer fields staggered by help text (app editor 24.3 px, customer form 26.1 px, backlog capture 27.9 px, backlog filter 1.8 px); ULI-A06/L05 invoice line inputs clipped inside a visually hidden label; ULI-L05 line-editor headers and Remove split mid-word at 768; ULI-L08 an issued invoice stayed mounted under every later route (nested data-if template root, upstream Limen); ULI-L08 'Terms: . Tax:' shown with no customer; ULI-A04 disabled Issue invoice with no reason; ULI-A01 'Download (JSON)' threw JsonSerializerIsReflectionDisabled in the browser build and did nothing; ULI-A01 the Work page's delivery row linked to Work itself; ULI-A06 several Remove buttons shared one name; ULI-A07 the backlog cleared the capture form when a create was refused."
+  "notes": "Measured on branch feat/ui-conformance-2026-10 against base 11a5e09 (WI-0053, summa#90). Surface status is fail only because of the open Forma-owned ULI-L02 control-height defect (forma: :where(input, textarea, select) leaves box-sizing to the UA, so a text input is 50 CSS px and a select 46.4). Every other declared group and asserted action passes. Visual Engineering context 1.0.1 (npx @echelon-foundry/visual-engineering verify passed). Baseline defects repaired in this change: ULI-L01 peer fields staggered by help text (app editor 24.3 px, customer form 26.1 px, backlog capture 27.9 px, backlog filter 1.8 px); ULI-A06/L05 invoice line inputs clipped inside a visually hidden label; ULI-L05 line-editor headers and Remove split mid-word at 768; ULI-L08 an issued invoice stayed mounted under every later route (nested data-if template root, upstream Limen); ULI-L08 'Terms: . Tax:' shown with no customer; ULI-A04 disabled Issue invoice with no reason; ULI-A01 'Download (JSON)' threw JsonSerializerIsReflectionDisabled in the browser build and did nothing; ULI-A01 the Work page's delivery row linked to Work itself; ULI-A06 several Remove buttons shared one name; ULI-A07 the backlog cleared the capture form when a create was refused. Follow-up WI-0054 (PR #95): the 6 UNKNOWN action groups are now PASS. Two real defects were found and repaired along the way: 'Confirm me as administrator', 'Update the books' and 'Check the books' hung forever in the browser, because Commands.readAll resumed on Turn.now and not on the bridge's turn (ULI-A07). The 320/390 primary navigation is now a Menu disclosure owned by the engine (ULI-L09). Upstream defects, including the Limen nested data-if unmount defect with a minimal reproduction, are in docs/ui-conformance/upstream-defects.md."
 }

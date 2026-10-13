@@ -49,6 +49,7 @@ let coordination =
 let events: Map<string, string -> string -> Msg> =
     Map.ofList
         [ "linkCopyRequested", (fun _ _ -> LinkCopyRequested)
+          "menuToggled", (fun _ _ -> MenuToggled)
           "invoiceSearchChanged", (fun _ value -> InvoiceSearchChanged value)
           "invoiceStatusToggled", (fun key _ -> InvoiceStatusToggled key)
           "invoiceCustomerChosen", (fun _ value -> InvoiceCustomerChosen value)

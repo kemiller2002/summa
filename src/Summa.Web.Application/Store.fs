@@ -611,7 +611,10 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
                     match operationContext ctx.Person with
                     | Error why -> return [ BooksNotOpened(BooksUnreachable why) ]
                     | Ok operation ->
-                        match! Commands.readAll (providerOf ctx.Namespace) ctx.Namespace with
+                        // On the bridge's turn: with Turn.now the browser parks the
+                        // folder read until some later message, and confirming
+                        // hung on "Opening the books" (summa#95, ULI-A07).
+                        match! Commands.readAllKnowing bridge.Turn Map.empty (providerOf ctx.Namespace) ctx.Namespace with
                         | Error failure -> return [ BooksNotOpened(BooksUnreachable(describeFailure (widen failure))) ]
                         | Ok objects ->
                             let principal: Access.Principal =
@@ -632,7 +635,7 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
         fun () ->
             withContext (fun ctx ->
                 async {
-                    match! Migrations.migrate (providerOf ctx.Namespace) Access.defaultApprovalGates ctx.Namespace (actorOf ctx.Person) (newKey ()) with
+                    match! Migrations.migrateWith bridge.Turn (providerOf ctx.Namespace) Access.defaultApprovalGates ctx.Namespace (actorOf ctx.Person) (newKey ()) with
                     | Error failure -> return [ BooksNotOpened(BooksUnreachable(describeFailure (widen failure))) ]
                     | Ok _ ->
                         let! opened = opening ctx
@@ -673,7 +676,7 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
         fun () ->
             withContext (fun ctx ->
                 async {
-                    match! Verification.audit (providerOf ctx.Namespace) ctx.Namespace with
+                    match! Verification.auditWith bridge.Turn (providerOf ctx.Namespace) ctx.Namespace with
                     | Ok findings -> return [ BooksChecked(describeAll findings) ]
                     | Error failure -> return [ BooksChecked [ "The books could not be checked: " + describeFailure (Commands.StorageFailed failure) ] ]
                 })
