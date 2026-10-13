@@ -95,3 +95,14 @@ let agent (agentId: string) (identity: AgentIdentity) (executionId: string optio
       ExecutionId = executionId
       SourceSystem = None
       CorrelationId = correlationId }
+
+/// A scheduled process (SUM3-006): never a person, recorded as `automation`.
+/// Each run has its own id, which is both its execution and its correlation.
+let scheduled (processId: string) (runId: string) =
+    { Kind = ScheduledProcess
+      ActorId = processId
+      GitHubLogin = None
+      Agent = None
+      ExecutionId = Some runId
+      SourceSystem = Some "summa-routine"
+      CorrelationId = runId }
