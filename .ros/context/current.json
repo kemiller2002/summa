@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-13T17:29:31.000Z",
+  "updatedAt": "2026-10-13T17:52:02Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -2373,34 +2373,53 @@
     {
       "id": "WI-0052",
       "type": "implementation",
-      "state": "active",
-      "semanticState": "active",
-      "evidence": [],
-      "updatedAt": "2026-10-13T15:47:11Z",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "conditor.json"
+        },
+        {
+          "type": "implementation",
+          "path": "tools/authorize-clean.sh"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/FoundationsConformanceTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/AuthorizeCleanTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-13T17:52:02Z",
       "telemetryExecutionIds": [
         "EXE-20261013T154712086Z-29141d0f"
       ],
       "latestCheckpoint": {
-        "id": "493ff482869a7a9efe4ce2f6",
-        "recordedAt": "2026-10-13T16:24:22Z",
+        "id": "9b7a45c3704f7b433ec43406",
+        "recordedAt": "2026-10-13T17:51:47Z",
         "executionId": "EXE-20261013T154712086Z-29141d0f",
-        "stepId": "STEP-20261013T162336000Z-90e39a7e",
+        "stepId": "STEP-20261013T175117000Z-2d23ae87",
         "repository": "summa",
-        "branch": "chore/wi-0052-forma-folio-step2",
-        "commit": "9e98cf53856cf82a7db78c7b60d387794222a4e5",
+        "branch": "chore/wi-0052-complete",
+        "commit": "e0d612b6537ee5a210f2eeb58f5601631bd2f045",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "chore/wi-0052-forma-folio-step2",
-        "remoteCommit": "9e98cf53856cf82a7db78c7b60d387794222a4e5",
-        "summary": "Step 2 (echelon-current 1.20.0) applied through Conditor 0.10.0: stepwise check confirmed one step, forma 0.5.0 to 0.6.1 and folio 0.3.0 to 0.4.0 (plan sha256:f8dd882b); all .NET suites, limen strict and 53 browser tests pass; printed invoice and credit memo byte-identical; drift before and after recorded.",
-        "nextAction": "Open and gate the step 2 PR, then run step 3 (echelon-current 1.21.0, ordo 1.5.0 to 1.6.0) through Conditor 0.10.0 with a stepwise check.",
+        "remoteBranch": "chore/wi-0052-complete",
+        "remoteCommit": "e0d612b6537ee5a210f2eeb58f5601631bd2f045",
+        "summary": "Step 5: tools/authorize-clean.sh promoted from scratch (removes bin/obj/build/test-results/playwright-report outside node_modules and .git, refuses with exit 3 if any remain, --verify-only lists without removing), tested by AuthorizeCleanTests (3); docs/operations/foundation-upgrades.md records the procedure. The echelon-current upgrade 1.19.0 to 1.22.0 is done (#86, #87, #92, #93).",
+        "nextAction": "Complete WI-0052; then WI-0029 editor inputs for line details and references.",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
         }
-      }
+      },
+      "completedAt": "2026-10-13T17:52:02Z",
+      "conclusion": "echelon-current 1.19.0 to 1.22.0 applied one set per PR through Conditor (Forma 0.6.1, Folio 0.4.0, Ordo 1.7.0; #86, #87, #92, #93); drift ok for every component; the clean pre-step is tools/authorize-clean.sh with tests."
     },
     {
       "id": "WI-0053",
