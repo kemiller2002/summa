@@ -112,7 +112,7 @@ let ``every link on the page is a relative hash link`` () =
         items "navigation" model |> List.map (field "href")
     )
 
-    let invoices = run [ go "#/invoices" ] model |> fst
+    let invoices = run [ go "#/invoices?sort=newest" ] model |> fst
     Assert.Equal<string list>([ "#/invoices/INV-0002"; "#/invoices/INV-0001" ], items "invoices" invoices |> List.map (field "href"))
     Assert.Equal<string list>([ "#/drafts/D-0003" ], items "drafts" (run [ go "#/" ] model |> fst) |> List.map (field "href"))
 
@@ -231,7 +231,7 @@ let ``local books need no sign-in, so a sign-in link goes straight to its target
 
 [<Fact>]
 let ``copy link copies the absolute address of the canonical place`` () =
-    let model = run [ go "#/invoices?sort=newest&q=acme" ] (books ()) |> fst
+    let model = run [ go "#/invoices?sort=attention&q=acme" ] (books ()) |> fst
     let _, effects = run [ LinkCopyRequested ] model
     Assert.Equal<AppEffect list>([ CopyText "https://summa.example/app/#/invoices?q=acme" ], effects)
     let copied = run [ LinkCopied true ] model |> fst
@@ -251,7 +251,7 @@ let private send (session: Wire.Session) (message: string) =
 [<Fact>]
 let ``the wire reads the address, asks the kernel to navigate and to copy, and hears the copy's outcome`` () =
     let initialize =
-        """{"kind":"Initialize","location":{"origin":"https://summa.example","path":"/app/","query":"","hash":"#/invoices?sort=newest"},"handshake":{"protocol":{"major":1,"minor":4},"contract":{"unit":"limen.core","version":1,"fingerprint":"sha256:2d5e16b7111fc78a319706b9927e4523cfcc519b7a2c9352ca8283ba32d6b71c"},"capabilities":[]}}"""
+        """{"kind":"Initialize","location":{"origin":"https://summa.example","path":"/app/","query":"","hash":"#/invoices?sort=attention"},"handshake":{"protocol":{"major":1,"minor":4},"contract":{"unit":"limen.core","version":1,"fingerprint":"sha256:2d5e16b7111fc78a319706b9927e4523cfcc519b7a2c9352ca8283ba32d6b71c"},"capabilities":[]}}"""
 
     let session, reply = send Wire.initial initialize
     let effects = reply["effects"].AsArray() |> Seq.map (fun e -> e.ToJsonString()) |> List.ofSeq

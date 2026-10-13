@@ -19,6 +19,7 @@
     <Compile Include="Explanations.fs" />
     <Compile Include="Payments.fs" />
     <Compile Include="Matching.fs" />
+    <Compile Include="Attention.fs" />
     <Compile Include="Credits.fs" />
     <Compile Include="CreditMemoDocuments.fs" />
     <Compile Include="Corrections.fs" />

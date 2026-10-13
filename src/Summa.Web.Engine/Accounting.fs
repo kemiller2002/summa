@@ -4239,6 +4239,15 @@ let view (model: Model) : View =
             && (not filters.Overdue || books |> Option.exists (fun b -> isOverdue model.Today b i)))
         |> fun rows ->
             match filters.Sort with
+            | Routes.Attention ->
+                // What needs action first, then everything settled, newest first (v0.4 §10).
+                let order =
+                    books
+                    |> Option.map (fun b -> Attention.rank model.Today b |> List.mapi (fun n x -> x.Invoice.InvoiceId, n) |> Map.ofList)
+                    |> Option.defaultValue Map.empty
+
+                let ranked, settled = rows |> List.partition (fun i -> order.ContainsKey i.InvoiceId)
+                (ranked |> List.sortBy (fun i -> order[i.InvoiceId])) @ settled
             | Routes.Newest -> rows
             | Routes.Oldest -> List.rev rows
             | Routes.DueFirst -> rows |> List.sortBy (fun i -> i.DueDate, i.Number)
@@ -4260,7 +4269,14 @@ let view (model: Model) : View =
               "outstanding", money (outstandingOf i)
               "status", Text(statusText st)
               "statusTone", Text(statusTone st)
-              "timing", Text(timingText (timing model.Today i.DueDate (outstandingOf i))) ])
+              "timing", Text(timingText (timing model.Today i.DueDate (outstandingOf i)))
+              // Why it needs attention, if it does (v0.4 §10).
+              "attention",
+              Text(
+                  books
+                  |> Option.map (fun b -> Attention.reasons model.Today b i |> List.map Attention.reasonText |> String.concat " · ")
+                  |> Option.defaultValue ""
+              ) ])
 
     let detail =
         match shown, books with

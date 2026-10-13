@@ -175,12 +175,13 @@
           "values": null
         },
         {
-          "default": "newest",
+          "default": "attention",
           "in": "query",
           "name": "sort",
           "required": false,
           "type": "enum",
           "values": [
+            "attention",
             "newest",
             "oldest",
             "due",

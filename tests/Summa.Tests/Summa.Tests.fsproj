@@ -16,6 +16,7 @@
     <Compile Include="PaymentsReportsTests.fs" />
     <Compile Include="MatchingTests.fs" />
     <Compile Include="InvoiceDefaultsTests.fs" />
+    <Compile Include="AttentionRankTests.fs" />
     <Compile Include="CreditsTests.fs" />
     <Compile Include="CorrectionsTests.fs" />
     <Compile Include="BillingTests.fs" />
