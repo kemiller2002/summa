@@ -24,6 +24,7 @@
     <Compile Include="EnvironmentTests.fs" />
     <Compile Include="ArtifactsTests.fs" />
     <Compile Include="OperationalSafetyTests.fs" />
+    <Compile Include="InvoiceExportTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

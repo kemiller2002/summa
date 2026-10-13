@@ -59,3 +59,56 @@ let header (m: Metadata) =
 
 /// The CSV with its header.
 let withHeader (m: Metadata) (csv: string) = String.concat "\n" (header m) + "\n" + csv
+
+/// The invoice export's own schema: it changes when its envelope does.
+[<Literal>]
+let InvoiceExportSchema = "summa.invoice-export/1"
+
+/// What one invoice's export says about itself (INV-EXP-002).
+type InvoiceExport =
+    { GeneratedAt: DateTimeOffset
+      DataVersion: string
+      Invoice: Summa.Ledger.Invoicing.IssuedInvoice
+      /// The schema version the invoice's record is stored at.
+      RecordSchemaVersion: int }
+
+/// The schema version an invoice's record is stored at, or None when the
+/// books hold no such invoice.
+let invoiceRecordSchema (r: Receivables) (invoiceId: string) =
+    FinancialRecords.toRecords r
+    |> Result.toOption
+    |> Option.bind (List.tryFind (fun x -> Arca.RecordType.value x.Key.Type = "summa.invoice" && Arca.RecordId.value x.Key.Id = invoiceId))
+    |> Option.map FinancialRecords.schemaVersionOf
+
+let private quoted (text: string) = Text.Json.JsonSerializer.Serialize text
+
+let private stamp (at: DateTimeOffset) =
+    at.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture)
+
+/// One invoice as versioned JSON (INV-EXP-001, INV-EXP-002): the export's
+/// metadata, then the canonical customer document unchanged.
+let invoiceJson (e: InvoiceExport) (documentJson: string) =
+    let i = e.Invoice
+
+    String.concat
+        ""
+        [ "{"
+          $"\"schema\":{quoted InvoiceExportSchema},"
+          $"\"generatedAt\":{quoted (stamp e.GeneratedAt)},"
+          $"\"dataVersion\":{quoted e.DataVersion},"
+          $"\"invoiceId\":{quoted i.InvoiceId},"
+          $"\"number\":{quoted i.Number},"
+          $"\"invoiceVersion\":{i.Approval.DraftVersion},"
+          $"\"recordSchemaVersion\":{e.RecordSchemaVersion},"
+          $"\"template\":{{\"id\":{quoted i.Template.Id},\"version\":{quoted i.Template.Version}}},"
+          $"\"rounding\":{quoted i.Rounding},"
+          $"\"document\":{documentJson}"
+          "}" ]
+
+/// One invoice as HTML: the canonical customer document, after a comment
+/// that says what the file is (INV-EXP-002).
+let invoiceHtml (e: InvoiceExport) (documentHtml: string) =
+    let i = e.Invoice
+
+    $"<!-- {InvoiceExportSchema}; generatedAt={stamp e.GeneratedAt}; dataVersion={e.DataVersion}; invoiceId={i.InvoiceId}; number={i.Number}; invoiceVersion={i.Approval.DraftVersion}; recordSchemaVersion={e.RecordSchemaVersion}; template={i.Template.Id}@{i.Template.Version}; rounding={i.Rounding} -->\n"
+    + documentHtml

@@ -140,8 +140,16 @@ let balances (sheet: BalanceSheet) =
 let private decimalText (m: Money) =
     (decimal m.Minor / 100m).ToString("0.00", CultureInfo.InvariantCulture)
 
-let private csvField (text: string) =
-    if text.IndexOfAny [| ','; '"'; '\n'; '\r' |] >= 0 then "\"" + text.Replace("\"", "\"\"") + "\"" else text
+/// A text cell (RFC 4180): quoted when it holds a comma, a quote or a line
+/// break, quotes doubled. A cell a spreadsheet would read as a formula,
+/// one starting with =, +, -, @, a tab or a carriage return, is written
+/// with a leading apostrophe so it stays text (OWASP CSV injection).
+/// Amounts are not text cells and are written as numbers.
+let csvField (text: string) =
+    let safe =
+        if text.Length > 0 && "=+-@\t\r".IndexOf text[0] >= 0 then "'" + text else text
+
+    if safe.IndexOfAny [| ','; '"'; '\n'; '\r' |] >= 0 then "\"" + safe.Replace("\"", "\"\"") + "\"" else safe
 
 /// The trial balance as CSV (§20): code, name, debit, credit.
 let trialBalanceCsv (tb: TrialBalance) =
@@ -151,6 +159,47 @@ let trialBalanceCsv (tb: TrialBalance) =
         @ [ $"Total,,{decimalText tb.TotalDebits},{decimalText tb.TotalCredits}" ]
 
     String.Join("\n", lines) + "\n"
+
+/// Issued invoices as CSV, one row each in issue order (INV-EXP-001): the
+/// facts each invoice was issued with and the balances derived from the
+/// books, so it can be read into another system without Summa.
+let invoicesCsv (r: Payments.Receivables) (invoices: Invoicing.IssuedInvoice list) =
+    let statusName =
+        function
+        | Payments.Issued -> "issued"
+        | Payments.PartiallyPaid -> "partially-paid"
+        | Payments.Paid -> "paid"
+        | Payments.WrittenOff -> "written-off"
+        | Payments.Voided -> "voided"
+
+    let date (d: DateOnly) = d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+
+    let rows =
+        invoices
+        |> List.sortBy (fun i -> i.IssueDate, i.Number)
+        |> List.map (fun i ->
+            String.Join(
+                ",",
+                [ csvField i.InvoiceId
+                  csvField i.Number
+                  string i.Approval.DraftVersion
+                  csvField i.CustomerId
+                  csvField i.Customer.BillingName
+                  date i.IssueDate
+                  date i.DueDate
+                  i.Currency
+                  decimalText i.Subtotal
+                  decimalText i.Total
+                  decimalText (Payments.amountPaid r i)
+                  decimalText (Payments.writtenOff r i)
+                  decimalText (Payments.outstanding r i)
+                  statusName (Payments.status r i)
+                  csvField $"{i.Template.Id}@{i.Template.Version}"
+                  csvField i.Rounding
+                  csvField i.JournalEntryId ]
+            ))
+
+    String.Join("\n", "Invoice,Number,Version,Customer,BillingName,IssueDate,DueDate,Currency,Subtotal,Total,Paid,WrittenOff,Outstanding,Status,Template,Rounding,JournalEntry" :: rows) + "\n"
 
 /// Journal entries as CSV, one row per line, in posting order (§20).
 let journalCsv (ledger: Ledger) =

@@ -152,3 +152,30 @@ let ``the CPA workspace links the year's reports and downloads them as CSV`` () 
     match run [ CpaExportRequested "journal" ] withFiles |> snd with
     | [ OfferDownload("journal-2026.csv", "text/csv", data) ] -> Assert.Contains("JE-INV-0002", Encoding.UTF8.GetString(Convert.FromBase64String data))
     | other -> failwith $"%A{other}"
+
+[<Fact>]
+let ``invoices download as CSV from the CPA workspace, and one invoice as JSON or HTML that says what it is`` () =
+    let cpa = run [ go "#/cpa?year=2026"; PacksNegotiated { Files = true; Store = false } ] (books ()) |> fst
+
+    match run [ CpaExportRequested "invoices" ] cpa |> snd with
+    | [ OfferDownload("invoices-2026.csv", "text/csv", data) ] ->
+        let text = Encoding.UTF8.GetString(Convert.FromBase64String data)
+        Assert.StartsWith("# Export: invoices\n", text)
+        Assert.Contains("\nInvoice,Number,Version,Customer,", text)
+        Assert.Contains("INV-0001,", text)
+    | other -> failwith $"%A{other}"
+
+    let invoice = run [ go "#/invoices/INV-0001" ] cpa |> fst
+    Assert.Equal("True", value "canExport" invoice)
+
+    match run [ InvoiceExportRequested "json" ] invoice |> snd with
+    | [ OfferDownload(name, "application/json", data) ] ->
+        Assert.EndsWith(".json", name)
+        let text = Encoding.UTF8.GetString(Convert.FromBase64String data)
+        Assert.StartsWith("{\"schema\":\"summa.invoice-export/1\",", text)
+        Assert.Contains("\"invoiceId\":\"INV-0001\"", text)
+    | other -> failwith $"%A{other}"
+
+    match run [ InvoiceExportRequested "html" ] invoice |> snd with
+    | [ OfferDownload(_, "text/html", data) ] -> Assert.StartsWith("<!-- summa.invoice-export/1; ", Encoding.UTF8.GetString(Convert.FromBase64String data))
+    | other -> failwith $"%A{other}"
