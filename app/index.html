@@ -136,7 +136,17 @@
     <template data-if="canResetBooks">
       <div class="ef-stack">
         <p>You can start a new, empty set of books in this browser. The damaged copy is replaced.</p>
-        <button type="button" class="ef-button" data-variant="danger" id="reset-books" data-event="resetConfirmed">Start new books</button>
+        <button type="button" class="ef-button" data-variant="danger" id="reset-books" commandfor="reset-dialog" command="show-modal">Start new books…</button>
+        <dialog class="ef-dialog" id="reset-dialog" aria-labelledby="reset-dialog-title" aria-describedby="reset-dialog-description">
+          <div class="ef-dialog__body">
+            <h2 id="reset-dialog-title">Start new books?</h2>
+            <p id="reset-dialog-description">The damaged books in this browser are replaced by new, empty books. This cannot be undone.</p>
+          </div>
+          <div class="ef-dialog__actions">
+            <button type="button" class="ef-button" data-variant="secondary" id="reset-cancel" commandfor="reset-dialog" command="close">Keep the damaged books</button>
+            <button type="button" class="ef-button" data-variant="danger" id="reset-confirm" data-event="resetConfirmed" commandfor="reset-dialog" command="close">Start new books</button>
+          </div>
+        </dialog>
       </div>
     </template>
   </main>
@@ -239,29 +249,33 @@
         <template data-if="hasOverdue">
           <section class="ef-surface ef-stack" aria-labelledby="overdue-title">
             <h2 id="overdue-title">Overdue</h2>
-            <table class="summa-table" id="overdue-table">
-              <caption class="ef-visually-hidden">Overdue invoices</caption>
-              <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Due</th><th scope="col" class="summa-number">Outstanding</th></tr></thead>
-              <tbody>
-                <template data-each="overdueInvoices" data-key="id">
-                  <tr><td><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="customer"></td><td data-text="dueDate"></td><td class="summa-number" data-text="outstanding"></td></tr>
-                </template>
-              </tbody>
-            </table>
+            <div class="ef-data-grid" role="region" tabindex="0" aria-label="Overdue invoices">
+              <table class="summa-table" id="overdue-table">
+                <caption class="ef-visually-hidden">Overdue invoices</caption>
+                <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Due</th><th scope="col" class="summa-number">Outstanding</th></tr></thead>
+                <tbody>
+                  <template data-each="overdueInvoices" data-key="id">
+                    <tr><td data-label="Invoice"><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="customer" data-label="Customer"></td><td data-text="dueDate" data-label="Due"></td><td class="summa-number" data-text="outstanding" data-label="Outstanding"></td></tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
           </section>
         </template>
         <template data-if="hasDrafts">
           <section class="ef-surface ef-stack" aria-labelledby="drafts-title">
             <h2 id="drafts-title">Drafts</h2>
-            <table class="summa-table" id="drafts-table">
-              <caption class="ef-visually-hidden">Draft invoices</caption>
-              <thead><tr><th scope="col">Draft</th><th scope="col">Customer</th><th scope="col">State</th><th scope="col" class="summa-number">Total</th></tr></thead>
-              <tbody>
-                <template data-each="drafts" data-key="id">
-                  <tr><td><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="customer"></td><td data-text="state"></td><td class="summa-number" data-text="total"></td></tr>
-                </template>
-              </tbody>
-            </table>
+            <div class="ef-data-grid" role="region" tabindex="0" aria-label="Draft invoices">
+              <table class="summa-table" id="drafts-table">
+                <caption class="ef-visually-hidden">Draft invoices</caption>
+                <thead><tr><th scope="col">Draft</th><th scope="col">Customer</th><th scope="col">State</th><th scope="col" class="summa-number">Total</th></tr></thead>
+                <tbody>
+                  <template data-each="drafts" data-key="id">
+                    <tr><td data-label="Draft"><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="customer" data-label="Customer"></td><td data-text="state" data-label="State"></td><td class="summa-number" data-text="total" data-label="Total"></td></tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
           </section>
         </template>
       </section>
@@ -284,15 +298,17 @@
         </template>
         <template data-if="noListedCustomers"><p id="no-customers">No customer matches.</p></template>
         <template data-if="hasListedCustomers">
-          <table class="summa-table" id="customers-table">
-            <caption class="ef-visually-hidden">Customers</caption>
-            <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Terms</th><th scope="col" class="summa-number">Open balance</th><th scope="col"><span class="ef-visually-hidden">Invoices</span></th></tr></thead>
-            <tbody>
-              <template data-each="customers" data-key="id">
-                <tr><td><a class="summa-link" data-bind-href="href" data-text="name"></a></td><td data-text="email"></td><td data-text="terms"></td><td class="summa-number" data-text="balance"></td><td><a class="summa-link" data-bind-href="invoicesHref">Invoices</a></td></tr>
-              </template>
-            </tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Customers">
+            <table class="summa-table" id="customers-table">
+              <caption class="ef-visually-hidden">Customers</caption>
+              <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Terms</th><th scope="col" class="summa-number">Open balance</th><th scope="col"><span class="ef-visually-hidden">Invoices</span></th></tr></thead>
+              <tbody>
+                <template data-each="customers" data-key="id">
+                  <tr><td data-label="Name"><a class="summa-link" data-bind-href="href" data-text="name"></a></td><td data-text="email" data-label="Email"></td><td data-text="terms" data-label="Terms"></td><td class="summa-number" data-text="balance" data-label="Open balance"></td><td data-label="Invoices"><a class="summa-link" data-bind-href="invoicesHref">Invoices</a></td></tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
         </template>
         <form class="ef-surface ef-stack" id="customer-form" data-event="customerAdded" aria-labelledby="customer-form-title">
           <h2 id="customer-form-title">Add a customer</h2>
@@ -343,26 +359,34 @@
               <input id="draft-po" type="text" aria-describedby="draft-po-note" data-event="draftPurchaseOrderChanged" data-on="input" data-bind-value="draftPurchaseOrder" />
               <p class="ef-field__description summa-optional-note" id="draft-po-note" data-text="draftPurchaseOrderNote"></p></div>
           </div>
-          <table class="summa-table summa-lines" id="draft-lines">
-            <caption>Lines</caption>
-            <thead><tr><th scope="col">Description</th><th scope="col">Quantity</th><th scope="col">Rate</th><th scope="col">Taxable</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
-            <tbody>
-              <template data-each="draftLines" data-key="key">
-                <tr>
-                  <td><label class="ef-visually-hidden">Line <span data-text="position"></span> description<input type="text" class="line-description" data-event="lineDescriptionChanged" data-on="input" data-bind-value="description" /></label>
-                    <button type="button" class="ef-button line-details" data-variant="secondary" data-event="lineDetailsOpened">Details<span data-text="detailsNote"></span><span class="ef-visually-hidden"> for line <span data-text="position"></span></span></button></td>
-                  <td><label class="ef-visually-hidden">Line <span data-text="position"></span> quantity<input type="text" inputmode="decimal" class="line-hours" data-event="lineHoursChanged" data-on="input" data-bind-value="hours" /></label></td>
-                  <td><label class="ef-visually-hidden">Line <span data-text="position"></span> rate<input type="text" inputmode="decimal" class="line-rate" data-event="lineRateChanged" data-on="input" data-bind-value="rate" /></label></td>
-                  <td><label class="summa-check"><input type="checkbox" class="line-taxable" data-event="lineTaxableChanged" data-on="change" data-bind-checked="taxable" /><span class="ef-visually-hidden">Line <span data-text="position"></span> is taxable</span></label></td>
-                  <td><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="lineRemoved">Remove</button></td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
-          <template data-if="hasDetailsLine">
-            <fieldset class="ef-stack summa-line-details" id="line-details">
-              <legend>Details of line <span data-text="detailsLinePosition"></span>: <span data-text="detailsLineDescription"></span></legend>
-              <div class="summa-fields">
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Lines">
+            <table class="summa-table summa-lines" id="draft-lines">
+              <caption>Lines</caption>
+              <thead><tr><th scope="col">Description</th><th scope="col">Quantity</th><th scope="col">Rate</th><th scope="col">Taxable</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
+              <tbody>
+                <template data-each="draftLines" data-key="key">
+                  <tr>
+                    <td data-label="Description"><label class="summa-cell-label"><span class="ef-visually-hidden">Line <span data-text="position"></span> description</span><input type="text" class="line-description" data-event="lineDescriptionChanged" data-on="input" data-bind-value="description" /></label>
+                      <button type="button" class="ef-button line-details" data-variant="secondary" data-event="lineDetailsOpened" commandfor="line-details" command="show-modal">Details<span data-text="detailsNote"></span><span class="ef-visually-hidden"> for line <span data-text="position"></span></span></button></td>
+                    <td data-label="Quantity"><label class="summa-cell-label"><span class="ef-visually-hidden">Line <span data-text="position"></span> quantity</span><input type="text" inputmode="decimal" class="line-hours" data-event="lineHoursChanged" data-on="input" data-bind-value="hours" /></label></td>
+                    <td data-label="Rate"><label class="summa-cell-label"><span class="ef-visually-hidden">Line <span data-text="position"></span> rate</span><input type="text" inputmode="decimal" class="line-rate" data-event="lineRateChanged" data-on="input" data-bind-value="rate" /></label></td>
+                    <td data-label="Taxable"><label class="summa-check"><input type="checkbox" class="line-taxable" data-event="lineTaxableChanged" data-on="change" data-bind-checked="taxable" /><span class="ef-visually-hidden">Line <span data-text="position"></span> is taxable</span></label></td>
+                    <td data-label="Remove"><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="lineRemoved">Remove</button></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <dialog class="ef-flyout" id="line-details" data-ef-side="right" aria-labelledby="line-details-title" data-event="lineDetailsClosed" data-on="close">
+            <div class="ef-flyout__surface">
+              <header class="ef-flyout__header">
+                <div>
+                  <p class="ef-component-kicker">Line details</p>
+                  <h2 id="line-details-title">Line <span data-text="detailsLinePosition"></span>: <span data-text="detailsLineDescription"></span></h2>
+                </div>
+                <button class="ef-flyout__close" type="button" commandfor="line-details" command="close" aria-label="Close the line details">Close</button>
+              </header>
+              <div class="ef-flyout__body summa-fields">
                 <div class="ef-field"><label class="ef-field__label" for="line-detailed-description">Detailed description</label>
                   <textarea id="line-detailed-description" rows="2" data-event="lineDetailedDescriptionChanged" data-on="input" data-bind-value="lineDetailedDescription"></textarea></div>
                 <div class="ef-field"><label class="ef-field__label" for="line-unit">Unit</label>
@@ -376,9 +400,9 @@
                 <div class="ef-field"><label class="ef-field__label" for="line-customer-code">Customer code</label>
                   <input id="line-customer-code" type="text" data-event="lineCustomerCodeChanged" data-on="input" data-bind-value="lineCustomerCode" /></div>
               </div>
-              <div class="ef-actions"><button type="button" class="ef-button" data-variant="secondary" id="line-details-done" data-event="lineDetailsClosed">Done</button></div>
-            </fieldset>
-          </template>
+              <footer class="ef-flyout__actions"><button type="button" class="ef-button" data-variant="secondary" id="line-details-done" commandfor="line-details" command="close">Done</button></footer>
+            </div>
+          </dialog>
           <div class="ef-actions"><button type="button" class="ef-button" data-variant="secondary" id="add-line" data-event="lineAdded">Add line</button>
             <p class="summa-total">Total <strong id="draft-total" data-text="draftTotal"></strong></p></div>
           <fieldset class="ef-stack summa-tax" id="draft-tax">
@@ -408,25 +432,27 @@
             <legend>Client references</legend>
             <p class="ef-field__description" id="draft-references-note">References the customer asks to see beside the purchase order, such as a contract or cost center.</p>
             <template data-if="hasDraftReferences">
-              <table class="summa-table" id="draft-reference-rows">
-                <caption class="ef-visually-hidden">Client references</caption>
-                <thead><tr><th scope="col">Kind</th><th scope="col">Reference</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
-                <tbody>
-                  <template data-each="draftReferences" data-key="key">
-                    <tr>
-                      <td><label class="ef-visually-hidden">Reference <span data-text="position"></span> kind<select class="reference-kind" data-event="referenceKindChosen" data-bind-value="kind">
-                        <option value="contract">Contract number</option>
-                        <option value="engagement">Engagement number</option>
-                        <option value="vendor">Vendor reference</option>
-                        <option value="cost-center">Cost center</option>
-                        <option value="matter">Matter number</option>
-                      </select></label></td>
-                      <td><label class="ef-visually-hidden">Reference <span data-text="position"></span><input type="text" class="reference-value" data-event="referenceValueChanged" data-on="input" data-bind-value="value" /></label></td>
-                      <td><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="referenceRemoved">Remove</button></td>
-                    </tr>
-                  </template>
-                </tbody>
-              </table>
+              <div class="ef-data-grid" role="region" tabindex="0" aria-label="Client references">
+                <table class="summa-table" id="draft-reference-rows">
+                  <caption class="ef-visually-hidden">Client references</caption>
+                  <thead><tr><th scope="col">Kind</th><th scope="col">Reference</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
+                  <tbody>
+                    <template data-each="draftReferences" data-key="key">
+                      <tr>
+                        <td data-label="Kind"><label class="summa-cell-label"><span class="ef-visually-hidden">Reference <span data-text="position"></span> kind</span><select class="reference-kind" data-event="referenceKindChosen" data-bind-value="kind">
+                          <option value="contract">Contract number</option>
+                          <option value="engagement">Engagement number</option>
+                          <option value="vendor">Vendor reference</option>
+                          <option value="cost-center">Cost center</option>
+                          <option value="matter">Matter number</option>
+                        </select></label></td>
+                        <td data-label="Reference"><label class="summa-cell-label"><span class="ef-visually-hidden">Reference <span data-text="position"></span></span><input type="text" class="reference-value" data-event="referenceValueChanged" data-on="input" data-bind-value="value" /></label></td>
+                        <td data-label="Remove"><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="referenceRemoved">Remove</button></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
             </template>
             <div class="ef-actions"><button type="button" class="ef-button" data-variant="secondary" id="add-reference" aria-describedby="draft-references-note" data-event="referenceAdded">Add reference</button></div>
           </fieldset>
@@ -505,20 +531,22 @@
           </div>
           <p class="summa-count" id="invoice-count-text" role="status" data-text="invoiceCountText"></p>
           <template data-if="noListedInvoices"><p id="no-invoices">No invoice matches these filters.</p></template>
-          <table class="summa-table" id="invoices-table">
-            <caption class="ef-visually-hidden">Issued invoices</caption>
-            <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Issued</th><th scope="col">Due</th><th scope="col">Status</th><th scope="col" class="summa-number">Total</th><th scope="col" class="summa-number">Outstanding</th></tr></thead>
-            <tbody>
-              <template data-each="invoices" data-key="id">
-                <tr>
-                  <td><a class="summa-link" data-bind-href="href" data-text="number"></a></td>
-                  <td data-text="customer"></td><td data-text="issueDate"></td><td data-text="dueDate"></td>
-                  <td><span class="ef-status-lozenge" data-bind-data-state="statusTone" data-text="status"></span> <span class="summa-timing" data-text="timing"></span></td>
-                  <td class="summa-number" data-text="total"></td><td class="summa-number" data-text="outstanding"></td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Issued invoices">
+            <table class="summa-table" id="invoices-table">
+              <caption class="ef-visually-hidden">Issued invoices</caption>
+              <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Issued</th><th scope="col">Due</th><th scope="col">Status</th><th scope="col" class="summa-number">Total</th><th scope="col" class="summa-number">Outstanding</th></tr></thead>
+              <tbody>
+                <template data-each="invoices" data-key="id">
+                  <tr>
+                    <td data-label="Invoice"><a class="summa-link" data-bind-href="href" data-text="number"></a></td>
+                    <td data-text="customer" data-label="Customer"></td><td data-text="issueDate" data-label="Issued"></td><td data-text="dueDate" data-label="Due"></td>
+                    <td data-label="Status"><span class="ef-status-lozenge" data-bind-data-state="statusTone" data-text="status"></span> <span class="summa-timing" data-text="timing"></span></td>
+                    <td class="summa-number" data-text="total" data-label="Total"></td><td class="summa-number" data-text="outstanding" data-label="Outstanding"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
           </div>
         </template>
       </section>
@@ -590,11 +618,13 @@
 
           <section class="ef-surface ef-stack summa-screen-only" aria-labelledby="payments-title">
             <h2 id="payments-title">Payments and settlement</h2>
-            <table class="summa-table" id="invoice-payments">
-              <caption class="ef-visually-hidden">Everything that settled this invoice, oldest first</caption>
-              <thead><tr><th scope="col">Date</th><th scope="col">What</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Owed after</th></tr></thead>
-              <tbody><template data-each="detailPayments" data-key="key"><tr><td data-text="date"></td><td><a class="summa-link" data-bind-href="href" data-text="reference"></a></td><td class="summa-number" data-text="amount"></td><td class="summa-number" data-text="balance"></td></tr></template></tbody>
-            </table>
+            <div class="ef-data-grid" role="region" tabindex="0" aria-label="Everything that settled this invoice, oldest first">
+              <table class="summa-table" id="invoice-payments">
+                <caption class="ef-visually-hidden">Everything that settled this invoice, oldest first</caption>
+                <thead><tr><th scope="col">Date</th><th scope="col">What</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Owed after</th></tr></thead>
+                <tbody><template data-each="detailPayments" data-key="key"><tr><td data-text="date" data-label="Date"></td><td data-label="What"><a class="summa-link" data-bind-href="href" data-text="reference"></a></td><td class="summa-number" data-text="amount" data-label="Amount"></td><td class="summa-number" data-text="balance" data-label="Owed after"></td></tr></template></tbody>
+              </table>
+            </div>
             <template data-if="canRecordPayment">
               <form class="ef-stack" id="payment-form" data-event="paymentRecorded" aria-labelledby="payment-form-title">
                 <h3 id="payment-form-title">Record a payment</h3>
@@ -645,11 +675,13 @@
               </template>
             </section>
             <h3 id="credits-title">Credits applied</h3>
-            <table class="summa-table" id="invoice-credits">
-              <caption class="ef-visually-hidden">Credits applied to this invoice</caption>
-              <thead><tr><th scope="col">Applied</th><th scope="col">From</th><th scope="col" class="summa-number">Amount</th></tr></thead>
-              <tbody><template data-each="detailCredits" data-key="key"><tr><td data-text="date"></td><td><a class="summa-link" data-bind-href="href" data-text="source"></a></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
-            </table>
+            <div class="ef-data-grid" role="region" tabindex="0" aria-label="Credits applied to this invoice">
+              <table class="summa-table" id="invoice-credits">
+                <caption class="ef-visually-hidden">Credits applied to this invoice</caption>
+                <thead><tr><th scope="col">Applied</th><th scope="col">From</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+                <tbody><template data-each="detailCredits" data-key="key"><tr><td data-text="date" data-label="Applied"></td><td data-label="From"><a class="summa-link" data-bind-href="href" data-text="source"></a></td><td class="summa-number" data-text="amount" data-label="Amount"></td></tr></template></tbody>
+              </table>
+            </div>
             <template data-if="canRecordPayment">
               <form class="ef-stack" id="credit-form" data-event="creditMemoIssued" aria-labelledby="credit-form-title">
                 <h3 id="credit-form-title">Issue a credit memo</h3>
@@ -670,16 +702,20 @@
             <section class="ef-surface ef-stack" aria-labelledby="history-title">
               <h2 id="history-title">History</h2>
               <p>Posted to the books as <a class="summa-link" id="invoice-entry" data-bind-href="detailEntryHref" data-text="detailEntryId"></a>.</p>
-              <table class="summa-table" id="invoice-history">
-                <caption class="ef-visually-hidden">What happened to this invoice</caption>
-                <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th><th scope="col">Changed</th></tr></thead>
-                <tbody><template data-each="history" data-key="key"><tr><td data-text="when"></td><td data-text="who"></td><td data-text="what"></td><td data-text="changed"></td></tr></template></tbody>
-              </table>
-              <table class="summa-table" id="invoice-sources">
-                <caption>Where each line came from</caption>
-                <thead><tr><th scope="col">Line</th><th scope="col">Description</th><th scope="col">Source</th></tr></thead>
-                <tbody><template data-each="detailSources" data-key="key"><tr><td data-text="line"></td><td data-text="description"></td><td data-text="source"></td></tr></template></tbody>
-              </table>
+              <div class="ef-data-grid" role="region" tabindex="0" aria-label="What happened to this invoice">
+                <table class="summa-table" id="invoice-history">
+                  <caption class="ef-visually-hidden">What happened to this invoice</caption>
+                  <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th><th scope="col">Changed</th></tr></thead>
+                  <tbody><template data-each="history" data-key="key"><tr><td data-text="when" data-label="When"></td><td data-text="who" data-label="Who"></td><td data-text="what" data-label="What"></td><td data-text="changed" data-label="Changed"></td></tr></template></tbody>
+                </table>
+              </div>
+              <div class="ef-data-grid" role="region" tabindex="0" aria-label="Where each line came from">
+                <table class="summa-table" id="invoice-sources">
+                  <caption>Where each line came from</caption>
+                  <thead><tr><th scope="col">Line</th><th scope="col">Description</th><th scope="col">Source</th></tr></thead>
+                  <tbody><template data-each="detailSources" data-key="key"><tr><td data-text="line" data-label="Line"></td><td data-text="description" data-label="Description"></td><td data-text="source" data-label="Source"></td></tr></template></tbody>
+                </table>
+              </div>
             </section>
           </template>
         </section>
@@ -701,15 +737,17 @@
         </div>
         <p class="summa-count" id="receivables-date">Aged as of <span data-text="receivablesDate"></span>.</p>
         <template data-if="hasAging">
-          <table class="summa-table" id="aging-table">
-            <caption class="ef-visually-hidden">Receivables by age</caption>
-            <thead><tr><th scope="col">Customer</th><th scope="col" class="summa-number">Not yet due</th><th scope="col" class="summa-number">1-30</th><th scope="col" class="summa-number">31-60</th><th scope="col" class="summa-number">61-90</th><th scope="col" class="summa-number">Over 90</th><th scope="col" class="summa-number">Total</th></tr></thead>
-            <tbody>
-              <template data-each="aging" data-key="key">
-                <tr><td data-text="customer"></td><td class="summa-number" data-text="current"></td><td class="summa-number" data-text="days1to30"></td><td class="summa-number" data-text="days31to60"></td><td class="summa-number" data-text="days61to90"></td><td class="summa-number" data-text="over90"></td><td class="summa-number" data-text="total"></td></tr>
-              </template>
-            </tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Receivables by age">
+            <table class="summa-table" id="aging-table">
+              <caption class="ef-visually-hidden">Receivables by age</caption>
+              <thead><tr><th scope="col">Customer</th><th scope="col" class="summa-number">Not yet due</th><th scope="col" class="summa-number">1-30</th><th scope="col" class="summa-number">31-60</th><th scope="col" class="summa-number">61-90</th><th scope="col" class="summa-number">Over 90</th><th scope="col" class="summa-number">Total</th></tr></thead>
+              <tbody>
+                <template data-each="aging" data-key="key">
+                  <tr><td data-text="customer" data-label="Customer"></td><td class="summa-number" data-text="current" data-label="Not yet due"></td><td class="summa-number" data-text="days1to30" data-label="1-30"></td><td class="summa-number" data-text="days31to60" data-label="31-60"></td><td class="summa-number" data-text="days61to90" data-label="61-90"></td><td class="summa-number" data-text="over90" data-label="Over 90"></td><td class="summa-number" data-text="total" data-label="Total"></td></tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
         </template>
       </section>
     </template>
@@ -720,15 +758,17 @@
         <h1 id="proposals-title">Proposals</h1>
         <template data-if="noProposals"><p id="no-proposals">No invoice proposals. Proposals come from approved time, engagements and agents.</p></template>
         <template data-if="hasProposals">
-          <table class="summa-table" id="proposals-table">
-            <caption class="ef-visually-hidden">Invoice proposals</caption>
-            <thead><tr><th scope="col">Proposal</th><th scope="col">Customer</th><th scope="col">Prepared by</th><th scope="col">State</th><th scope="col" class="summa-number">Total</th></tr></thead>
-            <tbody>
-              <template data-each="proposals" data-key="id">
-                <tr><td><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="customer"></td><td data-text="preparedBy"></td><td data-text="state"></td><td class="summa-number" data-text="total"></td></tr>
-              </template>
-            </tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Invoice proposals">
+            <table class="summa-table" id="proposals-table">
+              <caption class="ef-visually-hidden">Invoice proposals</caption>
+              <thead><tr><th scope="col">Proposal</th><th scope="col">Customer</th><th scope="col">Prepared by</th><th scope="col">State</th><th scope="col" class="summa-number">Total</th></tr></thead>
+              <tbody>
+                <template data-each="proposals" data-key="id">
+                  <tr><td data-label="Proposal"><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="customer" data-label="Customer"></td><td data-text="preparedBy" data-label="Prepared by"></td><td data-text="state" data-label="State"></td><td class="summa-number" data-text="total" data-label="Total"></td></tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
         </template>
         <section class="ef-surface ef-stack" aria-labelledby="import-title" id="time-import">
           <h2 id="import-title">Import time from Chrona</h2>
@@ -742,26 +782,34 @@
             <section class="ef-stack" aria-labelledby="import-preview-title" id="import-preview">
               <h3 id="import-preview-title">What this batch would do</h3>
               <p id="import-summary" role="status" data-text="importSummary"></p>
-              <table class="summa-table" id="import-accepted">
-                <caption>Accepted</caption>
-                <thead><tr><th scope="col">Publication</th></tr></thead>
-                <tbody><template data-each="importAccepted" data-key="key"><tr><td data-text="id"></td></tr></template></tbody>
-              </table>
-              <table class="summa-table" id="import-rejected">
-                <caption>Rejected</caption>
-                <thead><tr><th scope="col">Message</th><th scope="col">Why</th></tr></thead>
-                <tbody><template data-each="importRejected" data-key="key"><tr><td data-text="id"></td><td data-text="reason"></td></tr></template></tbody>
-              </table>
-              <table class="summa-table" id="import-duplicates">
-                <caption>Duplicates (already received; they change nothing)</caption>
-                <thead><tr><th scope="col">Publication</th></tr></thead>
-                <tbody><template data-each="importDuplicates" data-key="key"><tr><td data-text="id"></td></tr></template></tbody>
-              </table>
-              <table class="summa-table" id="import-warnings">
-                <caption>Warnings</caption>
-                <thead><tr><th scope="col">Publication</th><th scope="col">What to know</th></tr></thead>
-                <tbody><template data-each="importWarnings" data-key="key"><tr><td data-text="id"></td><td data-text="reason"></td></tr></template></tbody>
-              </table>
+              <div class="ef-data-grid" role="region" tabindex="0" aria-label="Accepted">
+                <table class="summa-table" id="import-accepted">
+                  <caption>Accepted</caption>
+                  <thead><tr><th scope="col">Publication</th></tr></thead>
+                  <tbody><template data-each="importAccepted" data-key="key"><tr><td data-text="id" data-label="Publication"></td></tr></template></tbody>
+                </table>
+              </div>
+              <div class="ef-data-grid" role="region" tabindex="0" aria-label="Rejected">
+                <table class="summa-table" id="import-rejected">
+                  <caption>Rejected</caption>
+                  <thead><tr><th scope="col">Message</th><th scope="col">Why</th></tr></thead>
+                  <tbody><template data-each="importRejected" data-key="key"><tr><td data-text="id" data-label="Message"></td><td data-text="reason" data-label="Why"></td></tr></template></tbody>
+                </table>
+              </div>
+              <div class="ef-data-grid" role="region" tabindex="0" aria-label="Duplicates (already received; they change nothing)">
+                <table class="summa-table" id="import-duplicates">
+                  <caption>Duplicates (already received; they change nothing)</caption>
+                  <thead><tr><th scope="col">Publication</th></tr></thead>
+                  <tbody><template data-each="importDuplicates" data-key="key"><tr><td data-text="id" data-label="Publication"></td></tr></template></tbody>
+                </table>
+              </div>
+              <div class="ef-data-grid" role="region" tabindex="0" aria-label="Warnings">
+                <table class="summa-table" id="import-warnings">
+                  <caption>Warnings</caption>
+                  <thead><tr><th scope="col">Publication</th><th scope="col">What to know</th></tr></thead>
+                  <tbody><template data-each="importWarnings" data-key="key"><tr><td data-text="id" data-label="Publication"></td><td data-text="reason" data-label="What to know"></td></tr></template></tbody>
+                </table>
+              </div>
               <div class="ef-actions">
                 <button type="button" class="ef-button" id="accept-import" data-event="importAccepted" data-bind-disabled="cannotAcceptImport">Accept and apply</button>
                 <button type="button" class="ef-button" data-variant="secondary" id="discard-import" data-event="importDiscarded">Discard</button>
@@ -784,11 +832,13 @@
           <div><dt>Terms</dt><dd id="proposal-terms" data-text="propTerms"></dd></div>
         </dl>
         <template data-if="propIsIssued"><p><a class="summa-link" id="proposal-invoice" data-bind-href="propIssuedHref">Open the invoice it was issued as</a></p></template>
-        <table class="summa-table" id="proposal-lines">
-          <caption>Lines</caption>
-          <thead><tr><th scope="col">Description</th><th scope="col" class="summa-number">Quantity</th><th scope="col" class="summa-number">Rate</th><th scope="col" class="summa-number">Amount</th></tr></thead>
-          <tbody><template data-each="propLines" data-key="key"><tr><td data-text="description"></td><td class="summa-number" data-text="quantity"></td><td class="summa-number" data-text="rate"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
-        </table>
+        <div class="ef-data-grid" role="region" tabindex="0" aria-label="Lines">
+          <table class="summa-table" id="proposal-lines">
+            <caption>Lines</caption>
+            <thead><tr><th scope="col">Description</th><th scope="col" class="summa-number">Quantity</th><th scope="col" class="summa-number">Rate</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+            <tbody><template data-each="propLines" data-key="key"><tr><td data-text="description" data-label="Description"></td><td class="summa-number" data-text="quantity" data-label="Quantity"></td><td class="summa-number" data-text="rate" data-label="Rate"></td><td class="summa-number" data-text="amount" data-label="Amount"></td></tr></template></tbody>
+          </table>
+        </div>
         <section class="ef-surface ef-stack" id="proposal-explanation" aria-labelledby="explanation-title">
           <h2 id="explanation-title">How it was made</h2>
           <h3>Selected</h3>
@@ -802,11 +852,13 @@
         </section>
         <section class="ef-stack" id="proposal-contributions" aria-labelledby="contributions-title">
           <h2 id="contributions-title">Contributions</h2>
-          <table class="summa-table">
-            <caption class="ef-visually-hidden">Who contributed, oldest first</caption>
-            <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th></tr></thead>
-            <tbody><template data-each="propContributions" data-key="key"><tr><td data-text="when"></td><td data-text="who"></td><td data-text="what"></td></tr></template></tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Who contributed, oldest first">
+            <table class="summa-table">
+              <caption class="ef-visually-hidden">Who contributed, oldest first</caption>
+              <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th></tr></thead>
+              <tbody><template data-each="propContributions" data-key="key"><tr><td data-text="when" data-label="When"></td><td data-text="who" data-label="Who"></td><td data-text="what" data-label="What"></td></tr></template></tbody>
+            </table>
+          </div>
         </section>
         <template data-each="propActions" data-key="id">
           <div class="ef-stack" id="proposal-decision">
@@ -845,11 +897,13 @@
             </select></div>
         </div>
         <template data-if="hasEngagements">
-          <table class="summa-table" id="engagements-table">
-            <caption class="ef-visually-hidden">Engagements</caption>
-            <thead><tr><th scope="col">Engagement</th><th scope="col">Customer</th><th scope="col">Fee</th></tr></thead>
-            <tbody><template data-each="engagements" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="name"></a></td><td><a class="summa-link" data-bind-href="customerHref" data-text="customer"></a></td><td data-text="fee"></td></tr></template></tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Engagements">
+            <table class="summa-table" id="engagements-table">
+              <caption class="ef-visually-hidden">Engagements</caption>
+              <thead><tr><th scope="col">Engagement</th><th scope="col">Customer</th><th scope="col">Fee</th></tr></thead>
+              <tbody><template data-each="engagements" data-key="id"><tr><td data-label="Engagement"><a class="summa-link" data-bind-href="href" data-text="name"></a></td><td data-label="Customer"><a class="summa-link" data-bind-href="customerHref" data-text="customer"></a></td><td data-text="fee" data-label="Fee"></td></tr></template></tbody>
+            </table>
+          </div>
         </template>
         <form class="ef-surface ef-stack" id="engagement-form" data-event="engagementAdded" aria-labelledby="engagement-form-title">
           <h2 id="engagement-form-title">Add an engagement</h2>
@@ -880,17 +934,21 @@
         </dl>
         <p><a class="summa-link" data-bind-href="engNewInvoiceHref">New invoice for this customer</a></p>
         <template data-if="engHasMilestones">
-          <table class="summa-table" id="engagement-milestones">
-            <caption>Milestones</caption>
-            <thead><tr><th scope="col">Milestone</th><th scope="col">State</th><th scope="col" class="summa-number">Amount</th></tr></thead>
-            <tbody><template data-each="engMilestones" data-key="key"><tr><td data-text="label"></td><td data-text="state"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Milestones">
+            <table class="summa-table" id="engagement-milestones">
+              <caption>Milestones</caption>
+              <thead><tr><th scope="col">Milestone</th><th scope="col">State</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+              <tbody><template data-each="engMilestones" data-key="key"><tr><td data-text="label" data-label="Milestone"></td><td data-text="state" data-label="State"></td><td class="summa-number" data-text="amount" data-label="Amount"></td></tr></template></tbody>
+            </table>
+          </div>
         </template>
-        <table class="summa-table" id="engagement-invoices">
-          <caption>Invoices</caption>
-          <thead><tr><th scope="col">Invoice</th><th scope="col">Issued</th><th scope="col" class="summa-number">Total</th></tr></thead>
-          <tbody><template data-each="engInvoices" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="issueDate"></td><td class="summa-number" data-text="total"></td></tr></template></tbody>
-        </table>
+        <div class="ef-data-grid" role="region" tabindex="0" aria-label="Invoices">
+          <table class="summa-table" id="engagement-invoices">
+            <caption>Invoices</caption>
+            <thead><tr><th scope="col">Invoice</th><th scope="col">Issued</th><th scope="col" class="summa-number">Total</th></tr></thead>
+            <tbody><template data-each="engInvoices" data-key="id"><tr><td data-label="Invoice"><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="issueDate" data-label="Issued"></td><td class="summa-number" data-text="total" data-label="Total"></td></tr></template></tbody>
+          </table>
+        </div>
       </section>
     </template>
 
@@ -911,11 +969,13 @@
         <p><a class="summa-link" id="customer-new-invoice" data-bind-href="custNewInvoiceHref">New invoice for this customer</a></p>
         <section class="ef-surface ef-stack" aria-labelledby="customer-legal-title" id="customer-legal">
           <h2 id="customer-legal-title">Legal fields on this customer's invoices</h2>
-          <table class="summa-table" id="customer-legal-fields">
-            <caption class="ef-visually-hidden">Recorded legal fields</caption>
-            <thead><tr><th scope="col">Field</th><th scope="col">Jurisdiction</th><th scope="col">Value</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
-            <tbody><template data-each="custLegalFields" data-key="key"><tr><td data-text="label"></td><td data-text="jurisdiction"></td><td data-text="value"></td><td><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="customerLegalFieldRemoved">Remove</button></td></tr></template></tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Recorded legal fields">
+            <table class="summa-table" id="customer-legal-fields">
+              <caption class="ef-visually-hidden">Recorded legal fields</caption>
+              <thead><tr><th scope="col">Field</th><th scope="col">Jurisdiction</th><th scope="col">Value</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
+              <tbody><template data-each="custLegalFields" data-key="key"><tr><td data-text="label" data-label="Field"></td><td data-text="jurisdiction" data-label="Jurisdiction"></td><td data-text="value" data-label="Value"></td><td data-label="Remove"><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="customerLegalFieldRemoved">Remove</button></td></tr></template></tbody>
+            </table>
+          </div>
           <form class="ef-stack" id="customer-legal-form" data-event="customerLegalFieldAdded">
             <div class="ef-field"><label class="ef-field__label" for="customer-legal-kind">Field</label>
               <select id="customer-legal-kind" data-event="legalKindChosen" data-on="change">
@@ -934,25 +994,31 @@
           </template>
         </div>
         <template data-if="onCustInvoicesTab">
-          <table class="summa-table" id="customer-invoices">
-            <caption class="ef-visually-hidden">Invoices</caption>
-            <thead><tr><th scope="col">Invoice</th><th scope="col">Issued</th><th scope="col">Status</th><th scope="col" class="summa-number">Outstanding</th></tr></thead>
-            <tbody><template data-each="custInvoices" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="issueDate"></td><td data-text="status"></td><td class="summa-number" data-text="outstanding"></td></tr></template></tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Invoices">
+            <table class="summa-table" id="customer-invoices">
+              <caption class="ef-visually-hidden">Invoices</caption>
+              <thead><tr><th scope="col">Invoice</th><th scope="col">Issued</th><th scope="col">Status</th><th scope="col" class="summa-number">Outstanding</th></tr></thead>
+              <tbody><template data-each="custInvoices" data-key="id"><tr><td data-label="Invoice"><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="issueDate" data-label="Issued"></td><td data-text="status" data-label="Status"></td><td class="summa-number" data-text="outstanding" data-label="Outstanding"></td></tr></template></tbody>
+            </table>
+          </div>
         </template>
         <template data-if="onCustPaymentsTab">
-          <table class="summa-table" id="customer-payments">
-            <caption class="ef-visually-hidden">Payments</caption>
-            <thead><tr><th scope="col">Payment</th><th scope="col">Received</th><th scope="col">Reference</th><th scope="col" class="summa-number">Amount</th></tr></thead>
-            <tbody><template data-each="custPayments" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date"></td><td data-text="reference"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Payments">
+            <table class="summa-table" id="customer-payments">
+              <caption class="ef-visually-hidden">Payments</caption>
+              <thead><tr><th scope="col">Payment</th><th scope="col">Received</th><th scope="col">Reference</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+              <tbody><template data-each="custPayments" data-key="id"><tr><td data-label="Payment"><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date" data-label="Received"></td><td data-text="reference" data-label="Reference"></td><td class="summa-number" data-text="amount" data-label="Amount"></td></tr></template></tbody>
+            </table>
+          </div>
         </template>
         <template data-if="onCustCreditsTab">
-          <table class="summa-table" id="customer-credits">
-            <caption class="ef-visually-hidden">Credit memos</caption>
-            <thead><tr><th scope="col">Credit memo</th><th scope="col">Issued</th><th scope="col">Reason</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Unused</th></tr></thead>
-            <tbody><template data-each="custCredits" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date"></td><td data-text="reason"></td><td class="summa-number" data-text="amount"></td><td class="summa-number" data-text="remaining"></td></tr></template></tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Credit memos">
+            <table class="summa-table" id="customer-credits">
+              <caption class="ef-visually-hidden">Credit memos</caption>
+              <thead><tr><th scope="col">Credit memo</th><th scope="col">Issued</th><th scope="col">Reason</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Unused</th></tr></thead>
+              <tbody><template data-each="custCredits" data-key="id"><tr><td data-label="Credit memo"><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date" data-label="Issued"></td><td data-text="reason" data-label="Reason"></td><td class="summa-number" data-text="amount" data-label="Amount"></td><td class="summa-number" data-text="remaining" data-label="Unused"></td></tr></template></tbody>
+            </table>
+          </div>
         </template>
       </section>
     </template>
@@ -984,11 +1050,13 @@
             </div>
             <p class="summa-count" id="payment-count-text" role="status" data-text="paymentCountText"></p>
             <template data-if="noListedPayments"><p id="no-payments">No payment matches these filters.</p></template>
-            <table class="summa-table" id="payments-table">
-              <caption class="ef-visually-hidden">Payments received</caption>
-              <thead><tr><th scope="col">Payment</th><th scope="col">Received</th><th scope="col">Customer</th><th scope="col">Method</th><th scope="col">Reference</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Not applied</th></tr></thead>
-              <tbody><template data-each="payments" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date"></td><td><a class="summa-link" data-bind-href="customerHref" data-text="customer"></a></td><td data-text="method"></td><td data-text="reference"></td><td class="summa-number" data-text="amount"></td><td class="summa-number" data-text="unapplied"></td></tr></template></tbody>
-            </table>
+            <div class="ef-data-grid" role="region" tabindex="0" aria-label="Payments received">
+              <table class="summa-table" id="payments-table">
+                <caption class="ef-visually-hidden">Payments received</caption>
+                <thead><tr><th scope="col">Payment</th><th scope="col">Received</th><th scope="col">Customer</th><th scope="col">Method</th><th scope="col">Reference</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Not applied</th></tr></thead>
+                <tbody><template data-each="payments" data-key="id"><tr><td data-label="Payment"><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date" data-label="Received"></td><td data-label="Customer"><a class="summa-link" data-bind-href="customerHref" data-text="customer"></a></td><td data-text="method" data-label="Method"></td><td data-text="reference" data-label="Reference"></td><td class="summa-number" data-text="amount" data-label="Amount"></td><td class="summa-number" data-text="unapplied" data-label="Not applied"></td></tr></template></tbody>
+              </table>
+            </div>
           </div>
         </template>
       </section>
@@ -1006,11 +1074,13 @@
           <div><dt>Amount</dt><dd id="payment-amount-text" data-text="payAmount"></dd></div>
           <div><dt>Not applied</dt><dd id="payment-unapplied-text" data-text="payUnapplied"></dd></div>
         </dl>
-        <table class="summa-table" id="payment-allocations">
-          <caption>Applied to</caption>
-          <thead><tr><th scope="col">Invoice</th><th scope="col" class="summa-number">Amount</th></tr></thead>
-          <tbody><template data-each="payAllocations" data-key="key"><tr><td><a class="summa-link" data-bind-href="href" data-text="invoice"></a></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
-        </table>
+        <div class="ef-data-grid" role="region" tabindex="0" aria-label="Applied to">
+          <table class="summa-table" id="payment-allocations">
+            <caption>Applied to</caption>
+            <thead><tr><th scope="col">Invoice</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+            <tbody><template data-each="payAllocations" data-key="key"><tr><td data-label="Invoice"><a class="summa-link" data-bind-href="href" data-text="invoice"></a></td><td class="summa-number" data-text="amount" data-label="Amount"></td></tr></template></tbody>
+          </table>
+        </div>
       </section>
     </template>
 
@@ -1026,11 +1096,13 @@
             </select></div>
         </div>
         <template data-if="hasCreditMemos">
-          <table class="summa-table" id="credit-memos-table">
-            <caption class="ef-visually-hidden">Credit memos</caption>
-            <thead><tr><th scope="col">Credit memo</th><th scope="col">Issued</th><th scope="col">Customer</th><th scope="col">Invoice</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Unused</th></tr></thead>
-            <tbody><template data-each="creditMemos" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date"></td><td><a class="summa-link" data-bind-href="customerHref" data-text="customer"></a></td><td><a class="summa-link" data-bind-href="invoiceHref" data-text="invoice"></a></td><td class="summa-number" data-text="amount"></td><td class="summa-number" data-text="remaining"></td></tr></template></tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Credit memos">
+            <table class="summa-table" id="credit-memos-table">
+              <caption class="ef-visually-hidden">Credit memos</caption>
+              <thead><tr><th scope="col">Credit memo</th><th scope="col">Issued</th><th scope="col">Customer</th><th scope="col">Invoice</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Unused</th></tr></thead>
+              <tbody><template data-each="creditMemos" data-key="id"><tr><td data-label="Credit memo"><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date" data-label="Issued"></td><td data-label="Customer"><a class="summa-link" data-bind-href="customerHref" data-text="customer"></a></td><td data-label="Invoice"><a class="summa-link" data-bind-href="invoiceHref" data-text="invoice"></a></td><td class="summa-number" data-text="amount" data-label="Amount"></td><td class="summa-number" data-text="remaining" data-label="Unused"></td></tr></template></tbody>
+            </table>
+          </div>
         </template>
         <p>A credit memo is issued from the invoice it corrects, on its Payments tab.</p>
       </section>
@@ -1068,11 +1140,13 @@
           </ef-print-document>
         </template>
         <template data-if="cmNoDocument"><p>This credit memo was not raised against an invoice, so it has no customer document. It credited <span data-text="cmAmount"></span>: <span data-text="cmReason"></span>.</p></template>
-        <table class="summa-table summa-screen-only" id="credit-memo-applications">
-          <caption>Applied to</caption>
-          <thead><tr><th scope="col">Invoice</th><th scope="col">Applied</th><th scope="col" class="summa-number">Amount</th></tr></thead>
-          <tbody><template data-each="cmApplications" data-key="key"><tr><td><a class="summa-link" data-bind-href="href" data-text="invoice"></a></td><td data-text="date"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
-        </table>
+        <div class="ef-data-grid summa-screen-only" role="region" tabindex="0" aria-label="Applied to">
+          <table class="summa-table" id="credit-memo-applications">
+            <caption>Applied to</caption>
+            <thead><tr><th scope="col">Invoice</th><th scope="col">Applied</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+            <tbody><template data-each="cmApplications" data-key="key"><tr><td data-label="Invoice"><a class="summa-link" data-bind-href="href" data-text="invoice"></a></td><td data-text="date" data-label="Applied"></td><td class="summa-number" data-text="amount" data-label="Amount"></td></tr></template></tbody>
+          </table>
+        </div>
       </section>
     </template>
 
@@ -1095,19 +1169,23 @@
           <div class="ef-stack" id="account-ledger">
             <h2 id="ledger-account-name" data-text="ledgerAccountName"></h2>
             <template data-if="hasLedgerOpening"><p class="summa-count">Balance brought forward <strong id="ledger-opening" data-text="ledgerOpening"></strong></p></template>
-            <table class="summa-table" id="ledger-table">
-              <caption class="ef-visually-hidden">Entries to this account</caption>
-              <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Description</th><th scope="col" class="summa-number">Debit</th><th scope="col" class="summa-number">Credit</th><th scope="col" class="summa-number">Balance</th></tr></thead>
-              <tbody><template data-each="ledgerRows" data-key="key"><tr><td data-text="date"></td><td><a class="summa-link" data-bind-href="href" data-text="entry"></a></td><td data-text="description"></td><td class="summa-number" data-text="debit"></td><td class="summa-number" data-text="credit"></td><td class="summa-number" data-text="balance"></td></tr></template></tbody>
-            </table>
+            <div class="ef-data-grid" role="region" tabindex="0" aria-label="Entries to this account">
+              <table class="summa-table" id="ledger-table">
+                <caption class="ef-visually-hidden">Entries to this account</caption>
+                <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Description</th><th scope="col" class="summa-number">Debit</th><th scope="col" class="summa-number">Credit</th><th scope="col" class="summa-number">Balance</th></tr></thead>
+                <tbody><template data-each="ledgerRows" data-key="key"><tr><td data-text="date" data-label="Date"></td><td data-label="Entry"><a class="summa-link" data-bind-href="href" data-text="entry"></a></td><td data-text="description" data-label="Description"></td><td class="summa-number" data-text="debit" data-label="Debit"></td><td class="summa-number" data-text="credit" data-label="Credit"></td><td class="summa-number" data-text="balance" data-label="Balance"></td></tr></template></tbody>
+              </table>
+            </div>
           </div>
         </template>
         <template data-if="isJournal">
-          <table class="summa-table" id="journal-table">
-            <caption class="ef-visually-hidden">Journal entries</caption>
-            <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Description</th><th scope="col" class="summa-number">Amount</th></tr></thead>
-            <tbody><template data-each="journalRows" data-key="key"><tr><td data-text="date"></td><td><a class="summa-link" data-bind-href="href" data-text="entry"></a></td><td data-text="description"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Journal entries">
+            <table class="summa-table" id="journal-table">
+              <caption class="ef-visually-hidden">Journal entries</caption>
+              <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Description</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+              <tbody><template data-each="journalRows" data-key="key"><tr><td data-text="date" data-label="Date"></td><td data-label="Entry"><a class="summa-link" data-bind-href="href" data-text="entry"></a></td><td data-text="description" data-label="Description"></td><td class="summa-number" data-text="amount" data-label="Amount"></td></tr></template></tbody>
+            </table>
+          </div>
         </template>
       </section>
     </template>
@@ -1127,12 +1205,14 @@
           <h2 id="entry-explained-title">In plain words</h2>
           <ul id="entry-explanation"><template data-each="entryExplanation" data-key="key"><li data-text="text"></li></template></ul>
         </section>
-        <table class="summa-table" id="entry-lines">
-          <caption>Lines</caption>
-          <thead><tr><th scope="col">Account</th><th scope="col">Memo</th><th scope="col" class="summa-number">Debit</th><th scope="col" class="summa-number">Credit</th></tr></thead>
-          <tbody><template data-each="entryLines" data-key="key"><tr><td><a class="summa-link" data-bind-href="href" data-text="account"></a></td><td data-text="memo"></td><td class="summa-number" data-text="debit"></td><td class="summa-number" data-text="credit"></td></tr></template></tbody>
-          <tfoot><tr><th scope="row" colspan="2">Totals</th><td class="summa-number" id="entry-debits" data-text="entryDebits"></td><td class="summa-number" id="entry-credits" data-text="entryCredits"></td></tr></tfoot>
-        </table>
+        <div class="ef-data-grid" role="region" tabindex="0" aria-label="Lines">
+          <table class="summa-table" id="entry-lines">
+            <caption>Lines</caption>
+            <thead><tr><th scope="col">Account</th><th scope="col">Memo</th><th scope="col" class="summa-number">Debit</th><th scope="col" class="summa-number">Credit</th></tr></thead>
+            <tbody><template data-each="entryLines" data-key="key"><tr><td data-label="Account"><a class="summa-link" data-bind-href="href" data-text="account"></a></td><td data-text="memo" data-label="Memo"></td><td class="summa-number" data-text="debit" data-label="Debit"></td><td class="summa-number" data-text="credit" data-label="Credit"></td></tr></template></tbody>
+            <tfoot><tr><th scope="row" colspan="2">Totals</th><td class="summa-number" id="entry-debits" data-text="entryDebits" data-label="Total debits"></td><td class="summa-number" id="entry-credits" data-text="entryCredits" data-label="Total credits"></td></tr></tfoot>
+          </table>
+        </div>
       </section>
     </template>
 
@@ -1156,12 +1236,14 @@
             <input id="trial-as-of" type="date" data-event="reportAsOfChanged" data-on="change" data-bind-value="reportAsOf" /></div>
         </div>
         <p class="summa-count">As of <span data-text="reportDate"></span>.</p>
-        <table class="summa-table" id="trial-balance-table">
-          <caption class="ef-visually-hidden">Trial balance</caption>
-          <thead><tr><th scope="col">Code</th><th scope="col">Account</th><th scope="col" class="summa-number">Debit</th><th scope="col" class="summa-number">Credit</th></tr></thead>
-          <tbody><template data-each="trialRows" data-key="key"><tr><td data-text="code"></td><td><a class="summa-link" data-bind-href="href" data-text="name"></a></td><td class="summa-number" data-text="debit"></td><td class="summa-number" data-text="credit"></td></tr></template></tbody>
-          <tfoot><tr><th scope="row" colspan="2">Totals</th><td class="summa-number" id="trial-debits" data-text="trialDebits"></td><td class="summa-number" id="trial-credits" data-text="trialCredits"></td></tr></tfoot>
-        </table>
+        <div class="ef-data-grid" role="region" tabindex="0" aria-label="Trial balance">
+          <table class="summa-table" id="trial-balance-table">
+            <caption class="ef-visually-hidden">Trial balance</caption>
+            <thead><tr><th scope="col">Code</th><th scope="col">Account</th><th scope="col" class="summa-number">Debit</th><th scope="col" class="summa-number">Credit</th></tr></thead>
+            <tbody><template data-each="trialRows" data-key="key"><tr><td data-text="code" data-label="Code"></td><td data-label="Account"><a class="summa-link" data-bind-href="href" data-text="name"></a></td><td class="summa-number" data-text="debit" data-label="Debit"></td><td class="summa-number" data-text="credit" data-label="Credit"></td></tr></template></tbody>
+            <tfoot><tr><th scope="row" colspan="2">Totals</th><td class="summa-number" id="trial-debits" data-text="trialDebits" data-label="Total debits"></td><td class="summa-number" id="trial-credits" data-text="trialCredits" data-label="Total credits"></td></tr></tfoot>
+          </table>
+        </div>
         <template data-if="trialBalances"><p class="summa-notice" id="trial-balances">Debits equal credits.</p></template>
       </section>
     </template>
@@ -1190,11 +1272,13 @@
           <div><dt>Expenses</dt><dd id="income-expenses" data-text="incomeExpenses"></dd></div>
           <div><dt>Net income</dt><dd id="income-net" data-text="incomeNet"></dd></div>
         </dl>
-        <table class="summa-table" id="income-accounts">
-          <caption>By account</caption>
-          <thead><tr><th scope="col">Account</th><th scope="col">Kind</th><th scope="col" class="summa-number">Amount</th></tr></thead>
-          <tbody><template data-each="incomeAccounts" data-key="key"><tr><td><a class="summa-link" data-bind-href="href" data-text="account"></a></td><td data-text="kind"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
-        </table>
+        <div class="ef-data-grid" role="region" tabindex="0" aria-label="By account">
+          <table class="summa-table" id="income-accounts">
+            <caption>By account</caption>
+            <thead><tr><th scope="col">Account</th><th scope="col">Kind</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+            <tbody><template data-each="incomeAccounts" data-key="key"><tr><td data-label="Account"><a class="summa-link" data-bind-href="href" data-text="account"></a></td><td data-text="kind" data-label="Kind"></td><td class="summa-number" data-text="amount" data-label="Amount"></td></tr></template></tbody>
+          </table>
+        </div>
       </section>
     </template>
 
@@ -1221,11 +1305,13 @@
       <section class="ef-stack" aria-labelledby="periods-title">
         <h1 id="periods-title">Periods <span data-text="periodsYear"></span></h1>
         <p><a class="summa-link" id="previous-year" data-bind-href="previousYearHref">Previous year</a> · <a class="summa-link" id="next-year" data-bind-href="nextYearHref">Next year</a></p>
-        <table class="summa-table" id="periods-table">
-          <caption class="ef-visually-hidden">Months</caption>
-          <thead><tr><th scope="col">Month</th><th scope="col">State</th><th scope="col" class="summa-number">Entries</th></tr></thead>
-          <tbody><template data-each="months" data-key="key"><tr><td><a class="summa-link" data-bind-href="href" data-text="label"></a></td><td data-text="state"></td><td class="summa-number" data-text="entries"></td></tr></template></tbody>
-        </table>
+        <div class="ef-data-grid" role="region" tabindex="0" aria-label="Months">
+          <table class="summa-table" id="periods-table">
+            <caption class="ef-visually-hidden">Months</caption>
+            <thead><tr><th scope="col">Month</th><th scope="col">State</th><th scope="col" class="summa-number">Entries</th></tr></thead>
+            <tbody><template data-each="months" data-key="key"><tr><td data-label="Month"><a class="summa-link" data-bind-href="href" data-text="label"></a></td><td data-text="state" data-label="State"></td><td class="summa-number" data-text="entries" data-label="Entries"></td></tr></template></tbody>
+          </table>
+        </div>
       </section>
     </template>
 
@@ -1247,11 +1333,13 @@
           <template data-if="canLockPeriod"><button type="button" class="ef-button" data-variant="secondary" id="lock-period" data-event="periodLocked">Lock period</button></template>
           <template data-if="canReopenPeriod"><button type="button" class="ef-button" data-variant="danger" id="reopen-period" data-event="periodReopened">Reopen period</button></template>
         </div>
-        <table class="summa-table" id="period-entries">
-          <caption>Entries</caption>
-          <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Description</th><th scope="col" class="summa-number">Amount</th></tr></thead>
-          <tbody><template data-each="periodEntries" data-key="key"><tr><td data-text="date"></td><td><a class="summa-link" data-bind-href="href" data-text="entry"></a></td><td data-text="description"></td><td class="summa-number" data-text="amount"></td></tr></template></tbody>
-        </table>
+        <div class="ef-data-grid" role="region" tabindex="0" aria-label="Entries">
+          <table class="summa-table" id="period-entries">
+            <caption>Entries</caption>
+            <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Description</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+            <tbody><template data-each="periodEntries" data-key="key"><tr><td data-text="date" data-label="Date"></td><td data-label="Entry"><a class="summa-link" data-bind-href="href" data-text="entry"></a></td><td data-text="description" data-label="Description"></td><td class="summa-number" data-text="amount" data-label="Amount"></td></tr></template></tbody>
+          </table>
+        </div>
       </section>
     </template>
 
@@ -1269,11 +1357,13 @@
         <section class="ef-stack" aria-labelledby="integrations-title" id="integrations">
           <h2 id="integrations-title">Integrations</h2>
           <p>An outside system being unavailable never changes the books. Each one's state, and what to do.</p>
-          <table class="summa-table" id="integrations-table">
-            <caption class="ef-visually-hidden">Integration states</caption>
-            <thead><tr><th scope="col">System</th><th scope="col">State</th><th scope="col">Details</th></tr></thead>
-            <tbody><template data-each="integrations" data-key="key"><tr><td data-text="name"></td><td><span class="ef-status-lozenge" data-bind-data-state="stateKey" data-text="state"></span></td><td><a class="summa-link" data-bind-href="href" data-text="detail"></a></td></tr></template></tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Integration states">
+            <table class="summa-table" id="integrations-table">
+              <caption class="ef-visually-hidden">Integration states</caption>
+              <thead><tr><th scope="col">System</th><th scope="col">State</th><th scope="col">Details</th></tr></thead>
+              <tbody><template data-each="integrations" data-key="key"><tr><td data-text="name" data-label="System"></td><td data-label="State"><span class="ef-status-lozenge" data-bind-data-state="stateKey" data-text="state"></span></td><td data-label="Details"><a class="summa-link" data-bind-href="href" data-text="detail"></a></td></tr></template></tbody>
+            </table>
+          </div>
         </section>
       </section>
     </template>
@@ -1289,11 +1379,13 @@
         </div>
         <template data-if="noFollowRows"><p id="no-follow-up">No invoice here.</p></template>
         <template data-if="hasFollowRows">
-          <table class="summa-table" id="follow-up-table">
-            <caption class="ef-visually-hidden">Invoices to follow up</caption>
-            <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Due</th><th scope="col">Late</th><th scope="col">Follow-up</th><th scope="col" class="summa-number">Outstanding</th><th scope="col"><span class="ef-visually-hidden">Actions</span></th></tr></thead>
-            <tbody><template data-each="followRows" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="customer"></td><td data-text="dueDate"></td><td data-text="late"></td><td><span data-text="collection"></span> <span data-text="dispute"></span> <span data-text="promise"></span></td><td class="summa-number" data-text="outstanding"></td><td><button type="button" class="ef-button summa-remind" data-variant="secondary" data-event="reminderRecorded">Reminder sent</button></td></tr></template></tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Invoices to follow up">
+            <table class="summa-table" id="follow-up-table">
+              <caption class="ef-visually-hidden">Invoices to follow up</caption>
+              <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Due</th><th scope="col">Late</th><th scope="col">Follow-up</th><th scope="col" class="summa-number">Outstanding</th><th scope="col"><span class="ef-visually-hidden">Actions</span></th></tr></thead>
+              <tbody><template data-each="followRows" data-key="id"><tr><td data-label="Invoice"><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="customer" data-label="Customer"></td><td data-text="dueDate" data-label="Due"></td><td data-text="late" data-label="Late"></td><td data-label="Follow-up"><span data-text="collection"></span> <span data-text="dispute"></span> <span data-text="promise"></span></td><td class="summa-number" data-text="outstanding" data-label="Outstanding"></td><td data-label="Actions"><button type="button" class="ef-button summa-remind" data-variant="secondary" data-event="reminderRecorded">Reminder sent</button></td></tr></template></tbody>
+            </table>
+          </div>
         </template>
       </section>
     </template>
@@ -1311,11 +1403,13 @@
         </div>
         <template data-if="noInboxRows"><p id="inbox-empty">Every payment is applied.</p></template>
         <template data-if="hasInboxRows">
-          <table class="summa-table" id="inbox-table">
-            <caption class="ef-visually-hidden">Payments not fully applied</caption>
-            <thead><tr><th scope="col">Payment</th><th scope="col">Received</th><th scope="col">Customer</th><th scope="col">Reference</th><th scope="col" class="summa-number">Not applied</th><th scope="col">Open invoices</th><th scope="col"><span class="ef-visually-hidden">Actions</span></th></tr></thead>
-            <tbody><template data-each="inboxRows" data-key="id"><tr><td><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date"></td><td data-text="customer"></td><td data-text="reference"></td><td class="summa-number" data-text="unapplied"></td><td data-text="openInvoices"></td><td class="summa-row-actions"><button type="button" class="ef-button summa-apply" data-event="inboxApplied" data-bind-disabled="noApply">Apply to oldest invoices</button> <button type="button" class="ef-button summa-credit" data-variant="secondary" data-event="inboxCredited">Keep as credit</button></td></tr></template></tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Payments not fully applied">
+            <table class="summa-table" id="inbox-table">
+              <caption class="ef-visually-hidden">Payments not fully applied</caption>
+              <thead><tr><th scope="col">Payment</th><th scope="col">Received</th><th scope="col">Customer</th><th scope="col">Reference</th><th scope="col" class="summa-number">Not applied</th><th scope="col">Open invoices</th><th scope="col"><span class="ef-visually-hidden">Actions</span></th></tr></thead>
+              <tbody><template data-each="inboxRows" data-key="id"><tr><td data-label="Payment"><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date" data-label="Received"></td><td data-text="customer" data-label="Customer"></td><td data-text="reference" data-label="Reference"></td><td class="summa-number" data-text="unapplied" data-label="Not applied"></td><td data-text="openInvoices" data-label="Open invoices"></td><td class="summa-row-actions" data-label="Actions"><button type="button" class="ef-button summa-apply" data-event="inboxApplied" data-bind-disabled="noApply">Apply to oldest invoices</button> <button type="button" class="ef-button summa-credit" data-variant="secondary" data-event="inboxCredited">Keep as credit</button></td></tr></template></tbody>
+            </table>
+          </div>
         </template>
         <form class="ef-surface ef-stack" id="receipt-form" data-event="receiptRecorded" aria-labelledby="receipt-title">
           <h2 id="receipt-title">Record a payment received</h2>
@@ -1362,11 +1456,13 @@
           </div>
         </template>
         <template data-if="hasCpaAdjustments">
-          <table class="summa-table" id="cpa-adjustments">
-            <caption>Adjusting, opening and closing entries</caption>
-            <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Kind</th><th scope="col">Description</th></tr></thead>
-            <tbody><template data-each="cpaAdjustments" data-key="key"><tr><td data-text="date"></td><td><a class="summa-link" data-bind-href="href" data-text="key"></a></td><td data-text="kind"></td><td data-text="description"></td></tr></template></tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Adjusting, opening and closing entries">
+            <table class="summa-table" id="cpa-adjustments">
+              <caption>Adjusting, opening and closing entries</caption>
+              <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Kind</th><th scope="col">Description</th></tr></thead>
+              <tbody><template data-each="cpaAdjustments" data-key="key"><tr><td data-text="date" data-label="Date"></td><td data-label="Entry"><a class="summa-link" data-bind-href="href" data-text="key"></a></td><td data-text="kind" data-label="Kind"></td><td data-text="description" data-label="Description"></td></tr></template></tbody>
+            </table>
+          </div>
         </template>
       </section>
     </template>
@@ -1391,11 +1487,13 @@
         <section class="ef-surface ef-stack" aria-labelledby="legal-title" id="organization-legal">
           <h2 id="legal-title">Legal fields on invoices</h2>
           <p>Shown on new invoices exactly as recorded. Showing a field does not make an invoice compliant with any jurisdiction's law.</p>
-          <table class="summa-table" id="organization-legal-fields">
-            <caption class="ef-visually-hidden">Recorded legal fields</caption>
-            <thead><tr><th scope="col">Field</th><th scope="col">Jurisdiction</th><th scope="col">Value</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
-            <tbody><template data-each="legalFields" data-key="key"><tr><td data-text="label"></td><td data-text="jurisdiction"></td><td class="summa-pre" data-text="value"></td><td><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="organizationLegalFieldRemoved">Remove</button></td></tr></template></tbody>
-          </table>
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Recorded legal fields">
+            <table class="summa-table" id="organization-legal-fields">
+              <caption class="ef-visually-hidden">Recorded legal fields</caption>
+              <thead><tr><th scope="col">Field</th><th scope="col">Jurisdiction</th><th scope="col">Value</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
+              <tbody><template data-each="legalFields" data-key="key"><tr><td data-text="label" data-label="Field"></td><td data-text="jurisdiction" data-label="Jurisdiction"></td><td class="summa-pre" data-text="value" data-label="Value"></td><td data-label="Remove"><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="organizationLegalFieldRemoved">Remove</button></td></tr></template></tbody>
+            </table>
+          </div>
           <form class="ef-stack" id="organization-legal-form" data-event="organizationLegalFieldAdded">
             <div class="ef-field"><label class="ef-field__label" for="legal-kind">Field</label>
               <select id="legal-kind" data-event="legalKindChosen" data-on="change">
