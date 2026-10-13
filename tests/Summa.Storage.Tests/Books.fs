@@ -37,7 +37,8 @@ let abc =
       PaymentProfileId = None
       Active = true
       Tax = TaxNotAssessed
-      LegalFields = [] }
+      LegalFields = []
+      RequiresPurchaseOrder = false }
 
 let draft =
     { DraftId = "D-1"

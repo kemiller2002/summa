@@ -286,7 +286,8 @@ a.summa-nav__link {
   color: var(--ef-color-text-muted, #57606a);
 }
 
-.summa-line-note:empty {
+.summa-line-note:empty,
+.summa-optional-note:empty {
   display: none;
 }
 

@@ -1915,6 +1915,47 @@
     "version": "1.0.0"
   },
   {
+    "created": "2026-10-13",
+    "id": "DF-SUMMA-2026-0044",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0044--customers-that-require-a-purchase-order.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261009T031528777Z-d8d5aa1a": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "claude-opus-5-5",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-13T19:24:53.000Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Record the required purchase order (WI-0029 slice 24, INV-OPS-006)"
+        }
+      }
+    },
+    "related_documents": [
+      "research/decisions/DF-SUMMA-2026-0031--invoice-search-timeline-drill-down-and-attention.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "invoicing",
+      "customers",
+      "operations"
+    ],
+    "title": "A customer may require a purchase order; an invoice for them is not issued without one",
+    "updated": "2026-10-13",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-10-05",
     "id": "DF-SUMMA-FND-2026-0001",
     "owners": [
