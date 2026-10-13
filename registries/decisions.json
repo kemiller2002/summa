@@ -1121,6 +1121,48 @@
     "version": "1.0.0"
   },
   {
+    "created": "2026-10-13",
+    "id": "DF-SUMMA-2026-0025",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0025--commands-read-only-what-changed.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261009T031528777Z-d8d5aa1a": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "claude-opus-5-5",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-13T10:49:21.000Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Record the read path decisions (WI-0029 slice 5, SUM0-034)"
+        }
+      }
+    },
+    "related_documents": [
+      "research/decisions/DF-SUMMA-2026-0024--books-founded-on-a-store-start-with-their-chart.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "performance",
+      "storage",
+      "browser",
+      "arca"
+    ],
+    "title": "Commands and openings read only what changed, at most six at a time, on the page's own turn",
+    "updated": "2026-10-13",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-10-05",
     "id": "DF-SUMMA-FND-2026-0001",
     "owners": [

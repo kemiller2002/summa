@@ -272,7 +272,12 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
     /// Opens the books for the context's person, as the engine's message.
     let opening (ctx: Context) : Async<Msg> =
         async {
-            match! Workspace.openBooks (providerOf ctx.Namespace) ctx.Config ctx.Binding ctx.Organization ctx.Person.ActorId with
+            let known =
+                lastRead
+                |> Option.map (fun (_, objects) -> objects |> List.map (fun o -> RelativePath.render o.Path, o) |> Map.ofList)
+                |> Option.defaultValue Map.empty
+
+            match! Workspace.openBooksKnowing bridge.Turn known (providerOf ctx.Namespace) ctx.Config ctx.Binding ctx.Organization ctx.Person.ActorId with
             | Error failure -> return BooksNotOpened(BooksUnreachable(describeFailure (widen failure)))
             | Ok(Workspace.Opened opened) ->
                 match opened.Read with
@@ -423,7 +428,11 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
                 queueNote <- Some "This browser cannot keep unsent changes across a reload; they are kept in this tab until sent."
         }
 
-    /// The organization's records and the change token they were read at.
+    /// The organization's records and the change token they were read at
+    /// (SUM0-034). The namespace's state is observed first. When its token is
+    /// the one the records were last read at, they are its content and are
+    /// used as they are; otherwise only what changed is read: a file whose
+    /// listing shows the revision last read is that object.
     let readState (ctx: Context) =
         async {
             let provider = providerOf ctx.Namespace
@@ -431,11 +440,19 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
             match! provider.NamespaceState ctx.Namespace with
             | Error failure -> return Error(Commands.StorageFailed failure)
             | Ok token ->
-                match! Commands.readAll provider ctx.Namespace with
-                | Error failure -> return Error failure
-                | Ok objects ->
-                    lastRead <- Some(token, objects)
-                    return Ok(token, objects)
+                match lastRead with
+                | Some(last, objects) when last.NamespaceToken = token.NamespaceToken -> return Ok(token, objects)
+                | _ ->
+                    let known =
+                        lastRead
+                        |> Option.map (fun (_, objects) -> objects |> List.map (fun o -> RelativePath.render o.Path, o) |> Map.ofList)
+                        |> Option.defaultValue Map.empty
+
+                    match! Commands.readAllKnowing bridge.Turn known provider ctx.Namespace with
+                    | Error failure -> return Error failure
+                    | Ok objects ->
+                        lastRead <- Some(token, objects)
+                        return Ok(token, objects)
         }
 
     let requestOf (ctx: Context) (commit: Commit) : Commands.Request<string> =

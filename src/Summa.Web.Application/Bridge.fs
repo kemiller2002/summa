@@ -65,7 +65,14 @@ type Bridge() =
     let outbox = List<string * KernelCall>()
     let finished = List<Msg>()
     let failures = List<exn>()
+    /// Resumptions deferred to the bridge's turn (`Commands.Turn`).
+    let deferred = Queue<unit -> unit>()
     let mutable sequence = 0
+
+    /// Runs what was deferred, outside any running async, until none is left.
+    let runDeferred () =
+        while deferred.Count > 0 do
+            (deferred.Dequeue()) ()
 
     /// Asks the browser for something and continues with its answer.
     member _.Call(request: KernelCall) : Async<KernelAnswer> =
@@ -86,6 +93,12 @@ type Bridge() =
             }
         )
 
+        runDeferred ()
+
+    /// The bridge's turn: a fork-join's resumption runs right after the
+    /// answer that finished its last step, still within this message.
+    member _.Turn: Summa.Storage.Commands.Turn = { Defer = fun resume -> deferred.Enqueue resume }
+
     /// Engine messages an operation produced while still running.
     member _.Emit(messages: Msg list) = finished.AddRange messages
 
@@ -95,6 +108,7 @@ type Bridge() =
         | true, resume ->
             waiting.Remove id |> ignore
             resume answer
+            runDeferred ()
             true
         | _ -> false
 
