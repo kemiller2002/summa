@@ -351,3 +351,39 @@ let ``one invoice may mix sources, each line keeping its own provenance`` () =
     let _, invoice = r |> propose context request |> ok |> markReady context false "P-1" |> ok |> accept context "P-1" issuing |> ok
     Assert.Equal<LineSource list>([ TimeSource [ { PublicationId = "pub-3"; ActivityId = "act-3"; Revision = 1; Minutes = 60 } ]; ExpenseSource "EXP-1"; ManualLine ], invoice.Lines |> List.map _.Source)
     Assert.Equal(usd (20000L + 42000L + 5000L), invoice.Total)
+
+// ---- Architectural ownership (INV-ARCH) -------------------------------------------------------
+
+[<Fact>]
+let ``INV-ARCH-002: Chrona's time is consumed as published, never rewritten by Summa`` () =
+    let imported = hourly ()
+    let original = imported.Books.Time["pub-1"]
+    // The same publication again changes nothing; different facts under its id are refused.
+    Assert.Equal(imported, importAll [ original ] imported)
+    Assert.Equal<BillingProblem list>([ IdReused "pub-1" ], importTime context { original with BillableMinutes = original.BillableMinutes + 30 } imported |> refused)
+    // A correction is Chrona's new publication; the earlier one stays as Chrona published it.
+    let corrected = importAll [ { time "pub-1b" "act-1" 120 "github:1" "PRJ-A" with Revision = 2; Supersedes = Some "pub-1" } ] imported
+    Assert.Equal(original, corrected.Books.Time["pub-1"])
+    // A withdrawal is recorded beside the time, which is not changed.
+    let withdrawn = withdrawTime context { PublicationId = "pub-2"; Revision = 2; Reason = "voided in Chrona"; WithdrawnAt = at "2026-10-08T10:00:00Z" } corrected |> ok
+    Assert.Equal(corrected.Books.Time["pub-2"], withdrawn.Books.Time["pub-2"])
+    Assert.True(withdrawn.Books.Withdrawals.ContainsKey "pub-2")
+
+[<Fact>]
+let ``INV-ARCH-003: an invoice keeps stable source references and its own snapshot; the source stays its owner's`` () =
+    let accepted, invoice = hourly () |> propose context (proposalFor [ "pub-1"; "pub-2" ]) |> ok |> markReady context false "P-1" |> ok |> accept context "P-1" issuing |> ok
+
+    // Each billed line names its sources by publication, activity and revision, with the description and price billed.
+    let references =
+        invoice.Lines
+        |> List.collect (fun l ->
+            match l.Source with
+            | Summa.Ledger.Sources.TimeSource refs -> refs |> List.map (fun t -> t.PublicationId, t.ActivityId, t.Revision)
+            | _ -> [])
+
+    Assert.Equal<(string * string * int) list>([ "pub-1", "act-1", 1; "pub-2", "act-2", 1 ], references |> List.sort)
+    Assert.True(invoice.Lines |> List.forall (fun l -> l.Description <> "" && l.UnitPrice.Minor > 0L))
+    // When the source changes, the invoice does not; the difference is a review for a person.
+    let corrected = importAll [ { time "pub-1b" "act-1" 120 "github:1" "PRJ-A" with Revision = 2; Supersedes = Some "pub-1" } ] accepted
+    Assert.Equal(invoice, corrected.Books.Invoices[invoice.InvoiceId])
+    Assert.True(corrected.Books.Reviews.ContainsKey "review-pub-1")

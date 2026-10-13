@@ -78,3 +78,24 @@ let ``a PDF is checked, fingerprinted and recorded with a reference into this en
     // Another environment reading these books never takes the PDF for its own.
     let staging = { config with Environment = EnvironmentKind.Staging; Artifacts = BrowserDatabase "summa-artifacts-staging" }
     Assert.Equal(Error(Artifacts.ForeignStore artifact.Reference), Artifacts.storedPdf staging recorded "INV-001")
+
+[<Fact>]
+let ``INV-ARCH-010: a PDF stays in the artifact store; the records hold only its reference, hash, media type, size, version and when`` () =
+    let config = local "demo"
+    let bytes = pdf (String('x', 200_000))
+    let sha, size = Artifacts.fingerprint bytes |> Support.ok
+    let recorded = Artifacts.recordPdf ledgerContext config "INV-001" (sha, size) (withArtifacts ()) |> Support.ok
+    let artifact = recorded.Books.Artifacts[Issuance.artifactId "INV-001" Sources.InvoicePdf]
+    Assert.Equal($"browser-db:summa-artifacts-local/{sha}", artifact.Reference)
+    Assert.Equal(Some sha, artifact.Sha256)
+    Assert.Equal("application/pdf", artifact.MediaType)
+    Assert.Equal(Some size, artifact.Size)
+    Assert.NotEqual<string>("", artifact.TemplateVersion)
+    Assert.Equal(ledgerContext.When, artifact.CreatedAt)
+
+    // No stored record carries the file: none holds PDF bytes, and each is far smaller than the PDF.
+    let files = FinancialRecords.toRecords recorded |> Support.ok |> FinancialRecords.contents |> Support.ok |> Map.toList
+
+    for path, (_, content) in files do
+        Assert.DoesNotContain("%PDF", content)
+        Assert.True(content.Length < 20_000, $"{path} is {content.Length} characters")
