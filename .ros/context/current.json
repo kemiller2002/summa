@@ -2184,21 +2184,21 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "9446daae29fd029df9fb1375",
-        "recordedAt": "2026-10-13T19:01:25Z",
+        "id": "61ac2ce5058ccfe3c17f349e",
+        "recordedAt": "2026-10-13T19:31:55Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
-        "stepId": "STEP-20261013T175532000Z-a92e3140",
+        "stepId": "STEP-20261013T191945000Z-bd3e6578",
         "repository": "summa",
-        "branch": "feat/wi-0029-editor-details-references",
-        "commit": "10c786f38a0b5ce713807958e04274b22b93c808",
+        "branch": "feat/wi-0029-required-po",
+        "commit": "20d03632618660adf9798271d48868fcc4298264",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0029-editor-details-references",
-        "remoteCommit": "10c786f38a0b5ce713807958e04274b22b93c808",
-        "summary": "Slice 23: saving from the draft editor overlays the form on the stored draft (each row remembers its stored line), so a line's source, rate, project, discount and details and the draft's terms, due date, recipients, notes and references survive; a save on an older version is refused; line details are edited in one panel and typed references as rows; the printed invoice shows them only when given (print byte-identical without them); DF-SUMMA-2026-0043. Found and fixed: the editor discarded everything it did not show.",
-        "nextAction": "Gate the editor PR, then the INV-OPS-006 slices for required PO and payment promise.",
+        "remoteBranch": "feat/wi-0029-required-po",
+        "remoteCommit": "20d03632618660adf9798271d48868fcc4298264",
+        "summary": "Slice 24 (INV-OPS-006, Missing PO): Customer.RequiresPurchaseOrder stored only when true (schema 2 mark); issuing without a PO is refused (PurchaseOrderRequired, readiness code missing-po) on every path; the editor notes it; the work queue lists drafts lacking one; set on the add form and the customer page (checkbox state carried by the wire); DF-SUMMA-2026-0044. Issue #97 filed for the WASM zero-page report with repro branch.",
+        "nextAction": "Gate the required-PO PR, then the payment promise slice (INV-OPS-006 Payment promise missed, SUM4-016).",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
