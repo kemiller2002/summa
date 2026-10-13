@@ -36,10 +36,11 @@ let ``INV-EXP-001: invoices export as CSV, versioned JSON and HTML; PDF is the p
     let export = exportOf r first.InvoiceId
     let doc = Documents.ofInvoice first
     use json = JsonDocument.Parse(Exports.invoiceJson export (Documents.toJson doc))
-    Assert.Equal("summa.invoice-export/1", str json.RootElement "schema")
+    Assert.Equal("summa.invoice-export/2", str json.RootElement "schema")
+    Assert.Equal("confidential financial data", str json.RootElement "classification")
     Assert.Equal(Documents.toJson doc, json.RootElement.GetProperty("document").GetRawText())
     let html = Exports.invoiceHtml export (Documents.render doc |> Result.defaultWith failwith)
-    Assert.StartsWith("<!-- summa.invoice-export/1; ", html)
+    Assert.StartsWith("<!-- summa.invoice-export/2; classification=confidential financial data; ", html)
     Assert.EndsWith(Documents.render doc |> Result.defaultWith failwith, html)
 
 [<Fact>]

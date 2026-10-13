@@ -500,6 +500,24 @@ let private storedPaths (repository: InMemoryStore) =
     |> List.map (fun o -> RelativePath.render o.Path)
 
 [<Fact>]
+let ``SUM3-024: a financial export is a sensitive file: a role without ExportData is neither offered nor given one`` () =
+    let repository = InMemoryStore()
+    let env, session, _ = openAs repository "583231" "octocat"
+    let session, _ = send env session [ "foundRequested", "" ]
+    let session, _ = pump env session (locate "#/cpa")
+    let viewer = { session.Model with Capabilities = set [ Summa.Access.Access.ViewFinancials ]; Packs = { Files = true; Store = false } }
+    let session, reply = pump env { session with Model = viewer } (event "cpaTrialBalanceExported" "")
+    Assert.True(flag "hasError" reply)
+    Assert.Contains("does not include exporting financial data", session.Model.Error.Value)
+    Assert.False(flag "canExport" reply)
+    // With ExportData the same request is offered and made.
+    let exporter = { viewer with Capabilities = viewer.Capabilities.Add Summa.Access.Access.ExportData; Error = None }
+    let session, reply = pump env { session with Model = exporter } (event "cpaTrialBalanceExported" "")
+    Assert.False(flag "hasError" reply)
+    Assert.True(flag "canExport" reply)
+    Assert.True(reply.Contains "\"operation\":\"download\"")
+
+[<Fact>]
 let ``books founded on GitHub can be invoiced at once: the founder submits and issues an invoice through the page`` () =
     let repository = InMemoryStore()
     let page, session, _ = openAs repository "583231" "octocat"

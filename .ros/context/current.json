@@ -2184,20 +2184,20 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "7c830f4c9f33dea24ac853bb",
-        "recordedAt": "2026-10-13T15:20:28Z",
+        "id": "bcc9ae74174bb19be881dd08",
+        "recordedAt": "2026-10-13T15:38:27Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
         "repository": "summa",
-        "branch": "feat/wi-0029-integration-state",
-        "commit": "c1d2b1e1e6be10f246000a39dc7bbaaa586c74c5",
+        "branch": "feat/wi-0029-sensitive-exports",
+        "commit": "b26bcb4be22b66200238df82ce032dc53b890462",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0029-integration-state",
-        "remoteCommit": "c1d2b1e1e6be10f246000a39dc7bbaaa586c74c5",
-        "summary": "SUM3-032: each integration Summa has (books storage on GitHub or in the browser, invoice delivery, time from Chrona) shown on the Work page in the Integrations vocabulary with what to do and where; outages change neither invoices nor entries (DF-SUMMA-2026-0040)",
-        "nextAction": "adopt echelon-current 1.20.0 (Forma 0.6.1, Folio 0.4.0) once confirmed live; export handling (SUM3-024), SUM3-006 scheduling (runs generateDue), template screen; editor inputs for line details and references; INV-OPS-006 required PO and payment promise; INV-CONTRACT-004 events; versioned agent request envelope; SUM3-016 served telemetry; SUM4-026 integration blockers; INV-ARCH and INV-INTL-001 partials",
+        "remoteBranch": "feat/wi-0029-sensitive-exports",
+        "remoteCommit": "b26bcb4be22b66200238df82ce032dc53b890462",
+        "summary": "SUM3-024: financial exports handled as sensitive files: ExportData capability on GitHub books (buttons hidden, requests refused), every CSV/JSON/HTML marked confidential (summa.export/2, summa.invoice-export/2), only offered for download and never kept, named without customer data (DF-SUMMA-2026-0041)",
+        "nextAction": "adopt echelon-current 1.20.0 (Forma 0.6.1, Folio 0.4.0) once confirmed live; SUM3-006 scheduling (runs generateDue), template screen; editor inputs for line details and references; INV-OPS-006 required PO and payment promise; INV-CONTRACT-004 events; versioned agent request envelope; SUM3-016 served telemetry; SUM4-026 integration blockers; INV-ARCH and INV-INTL-001 partials",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"

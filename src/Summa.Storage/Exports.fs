@@ -13,9 +13,14 @@ open System.Text
 open Summa.Ledger.Payments
 
 /// The export format's own version: it changes when the columns or the
-/// header do.
+/// header do. Version 2 adds the `Classification` line (SUM3-024).
 [<Literal>]
-let SchemaVersion = "summa.export/1"
+let SchemaVersion = "summa.export/2"
+
+/// What every financial export says it is (SUM3-024): a sensitive file, to
+/// be kept and shared as confidential financial data.
+[<Literal>]
+let Classification = "confidential financial data"
 
 type Metadata =
     { /// What the file holds, such as `trial-balance` or `journal`.
@@ -55,14 +60,16 @@ let header (m: Metadata) =
       "# GeneratedAt: " + m.GeneratedAt.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture)
       $"# AccountingPeriod: {iso first}..{iso last}"
       $"# DataVersion: {m.DataVersion}"
-      "# Filters: " + (if m.Filters.IsEmpty then "none" else m.Filters |> List.map (fun (k, v) -> $"{k}={v}") |> String.concat "; ") ]
+      "# Filters: " + (if m.Filters.IsEmpty then "none" else m.Filters |> List.map (fun (k, v) -> $"{k}={v}") |> String.concat "; ")
+      $"# Classification: {Classification}" ]
 
 /// The CSV with its header.
 let withHeader (m: Metadata) (csv: string) = String.concat "\n" (header m) + "\n" + csv
 
 /// The invoice export's own schema: it changes when its envelope does.
+/// Version 2 adds `classification` (SUM3-024).
 [<Literal>]
-let InvoiceExportSchema = "summa.invoice-export/1"
+let InvoiceExportSchema = "summa.invoice-export/2"
 
 /// What one invoice's export says about itself (INV-EXP-002).
 type InvoiceExport =
@@ -94,6 +101,7 @@ let invoiceJson (e: InvoiceExport) (documentJson: string) =
         ""
         [ "{"
           $"\"schema\":{quoted InvoiceExportSchema},"
+          $"\"classification\":{quoted Classification},"
           $"\"generatedAt\":{quoted (stamp e.GeneratedAt)},"
           $"\"dataVersion\":{quoted e.DataVersion},"
           $"\"invoiceId\":{quoted i.InvoiceId},"
@@ -110,5 +118,5 @@ let invoiceJson (e: InvoiceExport) (documentJson: string) =
 let invoiceHtml (e: InvoiceExport) (documentHtml: string) =
     let i = e.Invoice
 
-    $"<!-- {InvoiceExportSchema}; generatedAt={stamp e.GeneratedAt}; dataVersion={e.DataVersion}; invoiceId={i.InvoiceId}; number={i.Number}; invoiceVersion={i.Approval.DraftVersion}; recordSchemaVersion={e.RecordSchemaVersion}; template={i.Template.Id}@{i.Template.Version}; rounding={i.Rounding} -->\n"
+    $"<!-- {InvoiceExportSchema}; classification={Classification}; generatedAt={stamp e.GeneratedAt}; dataVersion={e.DataVersion}; invoiceId={i.InvoiceId}; number={i.Number}; invoiceVersion={i.Approval.DraftVersion}; recordSchemaVersion={e.RecordSchemaVersion}; template={i.Template.Id}@{i.Template.Version}; rounding={i.Rounding} -->\n"
     + documentHtml

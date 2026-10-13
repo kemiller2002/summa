@@ -137,10 +137,10 @@ let ``the CPA workspace links the year's reports and downloads them as CSV`` () 
     | [ OfferDownload("trial-balance-2026.csv", "text/csv", data) ] ->
         let text = Encoding.UTF8.GetString(Convert.FromBase64String data)
         // Each export says what it is (SUM3-026), then the columns.
-        Assert.StartsWith("# Export: trial-balance\n# SchemaVersion: summa.export/1\n# GeneratedAt: ", text)
+        Assert.StartsWith("# Export: trial-balance\n# SchemaVersion: summa.export/2\n# GeneratedAt: ", text)
         Assert.Contains("# AccountingPeriod: 2026-01-01..2026-12-31\n", text)
         Assert.Matches("# DataVersion: sha256:[0-9a-f]{64}\n", text)
-        Assert.Contains("# Filters: currency=USD; year=2026\nCode,Account,Debit,Credit\n", text)
+        Assert.Contains("# Filters: currency=USD; year=2026\n# Classification: confidential financial data\nCode,Account,Debit,Credit\n", text)
         // The same books give the same data version.
         let again = run [ CpaExportRequested "trial-balance" ] withFiles |> snd
 
@@ -172,12 +172,12 @@ let ``invoices download as CSV from the CPA workspace, and one invoice as JSON o
     | [ OfferDownload(name, "application/json", data) ] ->
         Assert.EndsWith(".json", name)
         let text = Encoding.UTF8.GetString(Convert.FromBase64String data)
-        Assert.StartsWith("{\"schema\":\"summa.invoice-export/1\",", text)
+        Assert.StartsWith("{\"schema\":\"summa.invoice-export/2\",\"classification\":\"confidential financial data\",", text)
         Assert.Contains("\"invoiceId\":\"INV-0001\"", text)
     | other -> failwith $"%A{other}"
 
     match run [ InvoiceExportRequested "html" ] invoice |> snd with
-    | [ OfferDownload(_, "text/html", data) ] -> Assert.StartsWith("<!-- summa.invoice-export/1; ", Encoding.UTF8.GetString(Convert.FromBase64String data))
+    | [ OfferDownload(_, "text/html", data) ] -> Assert.StartsWith("<!-- summa.invoice-export/2; classification=confidential financial data; ", Encoding.UTF8.GetString(Convert.FromBase64String data))
     | other -> failwith $"%A{other}"
 
 [<Fact>]
@@ -298,3 +298,26 @@ let ``SUM3-032: each integration's state is shown in one vocabulary, with what t
     // On the work page, as a table.
     let work = run [ go "#/work" ] { (books ()) with Books = Some bounced } |> fst
     Assert.Equal<string list>([ "Succeeded"; "Needs a person"; "Succeeded" ], items "integrations" work |> List.map (field "state"))
+
+[<Fact>]
+let ``SUM3-024: every financial export says it is confidential, and goes only to the download: nothing is kept`` () =
+    let cpa = run [ go "#/cpa?year=2026"; PacksNegotiated { Files = true; Store = false } ] (books ()) |> fst
+
+    for kind in [ "trial-balance"; "journal"; "invoices" ] do
+        match run [ CpaExportRequested kind ] cpa with
+        | after, [ OfferDownload(_, "text/csv", data) ] ->
+            Assert.Contains("\n# Classification: confidential financial data\n", Encoding.UTF8.GetString(Convert.FromBase64String data))
+            // Nothing else: no save, no copy in the tab or browser storage, no change to the books.
+            Assert.True((after.Books = cpa.Books))
+        | _, other -> failwith $"{kind}: %A{other}"
+
+    let invoice = run [ go "#/invoices/INV-0001" ] cpa |> fst
+
+    for format in [ "json"; "html" ] do
+        match run [ InvoiceExportRequested format ] invoice with
+        | after, [ OfferDownload(name, _, data) ] ->
+            Assert.Contains("confidential financial data", Encoding.UTF8.GetString(Convert.FromBase64String data))
+            // Named by the invoice's number only: no customer data in the file name.
+            Assert.StartsWith("INV-", name)
+            Assert.True((after.Books = invoice.Books))
+        | _, other -> failwith $"{format}: %A{other}"

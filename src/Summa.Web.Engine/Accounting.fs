@@ -1013,6 +1013,11 @@ let private editLine (key: string) (change: LineForm -> LineForm) (model: Model)
 // ---- Places (WI-0041) -------------------------------------------------------------------
 
 /// Whether the books live on GitHub (WI-0037).
+/// Whether this person may take financial data out of Summa (SUM3-024):
+/// the ExportData capability on GitHub books; local books have one owner.
+let private mayExportOn (github: bool) (model: Model) =
+    not github || model.Capabilities.Contains Summa.Access.Access.ExportData
+
 let private onGitHub (model: Model) =
     match model.Configuration with
     | Configured config -> config.Location.IsSome
@@ -2406,6 +2411,12 @@ let private updateBooks (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect
 
     if not (onGitHub model) then
         apply ctx msg model
+    elif (match msg with
+          | CpaExportRequested _
+          | InvoiceExportRequested _ -> model.Storage = Ready && not (mayExportOn true model)
+          | _ -> false) then
+        // A financial export is a sensitive file (SUM3-024): only a role that may export makes one.
+        { model with Error = Some "Your role in these books does not include exporting financial data. Ask an administrator if you need it."; Notice = None }, []
     else
         let local = function
             | SaveBooks _ -> false
@@ -3547,7 +3558,9 @@ let private attentionValues (model: Model) (shown: Screen) : View =
       "cpaClosedMonths", textOf $"{closedMonths} of 12 months closed"
       "cpaAdjustments", Items adjustments
       "hasCpaAdjustments", flagOf (not adjustments.IsEmpty)
-      "canExport", flagOf model.Packs.Files ]
+      // Financial exports are sensitive files (SUM3-024): offered only to a
+      // role that may export.
+      "canExport", flagOf (model.Packs.Files && mayExportOn (onGitHub model) model) ]
 
 let private proposalStateText =
     function

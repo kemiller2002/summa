@@ -61,3 +61,4 @@
 | WI-0048 | Summa: books founded on GitHub have no ledger accounts, so no invoice can be submitted or issued there (escaped from WI-0037) | complete | summa, defect, github | high |
 | WI-0049 | Summa: measurement baseline sources index (docs/measurement/baseline-sources.md) | complete | summa, measurement | medium |
 | WI-0050 | Summa: adopt echelon-current 1.19.0 (Arca 0.5.0): batched read-cache save and pinned reads without a ref fetch | complete | summa, arca, performance | medium |
+| WI-0051 | Summa: local books encrypted at rest in the browser (SUM3-024 remainder) | captured | summa, security, encryption | medium |
