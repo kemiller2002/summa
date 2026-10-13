@@ -63,6 +63,7 @@ test("a tax the person enters is added to the invoice and shown on the document"
   await page.click("#review-draft");
   await expect(page.locator("#notice")).toHaveText("Ready to issue. Check the preview, then issue it.");
   await page.click("#issue-invoice");
+  await page.click("#confirm-issue");
   await expect(page.locator("#invoice-total")).toHaveText("1,088.75 USD");
   await expect(page.locator("#invoice-document .summa-adjustment dt")).toHaveText("Tax NY-8.875");
 });
@@ -97,6 +98,8 @@ test("line details and client references are entered in the editor and shown on 
   await expect(page.locator("#line-details")).toBeHidden();
 
   await page.click("#issue-invoice");
+
+  await page.click("#confirm-issue");
   const document = page.locator("#invoice-document");
   await expect(document).toContainText("Security assessment of the billing service");
   await expect(document).toContainText("Unit: hours");
@@ -117,6 +120,21 @@ test("a customer that requires a purchase order: the editor says so and issuing 
   await page.fill("#draft-po", "PO-55");
   await page.click("#review-draft");
   await expect(page.locator("#notice")).toHaveText("Ready to issue. Check the preview, then issue it.");
+});
+
+test("issuing asks first and says what will happen; not yet issues nothing", async ({ app: { page } }) => {
+  await addCustomer(page, "ABC Corp");
+  await typeLine(page, "Assessment", "10", "150.00");
+  await page.click("#review-draft");
+  await page.click("#issue-invoice");
+  await expect(page.locator("#issue-dialog")).toBeVisible();
+  await expect(page.locator("#issue-dialog-text")).toHaveText("Issue this invoice to ABC Corp for 1,500.00 USD? It gets the next invoice number, which never changes, and is posted to the books. To correct it afterwards, issue a credit memo.");
+  await page.click("#issue-dialog-cancel");
+  await expect(page.locator("#issue-dialog")).toBeHidden();
+  await expect(page).toHaveURL(/#\/drafts\//);
+  await page.click("#issue-invoice");
+  await page.click("#confirm-issue");
+  await expect(page).toHaveURL(/#\/invoices\/INV-\d{4}$/);
 });
 
 test("proposals have their own place, empty until something proposes an invoice", async ({ app: { page } }) => {

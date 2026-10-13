@@ -96,6 +96,7 @@ signInTest("books founded on GitHub can be invoiced at once: their accounts are 
   await page.click("#review-draft");
   await expect(page.locator("#notice")).toHaveText("Ready to issue. Check the preview, then issue it.");
   await page.click("#issue-invoice");
+  await page.click("#confirm-issue");
   await expect(page.locator("#invoice-total")).toHaveText("1,000.00 USD");
   // Shown at once; committed once GitHub has taken the draft and then the
   // issue, in order. Measured at about 1.1 s for the draft and 2.3 s for the

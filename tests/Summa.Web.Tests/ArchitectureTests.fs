@@ -69,6 +69,16 @@ let ``INV-ARCH-007: Forma presents the editor, tables, dialogs and fields, and h
     Assert.Contains("<dialog class=\"ef-flyout\" id=\"line-details\" data-ef-side=\"right\"", html)
     Assert.Contains("commandfor=\"line-details\" command=\"show-modal\"", html)
     Assert.Contains("<dialog class=\"ef-dialog\" id=\"reset-dialog\"", html)
+    // High-impact actions are sent only from a Forma dialog that says what will happen (v0.4 §38).
+    let dialogs = Regex.Matches(html, "<dialog class=\"ef-dialog\".*?</dialog>", RegexOptions.Singleline) |> Seq.map (fun m -> m.Index, m.Index + m.Length) |> List.ofSeq
+
+    for highImpact in [ "draftIssued"; "proposalApproved"; "creditMemoIssued"; "periodClosed"; "periodLocked"; "periodReopened"; "resetConfirmed" ] do
+        let uses = Regex.Matches(html, $"data-event=\"{highImpact}\"") |> List.ofSeq
+        Assert.NotEmpty uses
+
+        for used in uses do
+            Assert.True(dialogs |> List.exists (fun (start, finish) -> used.Index > start && used.Index < finish), $"{highImpact} is sent without a confirmation dialog")
+
     // No control sits inside a label hidden for screen readers only: it would be hidden too.
     Assert.False(Regex.IsMatch(html, "<label class=\"ef-visually-hidden\">(?:(?!</label>).)*<(input|select|textarea)", RegexOptions.Singleline))
 

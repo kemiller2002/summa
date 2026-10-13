@@ -33,6 +33,7 @@ async function issueInvoice(page, customerId, rate) {
   // Saved, the new invoice is its draft: the address says which one.
   await expect(page).toHaveURL(/#\/drafts\/D-\d{4}$/);
   await page.click("#issue-invoice");
+  await page.click("#confirm-issue");
   await expect(page).toHaveURL(/#\/invoices\/INV-\d{4}$/);
 }
 

@@ -30,6 +30,7 @@
     <Compile Include="InterfaceTests.fs" />
     <Compile Include="DraftEditorTests.fs" />
     <Compile Include="BookCommandTests.fs" />
+    <Compile Include="ConfirmationTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

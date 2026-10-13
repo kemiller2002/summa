@@ -45,6 +45,7 @@ test("customer, invoice, review, issue, payment: the first vertical slice in the
   await expect(page.locator("#notice")).toHaveText("Ready to issue. Check the preview, then issue it.");
   await expect(page.locator("#issue-invoice")).toBeEnabled();
   await page.click("#issue-invoice");
+  await page.click("#confirm-issue");
 
   // The issued invoice, as its Folio document.
   await expect(page.locator("#notice")).toHaveText(/^Invoice INV-\d{4}-0001 issued\.$/);
@@ -90,6 +91,7 @@ test("the books survive a reload and stay checked", async ({ app: { page } }) =>
   await draftInvoice(page, "CUST-0001", [["Consulting", "2", "150"]]);
   await page.click("#review-draft");
   await page.click("#issue-invoice");
+  await page.click("#confirm-issue");
   await expect(page.locator("#invoice-total")).toHaveText("300.00 USD");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-kernel", "running");

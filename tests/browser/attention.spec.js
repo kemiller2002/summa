@@ -12,6 +12,7 @@ async function invoiceFor(page, rate) {
   await row.locator(".line-rate").fill(rate);
   await page.click("#review-draft");
   await page.click("#issue-invoice");
+  await page.click("#confirm-issue");
   await expect(page).toHaveURL(/#\/invoices\/INV-\d{4}$/);
 }
 
