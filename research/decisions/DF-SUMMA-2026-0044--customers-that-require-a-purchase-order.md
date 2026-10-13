@@ -2,7 +2,7 @@
 id: DF-SUMMA-2026-0044
 title: A customer may require a purchase order; an invoice for them is not issued without one
 status: accepted
-version: 1.0.0
+version: 1.1.0
 created: 2026-10-13
 updated: 2026-10-13
 owners:
@@ -71,6 +71,11 @@ immutable.
      order", which saves the change at once.
    - The draft editor says "Required: …" under the purchase order field
      when the chosen customer requires one.
+   - Changing it on the customer's page is a change to the books. It needs
+     `ManageBilling`, and on GitHub-backed books it is committed like any
+     other change (`bookCommand`). #98 shipped without this; the fix added
+     `BookCommandTests`, which fails for any message that is neither a
+     book command nor listed as changing no books.
 5. **Checkboxes carry their checked state.** Both checkboxes send whether
    they are checked, never a toggle, as the tax checkboxes do. Limen's event
    value for a checkbox is its `value` attribute, so the wire reads

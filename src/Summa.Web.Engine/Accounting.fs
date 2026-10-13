@@ -2660,6 +2660,7 @@ let bookCommand (msg: Msg) : (Summa.Access.Access.Capability * string) option =
     | OrganizationLegalFieldRemoved _ -> open' Summa.Access.Access.ManageSettings "change the legal fields on invoices"
     | CustomerLegalFieldAdded
     | CustomerLegalFieldRemoved _ -> open' Summa.Access.Access.ManageBilling "change a customer's legal fields"
+    | CustomerPurchaseOrderRequirementSet _ -> open' Summa.Access.Access.ManageBilling "change whether a customer needs a purchase order"
     | ProposalApproved _ -> open' Summa.Access.Access.IssueInvoice "issue an invoice from a proposal"
     | ProposalAbandoned _ -> open' Summa.Access.Access.ProposeInvoice "abandon an invoice proposal"
     | ProposalRateOverridden _ -> open' Summa.Access.Access.OverrideRate "change a proposed rate"
