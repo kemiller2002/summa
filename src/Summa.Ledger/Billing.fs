@@ -811,3 +811,46 @@ let agentContext (r: Receivables) (customerId: string) (engagementId: string opt
           Time = r.Books.Time |> Map.toList |> List.map snd |> List.filter (fun t -> t.ClientId = Some customerId)
           Expenses = r.Books.Expenses |> Map.toList |> List.map snd |> List.filter (fun e -> e.CustomerId = Some customerId)
           Proposals = r.Books.Proposals |> Map.toList |> List.map snd |> List.filter (fun p -> p.CustomerId = customerId) })
+
+// ---- Smart invoice defaults (v0.4 §5) ------------------------------------------------------
+
+/// What choosing a customer proposes for a new invoice (v0.4 §5): every
+/// value is shown and can be changed before review; nothing is guessed.
+type InvoiceDefaults =
+    { BillingName: string
+      BillingAddress: string
+      Email: string
+      /// The customer's engagements, oldest first.
+      Engagements: Engagement list
+      /// The engagement proposed: the only one, or the one asked for; none
+      /// when the customer has several and none was chosen.
+      Engagement: Engagement option
+      /// The terms that would apply, and where they come from.
+      Terms: PaymentTerms * TermsSource
+      /// The hourly rate the rate card resolves for the customer and the
+      /// engagement, and where it comes from; none when no rate applies
+      /// (INV-RATE-005: no rate is invented).
+      Rate: (Money * RateProvenance) option }
+
+/// The defaults for a new invoice to the customer, for the engagement
+/// asked for or, when there is exactly one, the customer's engagement.
+let invoiceDefaults (books: Books) (systemTerms: PaymentTerms) (customerId: string) (engagementId: string option) =
+    books.Customers.TryFind customerId
+    |> Option.map (fun customer ->
+        let engagements = books.Engagements |> Map.toList |> List.map snd |> List.filter (fun e -> e.CustomerId = customerId) |> List.sortBy _.Id
+
+        let engagement =
+            match engagementId with
+            | Some id -> engagements |> List.tryFind (fun e -> e.Id = id)
+            | None ->
+                match engagements with
+                | [ only ] -> Some only
+                | _ -> None
+
+        { BillingName = customer.BillingName
+          BillingAddress = customer.BillingAddress
+          Email = customer.Email
+          Engagements = engagements
+          Engagement = engagement
+          Terms = resolveTerms None (engagement |> Option.bind _.Terms) customer.DefaultTerms systemTerms
+          Rate = resolveRate books.Rates customerId (engagement |> Option.map _.Id) None None })

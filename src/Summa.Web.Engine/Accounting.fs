@@ -184,7 +184,9 @@ type DraftForm =
       References: ReferenceForm list
       /// The stored draft's version when it was opened here; a save made on
       /// an older version than the stored one is refused (INV-UI-007).
-      BaseVersion: int option }
+      BaseVersion: int option
+      /// The engagement it bills, empty for none (v0.4 §5).
+      EngagementId: string }
 
 type PaymentForm =
     { InvoiceId: string
@@ -449,7 +451,8 @@ let private emptyDraft counter =
       Notes = ""
       Tax = noTax
       References = []
-      BaseVersion = None },
+      BaseVersion = None
+      EngagementId = "" },
     next
 
 let initial =
@@ -568,6 +571,8 @@ type Msg =
     | CustomerTermsChanged of string
     | CustomerAdded
     | DraftCustomerChanged of string
+    /// The engagement a new invoice bills (v0.4 §5).
+    | DraftEngagementChosen of string
     | LineDescriptionChanged of key: string * string
     | LineHoursChanged of key: string * string
     | LineRateChanged of key: string * string
@@ -1072,6 +1077,7 @@ let private draftOf (manifest: Organization.OrganizationManifest) (books: Receiv
             { base' with
                 DraftId = draftId
                 CustomerId = form.CustomerId
+                EngagementId = given form.EngagementId
                 Lines = lines |> List.choose Result.toOption
                 Adjustments = kept @ Option.toList tax
                 Details =
@@ -1140,7 +1146,8 @@ let private formOf (ledger: Summa.Ledger.Ledger.Ledger) (counter: int) (draft: D
       Notes = draft.Details.CustomerNotes |> Option.defaultValue ""
       Tax = tax
       References = references
-      BaseVersion = Some draft.Version },
+      BaseVersion = Some draft.Version
+      EngagementId = draft.EngagementId |> Option.defaultValue "" },
     next
 
 // ---- The editor's unsaved form, kept in the tab (WI-0044) ------------------------------
@@ -1160,6 +1167,7 @@ let encodeEditor (counter: int) (form: DraftForm) =
           "purchaseOrder", str form.PurchaseOrder
           "notes", str form.Notes
           "baseVersion", (form.BaseVersion |> Option.map Codec.number |> Option.defaultValue Arca.Json.Null)
+          "engagementId", str form.EngagementId
           "references",
           Arca.Json.Array(form.References |> List.map (fun r -> Arca.Json.objectOf [ "key", str r.Key; "kind", str r.Kind; "value", str r.Value ]))
           "lines",
@@ -1289,6 +1297,7 @@ let decodeEditor (text: string) : (int * DraftForm) option =
             let! tax = tax taxJson
             let! references = (match Codec.tryField "references" json with None -> Ok [] | Some _ -> Codec.list "references" reference json)
             let! baseVersion = optionalInteger "baseVersion" json
+            let! engagementId = Codec.optionalText "engagementId" json
 
             return
                 counter,
@@ -1299,10 +1308,37 @@ let decodeEditor (text: string) : (int * DraftForm) option =
                   Notes = notes
                   Tax = tax
                   References = references
-                  BaseVersion = baseVersion }
+                  BaseVersion = baseVersion
+                  EngagementId = engagementId |> Option.defaultValue "" }
         })
     |> Result.toOption
     |> Option.filter (fun (_, form) -> not form.Lines.IsEmpty)
+
+/// The defaults for the customer chosen (v0.4 §5), for the engagement asked
+/// for; `Some ""` asks for none.
+let private defaultsFor (model: Model) (engagement: string option) =
+    match model.Books, model.Manifest with
+    | Some b, Some manifest ->
+        let asked = engagement |> Option.filter ((<>) "")
+        let defaults = Billing.invoiceDefaults b.Books (Organization.systemTerms manifest) model.Draft.CustomerId asked
+        // Asking for none keeps none even when the customer has one engagement.
+        if engagement = Some "" then defaults |> Option.map (fun d -> { d with Engagement = None; Rate = Sources.resolveRate b.Books.Rates model.Draft.CustomerId None None None }) else defaults
+    | _ -> None
+
+/// A new invoice takes the customer's defaults: its engagement, and the
+/// rate on every line whose rate is still empty. Nothing typed is replaced.
+let private withDefaults (engagement: string option) (model: Model) =
+    match defaultsFor model engagement with
+    | Some d ->
+        let rate = d.Rate |> Option.map (fun (m, _) -> (Documents.amountText m).Replace(",", "")) |> Option.defaultValue ""
+
+        { model with
+            Draft =
+                { model.Draft with
+                    EngagementId = d.Engagement |> Option.map _.Id |> Option.defaultValue ""
+                    Lines = model.Draft.Lines |> List.map (fun l -> if l.Rate.Trim() = "" then { l with Rate = rate } else l) } },
+        []
+    | None -> model, []
 
 let private editLine (key: string) (change: LineForm -> LineForm) (model: Model) =
     { model with Draft = { model.Draft with Lines = model.Draft.Lines |> List.map (fun l -> if l.Key = key then change l else l) } }, []
@@ -1961,7 +1997,13 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                     Ok { books with Books = saveCustomer (context ctx) customer books.Books })
 
             (if added.Error.IsNone then { added with Customer = emptyCustomer } else added), effects
-    | DraftCustomerChanged v -> { model with Draft = { model.Draft with CustomerId = v } }, []
+    | DraftCustomerChanged v ->
+        // A new invoice takes the customer's defaults; an opened draft keeps what it holds (v0.4 §5).
+        let chosen = { model with Draft = { model.Draft with CustomerId = v } }
+        if model.Draft.DraftId.IsNone then withDefaults None chosen else chosen, []
+    | DraftEngagementChosen v ->
+        let chosen = { model with Draft = { model.Draft with EngagementId = v } }
+        if model.Draft.DraftId.IsNone then withDefaults (nonEmpty v |> Option.orElse (Some "")) chosen else chosen, []
     | LineDescriptionChanged(key, v) -> editLine key (fun l -> { l with Description = v }) model
     | LineHoursChanged(key, v) -> editLine key (fun l -> { l with Hours = v }) model
     | LineRateChanged(key, v) -> editLine key (fun l -> { l with Rate = v }) model
@@ -2832,6 +2874,7 @@ let private updateBooks (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect
 let private editsEditor =
     function
     | DraftCustomerChanged _
+    | DraftEngagementChosen _
     | LineDescriptionChanged _
     | LineHoursChanged _
     | LineRateChanged _
@@ -4439,10 +4482,14 @@ let view (model: Model) : View =
           ) ]
 
     let draftCustomerTerms =
-        books
-        |> Option.bind (fun b -> b.Books.Customers.TryFind model.Draft.CustomerId)
-        |> Option.map (fun c -> termsLabel c.DefaultTerms)
-        |> Option.defaultValue ""
+        match defaultsFor model (Some model.Draft.EngagementId) with
+        // The engagement's terms apply before the customer's (v0.2 §18, v0.4 §5).
+        | Some { Terms = terms, EngagementTerms } -> termsLabel (Some terms) + ", from the engagement"
+        | _ ->
+            books
+            |> Option.bind (fun b -> b.Books.Customers.TryFind model.Draft.CustomerId)
+            |> Option.map (fun c -> termsLabel c.DefaultTerms)
+            |> Option.defaultValue ""
 
     // An exclusive tax adds to the total; one inside the prices does not.
     let draftTax =
@@ -4478,7 +4525,8 @@ let view (model: Model) : View =
             form.Notes,
             form.Tax,
             form.Lines |> List.map (fun l -> l.Description, l.Hours, l.Rate, l.Taxable, l.Details),
-            form.References |> List.map (fun r -> r.Kind, r.Value)
+            form.References |> List.map (fun r -> r.Kind, r.Value),
+            form.EngagementId
 
         match model.Place, books with
         | Routes.Draft draftId, Some b ->
@@ -4772,6 +4820,44 @@ let view (model: Model) : View =
       // Editor
       "draftCustomer", text model.Draft.CustomerId
       "draftCustomerTerms", text draftCustomerTerms
+      // What the customer chosen proposes (v0.4 §5), shown so the review stays explicit.
+      yield!
+          (let defaults = defaultsFor model (Some model.Draft.EngagementId)
+           let revenue =
+               match books, model.Manifest with
+               | Some b, Some manifest ->
+                   let id = Organization.accountByCode b.Books.Ledger manifest.Accounting.RevenueAccount
+                   b.Books.Ledger.Accounts.TryFind id |> Option.map (fun a -> $"{a.Code} {a.Name}") |> Option.defaultValue manifest.Accounting.RevenueAccount
+               | _ -> ""
+
+           [ "draftBillTo",
+             text (defaults |> Option.map (fun d -> [ d.BillingName; d.BillingAddress.Replace("\n", ", "); d.Email ] |> List.filter ((<>) "") |> String.concat " · ") |> Option.defaultValue "")
+             "draftRevenueAccount", text (if defaults.IsSome then revenue else "")
+             "draftRateNote",
+             text (
+                 match defaults with
+                 | Some { Rate = Some(rate, provenance) } ->
+                     let from =
+                         match provenance.RateSource with
+                         | EngagementAgreement -> "the engagement's rate"
+                         | ProjectAgreement -> "the project's rate"
+                         | CustomerDefault -> "the customer's rate"
+                         | PersonRate -> "the person's rate"
+                         | RoleRate -> "the role's rate"
+                         | SystemDefault -> "the organization's rate"
+                         | InvoiceOverride -> "a rate set on the invoice"
+                     $"Rate {Documents.moneyText rate} an hour, from {from}, on lines left without one."
+                 | Some { Rate = None } -> "No rate is set for this customer: enter each line's rate."
+                 | None -> ""
+             )
+             "hasDraftEngagements", flag (defaults |> Option.exists (fun d -> not d.Engagements.IsEmpty))
+             "draftEngagement", text model.Draft.EngagementId
+             "draftEngagementOptions",
+             Items(
+                 defaults
+                 |> Option.map (fun d -> d.Engagements |> List.map (fun e -> [ "value", Text e.Id; "label", Text e.Name; "selected", Flag(e.Id = model.Draft.EngagementId) ]))
+                 |> Option.defaultValue []
+             ) ])
       "draftPurchaseOrder", text model.Draft.PurchaseOrder
       // The chosen customer needs a purchase order on every invoice (INV-OPS-006).
       "draftPurchaseOrderNote",

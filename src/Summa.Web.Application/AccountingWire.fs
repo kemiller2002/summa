@@ -125,6 +125,7 @@ let events: Map<string, string -> string -> Msg> =
           "customerTermsChanged", (fun _ value -> CustomerTermsChanged value)
           "customerAdded", (fun _ _ -> CustomerAdded)
           "draftCustomerChanged", (fun _ value -> DraftCustomerChanged value)
+          "draftEngagementChosen", (fun _ value -> DraftEngagementChosen value)
           "lineDescriptionChanged", (fun key value -> LineDescriptionChanged(key, value))
           "lineHoursChanged", (fun key value -> LineHoursChanged(key, value))
           "lineRateChanged", (fun key value -> LineRateChanged(key, value))

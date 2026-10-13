@@ -31,6 +31,7 @@
     <Compile Include="DraftEditorTests.fs" />
     <Compile Include="BookCommandTests.fs" />
     <Compile Include="ConfirmationTests.fs" />
+    <Compile Include="SmartDefaultsTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

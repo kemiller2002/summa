@@ -144,3 +144,29 @@ test("proposals have their own place, empty until something proposes an invoice"
   await page.goto(page.url().replace("#/proposals", "#/proposals/P-404"));
   await expect(page.locator("#not-found-title")).toHaveText("Nothing is at this link");
 });
+
+test("choosing a customer shows what it proposes, and an engagement can be chosen", async ({ app: { page } }) => {
+  await addCustomer(page, "ABC Corp");
+  for (const name of ["Retainer", "Audit"]) {
+    await nav(page, "Engagements").click();
+    await page.selectOption("#engagement-customer", "CUST-0001");
+    await page.fill("#engagement-name", name);
+    await page.click("#add-engagement");
+    await expect(page).toHaveURL(/#\/engagements\/ENG-000\d$/);
+  }
+
+  await page.click("#new-invoice");
+  await expect(page.locator("#draft-engagement")).toHaveCount(0);
+  await page.selectOption("#draft-customer", "CUST-0001");
+  await expect(page.locator("#draft-bill-to")).toHaveText("ABC Corp · 1 Main Street, Springfield · ap@example.com");
+  // No rate is set anywhere, so none is invented.
+  await expect(page.locator("#draft-rate-note")).toHaveText("No rate is set for this customer: enter each line's rate.");
+  await expect(page.locator("#draft-lines tbody tr").first().locator(".line-rate")).toHaveValue("");
+
+  // Two engagements: none is chosen until the person chooses one.
+  await expect(page.locator("#draft-engagement")).toHaveValue("");
+  await page.selectOption("#draft-engagement", "ENG-0002");
+  await expect(page.locator("#draft-engagement")).toHaveValue("ENG-0002");
+  await page.reload();
+  await expect(page.locator("#draft-engagement")).toHaveValue("ENG-0002");
+});
