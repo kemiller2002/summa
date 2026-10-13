@@ -98,8 +98,7 @@ let private runOf (runId: string) (at: DateTimeOffset) : Routine.Run =
     { Now = at
       Today = Routine.today "America/New_York" at
       RunId = runId
-      Key = key
-      Nonce = Array.init 12 (fun i -> byte (40 + i)) }
+      Key = key }
 
 let private settings = Routine.settings processId "ar"
 
@@ -201,3 +200,34 @@ let ``SUM3-006: the run's date is the organization's, not the server's`` () =
     Assert.Equal(DateOnly(2026, 12, 14), Routine.today "America/New_York" lateUtc)
     Assert.Equal(DateOnly(2026, 12, 15), Routine.today "Europe/Berlin" lateUtc)
     Assert.Equal("org_acme-20261215T020000Z", Routine.backupId "org_acme" lateUtc)
+
+/// The nonce a sealed backup carries (the second dot-separated field).
+let private nonceOf (sealedText: string) = sealedText.Split('.')[1]
+
+[<Fact>]
+let ``SUM3-006: two routine runs seal their backups under different nonces the run drew itself`` () =
+    let store, ns = books true
+    let backups, kept = location false []
+    routine store.Provider ns backups (runOf "run-n1" now) |> ignore
+    routine store.Provider ns backups (runOf "run-n2" (now.AddMinutes 1.0)) |> ignore
+    let nonces = [ for pair in kept -> nonceOf (snd pair.Value) ]
+    Assert.Equal(2, nonces.Length)
+    Assert.Equal(2, nonces |> List.distinct |> List.length)
+    // Both still open under the one key.
+    for pair in kept do
+        Assert.True(Result.isOk (Backup.unseal key (Backup.Sealed.ofText (snd pair.Value))))
+
+[<Fact>]
+let ``SUM3-024: the production nonce source is the secure generator, never a constant`` () =
+    let drawn = [ for _ in 1..64 -> Backup.freshNonce () ]
+    Assert.All(drawn, fun n -> Assert.Equal(12, n.Length))
+    Assert.Equal(64, drawn |> List.map Convert.ToBase64String |> List.distinct |> List.length)
+    Assert.DoesNotContain(drawn, fun n -> n |> Array.forall ((=) 0uy))
+    // Two backups of unchanged books differ, because each draws its own nonce.
+    let store, ns = books false
+    let first = Backup.take store.Provider ns key |> Async.RunSynchronously |> Support.ok |> Backup.Sealed.text
+    let second = Backup.take store.Provider ns key |> Async.RunSynchronously |> Support.ok |> Backup.Sealed.text
+    Assert.NotEqual<string>(nonceOf first, nonceOf second)
+    // A source that does not give 12 bytes seals nothing.
+    let archive = Export.take store.Provider ns 3 |> Async.RunSynchronously |> Support.ok
+    Assert.Equal(Error Backup.KeyInvalid, Backup.sealWith (fun () -> [| 1uy |]) key archive |> Result.map ignore)

@@ -20,7 +20,6 @@ open Summa.Storage.Tests.Support
 
 let private kevin = Actor.person "583231" "kevin" "corr-1"
 let private key = Array.init 32 byte |> Backup.BackupKey.create |> ok
-let private nonce = Array.init 12 (fun i -> byte (100 + i))
 let private asOf = DateOnly(2026, 12, 31)
 
 let private arcaActor: Arca.Actor =
@@ -56,7 +55,7 @@ let private moved () =
     Namespace.ofDataset binding dataset (Some location) |> Result.defaultWith (fun e -> failwith $"%A{e}")
 
 let private migrate (store: InMemoryStore) ns target definition =
-    FinancialMigration.run store.Provider store.Provider ns target arcaActor key nonce "ar" asOf definition |> Async.RunSynchronously
+    FinancialMigration.run store.Provider store.Provider ns target arcaActor key "ar" asOf definition |> Async.RunSynchronously
 
 let private books (store: InMemoryStore) ns =
     (FinancialRecords.load (readAll store.Provider ns |> Async.RunSynchronously |> ok |> List.filter (fun o -> match Layout.keyOf o.Path with Some k -> FinancialRecords.isFinancial k.Type | None -> false))).State

@@ -2,7 +2,7 @@
 id: DF-SUMMA-2026-0042
 title: The routine run makes due recurring proposals, keeps verified sealed backups and prunes them
 status: accepted
-version: 1.0.0
+version: 1.1.0
 created: 2026-10-13
 updated: 2026-10-13
 owners:
@@ -18,15 +18,16 @@ tags: [operations, backup, recurring, scheduling]
 provenance:
   contributions:
     EXE-20261009T031528777Z-d8d5aa1a:
-      operations: [created]
+      operations: [created, modified]
       at: 2026-10-13T16:45:27.000Z
+      last: 2026-10-13T17:03:21.000Z
       actor:
         kind: agent
         id: anthropic/claude-code
         provider: anthropic
         model: claude-opus-5-5
         runtime: claude-code
-      reason: "Record the routine run (WI-0029 slice 21, SUM3-006)"
+      reason: "Record the routine run (WI-0029 slice 21, SUM3-006); seal nonces drawn, never supplied (slice 22)"
 ---
 
 # DF-SUMMA-2026-0042 — The routine run
@@ -84,9 +85,31 @@ left open what runs `generateDue` on a schedule.
 6. **Where backups are kept is the deployment's choice.** The location is a
    port, `BackupStore`, with `Put`, `List` and `Delete`. It is always
    outside the organization folder.
-7. **The key comes from the operator.** The key comes from the operator's
-   key store, and the 12-byte nonce comes fresh from the caller for every
-   run. Summa never creates, stores or logs either one (DF-SUMMA-2026-0004).
+7. **The key comes from the operator.** Summa never creates, stores or logs
+   the key (DF-SUMMA-2026-0004).
+8. **Every seal draws its own nonce; no caller supplies one** (revised in
+   1.1.0). AES-GCM with a nonce used twice under one key loses both
+   confidentiality and integrity, and a scheduler or host can easily pass
+   the same value twice. So:
+   - `Backup.seal` and `Backup.take` take no nonce. Each draws 12 bytes from
+     the operating system's secure generator (`Backup.freshNonce`, which
+     uses `RandomNumberGenerator.Fill`) for every seal.
+   - The routine run's inputs no longer include a nonce. A financial
+     migration's backup no longer takes one either.
+   - The nonce lives only inside the sealed text. Nothing logs or stores it
+     anywhere else.
+   - Only tests that need a fixed envelope inject a source, through
+     `sealWith`, `takeWith` or `Routine.runWith`. Production code calls the
+     functions without a source.
+
+## Revision 1.1.0
+
+Version 1.0.0 (PR #89) took the routine's nonce from the caller, and #89
+is recorded as an escaped defect. The financial migration's backup had
+taken a caller's nonce since WI-0022, and is fixed in the same change.
+Nothing scheduled the routine, so no backup was ever sealed under a
+caller's nonce outside tests. Decision 8 replaces the caller's nonce in
+both places.
 
 ## Consequences
 
@@ -104,5 +127,8 @@ left open what runs `generateDue` on a schedule.
   - a process not on the roster;
   - a failed store;
   - pruning a year of backups;
-  - the organization's date.
+  - the organization's date;
+  - two runs sealing under different nonces;
+  - the production nonce source never being a constant, and a source that
+    does not give 12 bytes sealing nothing.
 - `RecurringTests` covers isolation per template.

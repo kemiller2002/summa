@@ -6,12 +6,15 @@ retention of 14 days, 8 weeks and 12 months.
 
 ## Taking a backup
 
-`Summa.Operations.Backup.take provider ns key nonce` exports one
+`Summa.Operations.Backup.take provider ns key` exports one
 organization folder as of a single change token. The export includes every
 object with its SHA-256, and is sealed with AES-256-GCM.
 
 - `key` is 32 bytes from the operator's key store.
-- `nonce` is 12 fresh random bytes for each backup.
+- The 12-byte AES-GCM nonce is not an input. Each backup draws its own from
+  the operating system's secure random generator, because a nonce used twice
+  under one key would break the encryption. The nonce is kept only inside
+  the sealed text and is never logged.
 
 Store the sealed text anywhere. It is unreadable without the key, and any
 change to it is detected.
@@ -50,9 +53,9 @@ does not.
   - the 32-byte backup key from the operator's key store;
   - a backup location outside the organization folder, which provides
     put, list and delete.
-- **Each run supplies:** the time, a unique run id, and 12 fresh random
-  bytes for the nonce. The run id becomes the run's execution and
-  correlation id.
+- **Each run supplies:** the time and a unique run id. The run id becomes
+  the run's execution and correlation id. The run draws its backup's nonce
+  itself; no scheduler or host supplies one.
 - **Backup ids:** the organization id and the UTC instant the backup was
   taken, for example `org_acme-20261220T060000Z`.
 

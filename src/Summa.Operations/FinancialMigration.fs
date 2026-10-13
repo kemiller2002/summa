@@ -152,6 +152,7 @@ let private differences (expected: Receivables) (found: Receivables) =
     | _, Error problems -> problems |> List.map describe
 
 /// Runs a migration from `source` to `target`, up to activating the target.
+/// The backup it takes first is sealed under a fresh random nonce.
 /// The source is never changed; retiring it is `retire`, an explicit step.
 let run
     (sourceProvider: StorageProvider)
@@ -160,7 +161,6 @@ let run
     (target: Namespace)
     (actor: Actor)
     (key: Backup.BackupKey)
-    (nonce: byte array)
     (receivablesAccount: string)
     (asOf: DateOnly)
     (definition: Definition)
@@ -177,7 +177,7 @@ let run
                 match check definition objects with
                 | Error failure -> return Error failure
                 | Ok(before, expected) ->
-                    match! Backup.take sourceProvider source key nonce with
+                    match! Backup.take sourceProvider source key with
                     | Error error -> return Error(BackupFailed error)
                     | Ok backup ->
                         let reconciledBefore = Reconciliation.run receivablesAccount asOf before
