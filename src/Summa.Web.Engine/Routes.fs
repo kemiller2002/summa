@@ -29,6 +29,8 @@ type CustomerTab =
     | CustomerCredits
 
 type InvoiceSort =
+    /// What needs action first (v0.4 §10): the default.
+    | Attention
     | Newest
     | Oldest
     | DueFirst
@@ -124,7 +126,7 @@ let allInvoices =
       From = None
       To = None
       Overdue = false
-      Sort = Newest }
+      Sort = Attention }
 
 let allCustomers = { Search = None; Inactive = false; Sort = ByName }
 
@@ -151,7 +153,7 @@ let customerTabText, customerTabOf, customerTabs =
     names [ CustomerInvoices, "invoices"; CustomerPayments, "payments"; CustomerCredits, "credits" ]
 
 let invoiceSortText, invoiceSortOf, invoiceSorts =
-    names [ Newest, "newest"; Oldest, "oldest"; DueFirst, "due"; ByNumber, "number"; ByCustomer, "customer" ]
+    names [ Attention, "attention"; Newest, "newest"; Oldest, "oldest"; DueFirst, "due"; ByNumber, "number"; ByCustomer, "customer" ]
 
 let customerSortText, customerSortOf, customerSorts =
     names [ ByName, "name"; ByBalance, "balance" ]
@@ -207,7 +209,7 @@ let routes: Route list =
             date "from"
             date "to"
             flag "overdue"
-            choice "sort" invoiceSorts "newest" ]
+            choice "sort" invoiceSorts "attention" ]
       route "invoice-new" "invoices/new" [ text "customer" ] [ viewFinancials; "CreateDraftInvoice" ]
       financial "invoice" "invoices/{id}" [ choice "tab" invoiceTabs "document" ]
       route "draft" "drafts/{id}" [] [ viewFinancials; "CreateDraftInvoice" ]

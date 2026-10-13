@@ -133,14 +133,14 @@ let ``places format to their canonical location`` (name: string, expected: strin
 
 [<Fact>]
 let ``a set is sorted and de-duplicated, and defaults are omitted`` () =
-    let place = Invoices { allInvoices with Status = set [ "unpaid"; "paid" ]; Sort = Newest; Overdue = false }
+    let place = Invoices { allInvoices with Status = set [ "unpaid"; "paid" ]; Sort = Attention; Overdue = false }
     Assert.Equal("/invoices?status=paid,unpaid", formatted place)
-    Assert.Equal(Ok place, parsed "/invoices?status=unpaid,paid,unpaid&sort=newest&overdue=false")
+    Assert.Equal(Ok place, parsed "/invoices?status=unpaid,paid,unpaid&sort=attention&overdue=false")
 
 [<Fact>]
 let ``adopting a non-canonical location replaces it with the canonical one`` () =
     let state, resolution, effect =
-        RouteCodec.adopt codec (guard everyone) Navigation.initial "/invoices?sort=newest&q=late+fee&tab=x&utm=1"
+        RouteCodec.adopt codec (guard everyone) Navigation.initial "/invoices?sort=attention&q=late+fee&tab=x&utm=1"
 
     Assert.Equal(Ok(Invoices { allInvoices with Search = Some "late fee" }), resolution)
     Assert.Equal(Some(NavigationEffect.Replace "/invoices?q=late%20fee"), effect)
