@@ -110,7 +110,14 @@ test("the books survive a reload and stay checked", async ({ app: { page } }) =>
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-kernel", "running");
   await expect(page.locator("#storage-problems li").first()).toBeVisible();
+  // Replacing the books asks first; keeping them changes nothing.
   await page.click("#reset-books");
+  await expect(page.locator("#reset-dialog")).toBeVisible();
+  await page.click("#reset-cancel");
+  await expect(page.locator("#reset-dialog")).toBeHidden();
+  await expect(page.locator("#storage-problems li").first()).toBeVisible();
+  await page.click("#reset-books");
+  await page.click("#reset-confirm");
   await expect(page.locator("#aging-table")).toHaveCount(0);
   await nav(page, "Home").click();
   await expect(page.locator("#total-outstanding")).toHaveText("0.00 USD");

@@ -178,6 +178,11 @@ a.summa-nav__link {
   min-inline-size: 5rem;
 }
 
+/* A control in a table cell, named by a label only screen readers hear. */
+.summa-cell-label {
+  display: block;
+}
+
 .summa-link {
   font: inherit;
   padding: 0;
