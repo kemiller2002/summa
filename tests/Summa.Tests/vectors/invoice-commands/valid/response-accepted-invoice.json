@@ -1,0 +1,1 @@
+{"contract":"summa.invoice-commands","kind":"response","message":{"outcome":{"kind":"accepted","produced":{"id":"INV-001","kind":"invoice","number":"EF-2026-0001","version":null}},"requestId":"req-0003"},"version":"1.0"}

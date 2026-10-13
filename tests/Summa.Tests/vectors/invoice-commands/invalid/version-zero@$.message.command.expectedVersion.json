@@ -1,0 +1,1 @@
+{"contract":"summa.invoice-commands","kind":"request","message":{"command":{"draftId":"D-1","expectedVersion":0,"kind":"submit-for-review"},"requestId":"req-1"},"version":"1.0"}

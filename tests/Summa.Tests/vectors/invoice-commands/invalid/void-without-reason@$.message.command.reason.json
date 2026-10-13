@@ -1,0 +1,1 @@
+{"contract":"summa.invoice-commands","kind":"request","message":{"command":{"date":"2026-10-08","invoiceId":"INV-001","kind":"void-invoice","reason":""},"requestId":"req-1"},"version":"1.0"}
