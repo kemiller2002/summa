@@ -2184,21 +2184,21 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "43c0d3e9ee98d8fd498be298",
-        "recordedAt": "2026-10-13T20:07:14Z",
+        "id": "1f806c944d9fb5d3ab2005fe",
+        "recordedAt": "2026-10-13T20:40:54Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
-        "stepId": "STEP-20261013T195503000Z-da2c610e",
+        "stepId": "STEP-20261013T202303000Z-db9acc09",
         "repository": "summa",
-        "branch": "feat/wi-0029-payment-promise",
-        "commit": "9175ca9f09324f8ceb118e9d55a17fedde3d80b1",
+        "branch": "feat/wi-0029-forma-components",
+        "commit": "31768d64d01a8adef135484607d92f4c0abb0437",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0029-payment-promise",
-        "remoteCommit": "9175ca9f09324f8ceb118e9d55a17fedde3d80b1",
-        "summary": "Slice 26: payment promises on the follow-up record (amount, by, made on, owed then, note), validated against the books, audited; kept/due/missed worked out from what the invoice owes; shown on the invoice and follow-up list; a missed promise in the work queue; book command needing RecordPayment; DF-SUMMA-2026-0045. INV-OPS partial to tested, SUM4-016 missing to partial; summary 181/38/16.",
-        "nextAction": "Gate the promise PR, then INV-ARCH-007.",
+        "remoteBranch": "feat/wi-0029-forma-components",
+        "remoteCommit": "31768d64d01a8adef135484607d92f4c0abb0437",
+        "summary": "Slice 27 (INV-ARCH-007): all 41 screen tables are Forma data grids (labelled regions, labelled cells, screen-only on the grid); line details in a Forma flyout and new books confirmed in a Forma dialog (native dialogs via commandfor); found and fixed: editor line and reference inputs were clipped by visually-hidden labels; ArchitectureTests and browser hit test enforce; print byte-identical; DF-SUMMA-2026-0046.",
+        "nextAction": "Gate the INV-ARCH-007 PR; the queue given (INV-OPS-006, INV-ARCH-007) is then done.",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
