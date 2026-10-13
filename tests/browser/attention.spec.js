@@ -44,6 +44,21 @@ test("the work queue links to what needs attention, and a dispute is recorded on
   await expect(page.locator("#follow-up-table tbody tr")).toHaveCount(1);
 });
 
+test("a payment promise is recorded on the invoice and shown in follow-up", async ({ app: { page } }) => {
+  await acmeWithInvoices(page);
+  await page.goto(page.url().replace(/#.*$/, "#/invoices/INV-0002?tab=payments"));
+  const inAWeek = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  await page.fill("#promise-amount", "250.00");
+  await page.fill("#promise-by", inAWeek);
+  await page.fill("#promise-note", "Jane, AP, by phone");
+  await page.click("#record-promise");
+  await expect(page.locator("#notice")).toHaveText("Payment promise recorded. The invoice and the books are unchanged.");
+  await expect(page.locator("#follow-up-promise")).toHaveText(/^Promised 250\.00 USD by .* \(Jane, AP, by phone\): due\.$/);
+  await page.click("#withdraw-promise");
+  await expect(page.locator("#notice")).toHaveText("Payment promise withdrawn.");
+  await expect(page.locator("#follow-up-promise")).toHaveText("");
+});
+
 test("a payment received on account is applied from the inbox, oldest invoice first", async ({ app: { page } }) => {
   await acmeWithInvoices(page);
   await nav(page, "Work").click();

@@ -350,3 +350,37 @@ let ``INV-OPS-006: a customer that requires a purchase order: the editor says so
     // Unmarked, the note goes.
     let unmarked = run [ go "#/customers/CUST-0001"; CustomerPurchaseOrderRequirementSet false; go "#/invoices/new?customer=CUST-0001" ] ready |> fst
     Assert.Equal("", value "draftPurchaseOrderNote" unmarked)
+
+[<Fact>]
+let ``SUM4-016, INV-OPS-006: a payment promise is recorded on the invoice, shown in follow-up, and a missed one is in the work queue`` () =
+    let onInvoice = run [ go "#/invoices/INV-0002?tab=payments" ] (books ()) |> fst
+    // What cannot be promised is refused in words, and nothing is recorded.
+    let tooMuch = run [ PromiseAmountChanged "999.00"; PromiseByChanged "2026-12-20"; PromiseRecorded ] onInvoice |> fst
+    Assert.Equal("The invoice owes 250.00 USD; a promise cannot be for more.", value "error" tooMuch)
+    Assert.Equal("Enter the date it was promised by, such as 2026-10-30.", value "error" (run [ PromiseAmountChanged "100.00"; PromiseByChanged ""; PromiseRecorded ] onInvoice |> fst))
+
+    let promised = run [ PromiseAmountChanged "250.00"; PromiseByChanged "2026-12-20"; PromiseNoteChanged "Jane, AP, by phone"; PromiseRecorded ] onInvoice |> fst
+    Assert.Equal("Payment promise recorded. The invoice and the books are unchanged.", value "notice" promised)
+    Assert.Equal("Promised 250.00 USD by December 20, 2026 (Jane, AP, by phone): due.", value "fuPromise" promised)
+    Assert.Equal("True", value "fuHasPromise" promised)
+    let followRow = run [ go "#/follow-up?show=all" ] promised |> fst |> items "followRows" |> List.find (fun r -> field "id" r = "INV-0002")
+    Assert.Equal("Promised 250.00 USD by December 20, 2026 (Jane, AP, by phone): due.", field "promise" followRow)
+    Assert.DoesNotContain("Payment promise missed", run [ go "#/work" ] promised |> fst |> items "workItems" |> List.map (field "kind"))
+
+    // After the date, unpaid: missed, and in the work queue with where to act.
+    let late = at (DateTimeOffset(2026, 12, 22, 9, 0, 0, TimeSpan.Zero))
+    let missed = runAt late [ go "#/work" ] promised |> fst |> items "workItems" |> List.filter (fun r -> field "kind" r = "Payment promise missed")
+    Assert.Equal(1, missed.Length)
+    Assert.Equal("Invoice INV-2026-0002: Acme promised 250.00 USD by December 20, 2026, and it has not been paid.", field "text" missed.Head)
+    Assert.Equal("#/invoices/INV-0002?tab=payments", field "href" missed.Head)
+
+    // Withdrawn, it is gone from the invoice and the queue.
+    let withdrawn = runAt late [ go "#/invoices/INV-0002?tab=payments"; PromiseWithdrawn ] promised |> fst
+    Assert.Equal("Payment promise withdrawn.", value "notice" withdrawn)
+    Assert.Equal("", value "fuPromise" withdrawn)
+    Assert.DoesNotContain("Payment promise missed", runAt late [ go "#/work" ] withdrawn |> fst |> items "workItems" |> List.map (field "kind"))
+
+[<Fact>]
+let ``SUM4-016: recording or withdrawing a payment promise is a change to the books, made by a role that records payments`` () =
+    Assert.Equal(Some(Summa.Access.Access.RecordPayment, "record a payment promise"), bookCommand PromiseRecorded)
+    Assert.Equal(Some(Summa.Access.Access.RecordPayment, "record a payment promise"), bookCommand PromiseWithdrawn)
