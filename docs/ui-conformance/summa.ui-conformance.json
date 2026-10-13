@@ -1,0 +1,822 @@
+{
+  "standardVersion": "1.0.0",
+  "repository": "kemiller2002/summa",
+  "revision": "11a5e09",
+  "classification": "app-ui",
+  "surfaces": [
+    {
+      "id": "accounting-app",
+      "path": "app/index.html (#/ hash routes)",
+      "kind": "product",
+      "status": "fail",
+      "viewportWidths": [
+        320,
+        390,
+        768,
+        1280
+      ],
+      "alignmentGroups": [
+        {
+          "id": "editor-head",
+          "relation": "top-edge",
+          "toleranceCssPx": 1,
+          "targets": [
+            {
+              "role": "combobox",
+              "name": "Customer"
+            },
+            {
+              "role": "textbox",
+              "name": "Purchase order"
+            }
+          ],
+          "rationale": "Same form row at 768 and 1280; Customer carries help text. Stacks in order at 320/390.",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js"
+          ]
+        },
+        {
+          "id": "editor-tax",
+          "relation": "top-edge",
+          "toleranceCssPx": 1,
+          "targets": [
+            {
+              "role": "textbox",
+              "name": "Tax code"
+            },
+            {
+              "role": "textbox",
+              "name": "Tax amount"
+            },
+            {
+              "role": "textbox",
+              "name": "Rate (%)"
+            },
+            {
+              "role": "combobox",
+              "name": "Liability account"
+            }
+          ],
+          "rationale": "One row at 1280, two rows of two at 768.",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js"
+          ]
+        },
+        {
+          "id": "editor-line-1",
+          "relation": "top-edge",
+          "toleranceCssPx": 1,
+          "targets": [
+            {
+              "role": "textbox",
+              "name": "Line 1 description"
+            },
+            {
+              "role": "textbox",
+              "name": "Line 1 quantity"
+            },
+            {
+              "role": "textbox",
+              "name": "Line 1 rate"
+            }
+          ],
+          "rationale": "Table row at 768 and 1280; stacked below 40rem.",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js"
+          ]
+        },
+        {
+          "id": "editor-actions",
+          "relation": "top-edge",
+          "toleranceCssPx": 1,
+          "targets": [
+            {
+              "role": "button",
+              "name": "Save and review"
+            },
+            {
+              "role": "button",
+              "name": "Issue invoice"
+            }
+          ],
+          "rationale": "Related actions (ULI-L10).",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js"
+          ]
+        },
+        {
+          "id": "customer-form",
+          "relation": "top-edge",
+          "toleranceCssPx": 1,
+          "targets": [
+            {
+              "role": "textbox",
+              "name": "Name"
+            },
+            {
+              "role": "textbox",
+              "name": "Billing name"
+            },
+            {
+              "role": "textbox",
+              "name": "Billing email"
+            },
+            {
+              "role": "textbox",
+              "name": "Payment terms (days)"
+            }
+          ],
+          "rationale": "One row at 1280, two at 768; two fields carry help text.",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js"
+          ]
+        },
+        {
+          "id": "editor-tax-heights",
+          "relation": "bottom-edge",
+          "toleranceCssPx": 1,
+          "targets": [
+            {
+              "role": "textbox",
+              "name": "Tax code"
+            },
+            {
+              "role": "textbox",
+              "name": "Tax amount"
+            },
+            {
+              "role": "textbox",
+              "name": "Rate (%)"
+            },
+            {
+              "role": "combobox",
+              "name": "Liability account"
+            }
+          ],
+          "rationale": "ULI-L02 equal heights: FAILS by 3.6 CSS px, Forma-owned (input 50px content-box vs select 46.4px border-box). Recorded as an expected failure.",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js"
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "nav-primary",
+          "control": {
+            "role": "link",
+            "name": "Home .. Settings (13 links)"
+          },
+          "intent": "Reach each primary section",
+          "expectedOutcome": "URL hash changes to the section, its h1 is shown, link is aria-current=page",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: every primary navigation link reaches its real destination"
+          ]
+        },
+        {
+          "id": "add-customer",
+          "control": {
+            "role": "button",
+            "name": "Add customer"
+          },
+          "intent": "Record a customer",
+          "expectedOutcome": "Customer link is listed; notice says it was added",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: a disabled Issue says why ...",
+            "tests/browser/ui-conformance.app.spec.js: keyboard ..."
+          ]
+        },
+        {
+          "id": "new-invoice",
+          "control": {
+            "role": "link",
+            "name": "New invoice"
+          },
+          "intent": "Open the invoice editor",
+          "expectedOutcome": "#/invoices/new with the editor",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: a disabled Issue says why ..."
+          ]
+        },
+        {
+          "id": "save-and-review",
+          "control": {
+            "role": "button",
+            "name": "Save and review"
+          },
+          "intent": "Check a draft",
+          "expectedOutcome": "Preview heading appears; Issue becomes enabled",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: a disabled Issue says why ..."
+          ]
+        },
+        {
+          "id": "issue-invoice",
+          "control": {
+            "role": "button",
+            "name": "Issue invoice"
+          },
+          "intent": "Issue a reviewed draft",
+          "expectedOutcome": "Disabled with an accessible reason until reviewed; then navigates to the issued invoice",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: a disabled Issue says why ..."
+          ]
+        },
+        {
+          "id": "add-line",
+          "control": {
+            "role": "button",
+            "name": "Add line"
+          },
+          "intent": "Add an editor line",
+          "expectedOutcome": "Line 2 inputs appear",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: remaining enabled actions ..."
+          ]
+        },
+        {
+          "id": "remove-line",
+          "control": {
+            "role": "button",
+            "name": "Remove line N"
+          },
+          "intent": "Remove one editor line",
+          "expectedOutcome": "That line's inputs are gone",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: remaining enabled actions ..."
+          ]
+        },
+        {
+          "id": "export-json",
+          "control": {
+            "role": "button",
+            "name": "Download (JSON)"
+          },
+          "intent": "Export the invoice",
+          "expectedOutcome": "A .json download named for the invoice",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: remaining enabled actions ..."
+          ]
+        },
+        {
+          "id": "export-html",
+          "control": {
+            "role": "button",
+            "name": "Download (HTML)"
+          },
+          "intent": "Export the invoice",
+          "expectedOutcome": "An .html download named for the invoice",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: remaining enabled actions ..."
+          ]
+        },
+        {
+          "id": "invoice-tabs",
+          "control": {
+            "role": "button",
+            "name": "Invoice / Payments / History"
+          },
+          "intent": "Switch invoice tab",
+          "expectedOutcome": "Pressed state and ?tab= in the URL",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: remaining enabled actions ..."
+          ]
+        },
+        {
+          "id": "customer-tabs",
+          "control": {
+            "role": "button",
+            "name": "Invoices / Payments / Credit memos"
+          },
+          "intent": "Switch customer tab",
+          "expectedOutcome": "Pressed state",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: remaining enabled actions ..."
+          ]
+        },
+        {
+          "id": "cpa-exports",
+          "control": {
+            "role": "button",
+            "name": "Download journal (CSV) / Download invoices (CSV)"
+          },
+          "intent": "Export the year for the accountant",
+          "expectedOutcome": "A .csv download each",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: remaining enabled actions ..."
+          ]
+        },
+        {
+          "id": "income-ranges",
+          "control": {
+            "role": "button",
+            "name": "This month .. Last year"
+          },
+          "intent": "Choose a report range",
+          "expectedOutcome": "Pressed state",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: remaining enabled actions ..."
+          ]
+        },
+        {
+          "id": "follow-up-show",
+          "control": {
+            "role": "button",
+            "name": "Overdue / Disputed / All open"
+          },
+          "intent": "Choose what follow-up shows",
+          "expectedOutcome": "Pressed state",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: remaining enabled actions ..."
+          ]
+        },
+        {
+          "id": "year-links",
+          "control": {
+            "role": "link",
+            "name": "Previous year / Next year"
+          },
+          "intent": "Move between years (periods, CPA)",
+          "expectedOutcome": "URL year parameter and heading change",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: remaining enabled actions ..."
+          ]
+        },
+        {
+          "id": "legal-field",
+          "control": {
+            "role": "button",
+            "name": "Add legal field / Remove <field> <jurisdiction>"
+          },
+          "intent": "Record and remove an organization legal field",
+          "expectedOutcome": "Row appears, then is gone",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.app.spec.js: remaining enabled actions ..."
+          ]
+        },
+        {
+          "id": "copy-link",
+          "control": {
+            "role": "button",
+            "name": "Copy link"
+          },
+          "intent": "Copy the current view's address",
+          "expectedOutcome": "Notice or fallback field with the address",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/deep-links.spec.js",
+            "tests/browser/ui-conformance.app.spec.js: reduced motion ..."
+          ]
+        },
+        {
+          "id": "send-now",
+          "control": {
+            "role": "button",
+            "name": "Send now"
+          },
+          "intent": "Retry sending unsent changes to GitHub",
+          "expectedOutcome": "While unreachable: still unsent, nothing on GitHub; once reachable: unsent notice gone and the record is on the branch",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.github.spec.js"
+          ]
+        },
+        {
+          "id": "payments-credits",
+          "control": {
+            "role": "button",
+            "name": "Record payment / Issue credit memo"
+          },
+          "intent": "Apply money to an invoice",
+          "expectedOutcome": "Outstanding amount changes; credit memo document",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/screens.spec.js",
+            "tests/browser/app.spec.js"
+          ]
+        },
+        {
+          "id": "reminder-dispute",
+          "control": {
+            "role": "button",
+            "name": "Record a reminder sent / Mark disputed"
+          },
+          "intent": "Follow up an invoice",
+          "expectedOutcome": "Recorded in follow-up state",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/attention.spec.js"
+          ]
+        },
+        {
+          "id": "engagement-import",
+          "control": {
+            "role": "button",
+            "name": "Add engagement / Preview / Accept"
+          },
+          "intent": "Engagements and Chrona import",
+          "expectedOutcome": "Engagement page; import summary then notice",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/screens.spec.js"
+          ]
+        },
+        {
+          "id": "close-period",
+          "control": {
+            "role": "button",
+            "name": "Close period"
+          },
+          "intent": "Close a month",
+          "expectedOutcome": "Period closed",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/books.spec.js"
+          ]
+        },
+        {
+          "id": "print-invoice",
+          "control": {
+            "role": "button",
+            "name": "Print or save as PDF"
+          },
+          "intent": "Open the browser print dialog",
+          "expectedOutcome": "Native print dialog with Folio's document",
+          "status": "unknown",
+          "evidence": []
+        },
+        {
+          "id": "header-sign-out",
+          "control": {
+            "role": "button",
+            "name": "Sign out <login>"
+          },
+          "intent": "Sign out of GitHub books",
+          "expectedOutcome": "Returns to the sign-in gate",
+          "status": "unknown",
+          "evidence": []
+        },
+        {
+          "id": "foreign-unsent",
+          "control": {
+            "role": "button",
+            "name": "Send them as me / Discard them / Give this change up"
+          },
+          "intent": "Resolve unsent changes of another sign-in or a blocked change",
+          "expectedOutcome": "Unsent notice changes accordingly",
+          "status": "unknown",
+          "evidence": []
+        },
+        {
+          "id": "settle-dispute",
+          "control": {
+            "role": "button",
+            "name": "Resolve the dispute"
+          },
+          "intent": "Close a dispute",
+          "expectedOutcome": "Dispute cleared",
+          "status": "unknown",
+          "evidence": []
+        },
+        {
+          "id": "follow-up-reminder",
+          "control": {
+            "role": "button",
+            "name": "Reminder sent"
+          },
+          "intent": "Record a reminder from the follow-up list",
+          "expectedOutcome": "Row updated",
+          "status": "unknown",
+          "evidence": []
+        },
+        {
+          "id": "gates",
+          "control": {
+            "role": "button",
+            "name": "Confirm me as administrator / Update the books"
+          },
+          "intent": "First-administrator and migration gates",
+          "expectedOutcome": "Gate passes to the books",
+          "status": "unknown",
+          "evidence": []
+        }
+      ],
+      "evidence": [
+        "tests/browser/ui-conformance.app.spec.js",
+        "tests/browser/ui-conformance.github.spec.js",
+        "docs/summa-web-pages.md#tests"
+      ],
+      "unknownScope": [
+        "Right-to-left and translated text (ULI-L05): not exercised",
+        "Print/PDF geometry of the Folio invoice (ULI-L12): tests/browser/pdf.spec.js covers content, not page geometry",
+        "Dialog geometry: the app has no modal dialogs",
+        "Browser zoom beyond 200% root text",
+        "Actions marked unknown above"
+      ]
+    },
+    {
+      "id": "work-backlog",
+      "path": "web/index.html",
+      "kind": "product",
+      "status": "fail",
+      "viewportWidths": [
+        320,
+        390,
+        768,
+        1280
+      ],
+      "alignmentGroups": [
+        {
+          "id": "capture-row",
+          "relation": "top-edge",
+          "toleranceCssPx": 1,
+          "targets": [
+            {
+              "role": "textbox",
+              "name": "Tags"
+            },
+            {
+              "role": "combobox",
+              "name": "Priority"
+            }
+          ],
+          "rationale": "Same row at 768/1280; Tags carries help text.",
+          "evidence": [
+            "tests/browser/ui-conformance.pages.spec.js"
+          ]
+        },
+        {
+          "id": "filter-row",
+          "relation": "top-edge",
+          "toleranceCssPx": 1,
+          "targets": [
+            {
+              "role": "textbox",
+              "name": "Tag"
+            },
+            {
+              "role": "combobox",
+              "name": "Status"
+            }
+          ],
+          "rationale": "Same row at 768/1280.",
+          "evidence": [
+            "tests/browser/ui-conformance.pages.spec.js"
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "capture",
+          "control": {
+            "role": "button",
+            "name": "Add"
+          },
+          "intent": "Capture a work item",
+          "expectedOutcome": "Row appears; a refused create shows the error, keeps the input, adds nothing; retry adds exactly one",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.pages.spec.js",
+            "tests/browser/backlog.spec.js"
+          ]
+        },
+        {
+          "id": "show",
+          "control": {
+            "role": "button",
+            "name": "Show"
+          },
+          "intent": "Open a row's detail",
+          "expectedOutcome": "aria-pressed=true and the detail heading",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.pages.spec.js"
+          ]
+        },
+        {
+          "id": "row-lifecycle",
+          "control": {
+            "role": "button",
+            "name": "Mark ready / Start / Block / Abandon / Complete / Edit / Attach"
+          },
+          "intent": "Move a work item through its lifecycle",
+          "expectedOutcome": "Row status changes via dialogs",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/backlog.spec.js"
+          ]
+        },
+        {
+          "id": "filters-clear",
+          "control": {
+            "role": "button",
+            "name": "Clear"
+          },
+          "intent": "Reset filters",
+          "expectedOutcome": "Queue unfiltered",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/backlog.spec.js"
+          ]
+        },
+        {
+          "id": "add-file-row",
+          "control": {
+            "role": "button",
+            "name": "+ file"
+          },
+          "intent": "Add an attachment row",
+          "expectedOutcome": "Another file row",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/backlog.spec.js"
+          ]
+        }
+      ],
+      "evidence": [
+        "tests/browser/ui-conformance.pages.spec.js",
+        "tests/browser/backlog.spec.js"
+      ],
+      "unknownScope": [
+        "ULI-L02 control heights: same Forma input/select difference as the app (measured 50 vs 46.4 CSS px), no separate assertion",
+        "Dialog geometry at 320 px (reason/start/complete/edit/attach dialogs)",
+        "Folio print geometry (ULI-L12)"
+      ]
+    },
+    {
+      "id": "hub",
+      "path": "web-hub/index.html",
+      "kind": "product",
+      "status": "fail",
+      "viewportWidths": [
+        320,
+        390,
+        768,
+        1280
+      ],
+      "alignmentGroups": [
+        {
+          "id": "register-row",
+          "relation": "top-edge",
+          "toleranceCssPx": 1,
+          "targets": [
+            {
+              "role": "textbox",
+              "name": "Repository path"
+            },
+            {
+              "role": "textbox",
+              "name": "Display name"
+            }
+          ],
+          "rationale": "Same row at 768/1280.",
+          "evidence": [
+            "tests/browser/ui-conformance.pages.spec.js"
+          ]
+        },
+        {
+          "id": "create-row-1",
+          "relation": "top-edge",
+          "toleranceCssPx": 1,
+          "targets": [
+            {
+              "role": "combobox",
+              "name": "Repository"
+            },
+            {
+              "role": "textbox",
+              "name": "Title"
+            }
+          ],
+          "rationale": "Same row at 768/1280 (scoped to region Create work item).",
+          "evidence": [
+            "tests/browser/ui-conformance.pages.spec.js"
+          ]
+        },
+        {
+          "id": "create-row-2",
+          "relation": "top-edge",
+          "toleranceCssPx": 1,
+          "targets": [
+            {
+              "role": "textbox",
+              "name": "Tags"
+            },
+            {
+              "role": "combobox",
+              "name": "Priority"
+            }
+          ],
+          "rationale": "Same row at 768/1280.",
+          "evidence": [
+            "tests/browser/ui-conformance.pages.spec.js"
+          ]
+        },
+        {
+          "id": "filter-row",
+          "relation": "top-edge",
+          "toleranceCssPx": 1,
+          "targets": [
+            {
+              "role": "combobox",
+              "name": "Repository"
+            },
+            {
+              "role": "textbox",
+              "name": "Tag"
+            },
+            {
+              "role": "combobox",
+              "name": "Status"
+            }
+          ],
+          "rationale": "Three in a row at 1280; first two at 768 (scoped to region Filter).",
+          "evidence": [
+            "tests/browser/ui-conformance.pages.spec.js"
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "register",
+          "control": {
+            "role": "button",
+            "name": "Register"
+          },
+          "intent": "Register a spoke repository",
+          "expectedOutcome": "Repository row; a refused registration lists nothing and keeps the path; retry registers once",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/ui-conformance.pages.spec.js",
+            "tests/browser/hub.spec.js"
+          ]
+        },
+        {
+          "id": "create",
+          "control": {
+            "role": "button",
+            "name": "Create"
+          },
+          "intent": "Create work in a spoke",
+          "expectedOutcome": "Aggregated row",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/hub.spec.js"
+          ]
+        },
+        {
+          "id": "unregister",
+          "control": {
+            "role": "button",
+            "name": "Unregister"
+          },
+          "intent": "Unregister after confirming",
+          "expectedOutcome": "Row removed; Cancel keeps it",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/hub.spec.js"
+          ]
+        },
+        {
+          "id": "hub-filters",
+          "control": {
+            "role": "button",
+            "name": "Clear"
+          },
+          "intent": "Reset filters",
+          "expectedOutcome": "Queue unfiltered",
+          "status": "pass",
+          "evidence": [
+            "tests/browser/hub.spec.js"
+          ]
+        }
+      ],
+      "evidence": [
+        "tests/browser/ui-conformance.pages.spec.js",
+        "tests/browser/hub.spec.js"
+      ],
+      "unknownScope": [
+        "ULI-L02 control heights (Forma input/select difference)",
+        "Unregister dialog geometry at 320 px",
+        "Folio print geometry (ULI-L12)"
+      ]
+    }
+  ],
+  "exceptions": [],
+  "notes": "Measured on branch feat/ui-conformance-2026-10 against base 11a5e09 (WI-0053, summa#90). Surface status is fail only because of the open Forma-owned ULI-L02 control-height defect (forma: :where(input, textarea, select) leaves box-sizing to the UA, so a text input is 50 CSS px and a select 46.4). Every other declared group and asserted action passes. Visual Engineering context 1.0.1 (npx @echelon-foundry/visual-engineering verify passed). Baseline defects repaired in this change: ULI-L01 peer fields staggered by help text (app editor 24.3 px, customer form 26.1 px, backlog capture 27.9 px, backlog filter 1.8 px); ULI-A06/L05 invoice line inputs clipped inside a visually hidden label; ULI-L05 line-editor headers and Remove split mid-word at 768; ULI-L08 an issued invoice stayed mounted under every later route (nested data-if template root, upstream Limen); ULI-L08 'Terms: . Tax:' shown with no customer; ULI-A04 disabled Issue invoice with no reason; ULI-A01 'Download (JSON)' threw JsonSerializerIsReflectionDisabled in the browser build and did nothing; ULI-A01 the Work page's delivery row linked to Work itself; ULI-A06 several Remove buttons shared one name; ULI-A07 the backlog cleared the capture form when a create was refused."
+}

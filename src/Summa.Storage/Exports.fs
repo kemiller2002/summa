@@ -87,7 +87,19 @@ let invoiceRecordSchema (r: Receivables) (invoiceId: string) =
     |> Option.bind (List.tryFind (fun x -> Arca.RecordType.value x.Key.Type = "summa.invoice" && Arca.RecordId.value x.Key.Id = invoiceId))
     |> Option.map FinancialRecords.schemaVersionOf
 
-let private quoted (text: string) = Text.Json.JsonSerializer.Serialize text
+// A JSON string literal. Written with Utf8JsonWriter, not JsonSerializer: the
+// browser build trims reflection-based serialization away, so
+// JsonSerializer.Serialize threw JsonSerializerIsReflectionDisabled there and
+// "Download (JSON)" did nothing (summa#90, ULI-A01). The escaping is the same
+// default encoder either way.
+let private quoted (text: string) =
+    use stream = new IO.MemoryStream()
+
+    do
+        use writer = new Text.Json.Utf8JsonWriter(stream)
+        writer.WriteStringValue text
+
+    Text.Encoding.UTF8.GetString(stream.ToArray())
 
 let private stamp (at: DateTimeOffset) =
     at.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture)

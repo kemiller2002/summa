@@ -1302,7 +1302,9 @@ let integrationStates (onGitHub: bool) (unsent: Unsent) (r: Receivables) =
                 "Invoice delivery", Integrations.Retryable why, $"Invoice {number id}: the last attempt failed ({why}); sending it again may succeed.", invoiceHref id
             | _ ->
                 match latest |> List.filter (fun (_, s) -> s = Integrations.Pending) with
-                | [] -> "Invoice delivery", Integrations.Succeeded, "No delivery is waiting or failed.", Routes.href Routes.Work
+                // This row is shown on the Work page itself, so it links to the
+                // invoices it speaks for, not back to Work (ULI-A01).
+                | [] -> "Invoice delivery", Integrations.Succeeded, "No delivery is waiting or failed.", Routes.href (Routes.Invoices Routes.allInvoices)
                 | pending -> "Invoice delivery", Integrations.Pending, $"{pending.Length} deliveries sent with no final answer yet.", invoiceHref (fst pending.Head)
 
     let time =
@@ -4309,6 +4311,10 @@ let view (model: Model) : View =
       // Editor
       "draftCustomer", text model.Draft.CustomerId
       "draftCustomerTerms", text draftCustomerTerms
+      // The customer's terms and tax status describe the chosen customer; with
+      // none chosen the field says what choosing one shows (ULI-L08).
+      "draftCustomerChosen", flag (books |> Option.exists (fun b -> b.Books.Customers.ContainsKey model.Draft.CustomerId))
+      "draftCustomerUnchosen", flag (not (books |> Option.exists (fun b -> b.Books.Customers.ContainsKey model.Draft.CustomerId)))
       "draftPurchaseOrder", text model.Draft.PurchaseOrder
       "draftNotes", text model.Draft.Notes
       "draftTotal", Value(money draftTotal)

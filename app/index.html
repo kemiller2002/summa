@@ -333,11 +333,11 @@
         <form class="ef-surface ef-stack" id="draft-form" data-event="draftSubmitted" aria-labelledby="editor-title">
           <div class="summa-fields">
             <div class="ef-field"><label class="ef-field__label" for="draft-customer">Customer</label>
-              <select id="draft-customer" data-event="draftCustomerChanged" data-bind-value="draftCustomer">
+              <select id="draft-customer" aria-describedby="draft-customer-facts" data-event="draftCustomerChanged" data-bind-value="draftCustomer">
                 <option value="">Choose a customer</option>
                 <template data-each="customerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
               </select>
-              <p class="ef-field__description">Terms: <span id="draft-terms" data-text="draftCustomerTerms"></span>. Tax: <span id="draft-customer-tax" data-text="draftCustomerTax"></span></p></div>
+              <p class="ef-field__description" id="draft-customer-facts"><template data-if="draftCustomerChosen"><span>Terms: <span id="draft-terms" data-text="draftCustomerTerms"></span>. Tax: <span id="draft-customer-tax" data-text="draftCustomerTax"></span></span></template><template data-if="draftCustomerUnchosen"><span>Choose a customer to see their payment terms and tax status.</span></template></p></div>
             <div class="ef-field"><label class="ef-field__label" for="draft-po">Purchase order</label>
               <input id="draft-po" type="text" data-event="draftPurchaseOrderChanged" data-on="input" data-bind-value="draftPurchaseOrder" /></div>
           </div>
@@ -347,11 +347,11 @@
             <tbody>
               <template data-each="draftLines" data-key="key">
                 <tr>
-                  <td><label class="ef-visually-hidden">Line <span data-text="position"></span> description<input type="text" class="line-description" data-event="lineDescriptionChanged" data-on="input" data-bind-value="description" /></label></td>
-                  <td><label class="ef-visually-hidden">Line <span data-text="position"></span> quantity<input type="text" inputmode="decimal" class="line-hours" data-event="lineHoursChanged" data-on="input" data-bind-value="hours" /></label></td>
-                  <td><label class="ef-visually-hidden">Line <span data-text="position"></span> rate<input type="text" inputmode="decimal" class="line-rate" data-event="lineRateChanged" data-on="input" data-bind-value="rate" /></label></td>
+                  <td><label class="summa-line-field"><span class="ef-visually-hidden">Line <span data-text="position"></span> description</span><input type="text" class="line-description" data-event="lineDescriptionChanged" data-on="input" data-bind-value="description" /></label></td>
+                  <td><label class="summa-line-field"><span class="ef-visually-hidden">Line <span data-text="position"></span> quantity</span><input type="text" inputmode="decimal" class="line-hours" data-event="lineHoursChanged" data-on="input" data-bind-value="hours" /></label></td>
+                  <td><label class="summa-line-field"><span class="ef-visually-hidden">Line <span data-text="position"></span> rate</span><input type="text" inputmode="decimal" class="line-rate" data-event="lineRateChanged" data-on="input" data-bind-value="rate" /></label></td>
                   <td><label class="summa-check"><input type="checkbox" class="line-taxable" data-event="lineTaxableChanged" data-on="change" data-bind-checked="taxable" /><span class="ef-visually-hidden">Line <span data-text="position"></span> is taxable</span></label></td>
-                  <td><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="lineRemoved">Remove</button></td>
+                  <td><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="lineRemoved">Remove<span class="ef-visually-hidden"> line <span data-text="position"></span></span></button></td>
                 </tr>
               </template>
             </tbody>
@@ -417,9 +417,11 @@
           </template>
           <div class="ef-actions">
             <button type="submit" class="ef-button" data-variant="secondary" id="review-draft">Save and review</button>
-            <button type="button" class="ef-button" id="issue-invoice" data-event="draftIssued" data-bind-disabled="cannotIssue">Issue invoice</button>
+            <button type="button" class="ef-button" id="issue-invoice" aria-describedby="issue-invoice-hint" data-event="draftIssued" data-bind-disabled="cannotIssue">Issue invoice</button>
             <template data-if="editorChanged"><button type="button" class="ef-button" data-variant="secondary" id="discard-changes" data-event="editorDiscarded">Discard unsaved changes</button></template>
           </div>
+          <!-- A disabled Issue says why (ULI-A04): only a reviewed draft is issued. -->
+          <template data-if="cannotIssue"><p class="ef-field__description" id="issue-invoice-hint">Issue is available after Save and review has checked this invoice.</p></template>
         </form>
       </section>
     </template>
@@ -476,7 +478,12 @@
     </template>
 
     <!-- One invoice: its Folio document, payments and actions. -->
+    <!-- The outer template's root is an element, not the inner template:
+         Limen does not unmount a data-if whose sole root is another
+         template, so the invoice stayed on screen after leaving it
+         (ULI-L08). The wrapper owns the nested mount. -->
     <template data-if="onInvoice">
+      <div class="summa-route">
       <template data-if="hasInvoice">
         <section class="ef-stack" aria-labelledby="invoice-title">
           <div class="summa-invoice-head">
@@ -616,6 +623,7 @@
           </template>
         </section>
       </template>
+      </div>
     </template>
 
     <!-- Receivables by age, on what is still outstanding (v0.4 §9, v0.2 §20). -->
@@ -845,7 +853,7 @@
           <table class="summa-table" id="customer-legal-fields">
             <caption class="ef-visually-hidden">Recorded legal fields</caption>
             <thead><tr><th scope="col">Field</th><th scope="col">Jurisdiction</th><th scope="col">Value</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
-            <tbody><template data-each="custLegalFields" data-key="key"><tr><td data-text="label"></td><td data-text="jurisdiction"></td><td data-text="value"></td><td><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="customerLegalFieldRemoved">Remove</button></td></tr></template></tbody>
+            <tbody><template data-each="custLegalFields" data-key="key"><tr><td data-text="label"></td><td data-text="jurisdiction"></td><td data-text="value"></td><td><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="customerLegalFieldRemoved">Remove<span class="ef-visually-hidden"> <span data-text="label"></span> <span data-text="jurisdiction"></span></span></button></td></tr></template></tbody>
           </table>
           <form class="ef-stack" id="customer-legal-form" data-event="customerLegalFieldAdded">
             <div class="ef-field"><label class="ef-field__label" for="customer-legal-kind">Field</label>
@@ -1325,7 +1333,7 @@
           <table class="summa-table" id="organization-legal-fields">
             <caption class="ef-visually-hidden">Recorded legal fields</caption>
             <thead><tr><th scope="col">Field</th><th scope="col">Jurisdiction</th><th scope="col">Value</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
-            <tbody><template data-each="legalFields" data-key="key"><tr><td data-text="label"></td><td data-text="jurisdiction"></td><td class="summa-pre" data-text="value"></td><td><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="organizationLegalFieldRemoved">Remove</button></td></tr></template></tbody>
+            <tbody><template data-each="legalFields" data-key="key"><tr><td data-text="label"></td><td data-text="jurisdiction"></td><td class="summa-pre" data-text="value"></td><td><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="organizationLegalFieldRemoved">Remove<span class="ef-visually-hidden"> <span data-text="label"></span> <span data-text="jurisdiction"></span></span></button></td></tr></template></tbody>
           </table>
           <form class="ef-stack" id="organization-legal-form" data-event="organizationLegalFieldAdded">
             <div class="ef-field"><label class="ef-field__label" for="legal-kind">Field</label>

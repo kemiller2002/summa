@@ -147,6 +147,12 @@ a.summa-nav__link {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
   gap: 1rem;
+  /* Peer fields share a top edge (ULI-L01). Without this the grid stretches
+     every field to the tallest one in its row, and Forma's .ef-field (an
+     auto-row grid) spreads that extra height between its label and control,
+     so a field whose neighbour has help text drops its control below its
+     peers'. The composition owns this relationship (ULI-L03). */
+  align-items: start;
 }
 
 .summa-table {
@@ -173,9 +179,22 @@ a.summa-nav__link {
   font-variant-numeric: tabular-nums;
 }
 
-.summa-lines input {
+.summa-lines input:not([type="checkbox"]) {
   inline-size: 100%;
   min-inline-size: 5rem;
+}
+
+/* Forma breaks table text anywhere so no cell can overflow; in the line
+   editor that sizes columns to single letters and splits "Remove" and
+   "Taxable" mid-word at tablet widths (ULI-L05). Break only what would
+   otherwise overflow; below 40rem the rows stack instead. */
+.summa-lines :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+/* A line's label is for assistive technology only; its input is visible. */
+.summa-line-field {
+  display: block;
 }
 
 .summa-link {
@@ -442,4 +461,10 @@ a.summa-new {
     border: 0;
     padding: 0;
   }
+}
+
+/* A route's wrapper element (see the onInvoice template): it exists so the
+   route's mount has an element root, and takes no part in the layout. */
+.summa-route {
+  display: contents;
 }

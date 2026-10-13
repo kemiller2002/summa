@@ -329,7 +329,11 @@ let private replied correlation reply (page: Page) =
         | Creating files, Answered(Row created) ->
             upload UploadingCreated (Requests.uploadAttachmentsPath created.Id) files page
         | UploadingCreated, Answered _ -> refresh page |> andThen resetAdd
-        | Creating _, Refused message
+        // Nothing was created: keep what the person typed so they can correct
+        // it and try again, as the hub does (ULI-A07). Once the item exists
+        // and only its upload failed, the form is cleared: re-sending it
+        // would create the item twice.
+        | Creating _, Refused message -> failed message page
         | UploadingCreated, Refused message -> failed message page |> andThen resetAdd
         | Releasing, _ -> page, []
         | _, Answered _ -> page, []

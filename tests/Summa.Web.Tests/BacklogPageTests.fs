@@ -57,6 +57,15 @@ let ``a refused list shows the server's message`` () =
     Assert.Equal(Value(Flag true), view page |> valueOf "hasError")
 
 [<Fact>]
+let ``a refused create keeps what was typed so it can be retried`` () =
+    // c1 and c2 are the start-up list and status; c3 is the create.
+    let page, _ = run [ Started; AddTitleChanged "Retry me"; AddTagsChanged "a, b"; AddSubmitted ]
+    let refused, _ = update (Replied("c3", Refused "no")) page
+    Assert.Equal(Some "no", refused.Work.Error)
+    Assert.Equal("Retry me", refused.Add.Title)
+    Assert.Equal("a, b", refused.Add.Tags)
+
+[<Fact>]
 let ``row slots map to the row's actions in order`` () =
     let r = { row "WI-1" with BacklogActions = [ "abandon"; "ready" ] }
     let page, _ = run [ Started; Replied("c1", Answered(Rows [ r ])) ]
