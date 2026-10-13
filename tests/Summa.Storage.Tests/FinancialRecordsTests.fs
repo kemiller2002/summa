@@ -284,11 +284,12 @@ let ``adjusting and closing entries keep their kind through storage`` () =
 let ``tax as the person recorded it is stored at schema 2, and books without tax keep their schema 1 records`` () =
     // Books that record no tax: every record is written exactly as schema 1
     // wrote it, but an audit event that says what a change did (INV-AUD-002)
-    // and an entry that names the invoice it was posted for (INV-ACC-002),
-    // which schema 1 had no field for.
+    // an entry that names the invoice it was posted for (INV-ACC-002), and an
+    // invoice that records its rounding policy (INV-DATA-011), which schema 1
+    // had no field for.
     let says (record: FinancialRecord) =
         match record.Body with
-        | Json.Object members -> members |> List.exists (fun (key, _) -> key = "change" || key = "postedFor")
+        | Json.Object members -> members |> List.exists (fun (key, _) -> key = "change" || key = "postedFor" || key = "rounding")
         | _ -> false
 
     let records = toRecords (full ()) |> ok
@@ -322,9 +323,63 @@ let ``tax as the person recorded it is stored at schema 2, and books without tax
     let versionOf (path: string) = records |> List.find (fun r -> RelativePath.render (Layout.recordPath r.Key |> ok) = path) |> schemaVersionOf
     Assert.Equal(2, versionOf "records/summa.customer/CUST-ABC.json")
     Assert.Equal(2, versionOf "records/summa.draft/D-TAX.json")
-    Assert.Equal(1, versionOf "records/summa.invoice/2026/INV-001.json")
+    // An invoice records the rounding policy it was calculated under (INV-DATA-011), which schema 1 had no field for.
+    Assert.Equal(2, versionOf "records/summa.invoice/2026/INV-001.json")
 
     let loaded = load (stored books)
     Assert.Empty loaded.Problems
     Assert.Equal(exempt, loaded.State.Books.Customers[exempt.Id])
     Assert.True((taxedDraft = loaded.State.Books.Drafts[taxedDraft.DraftId]))
+
+[<Fact>]
+let ``line details, client references and the rounding policy round-trip; an invoice stored before them reads as before`` () =
+    let r = full ()
+    let original = r.Books.Invoices["INV-001"]
+
+    let detailed =
+        { original with
+            Lines =
+                original.Lines
+                |> List.map (fun l ->
+                    { l with
+                        Details =
+                            Some
+                                { Summa.Ledger.Invoicing.noLineDetails with
+                                    Unit = Some "hours"
+                                    ServicePeriod = Some(System.DateOnly(2026, 9, 1), System.DateOnly(2026, 9, 15))
+                                    CustomerCode = Some "GL-7710" } })
+            Details = { original.Details with References = [ Summa.Ledger.Invoicing.CostCenter, "CC-118"; Summa.Ledger.Invoicing.MatterNumber, "M-55" ] } }
+
+    let books = { r with Books = { r.Books with Invoices = r.Books.Invoices.Add(detailed.InvoiceId, detailed) } }
+    let loaded = load (stored books)
+    Assert.Empty loaded.Problems
+    Assert.Equal(detailed, loaded.State.Books.Invoices["INV-001"])
+
+    // An invoice written before the rounding policy was recorded reads as calculated under its first version.
+    let records = toRecords r |> ok
+    let withoutRounding =
+        records
+        |> List.map (fun record ->
+            match record.Body with
+            | Json.Object members when RecordType.value record.Key.Type = "summa.invoice" ->
+                { record with Body = Json.Object(members |> List.filter (fst >> (<>) "rounding")) }
+            | _ -> record)
+
+    Assert.True(withoutRounding |> List.exists (fun x -> RecordType.value x.Key.Type = "summa.invoice"))
+    let older = withoutRounding |> List.find (fun x -> RecordType.value x.Key.Type = "summa.invoice")
+    Assert.Equal(1, schemaVersionOf older)
+
+    let objects =
+        withoutRounding
+        |> contents
+        |> ok
+        |> Map.toList
+        |> List.mapi (fun i (p, (_, content)) ->
+            ({ Path = RelativePath.parse p |> Result.defaultWith (failwithf "%A")
+               Content = content
+               Revision = Revision $"r{i}" }: StoredObject))
+
+    let reread = load objects
+    Assert.Empty reread.Problems
+    Assert.Equal("summa.rounding/1", reread.State.Books.Invoices["INV-001"].Rounding)
+    Assert.Equal({ original with Rounding = "summa.rounding/1" }, reread.State.Books.Invoices["INV-001"])

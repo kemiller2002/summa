@@ -760,7 +760,8 @@ let private draftOf (manifest: Organization.OrganizationManifest) (books: Receiv
                       Discount = None
                       Source = ManualLine
                       Rate = None
-                      Tax = (if l.Taxable then Taxable taxCode else NotAssessed) }
+                      Tax = (if l.Taxable then Taxable taxCode else NotAssessed)
+                      Details = None }
             | _ -> Error $"'{l.Description}' needs a description, a quantity and a rate such as 150.00")
 
     match lines |> List.tryPick (function Error e -> Some e | Ok _ -> None), taxOf books form.Tax with

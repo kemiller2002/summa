@@ -195,6 +195,27 @@ type Recipients =
       Cc: string list
       ReplyTo: string option }
 
+/// What a line may say beyond its description and amount (INV-DATA-008),
+/// all optional and all shown to the customer.
+type LineDetails =
+    { /// A longer description under the line's own.
+      DetailedDescription: string option
+      /// The unit its quantity counts: hours, days, items.
+      Unit: string option
+      /// When the work it bills was done (INV-DATA-013, per line).
+      ServicePeriod: (DateOnly * DateOnly) option
+      /// A billing category the organization uses to group lines.
+      Category: string option
+      /// A code the customer asked to see on the line.
+      CustomerCode: string option }
+
+let noLineDetails =
+    { DetailedDescription = None
+      Unit = None
+      ServicePeriod = None
+      Category = None
+      CustomerCode = None }
+
 type InvoiceLine =
     { Description: string
       /// Thousandths, so 7.5 hours is 7500.
@@ -210,7 +231,9 @@ type InvoiceLine =
       /// Where its rate came from; None for a line priced by hand (INV-RATE-001).
       Rate: RateProvenance option
       /// Whether it is taxable, as the person said (INV-ADJ-005).
-      Tax: LineTax }
+      Tax: LineTax
+      /// More of what it is, when someone said (INV-DATA-008).
+      Details: LineDetails option }
 
 /// Quantity times unit price, before the line's discount.
 let lineGross (line: InvoiceLine) = extend line.QuantityThousandths line.UnitPrice
@@ -230,19 +253,31 @@ let discountTotal (currency: string) (subtotal: Money) (discounts: InvoiceDiscou
 /// What an invoice says beyond its lines (INV-DATA-006, INV-DATA-013,
 /// INV-DATA-014): references the customer needs, the service period, and
 /// notes for the customer kept apart from internal ones.
+/// A reference the customer requires on the invoice, by what it is
+/// (INV-DATA-014): never hidden in the notes.
+type ClientReferenceKind =
+    | ContractNumber
+    | EngagementNumber
+    | VendorReference
+    | CostCenter
+    | MatterNumber
+
 type InvoiceDetails =
     { PurchaseOrder: string option
       ClientReference: string option
       ServicePeriod: (DateOnly * DateOnly) option
       CustomerNotes: string option
-      InternalNotes: string option }
+      InternalNotes: string option
+      /// Further typed references, in the order given (INV-DATA-014).
+      References: (ClientReferenceKind * string) list }
 
 let noDetails =
     { PurchaseOrder = None
       ClientReference = None
       ServicePeriod = None
       CustomerNotes = None
-      InternalNotes = None }
+      InternalNotes = None
+      References = [] }
 
 /// Where a draft stands before issue (INV-STATE-002). Any change to the
 /// draft returns it to Editing, so a review applies to one version only
@@ -345,7 +380,22 @@ type IssuedInvoice =
       Approval: Approval
       JournalEntryId: string
       ObligationId: string
-      IssuedAt: DateTimeOffset }
+      IssuedAt: DateTimeOffset
+      /// The rounding policy its amounts were calculated under (INV-DATA-011).
+      Rounding: string }
+
+/// The rounding policy, versioned (INV-DATA-011): amounts are integers of
+/// the currency's minor unit; quantity times rate, percentage discounts and
+/// allocations are rounded half away from zero, line by line; totals are
+/// sums of rounded lines, so nothing is rounded twice.
+let roundingPolicy = "summa.rounding/1"
+
+/// A line's stable identifier on an issued invoice (INV-DATA-007): the
+/// invoice's id and the line's place, neither of which changes after issue.
+let lineId (invoice: IssuedInvoice) (index: int) = $"{invoice.InvoiceId}/L{index + 1}"
+
+/// Every line of an issued invoice with its identifier, in display order.
+let identifiedLines (invoice: IssuedInvoice) = invoice.Lines |> List.mapi (fun i line -> lineId invoice i, line)
 
 type ObligationKind =
     | Receivable
@@ -915,7 +965,8 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
                               Reason = request.ApprovalReason }
                           JournalEntryId = posted.Id
                           ObligationId = request.ObligationId
-                          IssuedAt = context.When }
+                          IssuedAt = context.When
+                          Rounding = roundingPolicy }
 
                     let obligation =
                         { Id = request.ObligationId

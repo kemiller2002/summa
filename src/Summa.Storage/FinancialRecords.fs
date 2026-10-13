@@ -513,6 +513,23 @@ let private proposalStateOf (value: Json) : Decoded<ProposalState> =
             | other, _ -> Error $"'{other}' is not a proposal state with the invoice it needs"
     }
 
+let private referenceKinds =
+    [ ContractNumber, "contract"; EngagementNumber, "engagement"; VendorReference, "vendor"; CostCenter, "cost-center"; MatterNumber, "matter" ]
+
+let private referenceKindName (kind: ClientReferenceKind) = referenceKinds |> List.find (fst >> (=) kind) |> snd
+
+let private referenceOf (value: Json) : Decoded<ClientReferenceKind * string> =
+    decode {
+        do! closed [ "kind"; "value" ] value
+        let! name = text "kind" value
+        let! text' = text "value" value
+
+        return!
+            match referenceKinds |> List.tryFind (snd >> (=) name) with
+            | Some(kind, _) -> Ok(kind, text')
+            | None -> Error $"'{name}' is not a client reference kind"
+    }
+
 let private details (d: InvoiceDetails) =
     Json.objectOf
         [ "purchaseOrder", optionalString d.PurchaseOrder
@@ -522,7 +539,11 @@ let private details (d: InvoiceDetails) =
           |> Option.map (fun (a, b) -> Json.objectOf [ "from", Json.String(dateText a); "to", Json.String(dateText b) ])
           |> Option.defaultValue Json.Null
           "customerNotes", optionalString d.CustomerNotes
-          "internalNotes", optionalString d.InternalNotes ]
+          "internalNotes", optionalString d.InternalNotes
+          // Written only when given, so other invoices keep their bytes (INV-DATA-014).
+          if not d.References.IsEmpty then
+              "clientReferences",
+              Json.Array(d.References |> List.map (fun (kind, value) -> Json.objectOf [ "kind", Json.String(referenceKindName kind); "value", Json.String value ])) ]
 
 let private servicePeriodOf (value: Json) : Decoded<DateOnly * DateOnly> =
     decode {
@@ -534,19 +555,25 @@ let private servicePeriodOf (value: Json) : Decoded<DateOnly * DateOnly> =
 
 let private detailsOf (value: Json) : Decoded<InvoiceDetails> =
     decode {
-        do! closed [ "clientReference"; "customerNotes"; "internalNotes"; "purchaseOrder"; "servicePeriod" ] value
+        do! closed [ "clientReference"; "clientReferences"; "customerNotes"; "internalNotes"; "purchaseOrder"; "servicePeriod" ] value
         let! po = optionalText "purchaseOrder" value
         let! reference = optionalText "clientReference" value
         let! period = optionalOf servicePeriodOf "servicePeriod" value
         let! customerNotes = optionalText "customerNotes" value
         let! internalNotes = optionalText "internalNotes" value
 
+        let! references =
+            match Codec.tryField "clientReferences" value with
+            | None -> Ok []
+            | Some _ -> list "clientReferences" referenceOf value
+
         return
             { PurchaseOrder = po
               ClientReference = reference
               ServicePeriod = period
               CustomerNotes = customerNotes
-              InternalNotes = internalNotes }
+              InternalNotes = internalNotes
+              References = references }
     }
 
 let private review =
@@ -888,11 +915,42 @@ let private invoiceLine (l: InvoiceLine) =
            | NotAssessed -> []
            | Taxable category -> [ "tax", Json.objectOf [ "kind", Json.String "taxable"; "category", Json.String category ] ]
            | NonTaxable reason -> [ "tax", Json.objectOf [ "kind", Json.String "non-taxable"; "reason", Json.String reason ] ])
+        // Written only when given, so other lines keep their bytes (INV-DATA-008).
+        @ (match l.Details with
+           | None -> []
+           | Some d ->
+               [ "lineDetails",
+                 Json.objectOf
+                     [ "detailedDescription", optionalString d.DetailedDescription
+                       "unit", optionalString d.Unit
+                       "servicePeriod",
+                       d.ServicePeriod
+                       |> Option.map (fun (a, b) -> Json.objectOf [ "from", Json.String(dateText a); "to", Json.String(dateText b) ])
+                       |> Option.defaultValue Json.Null
+                       "category", optionalString d.Category
+                       "customerCode", optionalString d.CustomerCode ] ])
     )
+
+let private lineDetailsOf (value: Json) : Decoded<LineDetails> =
+    decode {
+        do! closed [ "category"; "customerCode"; "detailedDescription"; "servicePeriod"; "unit" ] value
+        let! detailed = optionalText "detailedDescription" value
+        let! unit = optionalText "unit" value
+        let! period = optionalOf servicePeriodOf "servicePeriod" value
+        let! category = optionalText "category" value
+        let! code = optionalText "customerCode" value
+
+        return
+            { DetailedDescription = detailed
+              Unit = unit
+              ServicePeriod = period
+              Category = category
+              CustomerCode = code }
+    }
 
 let private invoiceLineOf (value: Json) : Decoded<InvoiceLine> =
     decode {
-        do! closed [ "description"; "discount"; "project"; "quantityThousandths"; "rate"; "revenueAccountId"; "source"; "tax"; "unitPrice"; "workItem" ] value
+        do! closed [ "description"; "discount"; "lineDetails"; "project"; "quantityThousandths"; "rate"; "revenueAccountId"; "source"; "tax"; "unitPrice"; "workItem" ] value
         let! description = text "description" value
         let! quantity = long "quantityThousandths" value
         let! price = moneyField "unitPrice" value
@@ -902,6 +960,11 @@ let private invoiceLineOf (value: Json) : Decoded<InvoiceLine> =
         let! lineDiscount = optionalOf discountOf "discount" value
         let! source = field "source" value |> Result.bind lineSourceOf
         let! rate = optionalOf rateProvenanceOf "rate" value
+
+        let! lineDetails =
+            match Codec.tryField "lineDetails" value with
+            | None -> Ok None
+            | Some d -> lineDetailsOf d |> Result.map Some
 
         let! tax =
             match Codec.tryField "tax" value with
@@ -927,7 +990,8 @@ let private invoiceLineOf (value: Json) : Decoded<InvoiceLine> =
               Discount = lineDiscount
               Source = source
               Rate = rate
-              Tax = tax }
+              Tax = tax
+              Details = lineDetails }
     }
 
 let private accountTypeName =
@@ -1236,7 +1300,9 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                         "total", money i.Total
                         "journalEntryId", Json.String i.JournalEntryId
                         "obligationId", Json.String i.ObligationId
-                        "issuedAt", Json.String(preciseTimestamp i.IssuedAt) ]
+                        "issuedAt", Json.String(preciseTimestamp i.IssuedAt)
+                        // The rounding policy its amounts were calculated under (INV-DATA-011).
+                        "rounding", Json.String i.Rounding ]
 
           for KeyValue(_, o) in books.Obligations ->
               keyOf obligationType [] o.Id,
@@ -1511,7 +1577,7 @@ let schemaVersionOf (record: FinancialRecord) =
         match value with
         | Json.Object members ->
             members
-            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || key = "change" || key = "deliveryResolved" || key = "postedFor" || recordsTax inner)
+            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || key = "change" || key = "deliveryResolved" || key = "postedFor" || key = "lineDetails" || key = "clientReferences" || key = "rounding" || recordsTax inner)
         | Json.Array items -> items |> List.exists recordsTax
         | _ -> false
 
@@ -1727,7 +1793,7 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                 closed
                     [ "adjustments"; "approval"; "assumptions"; "corrects"; "currency"; "customer"; "customerId"; "details"; "discounts"; "draftId"; "dueDate"
                       "engagementId"; "invoiceId"; "issuer"; "template"; "issueDate"
-                      "issuedAt"; "journalEntryId"; "lines"; "number"; "obligationId"; "subtotal"; "terms"; "termsSource"; "total" ]
+                      "issuedAt"; "journalEntryId"; "lines"; "number"; "obligationId"; "rounding"; "subtotal"; "terms"; "termsSource"; "total" ]
                     b
 
             let! id = text "invoiceId" b
@@ -1755,6 +1821,9 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
             let! entry = text "journalEntryId" b
             let! obligation = text "obligationId" b
             let! issuedAt = preciseInstant "issuedAt" b
+            // An invoice written before the policy was recorded was calculated
+            // under its first version: the rounding code has not changed since.
+            let! rounding = optionalText "rounding" b
 
             return
                 InvoicePart(
@@ -1781,7 +1850,8 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                       Approval = approved
                       JournalEntryId = entry
                       ObligationId = obligation
-                      IssuedAt = issuedAt },
+                      IssuedAt = issuedAt
+                      Rounding = rounding |> Option.defaultValue Summa.Ledger.Invoicing.roundingPolicy },
                     draftId
                 )
         }
