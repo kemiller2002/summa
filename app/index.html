@@ -348,7 +348,16 @@
               <template data-each="draftLines" data-key="key">
                 <tr>
                   <td><label class="ef-visually-hidden">Line <span data-text="position"></span> description<input type="text" class="line-description" data-event="lineDescriptionChanged" data-on="input" data-bind-value="description" /></label>
-                    <button type="button" class="ef-button line-details" data-variant="secondary" data-event="lineDetailsOpened">Details<span data-text="detailsNote"></span><span class="ef-visually-hidden"> for line <span data-text="position"></span></span></button></td>
+                    <button type="button" class="ef-button line-details" data-variant="secondary" data-event="lineDetailsOpened">Details<span data-text="detailsNote"></span><span class="ef-visually-hidden"> for line <span data-text="position"></span></span></button>
+                    <!-- REPRO ONLY: six bound inputs per row, no events. -->
+                    <details class="repro-row-inputs"><summary>Row inputs</summary>
+                      <textarea data-event="lineDetailsOpened" data-on="input" data-bind-value="detailedDescription"></textarea>
+                      <input type="text" data-event="lineDetailsOpened" data-on="input" data-bind-value="unit" />
+                      <input type="date" data-event="lineDetailsOpened" data-on="input" data-bind-value="serviceFrom" />
+                      <input type="date" data-event="lineDetailsOpened" data-on="input" data-bind-value="serviceTo" />
+                      <input type="text" data-event="lineDetailsOpened" data-on="input" data-bind-value="category" />
+                      <input type="text" data-event="lineDetailsOpened" data-on="input" data-bind-value="customerCode" />
+                    </details></td>
                   <td><label class="ef-visually-hidden">Line <span data-text="position"></span> quantity<input type="text" inputmode="decimal" class="line-hours" data-event="lineHoursChanged" data-on="input" data-bind-value="hours" /></label></td>
                   <td><label class="ef-visually-hidden">Line <span data-text="position"></span> rate<input type="text" inputmode="decimal" class="line-rate" data-event="lineRateChanged" data-on="input" data-bind-value="rate" /></label></td>
                   <td><label class="summa-check"><input type="checkbox" class="line-taxable" data-event="lineTaxableChanged" data-on="change" data-bind-checked="taxable" /><span class="ef-visually-hidden">Line <span data-text="position"></span> is taxable</span></label></td>

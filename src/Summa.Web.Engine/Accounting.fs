@@ -4606,7 +4606,14 @@ let view (model: Model) : View =
                 "hours", Text l.Hours
                 "rate", Text l.Rate
                 "taxable", Flag l.Taxable
-                "detailsNote", Text(if l.Details <> noLineDetailsForm then " (given)" else "") ])
+                "detailsNote", Text(if l.Details <> noLineDetailsForm then " (given)" else "")
+                // REPRO ONLY: one bound value per per-row input below.
+                "detailedDescription", Text l.Details.DetailedDescription
+                "unit", Text l.Details.Unit
+                "serviceFrom", Text l.Details.ServiceFrom
+                "serviceTo", Text l.Details.ServiceTo
+                "category", Text l.Details.Category
+                "customerCode", Text l.Details.CustomerCode ])
       )
       // The one details panel, for the line it shows (INV-DATA-008).
       yield!
