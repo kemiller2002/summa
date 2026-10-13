@@ -41,15 +41,21 @@ let private luhn (digits: string) =
 /// alone (not inside an id or a hash), passing Luhn.
 let private cardPattern = Regex(@"(?<![\w])(?:\d[ -]?){12,18}\d(?![\w])", options)
 
+/// An IBAN-shaped value: country, check digits and account groups.
+let private ibanPattern = Regex(@"\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30}\b", options)
+
+/// The text with every IBAN-shaped value blanked out. The account part of
+/// an IBAN is a long digit run that can pass Luhn by chance; it is judged
+/// by the IBAN rule alone, never read as a card number.
+let private withoutIbanShapes (text: string) = ibanPattern.Replace(text, " ")
+
 let private hasCard (text: string) =
-    cardPattern.Matches text
+    cardPattern.Matches(withoutIbanShapes text)
     |> Seq.exists (fun m ->
         let digits = String(m.Value |> Seq.filter Char.IsDigit |> Array.ofSeq)
         digits.Length >= 13 && digits.Length <= 19 && digits |> Seq.distinct |> Seq.length > 1 && luhn digits)
 
-/// An IBAN: country, check digits and account, passing the mod-97 check.
-let private ibanPattern = Regex(@"\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]){11,30}\b", options)
-
+/// An IBAN passes the mod-97 check over its check digits and account.
 let private validIban (candidate: string) =
     let compact = candidate.Replace(" ", "")
     let rearranged = compact.Substring 4 + compact.Substring(0, 4)

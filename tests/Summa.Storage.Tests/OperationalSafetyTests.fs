@@ -179,6 +179,13 @@ let ``full card numbers, bank account numbers and credentials are found, and ref
     Assert.Empty(Sensitive.scan "sha256:a4111111111111111b and EXE-20261009T031528777Z")
     Assert.Equal<Sensitive.Finding list>([ Sensitive.BankAccountNumber ], Sensitive.scan "IBAN DE89 3704 0044 0532 0130 00")
     Assert.Empty(Sensitive.scan "DE89 3704 0044 0532 0130 01")
+    // The account digits of that mistyped IBAN pass Luhn by chance. Inside the IBAN they are
+    // judged by the IBAN rule only; standing alone they are still a card number.
+    Assert.Equal<Sensitive.Finding list>([ Sensitive.CardNumber ], Sensitive.scan "3704 0044 0532 0130 01")
+    // A card next to an IBAN is still found, as is each.
+    Assert.Equal<Sensitive.Finding list>(
+        [ Sensitive.CardNumber; Sensitive.BankAccountNumber ],
+        Sensitive.scan "IBAN DE89 3704 0044 0532 0130 00, card 4111 1111 1111 1111")
     Assert.Equal<Sensitive.Finding list>([ Sensitive.Credential "GitHub token" ], Sensitive.scan ("token " + "ghp_" + String('a', 36)))
     Assert.Equal<Sensitive.Finding list>([ Sensitive.Credential "private key" ], Sensitive.scan "-----BEGIN RSA PRIVATE KEY-----")
 
