@@ -8,6 +8,8 @@ import { signInTest } from "./fake-deployment.js";
 import { commitExternally, headFiles } from "./github-fake.js";
 import { expectActionOutcome } from "./ui-conformance-helpers.js";
 
+// How long books on GitHub may take to open (a page load, never an outcome).
+const OPENING = 45_000;
 const CUSTOMER = "deployments/test/summa/datasets/org_acme/records/summa.customer/CUST-0001.json";
 
 signInTest("@ui-conformance books on GitHub: an unsent change is never shown as sent, and Send now delivers it once GitHub is back (ULI-A07, ULI-A10)", async ({ deployment: { page, origin, github } }) => {
@@ -17,7 +19,7 @@ signInTest("@ui-conformance books on GitHub: an unsent change is never shown as 
   await page.getByRole("checkbox", { name: "Keep me signed in while this tab is open" }).check();
   await page.getByRole("button", { name: "Sign in with GitHub" }).click();
   await page.getByRole("button", { name: "Set up the books" }).click();
-  await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible({ timeout: OPENING });
 
   github.reachable(false);
   await page.getByRole("textbox", { name: "Name", exact: true }).fill("Acme");
@@ -52,7 +54,9 @@ async function foundBooks(page, origin) {
   await page.getByRole("checkbox", { name: "Keep me signed in while this tab is open" }).check();
   await page.getByRole("button", { name: "Sign in with GitHub" }).click();
   await page.getByRole("button", { name: "Set up the books" }).click();
-  await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
+  // Opening books on GitHub takes several round trips; this waits for that,
+  // not for an outcome under test.
+  await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible({ timeout: OPENING });
 }
 
 // A queued change, waiting because GitHub could not be reached.
@@ -79,7 +83,7 @@ signInTest("@ui-conformance Sign out in the header ends the session and returns 
   await expect(page.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
   // Signed out means signed out: a reload does not bring the books back.
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Sign in to Summa" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sign in to Summa" })).toBeVisible({ timeout: OPENING });
 });
 
 signInTest("@ui-conformance a change another sign-in left is held; Send them as me sends it (ULI-A07)", async ({ deployment: { page, origin, github } }) => {
@@ -146,7 +150,7 @@ signInTest("@ui-conformance books with no listed administrator open only after a
   // The roster loses its only administrator (an edit outside Summa).
   github.update((state) => commitExternally(state, { [MEMBER]: null }, "remove the member record"));
   await page.reload();
-  await expect(page.getByRole("heading", { name: "These books have no listed administrator" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "These books have no listed administrator" })).toBeVisible({ timeout: OPENING });
   await expectActionOutcome(page, {
     action: { role: "button", name: "Confirm me as administrator" },
     outcome: { kind: "visible", target: { role: "navigation", name: "Primary" }, expected: true },
@@ -168,7 +172,7 @@ signInTest("@ui-conformance books written by an earlier Summa are updated in one
     return commitExternally(state, { [MANIFEST]: JSON.stringify(manifest), [`${FOLDER}/arca-manifest.json`]: arca }, "schema 1 books");
   });
   await page.reload();
-  await expect(page.getByRole("heading", { name: "These books need updating before anyone works in them" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "These books need updating before anyone works in them" })).toBeVisible({ timeout: OPENING });
   await expectActionOutcome(page, {
     action: { role: "button", name: "Update the books" },
     outcome: { kind: "visible", target: { role: "navigation", name: "Primary" }, expected: true },
