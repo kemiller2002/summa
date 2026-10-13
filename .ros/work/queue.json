@@ -1167,6 +1167,30 @@
       },
       "source": "manual",
       "sourceReference": null
+    },
+    {
+      "id": "WI-0049",
+      "title": "Summa: measurement baseline sources index (docs/measurement/baseline-sources.md)",
+      "description": "Measurement amendment (2026-10-13) side task: index where Summa's historical evidence lives (Praxis .ros records, telemetry, PR and CI history), the commit each Echelon capability was adopted at, and what is missing. Index only; no telemetry copied.",
+      "tags": [
+        "summa",
+        "measurement"
+      ],
+      "priority": "medium",
+      "status": "ready",
+      "attachments": [],
+      "createdAt": "2026-10-13T10:55:33Z",
+      "updatedAt": "2026-10-13T10:55:33Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
     }
   ]
 }

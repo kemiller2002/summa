@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-13T09:24:09Z",
+  "updatedAt": "2026-10-13T10:55:33Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -2324,6 +2324,17 @@
       ],
       "completedAt": "2026-10-13T09:24:09Z",
       "conclusion": "Books founded on GitHub start with their chart as the organization's own records (DF-SUMMA-2026-0024); escaped from WI-0037 (PR #53). Red first: the end-to-end test failed at 'account 1000' with the old founding. 501 .NET tests pass; the browser end-to-end test runs in CI."
+    },
+    {
+      "id": "WI-0049",
+      "type": "documentation",
+      "state": "active",
+      "semanticState": "active",
+      "evidence": [],
+      "updatedAt": "2026-10-13T10:55:33Z",
+      "telemetryExecutionIds": [
+        "EXE-20261013T105534706Z-8256bebc"
+      ]
     }
   ]
 }
