@@ -2,7 +2,9 @@
 /// canonical export (every object, byte for byte, each with its SHA-256, as
 /// of one change token), sealed with AES-256-GCM so the backup is encrypted
 /// wherever it is kept, and verified before it is trusted. Keys belong to
-/// the operator's key store; nothing here creates, stores or logs one.
+/// the operator's key store; nothing here creates, stores or logs one. Each
+/// seal draws its own nonce from the secure generator, so no caller can
+/// reuse one (DF-SUMMA-2026-0042).
 module Summa.Operations.Backup
 
 open System
@@ -37,9 +39,26 @@ module BackupKey =
     let create (bytes: byte array) =
         if bytes.Length <> 32 then Error KeyInvalid else Ok(BackupKey(Array.copy bytes))
 
-/// Encrypts an export. `nonce` must be 12 fresh random bytes for every backup
-/// (the caller draws it, so this function stays deterministic and testable).
-let seal (BackupKey key) (nonce: byte array) (archive: ExportArchive) : Result<Sealed, BackupError> =
+/// Where a seal's 12-byte nonce comes from. Under one key a nonce must
+/// never repeat: AES-GCM with a reused nonce loses its confidentiality and
+/// its integrity. So no caller supplies a nonce; a seal draws one.
+type NonceSource = unit -> byte array
+
+/// The production source: 12 bytes from the operating system's
+/// cryptographically secure generator, drawn afresh for every seal. The
+/// nonce is kept nowhere but inside the sealed text, and never logged.
+let freshNonce: NonceSource =
+    fun () ->
+        let nonce = Array.zeroCreate<byte> 12
+        RandomNumberGenerator.Fill(Span<byte> nonce)
+        nonce
+
+/// Encrypts an export under a nonce drawn from `nonces`. Production code
+/// uses `seal`, which always draws from `freshNonce`; another source is only
+/// for tests that need a fixed envelope.
+let sealWith (nonces: NonceSource) (BackupKey key) (archive: ExportArchive) : Result<Sealed, BackupError> =
+    let nonce = nonces ()
+
     if nonce.Length <> 12 then
         Error KeyInvalid
     else
@@ -49,6 +68,9 @@ let seal (BackupKey key) (nonce: byte array) (archive: ExportArchive) : Result<S
         use aes = new AesGcm(key, 16)
         aes.Encrypt(nonce, plain, cipher, tag, Encoding.UTF8.GetBytes Prefix)
         Ok(Sealed(String.Join(".", [ Prefix; Convert.ToBase64String nonce; Convert.ToBase64String tag; Convert.ToBase64String cipher ])))
+
+/// Encrypts an export under a fresh random nonce.
+let seal (key: BackupKey) (archive: ExportArchive) = sealWith freshNonce key archive
 
 /// Decrypts and verifies a backup: the tag must verify under the key, and
 /// every object must still have the hash the export recorded.
@@ -69,13 +91,17 @@ let unseal (BackupKey key) (Sealed text) : Result<ExportArchive, BackupError> =
         | :? FormatException -> Error NotABackup
     | _ -> Error NotABackup
 
-/// Takes a backup of a namespace through a provider.
-let take (provider: StorageProvider) (ns: Namespace) (key: BackupKey) (nonce: byte array) : Async<Result<Sealed, BackupError>> =
+/// Takes a backup of a namespace through a provider, sealed under a nonce
+/// from `nonces` (tests only; production code uses `take`).
+let takeWith (nonces: NonceSource) (provider: StorageProvider) (ns: Namespace) (key: BackupKey) : Async<Result<Sealed, BackupError>> =
     async {
         match! Export.take provider ns 3 with
         | Error error -> return Error(ExportFailed error)
-        | Ok archive -> return seal key nonce archive
+        | Ok archive -> return sealWith nonces key archive
     }
+
+/// Takes a backup of a namespace through a provider, under a fresh random nonce.
+let take (provider: StorageProvider) (ns: Namespace) (key: BackupKey) = takeWith freshNonce provider ns key
 
 /// The operation that restores an archive into an empty namespace at the
 /// same location: one commit that creates every object exactly as exported.

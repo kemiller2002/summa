@@ -102,12 +102,11 @@ let ``a failure mid-operation leaves the previous valid state and a retry has on
     Assert.Equal(2, again.State.Payments.Count)
 
 let private key = Array.init 32 byte |> Backup.BackupKey.create |> Support.ok
-let private nonce = Array.init 12 (fun i -> byte (100 + i))
 
 [<Fact>]
 let ``backups are backup, verified before use, and refuse a wrong key or tampering`` () =
     let store, ns = books ()
-    let backup = Backup.take store.Provider ns key nonce |> Async.RunSynchronously |> Support.ok
+    let backup = Backup.take store.Provider ns key |> Async.RunSynchronously |> Support.ok
     let text = Backup.Sealed.text backup
     Assert.StartsWith("summa-backup-v1.", text)
     Assert.DoesNotContain("CUST-ABC", text) // encrypted, not just encoded
@@ -124,7 +123,7 @@ let ``backups are backup, verified before use, and refuse a wrong key or tamperi
 [<Fact>]
 let ``the recovery drill: back up, destroy, restore, verify and report`` () =
     let store, ns = books ()
-    let backup = Backup.take store.Provider ns key nonce |> Async.RunSynchronously |> Support.ok
+    let backup = Backup.take store.Provider ns key |> Async.RunSynchronously |> Support.ok
     let asOf = DateOnly(2026, 12, 31)
     let before = Recovery.verify store.Provider ns "ar" asOf |> Async.RunSynchronously |> Support.ok
 

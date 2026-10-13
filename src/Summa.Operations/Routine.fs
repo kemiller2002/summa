@@ -39,15 +39,15 @@ type Settings =
       /// How many times a command is tried when the folder changes under it.
       Attempts: int }
 
-/// One run: when it runs, the organization's date, the run's id, the key
-/// and 12 fresh random bytes for the backup's nonce.
+/// One run: when it runs, the organization's date, the run's id and the
+/// key. The backup's nonce is not an input: the run draws it itself, so no
+/// scheduler or host can make two backups under one nonce.
 type Run =
     { Now: DateTimeOffset
       /// Today in the organization's time zone (see `today`).
       Today: DateOnly
       RunId: string
-      Key: Backup.BackupKey
-      Nonce: byte array }
+      Key: Backup.BackupKey }
 
 /// What each job of a run did.
 type Job =
@@ -116,12 +116,12 @@ let private proposals (settings: Settings) (provider: StorageProvider) (ns: Name
             return Proposals(made, refused)
     }
 
-let private backup (settings: Settings) (provider: StorageProvider) (ns: Namespace) (store: BackupStore) (run: Run) =
+let private backup (nonces: Backup.NonceSource) (settings: Settings) (provider: StorageProvider) (ns: Namespace) (store: BackupStore) (run: Run) =
     async {
         let actor = Actor.scheduled settings.ProcessId run.RunId
         let id = backupId (organizationOf ns) run.Now
 
-        match! Backup.take provider ns run.Key run.Nonce with
+        match! Backup.takeWith nonces provider ns run.Key with
         | Error error -> return BackupFailed $"not taken: %A{error}"
         | Ok sealedBackup ->
             // It counts only once a restore of the sealed text verifies.
@@ -171,16 +171,22 @@ let private prune (settings: Settings) (store: BackupStore) (run: Run) =
             | None -> return Pruned expired, newest
     }
 
-/// One routine run for one organization: proposals, then the backup (so it
-/// includes them), then retention. Every job runs and reports even when an
-/// earlier one failed.
-let run (settings: Settings) (provider: StorageProvider) (ns: Namespace) (store: BackupStore) (run: Run) : Async<Report> =
+/// A routine run whose backup nonce comes from `nonces`: for tests only.
+/// Production code uses `run`, which always draws from the operating
+/// system's secure generator.
+let runWith (nonces: Backup.NonceSource) (settings: Settings) (provider: StorageProvider) (ns: Namespace) (store: BackupStore) (run: Run) : Async<Report> =
     async {
         let! proposed = proposals settings provider ns run
-        let! backedUp = backup settings provider ns store run
+        let! backedUp = backup nonces settings provider ns store run
         let! pruned, newest = prune settings store run
 
         return
             { Jobs = [ proposed; backedUp; pruned ]
               RecoveryPointMet = Recovery.recoveryPointMet settings.Objectives run.Now newest }
     }
+
+/// One routine run for one organization: proposals, then the backup (so it
+/// includes them), then retention. Every job runs and reports even when an
+/// earlier one failed. The backup is sealed under a fresh random nonce.
+let run (settings: Settings) (provider: StorageProvider) (ns: Namespace) (store: BackupStore) (run: Run) : Async<Report> =
+    runWith Backup.freshNonce settings provider ns store run
