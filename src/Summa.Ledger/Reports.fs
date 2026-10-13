@@ -152,6 +152,47 @@ let trialBalanceCsv (tb: TrialBalance) =
 
     String.Join("\n", lines) + "\n"
 
+/// Issued invoices as CSV, one row each in issue order (INV-EXP-001): the
+/// facts each invoice was issued with and the balances derived from the
+/// books, so it can be read into another system without Summa.
+let invoicesCsv (r: Payments.Receivables) (invoices: Invoicing.IssuedInvoice list) =
+    let statusName =
+        function
+        | Payments.Issued -> "issued"
+        | Payments.PartiallyPaid -> "partially-paid"
+        | Payments.Paid -> "paid"
+        | Payments.WrittenOff -> "written-off"
+        | Payments.Voided -> "voided"
+
+    let date (d: DateOnly) = d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+
+    let rows =
+        invoices
+        |> List.sortBy (fun i -> i.IssueDate, i.Number)
+        |> List.map (fun i ->
+            String.Join(
+                ",",
+                [ csvField i.InvoiceId
+                  csvField i.Number
+                  string i.Approval.DraftVersion
+                  csvField i.CustomerId
+                  csvField i.Customer.BillingName
+                  date i.IssueDate
+                  date i.DueDate
+                  i.Currency
+                  decimalText i.Subtotal
+                  decimalText i.Total
+                  decimalText (Payments.amountPaid r i)
+                  decimalText (Payments.writtenOff r i)
+                  decimalText (Payments.outstanding r i)
+                  statusName (Payments.status r i)
+                  csvField $"{i.Template.Id}@{i.Template.Version}"
+                  csvField i.Rounding
+                  csvField i.JournalEntryId ]
+            ))
+
+    String.Join("\n", "Invoice,Number,Version,Customer,BillingName,IssueDate,DueDate,Currency,Subtotal,Total,Paid,WrittenOff,Outstanding,Status,Template,Rounding,JournalEntry" :: rows) + "\n"
+
 /// Journal entries as CSV, one row per line, in posting order (§20).
 let journalCsv (ledger: Ledger) =
     let rows =

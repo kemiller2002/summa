@@ -492,6 +492,7 @@
           <template data-if="onDocumentTab">
           <div class="ef-stack" id="document-tab">
           <template data-if="canPrint"><p class="summa-screen-only"><button type="button" class="ef-button" data-variant="secondary" id="print-invoice" data-event="printRequested">Print or save as PDF</button></p></template>
+          <template data-if="canExport"><p class="summa-screen-only"><button type="button" class="ef-button" data-variant="secondary" id="export-invoice-json" data-event="invoiceJsonExported">Download (JSON)</button> <button type="button" class="ef-button" data-variant="secondary" id="export-invoice-html" data-event="invoiceHtmlExported">Download (HTML)</button></p></template>
           <ef-print-document class="summa-document" id="invoice-document">
             <ef-print-header repeat="page"><span slot="left" data-text="docIssuer"></span><span slot="right">Invoice <span data-text="docNumber"></span></span></ef-print-header>
             <header class="summa-document__head">
@@ -1215,6 +1216,7 @@
           <div class="ef-actions">
             <button type="button" class="ef-button" data-variant="secondary" id="export-trial-balance" data-event="cpaTrialBalanceExported">Download trial balance (CSV)</button>
             <button type="button" class="ef-button" data-variant="secondary" id="export-journal" data-event="cpaJournalExported">Download journal (CSV)</button>
+            <button type="button" class="ef-button" data-variant="secondary" id="export-invoices" data-event="cpaInvoicesExported">Download invoices (CSV)</button>
           </div>
         </template>
         <template data-if="hasCpaAdjustments">

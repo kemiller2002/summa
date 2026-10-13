@@ -536,6 +536,8 @@ type Msg =
     | ReceiptRecorded
     /// trial-balance or journal, as CSV for the year shown.
     | CpaExportRequested of string
+    /// Download the invoice on screen as `json` or `html` (INV-EXP-001).
+    | InvoiceExportRequested of format: string
     | LineTaxableChanged of key: string * taxable: bool
     | DraftTaxCodeChanged of string
     | DraftTaxAmountChanged of string
@@ -1618,6 +1620,24 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
             | Error blockers -> { model with Blockers = blockers; Error = Some "The invoice cannot be issued yet." }, []
         | _ -> { model with Error = Some "Save and review the draft first." }, []
     | PrintRequested -> model, [ PrintPage ]
+    // The invoice on screen, as a file that says what it is (INV-EXP-001, INV-EXP-002).
+    | InvoiceExportRequested format ->
+        match model.Books, model.Place, model.Packs.Files with
+        | Some books, Routes.Invoice(invoiceId, _), true ->
+            match books.Books.Invoices.TryFind invoiceId, Exports.dataVersion books, Exports.invoiceRecordSchema books invoiceId with
+            | Some invoice, Ok version, Some schema ->
+                let export: Exports.InvoiceExport = { GeneratedAt = ctx.Now; DataVersion = version; Invoice = invoice; RecordSchemaVersion = schema }
+                let doc = Documents.ofInvoice invoice
+                let base64 (text: string) = Convert.ToBase64String(Text.Encoding.UTF8.GetBytes text)
+
+                match format, Documents.render doc with
+                | "json", _ -> model, [ OfferDownload($"{invoice.Number}.json", "application/json", base64 (Exports.invoiceJson export (Documents.toJson doc))) ]
+                | "html", Ok html -> model, [ OfferDownload($"{invoice.Number}.html", "text/html", base64 (Exports.invoiceHtml export html)) ]
+                | _, Error why -> { model with Error = Some $"The invoice could not be rendered: {why}" }, []
+                | _ -> model, []
+            | _ -> { model with Error = Some "The export could not be made." }, []
+        | _, _, false -> { model with Error = Some "This browser cannot offer downloads here." }, []
+        | _ -> model, []
     // A person approves: the proposal is checked again and issued as one
     // invoice in the same change (INV-CHR-006, SUM4-042). The application
     // has no agent of its own, so the approval is always a person's.
@@ -2104,6 +2124,10 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
             | "journal" ->
                 let ofYear = { ledger with Journal = ledger.Journal |> List.filter (fun id -> ledger.Entries[id].Date.Year = year) }
                 offer $"journal-{year}.csv" (described "journal" (Reports.journalCsv ofYear))
+            // Every invoice issued in the year, with what it owes now (INV-EXP-001).
+            | "invoices" ->
+                let issuedInYear = books.Books.Invoices |> Map.toList |> List.map snd |> List.filter (fun i -> i.IssueDate.Year = year)
+                offer $"invoices-{year}.csv" (described "invoices" (Reports.invoicesCsv books issuedInYear))
             | _ -> model, []
         | _ -> { model with Error = Some "This browser cannot offer downloads here." }, []
     | ResetConfirmed ->
