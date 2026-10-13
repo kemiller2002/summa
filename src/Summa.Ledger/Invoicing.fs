@@ -89,6 +89,54 @@ type CustomerTax =
     /// Exempt, with the certificate or reference that shows it.
     | TaxExempt of evidence: string * jurisdiction: string option
 
+/// A jurisdiction-specific legal field shown on invoices (INV-INTL-001).
+/// It is shown as recorded; Summa never infers one, and showing it claims
+/// no compliance with any jurisdiction's law (INV-INTL-003).
+type LegalFieldKind =
+    | TaxRegistrationNumber
+    | VatId
+    | BusinessRegistrationNumber
+    /// The customer's tax identifier, on a customer only.
+    | CustomerTaxId
+    /// Wording a jurisdiction requires on an invoice, on the organization only.
+    | StatutoryWording
+
+type LegalField =
+    { Kind: LegalFieldKind
+      /// An ISO 3166 code: a country (`GB`) or a subdivision (`US-NY`).
+      Jurisdiction: string
+      Value: string }
+
+/// The field's name as printed.
+let legalFieldLabel =
+    function
+    | TaxRegistrationNumber -> "Tax registration number"
+    | VatId -> "VAT ID"
+    | BusinessRegistrationNumber -> "Business registration number"
+    | CustomerTaxId -> "Customer tax ID"
+    | StatutoryWording -> "Statutory wording"
+
+type LegalFieldProblem =
+    | InvalidJurisdiction of string
+    | BlankLegalField of LegalFieldKind
+    | NotForThisParty of LegalFieldKind
+    | DuplicateLegalField of LegalFieldKind * jurisdiction: string
+
+/// Why legal fields cannot be recorded for the organization (`forCustomer`
+/// false) or a customer (true).
+let legalFieldProblems (forCustomer: bool) (fields: LegalField list) =
+    [ for f in fields do
+          if not (Text.RegularExpressions.Regex.IsMatch(f.Jurisdiction, "^[A-Z]{2}(-[A-Z0-9]{1,3})?$")) then
+              InvalidJurisdiction f.Jurisdiction
+          if String.IsNullOrWhiteSpace f.Value then BlankLegalField f.Kind
+
+          match f.Kind with
+          | CustomerTaxId when not forCustomer -> NotForThisParty f.Kind
+          | StatutoryWording when forCustomer -> NotForThisParty f.Kind
+          | _ -> ()
+      for (kind, jurisdiction), same in fields |> List.groupBy (fun f -> f.Kind, f.Jurisdiction) do
+          if same.Length > 1 then DuplicateLegalField(kind, jurisdiction) ]
+
 type Customer =
     { Id: string
       Name: string
@@ -102,7 +150,9 @@ type Customer =
       PaymentProfileId: string option
       Active: bool
       /// Their tax status, as recorded (INV-ADJ-005).
-      Tax: CustomerTax }
+      Tax: CustomerTax
+      /// Their jurisdiction-specific legal fields, as recorded (INV-INTL-001).
+      LegalFields: LegalField list }
 
 /// An explicit discount (v0.2 §13). A discount is never a silently lowered
 /// unit price: the price stays and the discount is shown and posted.
@@ -327,7 +377,9 @@ type IssuerSnapshot =
       /// Payment methods shown, for example ACH or check (INV-PAYINST-004).
       PaymentMethods: string list
       /// The profile and version the instructions came from, `id@version`.
-      PaymentProfile: string option }
+      PaymentProfile: string option
+      /// The organization's legal fields as shown at issue (INV-INTL-001).
+      LegalFields: LegalField list }
 
 /// The customer as billed at issue (INV-DATA-004): later changes to the
 /// customer never change an issued invoice.
@@ -336,7 +388,9 @@ type CustomerSnapshot =
       Name: string
       BillingName: string
       BillingAddress: string
-      Email: string }
+      Email: string
+      /// The customer's legal fields as shown at issue (INV-INTL-001).
+      LegalFields: LegalField list }
 
 /// The print template an invoice is rendered with (INV-DOC-007).
 type TemplateRef =
@@ -621,6 +675,11 @@ type Books =
       PaymentProfiles: Map<string, PaymentProfile>
       Deliveries: Map<string, DeliveryAttempt>
       FollowUps: Map<string, FollowUp>
+      /// The organization's legal fields for invoices (INV-INTL-001). None
+      /// until the organization records any; once recorded, the record is
+      /// kept even when it lists none, since financial records are never
+      /// deleted (SUM3-034).
+      LegalFields: LegalField list option
       /// Recurring templates by `id@version` (INV-REC).
       Templates: Map<string, RecurringTemplate> }
 
@@ -642,6 +701,7 @@ let openBooks (ledger: Ledger) =
       PaymentProfiles = Map.empty
       Deliveries = Map.empty
       FollowUps = Map.empty
+      LegalFields = None
       Templates = Map.empty }
 
 let private termsWords =
@@ -662,7 +722,19 @@ let private customerFields: (string * (Customer -> string)) list =
       "terms", _.DefaultTerms >> termsWords
       "payment profile", _.PaymentProfileId >> optional
       "active", (fun c -> if c.Active then "yes" else "no")
-      "tax", (fun c -> $"%A{c.Tax}") ]
+      "tax", (fun c -> $"%A{c.Tax}")
+      "legal fields", (fun c -> c.LegalFields |> List.map (fun f -> $"{legalFieldLabel f.Kind} ({f.Jurisdiction}): {f.Value}") |> String.concat "; ") ]
+
+/// Records the organization's legal fields for its invoices; issued
+/// invoices keep the ones they showed (INV-INTL-001).
+/// The organization's legal fields, none when it has recorded none.
+let organizationLegalFields (books: Books) = books.LegalFields |> Option.defaultValue []
+
+let saveLegalFields (context: Context) (fields: LegalField list) (books: Books) =
+    match legalFieldProblems false fields with
+    | [] when Some fields = books.LegalFields || (fields.IsEmpty && books.LegalFields.IsNone) -> Ok books
+    | [] -> Ok { books with LegalFields = Some fields; Ledger = audit context "legal-fields-saved" "organization" books.Ledger }
+    | problems -> Error problems
 
 let saveCustomer (context: Context) (customer: Customer) (books: Books) =
     let changed =
@@ -998,7 +1070,8 @@ let issue (context: Context) (request: IssueRequest) (books: Books) : Result<Boo
                               Name = customer.Name
                               BillingName = customer.BillingName
                               BillingAddress = customer.BillingAddress
-                              Email = customer.Email }
+                              Email = customer.Email
+                              LegalFields = customer.LegalFields }
                           Template = request.Template
                           Approval =
                             { By = context.Who

@@ -465,7 +465,8 @@ let issuer (manifest: OrganizationManifest) : Summa.Ledger.Invoicing.IssuerSnaps
       Email = manifest.Company.Email
       PaymentInstructions = manifest.Invoices.PaymentInstructions
       PaymentMethods = []
-      PaymentProfile = None }
+      PaymentProfile = None
+      LegalFields = [] }
 
 /// Yearly numbering under the organization's prefix: `INV-2026-0001`.
 let numbering (manifest: OrganizationManifest) = Summa.Ledger.Invoicing.defaultNumbering manifest.Invoices.NumberPrefix

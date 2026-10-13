@@ -27,6 +27,7 @@
 /// | `summa.payment-profile` | `summa.payment-profile/<id>-v<version>` | immutable |
 /// | `summa.follow-up` | `summa.follow-up/<invoice id>` | mutable |
 /// | `summa.recurring-template` | `summa.recurring-template/<id>-v<version>` | immutable |
+/// | `summa.legal-fields` | `summa.legal-fields/organization` | mutable |
 ///
 /// Posted entries, issued invoices, payments, allocations and audit events
 /// are written once. A reversal is a new entry naming the one it reverses,
@@ -84,6 +85,7 @@ let artifactType = recordType "summa.artifact"
 let profileType = recordType "summa.payment-profile"
 let followUpType = recordType "summa.follow-up"
 let templateType = recordType "summa.recurring-template"
+let legalFieldsType = recordType "summa.legal-fields"
 
 /// Every financial record type, with its mutability and whether a record of
 /// it may ever be deleted.
@@ -117,7 +119,8 @@ let types: (RecordType * Mutability * bool) list =
       artifactType, Mutability.Mutable, false
       profileType, Mutability.Immutable, false
       followUpType, Mutability.Mutable, false
-      templateType, Mutability.Immutable, false ]
+      templateType, Mutability.Immutable, false
+      legalFieldsType, Mutability.Mutable, false ]
 
 /// The record types with a schema 2: tax as the person said it (customers,
 /// drafts, invoices, proposals; INV-ADJ-005), and where an action came from
@@ -610,8 +613,46 @@ let private reviewOf (value: Json) : Decoded<DraftReview> =
             | other -> Error $"'{other}' is not a review state"
     }
 
-let private issuer (i: IssuerSnapshot) =
+let private legalFieldKinds =
+    [ TaxRegistrationNumber, "tax-registration-number"
+      VatId, "vat-id"
+      BusinessRegistrationNumber, "business-registration-number"
+      CustomerTaxId, "customer-tax-id"
+      StatutoryWording, "statutory-wording" ]
+
+let private legalField (f: LegalField) =
     Json.objectOf
+        [ "kind", Json.String(legalFieldKinds |> List.find (fun (k, _) -> k = f.Kind) |> snd)
+          "jurisdiction", Json.String f.Jurisdiction
+          "value", Json.String f.Value ]
+
+let private legalFieldOf (value: Json) : Decoded<LegalField> =
+    decode {
+        do! closed [ "jurisdiction"; "kind"; "value" ] value
+        let! name = text "kind" value
+
+        let! kind =
+            match legalFieldKinds |> List.tryFind (fun (_, n) -> n = name) with
+            | Some(k, _) -> Ok k
+            | None -> Error $"'{name}' is not a legal field"
+
+        let! jurisdiction = text "jurisdiction" value
+        let! fieldValue = text "value" value
+        return { Kind = kind; Jurisdiction = jurisdiction; Value = fieldValue }
+    }
+
+/// `legalFields`, written only when there are some, so a record without
+/// them keeps its bytes (INV-INTL-001).
+let private legalFieldsMember (fields: LegalField list) =
+    if fields.IsEmpty then [] else [ "legalFields", Json.Array(fields |> List.map legalField) ]
+
+let private legalFieldsOf (value: Json) : Decoded<LegalField list> =
+    match Codec.tryField "legalFields" value with
+    | None -> Ok []
+    | Some _ -> list "legalFields" legalFieldOf value
+
+let private issuer (i: IssuerSnapshot) =
+    Json.objectOf (
         [ "legalName", Json.String i.LegalName
           "address", Json.String i.Address
           "taxId", optionalString i.TaxId
@@ -619,10 +660,12 @@ let private issuer (i: IssuerSnapshot) =
           "paymentInstructions", Json.String i.PaymentInstructions
           "paymentMethods", Json.Array(i.PaymentMethods |> List.map Json.String)
           "paymentProfile", optionalString i.PaymentProfile ]
+        @ legalFieldsMember i.LegalFields
+    )
 
 let private issuerOf (value: Json) : Decoded<IssuerSnapshot> =
     decode {
-        do! closed [ "address"; "email"; "legalName"; "paymentInstructions"; "paymentMethods"; "paymentProfile"; "taxId" ] value
+        do! closed [ "address"; "email"; "legalFields"; "legalName"; "paymentInstructions"; "paymentMethods"; "paymentProfile"; "taxId" ] value
         let! legal = text "legalName" value
         let! address = text "address" value
         let! tax = optionalText "taxId" value
@@ -630,6 +673,7 @@ let private issuerOf (value: Json) : Decoded<IssuerSnapshot> =
         let! instructions = text "paymentInstructions" value
         let! methods = strings "paymentMethods" value
         let! profile = optionalText "paymentProfile" value
+        let! fields = legalFieldsOf value
 
         return
             { LegalName = legal
@@ -638,32 +682,37 @@ let private issuerOf (value: Json) : Decoded<IssuerSnapshot> =
               Email = email
               PaymentInstructions = instructions
               PaymentMethods = methods
-              PaymentProfile = profile }
+              PaymentProfile = profile
+              LegalFields = fields }
     }
 
 let private customerSnapshot (c: CustomerSnapshot) =
-    Json.objectOf
+    Json.objectOf (
         [ "customerId", Json.String c.CustomerId
           "name", Json.String c.Name
           "billingName", Json.String c.BillingName
           "billingAddress", Json.String c.BillingAddress
           "email", Json.String c.Email ]
+        @ legalFieldsMember c.LegalFields
+    )
 
 let private customerSnapshotOf (value: Json) : Decoded<CustomerSnapshot> =
     decode {
-        do! closed [ "billingAddress"; "billingName"; "customerId"; "email"; "name" ] value
+        do! closed [ "billingAddress"; "billingName"; "customerId"; "email"; "legalFields"; "name" ] value
         let! id = text "customerId" value
         let! name = text "name" value
         let! billingName = text "billingName" value
         let! address = text "billingAddress" value
         let! email = text "email" value
+        let! fields = legalFieldsOf value
 
         return
             { CustomerId = id
               Name = name
               BillingName = billingName
               BillingAddress = address
-              Email = email }
+              Email = email
+              LegalFields = fields }
     }
 
 let private template (t: TemplateRef) =
@@ -1270,7 +1319,12 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                      | SubjectToTax jurisdiction -> [ "tax", Json.objectOf [ "kind", Json.String "subject"; "jurisdiction", optionalString jurisdiction ] ]
                      | TaxExempt(evidence, jurisdiction) ->
                          [ "tax", Json.objectOf [ "kind", Json.String "exempt"; "evidence", Json.String evidence; "jurisdiction", optionalString jurisdiction ] ])
+                  @ legalFieldsMember c.LegalFields
               )
+          // The organization's legal fields, once it has recorded any (INV-INTL-001).
+          match books.LegalFields with
+          | Some fields -> yield keyOf legalFieldsType [] "organization", Json.objectOf [ "fields", Json.Array(fields |> List.map legalField) ]
+          | None -> ()
           for KeyValue(_, d) in books.Drafts ->
               keyOf draftType [] d.DraftId,
               Json.objectOf
@@ -1619,7 +1673,7 @@ let schemaVersionOf (record: FinancialRecord) =
         match value with
         | Json.Object members ->
             members
-            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || key = "change" || key = "deliveryResolved" || key = "postedFor" || key = "lineDetails" || key = "clientReferences" || key = "rounding" || key = "recurring" || recordsTax inner)
+            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || key = "change" || key = "deliveryResolved" || key = "postedFor" || key = "lineDetails" || key = "clientReferences" || key = "rounding" || key = "recurring" || key = "legalFields" || recordsTax inner)
         | Json.Array items -> items |> List.exists recordsTax
         | _ -> false
 
@@ -1661,6 +1715,7 @@ type private Part =
     | DeliveryPart of DeliveryAttempt
     | ProfilePart of PaymentProfile
     | TemplatePart of RecurringTemplate
+    | LegalFieldsPart of LegalField list
     | FollowUpPart of FollowUp
     | ObligationPart of Obligation
     | PaymentPart of Payment
@@ -1749,7 +1804,7 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
         }
     | "summa.customer" ->
         decode {
-            do! closed [ "active"; "billingAddress"; "billingName"; "defaultTerms"; "email"; "id"; "name"; "paymentProfileId"; "tax" ] b
+            do! closed [ "active"; "billingAddress"; "billingName"; "defaultTerms"; "email"; "id"; "legalFields"; "name"; "paymentProfileId"; "tax" ] b
             let! id = text "id" b
             let! name = text "name" b
             let! billingName = text "billingName" b
@@ -1777,6 +1832,8 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                             | other -> Error $"'{other}' is not a tax status"
                     }
 
+            let! fields = legalFieldsOf b
+
             return
                 CustomerPart
                     { Id = id
@@ -1787,7 +1844,14 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
                       DefaultTerms = terms
                       PaymentProfileId = profile
                       Active = active
-                      Tax = tax }
+                      Tax = tax
+                      LegalFields = fields }
+        }
+    | "summa.legal-fields" ->
+        decode {
+            do! closed [ "fields" ] b
+            let! fields = list "fields" legalFieldOf b
+            return LegalFieldsPart fields
         }
     | "summa.draft" ->
         decode {
@@ -2622,7 +2686,8 @@ let private assemble (parts: Part list) : Receivables =
           PaymentProfiles = parts |> List.choose (function ProfilePart p -> Some($"{p.Id}@{p.Version}", p) | _ -> None) |> Map.ofList
           Deliveries = parts |> List.choose (function DeliveryPart d -> Some(d.Id, d) | _ -> None) |> Map.ofList
           FollowUps = parts |> List.choose (function FollowUpPart f -> Some(f.InvoiceId, f) | _ -> None) |> Map.ofList
-          Templates = parts |> List.choose (function TemplatePart t -> Some($"{t.Id}@{t.Version}", t) | _ -> None) |> Map.ofList }
+          Templates = parts |> List.choose (function TemplatePart t -> Some($"{t.Id}@{t.Version}", t) | _ -> None) |> Map.ofList
+          LegalFields = parts |> List.tryPick (function LegalFieldsPart f -> Some f | _ -> None) }
 
     { Books = books
       Payments = parts |> List.choose (function PaymentPart p -> Some(p.Id, p) | _ -> None) |> Map.ofList

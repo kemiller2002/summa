@@ -413,3 +413,41 @@ let ``INV-REC: recurring template versions and the proposals they made round-tri
 
     for expected in [ "records/summa.recurring-template/RET-ABC-v1.json"; "records/summa.recurring-template/RET-ABC-v2.json"; "records/summa.proposal/RET-ABC-20261001.json" ] do
         Assert.Contains(expected, paths)
+
+[<Fact>]
+let ``INV-INTL-001: legal fields round-trip on the organization, the customer and the issued invoice; the organization's record is written once recorded, never deleted`` () =
+    let vat: Summa.Ledger.Invoicing.LegalField = { Kind = Summa.Ledger.Invoicing.VatId; Jurisdiction = "GB"; Value = "GB123456789" }
+    let customerTax: Summa.Ledger.Invoicing.LegalField = { Kind = Summa.Ledger.Invoicing.CustomerTaxId; Jurisdiction = "US-NY"; Value = "NY-1" }
+    let r = full ()
+    let invoice = r.Books.Invoices["INV-001"]
+
+    let books =
+        { r.Books with
+            LegalFields = Some [ vat ]
+            Customers = r.Books.Customers.Add(abc.Id, { r.Books.Customers[abc.Id] with LegalFields = [ customerTax ] })
+            Invoices =
+                r.Books.Invoices.Add(
+                    "INV-001",
+                    { invoice with
+                        Issuer = { invoice.Issuer with LegalFields = [ vat ] }
+                        Customer = { invoice.Customer with LegalFields = [ customerTax ] } }
+                ) }
+
+    let original = { r with Books = books }
+    let loaded = load (stored original)
+    Assert.Empty loaded.Problems
+    Assert.Equal(Some [ vat ], loaded.State.Books.LegalFields)
+    Assert.True((original.Books.Customers = loaded.State.Books.Customers))
+    Assert.True((original.Books.Invoices = loaded.State.Books.Invoices))
+    let paths = stored original |> List.map (fun o -> RelativePath.render o.Path) |> Set.ofList
+    Assert.Contains("records/summa.legal-fields/organization.json", paths)
+    // Records with legal fields are written at schema 2; books without them keep their bytes and no legal-fields record.
+    let records = toRecords original |> ok
+    Assert.Equal(2, records |> List.find (fun x -> RecordId.value x.Key.Id = abc.Id && RecordType.value x.Key.Type = "summa.customer") |> schemaVersionOf)
+    Assert.DoesNotContain("records/summa.legal-fields/organization.json", stored r |> List.map (fun o -> RelativePath.render o.Path))
+    Assert.Equal(1, toRecords r |> ok |> List.find (fun x -> RecordId.value x.Key.Id = abc.Id && RecordType.value x.Key.Type = "summa.customer") |> schemaVersionOf)
+    // Once recorded the record stays, even listing none: financial records are never deleted (SUM3-034).
+    Assert.False(deletable legalFieldsType)
+    let cleared = load (stored { original with Books = { books with LegalFields = Some [] } })
+    Assert.Empty cleared.Problems
+    Assert.Equal(Some [], cleared.State.Books.LegalFields)
