@@ -1639,6 +1639,40 @@
         "name": "step",
         "mechanism": "step-lifecycle"
       }
+    },
+    {
+      "type": "step.started",
+      "occurredAt": "2026-10-13T16:28:48Z",
+      "stepId": "STEP-20261013T162848000Z-16b4fc9f",
+      "actor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": {
+        "type": "ros-cli",
+        "name": "step",
+        "mechanism": "step-lifecycle"
+      }
+    },
+    {
+      "type": "step.blocked",
+      "occurredAt": "2026-10-13T16:30:39Z",
+      "stepId": "STEP-20261013T162848000Z-16b4fc9f",
+      "actor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": {
+        "type": "ros-cli",
+        "name": "step",
+        "mechanism": "step-lifecycle"
+      }
     }
   ],
   "repository": {
@@ -2226,6 +2260,270 @@
           }
         }
       ]
+    },
+    {
+      "schemaVersion": "1.0.0",
+      "stepId": "STEP-20261013T162848000Z-16b4fc9f",
+      "executionId": "EXE-20261013T154712086Z-29141d0f",
+      "workItemId": "WI-0052",
+      "instanceId": "pxi-104a6968d6194313b831c783bfec1502",
+      "sequence": 3,
+      "siblingSequence": 3,
+      "parentStepId": null,
+      "name": "WI-0052 step 3: Ordo 1.6.0 through Conditor 0.10.0 (echelon-current 1.21.0)",
+      "description": null,
+      "classification": [],
+      "status": "blocked",
+      "plannedAt": "2026-10-13T16:28:48Z",
+      "startedAt": "2026-10-13T16:28:48Z",
+      "completedAt": null,
+      "endedAt": null,
+      "updatedAt": "2026-10-13T16:30:39Z",
+      "actor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "identity": {
+        "provider": "anthropic",
+        "model": null,
+        "modelVersion": null,
+        "runtime": "claude-code",
+        "runtimeVersion": null,
+        "sessionId": "7bcb3038-90cc-534e-8e5b-9be62aa1de8c",
+        "conversationId": null,
+        "runId": null,
+        "agentId": null,
+        "subagentId": null,
+        "parentExecutionId": null
+      },
+      "telemetry": {
+        "measurementIds": [],
+        "rawSnapshotIds": [],
+        "checkpoints": [],
+        "deltas": [],
+        "capabilities": [
+          {
+            "metricId": "tokens.input",
+            "status": "supported-unavailable",
+            "reason": "runtime family can expose this metric, but no observation has been ingested for this execution",
+            "discoveredAt": "2026-10-13T15:47:12.086Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "tokens.output",
+            "status": "supported-unavailable",
+            "reason": "runtime family can expose this metric, but no observation has been ingested for this execution",
+            "discoveredAt": "2026-10-13T15:47:12.086Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "tokens.cached_input",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-13T15:47:12.086Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "tokens.cache_read",
+            "status": "supported-unavailable",
+            "reason": "runtime family can expose this metric, but no observation has been ingested for this execution",
+            "discoveredAt": "2026-10-13T15:47:12.086Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "tokens.cache_write",
+            "status": "supported-unavailable",
+            "reason": "runtime family can expose this metric, but no observation has been ingested for this execution",
+            "discoveredAt": "2026-10-13T15:47:12.086Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "tokens.reasoning",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-13T15:47:12.086Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "tokens.tool",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-13T15:47:12.086Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "tokens.total",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-13T15:47:12.086Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "session.tokens.cumulative",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-13T15:47:12.086Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "cost.input",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-13T15:47:12.086Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "cost.output",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-13T15:47:12.086Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "cost.reasoning",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-13T15:47:12.086Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "cost.cache",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-13T15:47:12.086Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "cost.tool_api",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-13T15:47:12.086Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "cost.execution_total",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-13T15:47:12.086Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "cost.session_cumulative",
+            "status": "supported-unavailable",
+            "reason": "runtime family can expose this metric, but no observation has been ingested for this execution",
+            "discoveredAt": "2026-10-13T15:47:12.086Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          }
+        ]
+      },
+      "relationships": {
+        "filesObserved": [],
+        "filesChanged": [],
+        "commits": [],
+        "commands": [],
+        "tests": [],
+        "validations": [],
+        "evidence": [],
+        "decisions": [],
+        "requirements": [],
+        "outcomes": []
+      },
+      "transitions": [
+        {
+          "from": null,
+          "to": "active",
+          "occurredAt": "2026-10-13T16:28:48Z",
+          "reason": null,
+          "actor": {
+            "kind": "agent",
+            "id": "anthropic/claude-code",
+            "provider": "anthropic",
+            "model": "unknown",
+            "runtime": "claude-code"
+          }
+        },
+        {
+          "from": "active",
+          "to": "blocked",
+          "occurredAt": "2026-10-13T16:30:39Z",
+          "reason": "awaiting Conditor 0.10.1 (foundations.json lifecycle pin defect)",
+          "actor": {
+            "kind": "agent",
+            "id": "anthropic/claude-code",
+            "provider": "anthropic",
+            "model": "unknown",
+            "runtime": "claude-code"
+          }
+        }
+      ],
+      "blockedReason": "awaiting Conditor 0.10.1 (foundations.json lifecycle pin defect)"
     }
   ]
 }
