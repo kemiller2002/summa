@@ -30,6 +30,7 @@
     <Compile Include="OperationsViewsTests.fs" />
     <Compile Include="RecurringTests.fs" />
     <Compile Include="InvoiceCommandsTests.fs" />
+    <Compile Include="AuthorizeCleanTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
