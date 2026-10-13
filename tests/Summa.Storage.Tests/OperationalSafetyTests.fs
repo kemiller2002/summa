@@ -73,6 +73,34 @@ let ``every command run is one structured event, with financial problems told ap
     | other -> failwith $"%A{other}"
 
 [<Fact>]
+let ``an import batch and a migration step are events too, with integration failures told apart`` () =
+    let at = DateTimeOffset(2026, 10, 13, 9, 0, 0, TimeSpan.Zero)
+    let summary: Summa.Ledger.ChronaImport.ImportSummary =
+        { Accepted = [ "pub-1" ]; Rejected = [ "pub-2", "invalid" ]; Duplicates = [ "pub-3" ]; Warnings = [] }
+
+    let mixed = Telemetry.importEvent at kevin summary
+    Assert.Equal("chrona-import", mixed.Command)
+    Assert.Equal("corr-ops-1", mixed.CorrelationId)
+    Assert.Equal<string list>([ "pub-1" ], mixed.Entities)
+    Assert.Equal("accepted 1, rejected 1, duplicates 1", mixed.Outcome)
+    // A message refused is an integration failure, not a financial one.
+    Assert.Equal(Telemetry.Technical, mixed.Category)
+    Assert.False(mixed.Duplicate)
+    // The reason a message was refused is not logged: identifiers and counts only.
+    Assert.DoesNotContain("invalid", Telemetry.toJson mixed)
+
+    let replay = Telemetry.importEvent at kevin { summary with Accepted = []; Rejected = [] }
+    Assert.Equal(Telemetry.Succeeded, replay.Category)
+    Assert.True(replay.Duplicate)
+
+    let migrated = Telemetry.stepEvent at kevin "migrate-organization" (Ok 3: Result<int, CommandFailure<string>>)
+    Assert.Equal(("committed", Telemetry.Succeeded), (migrated.Outcome, migrated.Category))
+    let failed = Telemetry.stepEvent at kevin "migrate-organization" (Error(StillConflicted 4): Result<int, CommandFailure<string>>)
+    Assert.Equal(("still-conflicted", Telemetry.Technical), (failed.Outcome, failed.Category))
+    let unsafe = Telemetry.stepEvent at kevin "migrate-organization" (Error(Unstorable []): Result<int, CommandFailure<string>>)
+    Assert.Equal(Telemetry.Financial, unsafe.Category)
+
+[<Fact>]
 let ``storage failures are technical, and the correlation id reaches the audit trail`` () =
     let store, ns = founded ()
     let events = Collections.Generic.List<Telemetry.CommandEvent>()
@@ -217,6 +245,34 @@ let ``secrets stay out of configuration, and transport is https`` () =
     // An exchange over plain http, anywhere but this machine, is refused.
     Assert.True(Result.isError (Deployment.parse (config (identity.Replace("https://fides.test", "http://fides.test")))))
 
+[<Fact>]
+let ``no source file or committed configuration holds a credential`` () =
+    let root =
+        Seq.unfold (Option.map (fun (d: IO.DirectoryInfo) -> d, Option.ofObj d.Parent)) (Some(IO.DirectoryInfo AppContext.BaseDirectory))
+        |> Seq.find (fun d -> IO.File.Exists(IO.Path.Combine(d.FullName, "Summa.sln")))
+
+    let generated (path: string) =
+        [ "/bin/"; "/obj/"; "/node_modules/" ] |> List.exists (fun part -> path.Replace('\\', '/').Contains part)
+
+    let files =
+        [ "src", "*.fs"; "app", "*.*"; "web-kernel", "*.js"; "deploy", "*.*"; ".github", "*.yml" ]
+        |> List.collect (fun (folder, pattern) ->
+            let dir = IO.Path.Combine(root.FullName, folder)
+            if IO.Directory.Exists dir then IO.Directory.GetFiles(dir, pattern, IO.SearchOption.AllDirectories) |> List.ofArray else [])
+        |> List.append (root.GetFiles "*.json" |> Array.map (fun f -> f.FullName) |> List.ofArray)
+        |> List.filter (generated >> not)
+
+    Assert.NotEmpty files
+
+    let found =
+        files
+        |> List.collect (fun path ->
+            Sensitive.scan (IO.File.ReadAllText path)
+            |> List.filter (function Sensitive.Credential _ -> true | _ -> false)
+            |> List.map (fun finding -> IO.Path.GetRelativePath(root.FullName, path), Sensitive.describe finding))
+
+    Assert.Empty found
+
 // ---- Integrations, deletion and retention (SUM3-031..035) -------------------------------------
 
 [<Fact>]
@@ -227,7 +283,13 @@ let ``integration states: a delivery failure leaves the invoice issued and may b
     Assert.Equal(Integrations.PermanentFailure "permanent", Integrations.ofDelivery (DeliveryFailed "permanent"))
     Assert.Equal(Integrations.PermanentFailure "mailbox does not exist", Integrations.ofDelivery (Bounced "mailbox does not exist"))
     Assert.Equal(Integrations.Pending, Integrations.ofQueued EntryState.Pending)
+    Assert.Equal(Integrations.Pending, Integrations.ofQueued (EntryState.InFlight "t1"))
+    Assert.Equal(Integrations.Succeeded, Integrations.ofQueued (EntryState.Synchronized "t2"))
+    // Someone else's change or an unknown outcome is decided or reconciled again, never lost.
+    Assert.True(match Integrations.ofQueued (EntryState.Conflicted [ "records/a.json" ]) with Integrations.Retryable _ -> true | _ -> false)
+    Assert.True(match Integrations.ofQueued (EntryState.OutcomeUnknown "t1") with Integrations.Retryable _ -> true | _ -> false)
     Assert.Equal(Integrations.PermanentFailure "refused", Integrations.ofQueued (EntryState.Refused "refused"))
+    Assert.Equal(Integrations.PermanentFailure "given up", Integrations.ofQueued (EntryState.Abandoned "given up"))
 
 [<Fact>]
 let ``financial records are never deleted; only a draft may be`` () =
