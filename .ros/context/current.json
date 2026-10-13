@@ -2184,20 +2184,20 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "d26db6c6a1fa7443e89e5309",
-        "recordedAt": "2026-10-13T12:50:14Z",
+        "id": "fe4380368b25a4d8ec305282",
+        "recordedAt": "2026-10-13T13:36:18Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
         "repository": "summa",
-        "branch": "feat/wi-0029-recurring",
-        "commit": "83c64c4413b05d8ee5397ede061aef0cac3d2254",
+        "branch": "feat/wi-0029-architecture",
+        "commit": "e4011f58ee020075e1c442ad2949d83c59105a3b",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0029-recurring",
-        "remoteCommit": "83c64c4413b05d8ee5397ede061aef0cac3d2254",
-        "summary": "INV-REC: recurring templates (immutable versions) make proposals for review, never drafts or invoices; one proposal id per scheduled occurrence so retries, restarts and catch-up never duplicate; accepted recurring proposals take the version's terms and delivery defaults (DF-SUMMA-2026-0032); 001-004 tested",
-        "nextAction": "INV-ARCH, INV-INTL-001, INV-CONTRACT-002, SUM3-011, SUM2-031, served import preview, integration state in the app, export handling (SUM3-024), SUM3-006 scheduling (runs generateDue), template screen; editor inputs for line details and references; INV-OPS-006 required PO and payment promise",
+        "remoteBranch": "feat/wi-0029-architecture",
+        "remoteCommit": "e4011f58ee020075e1c442ad2949d83c59105a3b",
+        "summary": "INV-ARCH: each of 001-010 asserted by a test named by its id, where its owner shows (records, domain, repository and page files); outside edits of issued records are detected and block rather than claimed prevented (DF-SUMMA-2026-0034)",
+        "nextAction": "INV-INTL-001, INV-CONTRACT-002, SUM3-011, SUM2-031, served import preview, integration state in the app, export handling (SUM3-024), SUM3-006 scheduling (runs generateDue), template screen; editor inputs for line details and references; INV-OPS-006 required PO and payment promise slices",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"

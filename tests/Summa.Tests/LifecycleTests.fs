@@ -335,3 +335,27 @@ let ``DEL-P-007: a person may resolve a delivery problem explicitly, and a later
     // A later failure is a new problem.
     let again = resend asClerk clerkOnly "DL-2" "DL-1" resolved |> ok |> recordOutcome context "DL-2" (DeliveryFailed "smtp 421") None |> ok
     Assert.Equal<(string * string) list>([ "INV-001", "the last delivery failed" ], attention again)
+
+// ---- Architectural ownership (INV-ARCH) -------------------------------------------------------
+
+[<Fact>]
+let ``INV-ARCH-004: invoice behaviour follows Ordo's principles: explicit state, legal transitions as actions, obligations, version checks and evidence`` () =
+    let r, invoice = issued ()
+    // Explicit state, derived from facts rather than stored as a flag.
+    Assert.Equal(Issued, status r invoice)
+    // Capabilities expose exactly the legal actions; anything else is refused by the command itself.
+    actionsMatchCommands r
+    Assert.Contains(VoidIt, actions r invoice)
+    let voidRequest: Corrections.VoidRequest = { InvoiceId = "INV-001"; Reason = "Duplicate"; Date = DateOnly(2026, 10, 8); JournalEntryId = "JE-VOID-1" }
+    let voided = Corrections.voidInvoice context voidRequest r |> ok
+    Assert.Empty(actions voided voided.Books.Invoices["INV-001"])
+    Assert.True(Result.isError (Corrections.voidInvoice context { voidRequest with JournalEntryId = "JE-VOID-2"; Reason = "Again" } voided))
+    // Unresolved work is an obligation.
+    let obligation = r.Books.Obligations |> Map.toList |> List.map snd |> List.find (fun (o: Obligation) -> o.Source = "invoice:INV-001")
+    Assert.Equal((invoice.Total, invoice.DueDate, false), (obligation.OriginalAmount, obligation.DueDate, obligation.Cancelled))
+    // A version check: issuing a version other than the one reviewed is refused, and nothing changes.
+    let saved = start (saveDraft context { draftFor [ consulting 1000L 10000L ] with DraftId = "D-2" } (baseBooks ()) |> ok)
+    let reviewed = submitForReview context { request with DraftId = "D-2" } saved |> ok
+    Assert.True(Result.isError (issueInvoice context { request with DraftId = "D-2"; ExpectedVersion = 9 } reviewed))
+    // Evidence: every transition leaves an audit event naming who did it.
+    Assert.Contains(voided.Books.Ledger.Audit, fun a -> a.Subject = "INV-001" && a.What = "invoice-voided" && a.Who = context.Who)

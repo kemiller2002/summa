@@ -172,3 +172,65 @@ let ``a migration must keep identities, balances and invariants`` () =
     let problems = Verification.checkMigration none before dropped
     Assert.Contains(MigrationUnsafe "the trial balance changed, and the migration does not declare an accounting correction", problems)
     Assert.Contains(MigrationUnsafe "record JE-000004 has no successor", problems)
+
+// ---- Architectural ownership (INV-ARCH) -------------------------------------------------------
+
+[<Fact>]
+let ``INV-ARCH-001: Summa's own records hold the invoice's financial state, and a change made outside Summa is never trusted`` () =
+    // Each fact the requirement names is a Summa record type; what was issued or posted is written once.
+    let kinds = FinancialRecords.types |> List.map (fun (t, m, _) -> RecordType.value t, m) |> Map.ofList
+
+    for name in
+        [ "summa.invoice" // identity, number, issuance, monetary facts, lines, terms, due date, rounding
+          "summa.obligation" // receivable obligation
+          "summa.entry" // accounting consequences
+          "summa.credit"
+          "summa.credit-memo"
+          "summa.application"
+          "summa.write-off"
+          "summa.allocation" // settlement
+          "summa.invoice-void" // correction history
+          "summa.audit" // audit history
+          "summa.artifact" ] do // artifact metadata
+        Assert.True(kinds.ContainsKey name, name)
+
+    for name in [ "summa.invoice"; "summa.entry"; "summa.audit"; "summa.credit-memo"; "summa.write-off"; "summa.invoice-void"; "summa.allocation" ] do
+        Assert.Equal(Mutability.Immutable, kinds[name])
+
+    // An issued invoice rewritten on GitHub by hand is an integrity failure, reported and blocking.
+    let store, ns = populated ()
+    let path = "records/summa.invoice/2026/INV-001.json"
+    let original = contentOf store ns path
+    let edited = original.Replace("Architecture assessment", "Architecture review")
+    Assert.NotEqual<string>(original, edited)
+    store.WriteExternally(ns.Location, file ns path, Some edited)
+    let problems = Verification.audit store.Provider ns |> Async.RunSynchronously |> Support.ok
+    Assert.Contains("SUMMA.INTEGRITY.IMMUTABLE_CHANGED", problems |> List.map code)
+    Assert.NotEmpty(Verification.blocking problems)
+
+[<Fact>]
+let ``INV-ARCH-009: GitHub holds the records; the books, the projection and any copy are rebuilt from them`` () =
+    let store, ns = populated ()
+    // Everything Summa holds is read from the organization's folder on the provider.
+    let read = Commands.readAll store.Provider ns |> Async.RunSynchronously |> Support.ok
+
+    let financial =
+        read
+        |> List.filter (fun o ->
+            match (RelativePath.render o.Path).Split '/' with
+            | [| "records"; kind; _ |]
+            | [| "records"; kind; _; _ |]
+            | [| "records"; kind; _; _; _ |] -> RecordType.create kind |> Result.toOption |> Option.exists FinancialRecords.isFinancial
+            | _ -> false)
+
+    Assert.NotEmpty financial
+    // The books are rebuilt from those records alone, in any order, alike.
+    let loaded = FinancialRecords.load financial
+    Assert.Empty loaded.Problems
+    let again = FinancialRecords.load (List.rev financial)
+    Assert.True((loaded.State = again.State))
+    Assert.True(loaded.State.Books.Invoices.ContainsKey "INV-001")
+    // The receivables projection is derived: rebuilt from the store, it agrees with the books.
+    let meta = Commands.metadata kevin "index" "op-index-0001" |> Support.ok
+    let index, _ = Derived.rebuild store.Provider ns meta Projection.definition |> Async.RunSynchronously |> Support.ok
+    Assert.Empty(Reconciliation.agreesWithIndex "ar" loaded.State index)
