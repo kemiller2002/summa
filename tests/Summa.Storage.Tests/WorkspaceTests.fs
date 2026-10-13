@@ -217,3 +217,62 @@ let ``founding writes the starting chart as the organization's accounts, with on
 
         Assert.DoesNotContain(ledger.Audit, fun a -> a.What = "account-saved")
     | other -> failwith $"%A{other}"
+
+/// A provider as the browser's bridge makes it: every read and listing waits
+/// until a "kernel" answers it, one answer at a time, on one thread.
+type private Parked(inner: StorageProvider) =
+    let waiting = System.Collections.Generic.Queue<unit -> unit>()
+
+    let park (work: Async<'a>) : Async<'a> =
+        Async.FromContinuations(fun (resume, _, _) ->
+            let answer = Async.RunSynchronously work
+            waiting.Enqueue(fun () -> resume answer))
+
+    member _.Provider: StorageProvider =
+        { inner with
+            Read = fun ns path -> park (inner.Read ns path)
+            List = fun ns path -> park (inner.List ns path) }
+
+    member _.InFlight = waiting.Count
+
+    /// The host's turn: a resumption waits for the driver, like the bridge's.
+    member _.Turn: Commands.Turn = { Defer = fun resume -> waiting.Enqueue resume }
+
+    /// Answers until nothing waits; the most requests ever waiting at once.
+    member _.Drive() =
+        let mutable most = waiting.Count
+
+        while waiting.Count > 0 do
+            (waiting.Dequeue()) ()
+            most <- max most waiting.Count
+
+        most
+
+[<Fact>]
+let ``reads run at most six at a time and finish within the answers, on the caller's thread`` () =
+    let store = founded ()
+    let ns = Storage.organizationNamespace production (bindingOf production) "org_acme" |> ok
+    let parked = Parked store.Provider
+    let thread = System.Threading.Thread.CurrentThread.ManagedThreadId
+    let mutable result = None
+
+    Async.StartWithContinuations(
+        Commands.readAllKnowing parked.Turn Map.empty parked.Provider ns,
+        (fun r -> result <- Some(r, System.Threading.Thread.CurrentThread.ManagedThreadId)),
+        (fun ex -> raise ex),
+        ignore
+    )
+
+    let most = parked.Drive()
+
+    // Done by the time the last answer is handled, on this thread: no hop to the thread pool.
+    match result with
+    | Some(Ok objects, finishedOn) ->
+        Assert.Equal<int>(thread, finishedOn)
+        Assert.True(objects.Length >= Organization.startingChart.Length)
+        Assert.InRange(most, 2, Commands.ReadWidth)
+    | other -> failwith $"not finished within the answers: %A{other}"
+
+    // The same objects as read one by one.
+    let direct = Commands.readAll store.Provider ns |> Async.RunSynchronously |> ok
+    Assert.Equal<string list>(direct |> List.map (fun o -> RelativePath.render o.Path) |> List.sort, (match result with Some(Ok o, _) -> o | _ -> []) |> List.map (fun o -> RelativePath.render o.Path) |> List.sort)

@@ -98,11 +98,10 @@ signInTest("books founded on GitHub can be invoiced at once: their accounts are 
   await page.click("#issue-invoice");
   await expect(page.locator("#invoice-total")).toHaveText("1,000.00 USD");
   // Shown at once; committed once GitHub has taken the draft and then the
-  // issue, in order. Each command still re-reads the whole folder before it
-  // decides (SUM0-034, WI-0029), measured at 3 to 7 seconds a command here, so
-  // the issue lands about ten seconds after the draft was reviewed.
+  // issue, in order. Measured at about 1.1 s for the draft and 2.3 s for the
+  // issue (WI-0029, SUM0-034), so the issue lands about 3.4 s after review.
   await expect
-    .poll(() => Object.keys(headFiles(github.current())).some((p) => p.startsWith(`${FOLDER}/records/summa.invoice/`)), { timeout: 30_000 })
+    .poll(() => Object.keys(headFiles(github.current())).some((p) => p.startsWith(`${FOLDER}/records/summa.invoice/`)), { timeout: 10_000 })
     .toBe(true);
   expect(history(github.current())[0].message).toMatch(/^summa: issue an invoice\n/);
 });

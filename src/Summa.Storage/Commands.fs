@@ -106,57 +106,171 @@ let folders: RelativePath list =
     @ [ RelativePath.render MemberRecord.folder ]
     |> List.choose (RelativePath.parse >> Result.toOption)
 
-/// Runs the steps in order, one after another, on the caller's thread: no
-/// thread pool, so a single-threaded host (the browser) sees each step
-/// finish within the message that started it. The first failure stops it.
-let private inOrder (steps: Async<Result<'a list, 'e>> list) : Async<Result<'a list, 'e>> =
-    let rec go (remaining: Async<Result<'a list, 'e>> list) (acc: 'a list) =
+/// Where a fork-join resumes the computation that waits on it. F#'s
+/// `Async.FromContinuations` hands a continuation called from inside a
+/// running async to the thread pool, which in the browser runs only after
+/// the page has replied, so the work would wait for the next message. A
+/// host with one thread defers the resumption to its own turn instead,
+/// outside any running async: the page's bridge runs it right after the
+/// answer that finished the last step. Elsewhere it resumes at once.
+[<NoEquality; NoComparison>]
+type Turn = { Defer: (unit -> unit) -> unit }
+
+module Turn =
+    let now: Turn = { Defer = fun resume -> resume () }
+
+/// At most this many reads in flight at once (WI-0029, SUM0-034; the same
+/// bound as Chrona's WI-0077).
+[<Literal>]
+let ReadWidth = 6
+
+/// Runs the steps at most `width` at a time and gives their results in the
+/// order given. Each step is started in turn on the caller's thread, never on
+/// the thread pool, so a single-threaded host (the browser, whose bridge
+/// parks every request until the kernel answers it) sees each step continue
+/// within the message that answers it. A step that fails stops new steps
+/// from starting; the first failure in order is the result once the running
+/// ones have settled. This is fork-join machinery at the edge, so it holds
+/// its bookkeeping in local mutable state; everything it runs stays pure.
+let private bounded (turn: Turn) (width: int) (steps: Async<Result<'a list, 'e>> list) : Async<Result<'a list, 'e>> =
+    let all = Array.ofList steps
+
+    if all.Length = 0 then
+        async.Return(Ok [])
+    else
+        Async.FromContinuations(fun (complete, fail, _) ->
+            let gate = obj ()
+            let results: Choice<Result<'a list, 'e>, exn> option array = Array.create all.Length None
+            let mutable next = 0
+            let mutable running = 0
+            let mutable stopped = false
+            let mutable launching = false
+            let mutable pending = false
+            let mutable finished = false
+
+            let outcome () =
+                let settled = results |> Array.choose id
+
+                match settled |> Array.tryPick (function Choice2Of2 ex -> Some ex | _ -> None) with
+                | Some ex -> Choice2Of2 ex
+                | None ->
+                    match settled |> Array.tryPick (function Choice1Of2(Error e) -> Some e | _ -> None) with
+                    | Some e -> Choice1Of2(Error e)
+                    | None -> Choice1Of2(Ok(settled |> Array.toList |> List.collect (function Choice1Of2(Ok v) -> v | _ -> [])))
+
+            let rec settle (i: int) (result: Choice<Result<'a list, 'e>, exn>) =
+                let done' =
+                    lock gate (fun () ->
+                        results[i] <- Some result
+                        running <- running - 1
+
+                        match result with
+                        | Choice1Of2(Ok _) -> ()
+                        | _ -> stopped <- true
+
+                        if not finished && running = 0 && (stopped || next >= all.Length) then
+                            finished <- true
+                            true
+                        else
+                            false)
+
+                if done' then
+                    turn.Defer(fun () ->
+                        match outcome () with
+                        | Choice1Of2 value -> complete value
+                        | Choice2Of2 ex -> fail ex)
+                else
+                    launch ()
+
+            and launch () =
+                // Trampolined: a step that completes at once does not recurse.
+                let enter = lock gate (fun () -> if launching then (pending <- true; false) else (launching <- true; true))
+
+                if enter then
+                    let mutable again = true
+
+                    while again do
+                        let start =
+                            lock gate (fun () ->
+                                pending <- false
+
+                                if not stopped && running < width && next < all.Length then
+                                    let i = next
+                                    next <- next + 1
+                                    running <- running + 1
+                                    Some i
+                                else
+                                    None)
+
+                        match start with
+                        | Some i -> Async.StartWithContinuations(all[i], (fun r -> settle i (Choice1Of2 r)), (fun ex -> settle i (Choice2Of2 ex)), (fun c -> settle i (Choice2Of2(c :> exn))))
+                        | None -> again <- lock gate (fun () -> if pending then true else (launching <- false; false))
+
+            launch ())
+
+/// Every object under the folders, recursively, read at most `ReadWidth` at a
+/// time. A file whose listing shows the same revision as an object in `known`
+/// is that object (a revision names one content), so only what changed is
+/// read (SUM0-034). A listing the provider cut short is a failure: what was
+/// not read was not verified.
+let readAllKnowing (turn: Turn) (known: Map<string, StoredObject>) (provider: StorageProvider) (ns: Namespace) : Async<Result<StoredObject list, CommandFailure<'e>>> =
+    let read (path: RelativePath) =
         async {
-            match remaining with
-            | [] -> return Ok acc
-            | step :: rest ->
-                match! step with
-                | Error failure -> return Error failure
-                | Ok found -> return! go rest (acc @ found)
+            match! provider.Read ns path with
+            | Ok(ReadOutcome.Found stored) -> return Ok [ stored ]
+            | Ok ReadOutcome.Absent -> return Ok []
+            // A member erased (ARCA-INT-005) is no longer a member.
+            // An erased financial record would change history:
+            // the books are not kept on without it.
+            | Ok(ReadOutcome.Erased erased) when RelativePath.render(erased.Path).Contains "/members/" -> return Ok []
+            | Ok(ReadOutcome.Erased erased) ->
+                return
+                    Error(
+                        Untrustworthy
+                            [ InvalidStoredRecord(RelativePath.render erased.Path, "it was erased; Summa does not keep books with an erased financial record") ]
+                    )
+            | Error failure -> return Error(StorageFailed failure)
         }
 
-    go steps []
-
-/// Every object under the folders, recursively. A listing the provider cut
-/// short is a failure: what was not read was not verified.
-let readAll (provider: StorageProvider) (ns: Namespace) : Async<Result<StoredObject list, CommandFailure<'e>>> =
-    let rec walk (folder: RelativePath) : Async<Result<StoredObject list, CommandFailure<'e>>> =
+    let list (folder: RelativePath) : Async<Result<ListEntry list, CommandFailure<'e>>> =
         async {
             match! provider.List ns folder with
             | Error failure -> return Error(StorageFailed failure)
             | Ok listing when not listing.Complete -> return Error(Untrustworthy [ InvalidStoredRecord(RelativePath.render folder, "the listing was incomplete") ])
-            | Ok listing ->
-                return!
-                    listing.Entries
-                    |> List.map (fun entry ->
-                        if entry.IsFolder then
-                            walk entry.Path
-                        else
-                            async {
-                                match! provider.Read ns entry.Path with
-                                | Ok(ReadOutcome.Found stored) -> return Ok [ stored ]
-                                | Ok ReadOutcome.Absent -> return Ok []
-                                // A member erased (ARCA-INT-005) is no longer a member.
-                                // An erased financial record would change history:
-                                // the books are not kept on without it.
-                                | Ok(ReadOutcome.Erased erased) when RelativePath.render(erased.Path).Contains "/members/" -> return Ok []
-                                | Ok(ReadOutcome.Erased erased) ->
-                                    return
-                                        Error(
-                                            Untrustworthy
-                                                [ InvalidStoredRecord(RelativePath.render erased.Path, "it was erased; Summa does not keep books with an erased financial record") ]
-                                        )
-                                | Error failure -> return Error(StorageFailed failure)
-                            })
-                    |> inOrder
+            | Ok listing -> return Ok listing.Entries
         }
 
-    folders |> List.map walk |> inOrder
+    // Folder by folder, one level at a time, so no more than `ReadWidth`
+    // requests are ever in flight; the files in the order they were listed.
+    let rec files (level: RelativePath list) : Async<Result<ListEntry list, CommandFailure<'e>>> =
+        async {
+            if level.IsEmpty then
+                return Ok []
+            else
+                match! level |> List.map list |> bounded turn ReadWidth with
+                | Error failure -> return Error failure
+                | Ok entries ->
+                    match! files (entries |> List.filter _.IsFolder |> List.map _.Path) with
+                    | Error failure -> return Error failure
+                    | Ok deeper -> return Ok((entries |> List.filter (fun e -> not e.IsFolder)) @ deeper)
+        }
+
+    async {
+        match! files folders with
+        | Error failure -> return Error failure
+        | Ok entries ->
+            return!
+                entries
+                |> List.map (fun entry ->
+                    match known.TryFind(RelativePath.render entry.Path) with
+                    | Some stored when stored.Revision = entry.Revision -> async.Return(Ok [ stored ])
+                    | _ -> read entry.Path)
+                |> bounded turn ReadWidth
+    }
+
+/// Every object under the folders, read afresh.
+let readAll (provider: StorageProvider) (ns: Namespace) : Async<Result<StoredObject list, CommandFailure<'e>>> =
+    readAllKnowing Turn.now Map.empty provider ns
 
 let private arcaKind =
     function

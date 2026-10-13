@@ -105,8 +105,11 @@ let decide
                     else
                         Unusable loaded.Problems
 
-/// Opens an organization's books for `actorId` (a `github:<id>` principal).
-let openBooks
+/// Opens an organization's books for `actorId` (a `github:<id>` principal),
+/// reading only what changed since `known` (SUM0-034).
+let openBooksKnowing
+    (turn: Commands.Turn)
+    (known: Map<string, StoredObject>)
     (provider: StorageProvider)
     (config: DeploymentConfig)
     (binding: ApplicationBinding)
@@ -131,7 +134,7 @@ let openBooks
                 match! provider.NamespaceState ns with
                 | Error failure -> return Error(Commands.StorageFailed failure)
                 | Ok token ->
-                    match! Commands.readAll provider ns with
+                    match! Commands.readAllKnowing turn known provider ns with
                     | Error failure -> return Error failure
                     | Ok objects ->
                         return
@@ -141,6 +144,10 @@ let openBooks
                                 | other -> other
                             )
     }
+
+/// Opens an organization's books for `actorId`, reading everything afresh.
+let openBooks provider config binding organization actorId =
+    openBooksKnowing Commands.Turn.now Map.empty provider config binding organization actorId
 
 /// The starting chart as the organization's own account records
 /// (DF-SUMMA-2026-0024): the accounts the manifest names exist from the
