@@ -41,6 +41,7 @@ this file.
 | Arca (echelon-current 1.19.0); pinned reads adopted | 0.5.0 | `5cef90f` | 2026-10-13 | WI-0050, PR #77 |
 | Forma and Folio declared through Conditor 0.9.0 (echelon-current 1.19.0) | Forma 0.5.0, Folio 0.3.0 | `15289cf` | 2026-10-13 | WI-0052, PR #86 |
 | Forma and Folio through Conditor 0.10.0 (echelon-current 1.20.0) | Forma 0.6.1, Folio 0.4.0 | `8b3c524` | 2026-10-13 | WI-0052, PR #87 |
+| Ordo through Conditor 0.10.1 (echelon-current 1.21.0) | Ordo 1.6.0 | `32fe1ad` | 2026-10-13 | WI-0052, PR #92 |
 | Visual Engineering | 1.0.1 (in the Conditor set since `f6cdac5`); context 0.1.0 synced in `7718b18` | — | — | — |
 
 ## Not adopted in this repository (as of 2026-10-13)
