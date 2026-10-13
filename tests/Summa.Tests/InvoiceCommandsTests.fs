@@ -1,4 +1,4 @@
-/// The external invoice command contract, `summa.invoice-commands` 1.0
+/// The external invoice command contract, `summa.invoice-commands` 1.1
 /// (WI-0029 slice 15, INV-CONTRACT-002): versioned requests and responses,
 /// golden vectors, and each command run as a domain operation.
 module Summa.Tests.InvoiceCommandsTests
@@ -26,7 +26,7 @@ let private isResponse (text: string) = text.Contains "\"kind\":\"response\""
 [<Fact>]
 let ``INV-CONTRACT-002: every valid vector decodes, and encodes back to exactly its bytes`` () =
     let valid = vectors "valid"
-    Assert.True(valid.Length >= 7)
+    Assert.True(valid.Length >= 10)
 
     for name, text in valid do
         let again =
@@ -42,7 +42,7 @@ let ``INV-CONTRACT-002: every valid vector decodes, and encodes back to exactly 
 [<Fact>]
 let ``INV-CONTRACT-002: every invalid vector is refused at the path it names`` () =
     let invalid = vectors "invalid"
-    Assert.True(invalid.Length >= 12)
+    Assert.True(invalid.Length >= 16)
 
     for name, text in invalid do
         let path = name.Split('@', 2)[1]
@@ -57,7 +57,7 @@ let ``INV-CONTRACT-002: every invalid vector is refused at the path it names`` (
 [<Fact>]
 let ``INV-CONTRACT-002: a newer minor of major 1 is read, ignoring what it adds; the response names the request it answers`` () =
     let newer =
-        """{"contract":"summa.invoice-commands","kind":"request","message":{"command":{"draftId":"D-1","expectedVersion":1,"kind":"submit-for-review","note":"added in 1.1"},"priority":"high","requestId":"req-9"},"version":"1.1"}"""
+        """{"contract":"summa.invoice-commands","kind":"request","message":{"command":{"draftId":"D-1","expectedVersion":1,"kind":"submit-for-review","note":"added in 1.2"},"priority":"high","requestId":"req-9"},"version":"1.2"}"""
 
     Assert.Equal(Ok { RequestId = "req-9"; Command = SubmitForReview("D-1", 1) }, decodeRequest newer)
     let response = { RequestId = "req-9"; Outcome = Conflict 2 }
@@ -67,7 +67,10 @@ let ``INV-CONTRACT-002: a newer minor of major 1 is read, ignoring what it adds;
 let private host: Host =
     { Accounts = { TimeRevenue = "revenue"; FeeRevenue = "revenue"; ReimbursedExpenses = "revenue" }
       IssueRequest = fun draftId version date -> { request with DraftId = draftId; ExpectedVersion = version; IssueDate = date }
-      VoidEntryId = fun invoiceId -> $"JE-VOID-{invoiceId}" }
+      VoidEntryId = fun invoiceId -> $"JE-VOID-{invoiceId}"
+      CashAccountId = "cash"
+      ReceivableAccountId = "ar"
+      AllocationEntryId = fun allocationId -> $"JE-AL-{allocationId}" }
 
 let private run (r: Receivables) (text: string) =
     match decodeRequest text with
@@ -122,3 +125,41 @@ let ``INV-CONTRACT-002: requests run as domain commands; a stale version is a co
     match unknown.Outcome with
     | Refused reasons -> Assert.All(reasons, fun r -> Assert.Equal("proposal-refused", r.Code))
     | other -> failwith $"%A{other}"
+
+// ---- Payments over the contract (SUM3-011, version 1.1) -----------------------------------------
+
+[<Fact>]
+let ``SUM3-011: payment operations have explicit, versioned commands; older messages keep their version and bytes`` () =
+    let payment: Payment = { Id = "PAY-1"; CustomerId = abc.Id; DateReceived = DateOnly(2026, 10, 20); Amount = usd 100000L; Method = Ach; Reference = "ACH-1"; Memo = None }
+    // Each message is written at the oldest version that defines it.
+    Assert.Contains("\"version\":\"1.0\"", message "r" (SubmitForReview("D-1", 1)))
+    Assert.Contains("\"version\":\"1.1\"", message "r" (RecordPayment payment))
+    Assert.Contains("\"version\":\"1.1\"", message "r" (AllocatePayment("AL-1", "PAY-1", "INV-001", usd 100000L)))
+    Assert.Equal(Ok { RequestId = "r"; Command = RecordPayment payment }, decodeRequest (message "r" (RecordPayment payment)))
+    // A payment command claiming version 1.0 is refused at its kind, never guessed at.
+    let claimed = (message "r" (RecordPayment payment)).Replace("\"version\":\"1.1\"", "\"version\":\"1.0\"")
+
+    match decodeRequest claimed with
+    | Error problems -> Assert.Contains(problems, fun p -> p.Path = "$.message.command.kind" && p.Message.Contains "1.1")
+    | Ok _ -> failwith "a 1.0 message carried a 1.1 command"
+
+[<Fact>]
+let ``SUM3-011: a payment is recorded and allocated through the contract; an over-allocation is refused and changes nothing`` () =
+    let issued, invoice = issue context request (withDraft (draftFor [ consulting 10000L 15000L ])) |> ok
+    let r = start issued
+    let payment: Payment = { Id = "PAY-1"; CustomerId = abc.Id; DateReceived = DateOnly(2026, 10, 20); Amount = usd 100000L; Method = Check; Reference = "CHK-1001"; Memo = Some "October" }
+    let recorded, response = run r (message "req-p" (RecordPayment payment))
+    Assert.Equal(Accepted { Kind = "payment"; Id = "PAY-1"; Version = None; Number = None }, response.Outcome)
+    Assert.Equal(payment, recorded.Payments["PAY-1"])
+    let allocated, applied = run recorded (message "req-a" (AllocatePayment("AL-1", "PAY-1", invoice.InvoiceId, usd 100000L)))
+    Assert.Equal(Accepted { Kind = "allocation"; Id = "AL-1"; Version = None; Number = None }, applied.Outcome)
+    Assert.Equal(usd 50000L, outstanding allocated invoice)
+    Assert.True(allocated.Books.Ledger.Entries.ContainsKey "JE-AL-AL-1")
+    // More than the payment has left is refused, and the books are unchanged.
+    let same, refused = run allocated (message "req-b" (AllocatePayment("AL-2", "PAY-1", invoice.InvoiceId, usd 100L)))
+
+    match refused.Outcome with
+    | Refused [ reason ] -> Assert.Equal("allocation-refused", reason.Code)
+    | other -> failwith $"%A{other}"
+
+    Assert.True((same = allocated))
