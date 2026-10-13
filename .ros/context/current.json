@@ -2184,20 +2184,20 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "384542b979935ef39fefece9",
-        "recordedAt": "2026-10-13T11:05:37Z",
+        "id": "ffd895cf1102410159e94f2f",
+        "recordedAt": "2026-10-13T11:13:35Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
         "repository": "summa",
-        "branch": "feat/wi-0029-failures",
-        "commit": "675d067bf822cf3d6520de1aaee519845ffb20ea",
+        "branch": "feat/wi-0029-security",
+        "commit": "7a7e73bb32ae3dff8879007e07d08d99187d12a6",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0029-failures",
-        "remoteCommit": "675d067bf822cf3d6520de1aaee519845ffb20ea",
-        "summary": "INV-FAIL: every command failure classified (six classes), refusals say what is unchanged, whether retry is safe and what to do (DF-SUMMA-2026-0026)",
-        "nextAction": "INV-SEC capabilities, INV-CONTRACT-002, SUM3-011, SUM2-031, served import preview, integration state in the app, export handling, SUM3-006 scheduling, INV OPS/PERF/EXP/FX/INTL/ACC/REC/SET/DATA/ARCH",
+        "remoteBranch": "feat/wi-0029-security",
+        "remoteCommit": "7a7e73bb32ae3dff8879007e07d08d99187d12a6",
+        "summary": "INV-SEC: capability mapping pinned by test, approval is the person-only gate (DF-SUMMA-2026-0027); evidence for 002-006",
+        "nextAction": "INV-CONTRACT-002, SUM3-011, SUM2-031, served import preview, integration state in the app, export handling, SUM3-006 scheduling, INV OPS/PERF/EXP/FX/INTL/ACC/REC/SET/DATA/ARCH",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
