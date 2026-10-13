@@ -520,22 +520,21 @@ a.summa-new {
   }
 }
 
-/* Forma's data grid is a contained horizontal scroller (overflow-x: auto),
-   but as a flex item of an .ef-stack its automatic minimum size is its
-   table's 42rem minimum, so at 200% text it widened the page instead of
-   scrolling inside itself (ULI-L05; upstream FORMA-GRID-MIN-SIZE in
-   docs/ui-conformance/upstream-defects.md). The composition lets it shrink
-   to its column, as Forma's own .ef-surface does; so must each view in the
-   main column, whose automatic minimum would otherwise be the grid's. */
-.summa-main .ef-data-grid,
+/* Forma's data grid scrolls a wide table inside itself (ULI-L05). Two
+   things in Summa's composition kept it from doing so at 200% text, where
+   the page grew 65 CSS px wider than the viewport:
+   - each view in the main column is a flex item whose automatic minimum
+     size was the grid's 42rem table, so it is allowed to shrink to the
+     column;
+   - the visually hidden labels in table cells are absolutely positioned,
+     and with no positioned ancestor inside the scroller they escaped it, so
+     Summa's tables are their containing block.
+   Forma's own share is recorded as FORMA-GRID-MIN-SIZE in
+   docs/ui-conformance/upstream-defects.md. */
 .summa-main > * {
   min-inline-size: 0;
 }
 
-/* And the grid must be the containing block of what it scrolls: Forma's
-   .ef-visually-hidden labels in its cells are absolutely positioned, so in
-   a static grid they escaped the scroller and widened the page by 65 CSS px
-   at 200% text (ULI-L05). */
-.summa-main .ef-data-grid {
+.summa-table {
   position: relative;
 }
