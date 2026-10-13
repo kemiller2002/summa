@@ -1078,6 +1078,49 @@
     "version": "1.0.0"
   },
   {
+    "created": "2026-10-13",
+    "id": "DF-SUMMA-2026-0024",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0024--books-founded-on-a-store-start-with-their-chart.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261013T092158480Z-a1b3e67c": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "claude-opus-5-5",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-13T09:22:10.000Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Revisit founding on GitHub after the missing-accounts defect (WI-0048)"
+        }
+      }
+    },
+    "related_documents": [
+      "research/decisions/DF-SUMMA-2026-0012--organization-manifest-schema-2-and-its-migration.md",
+      "research/decisions/DF-SUMMA-2026-0014--books-on-github-through-arca.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "github",
+      "accounts",
+      "founding",
+      "defects"
+    ],
+    "title": "Books founded on a store start with their chart",
+    "updated": "2026-10-13",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-10-05",
     "id": "DF-SUMMA-FND-2026-0001",
     "owners": [

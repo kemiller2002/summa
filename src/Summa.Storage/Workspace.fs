@@ -142,6 +142,46 @@ let openBooks
                             )
     }
 
+/// The starting chart as the organization's own account records
+/// (DF-SUMMA-2026-0024): the accounts the manifest names exist from the
+/// first commit, so the books can be worked in at once, and nothing is
+/// assumed when they are read. Founding is one act, so it is one audit event
+/// by the founder naming every account, not one event per account.
+let startingRecords (context: Storage.OperationContext) (organizationId: string) (founder: Principal) : Result<Change list, Diagnostic list> =
+    let ledgerContext: Summa.Ledger.Ledger.Context =
+        { Who = founder.PrincipalId
+          When = context.At
+          Source = "summa"
+          CorrelationId = None
+          Provenance = None }
+
+    Organization.startingChart
+    |> List.fold (fun ledger account -> ledger |> Result.bind (Summa.Ledger.Ledger.addAccount ledgerContext account)) (Ok Summa.Ledger.Ledger.empty)
+    |> Result.mapError (fun problems -> [ InvalidOrganizationManifest $"the starting chart cannot be opened: %A{problems}" ])
+    |> Result.map (fun ledger ->
+        // Every account it creates, by code, name and type.
+        let created = Organization.startingChart |> List.map (fun a -> $"account {a.Code}: {a.Name} ({a.Type})")
+
+        { ledger with Audit = [] }
+        |> Summa.Ledger.Ledger.auditChange ledgerContext "chart-founded" organizationId (Summa.Ledger.Ledger.applied None created))
+    |> Result.bind (fun ledger -> FinancialRecords.toRecords (start (Summa.Ledger.Invoicing.openBooks ledger)))
+    |> Result.bind FinancialRecords.contents
+    |> Result.bind (fun records ->
+        records
+        |> Map.toList
+        |> List.map (fun (path, (_, content)) ->
+            RelativePath.parse path
+            |> Result.mapError (LocationError.describe >> InvalidDataLocation)
+            |> Result.map (fun p -> Change.Create(p, content)))
+        |> List.fold
+            (fun all next ->
+                match all, next with
+                | Ok changes, Ok change -> Ok(changes @ [ change ])
+                | Error problems, Error problem -> Error(problems @ [ problem ])
+                | Error problems, Ok _ -> Error problems
+                | Ok _, Error problem -> Error [ problem ])
+            (Ok []))
+
 /// The commits that set a new organization up for its founder, in order:
 /// Summa's own namespace first when the repository has none yet, then the
 /// organization's folder with the founder as its first administrator.
@@ -175,7 +215,8 @@ let foundingOperations
                 return
                     applicationSetUp
                     |> Result.bind (fun first ->
-                        Governance.found config binding visibility None context manifest founder
+                        startingRecords context organization.Id founder
+                        |> Result.bind (fun chart -> Governance.foundWith chart config binding visibility None context manifest founder)
                         |> Result.map (fun organizationSetUp -> first @ [ organizationSetUp ]))
                     |> Result.mapError Commands.Unstorable
     }

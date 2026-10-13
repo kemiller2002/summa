@@ -462,3 +462,61 @@ let ``a change kept without its account, but recording this person as its actor,
     Assert.Equal(0, waiting session)
     Assert.Equal<(string * string) list>([ "CUST-0001", "Acme" ], storedCustomers repository)
     browser <- None
+
+let private keyed (name: string) (key: string) (value: string) =
+    $"""{{"kind":"Event","event":{{"kind":"Event","name":"{name}","key":"{key}","value":{Text.Json.JsonSerializer.Serialize value}}}}}"""
+
+let private locate (hash: string) =
+    $"""{{"kind":"LocationChanged","location":{{"origin":"https://summa.example","path":"/app/","query":"","hash":"{hash}"}}}}"""
+
+/// The books stored on the repository, as anyone opening it would see them.
+let private storedBooks (repository: InMemoryStore) =
+    let config = Summa.Storage.Deployment.parse configuration |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    let binding = Summa.Storage.Storage.binding config |> Result.defaultWith (fun e -> failwith $"%A{e}")
+
+    match Summa.Storage.Workspace.openBooks repository.Provider config binding config.Organizations.Head "github:583231" |> Async.RunSynchronously with
+    | Ok(Summa.Storage.Workspace.Opened opened) -> opened.Books.Books
+    | other -> failwith $"%A{other}"
+
+[<Fact>]
+let ``books founded on GitHub can be invoiced at once: the founder submits and issues an invoice through the page`` () =
+    let repository = InMemoryStore()
+    let page, session, _ = openAs repository "583231" "octocat"
+    let session, _ = send page session [ "foundRequested", "" ]
+
+    // Founding wrote the organization's starting chart: the accounts its manifest names exist.
+    let founded = storedBooks repository
+    for code in [ "1000"; "1100"; "2100"; "2200"; "4000"; "6500" ] do
+        Assert.True(founded.Ledger.Accounts.ContainsKey code, $"account {code}")
+
+    let session, _ = addCustomer page session "Acme"
+    let session, _ = pump page session (locate "#/settings")
+
+    let session, _ =
+        send page session
+            [ "companyLegalNameChanged", "Echelon Foundry LLC"
+              "companyAddressChanged", "1 Foundry Way"
+              "companyEmailChanged", "billing@echelon.example"
+              "companyPaymentChanged", "ACH to account ending 6789"
+              "companySaved", "" ]
+
+    let session, _ = pump page session (locate "#/invoices/new")
+    let session, _ = pump page session (event "draftCustomerChanged" "CUST-0001")
+    let line = session.Model.Draft.Lines.Head.Key
+
+    let session, reply =
+        [ keyed "lineDescriptionChanged" line "Assessment"; keyed "lineHoursChanged" line "10"; keyed "lineRateChanged" line "100.00"; event "draftSubmitted" "" ]
+        |> List.fold (fun (s, _) m -> pump page s m) (session, "")
+
+    Assert.False(flag "hasError" reply)
+    Assert.Empty(session.Model.Blockers)
+    Assert.Equal(Summa.Ledger.Invoicing.SubmittedForReview 1, (storedBooks repository).Drafts["D-0001"].Review)
+
+    let session, reply = send page session [ "draftIssued", "" ]
+    Assert.False(flag "hasError" reply)
+    Assert.Equal(0, session.Model.Unsaved)
+    let books = storedBooks repository
+    let invoice = books.Invoices |> Map.toList |> List.exactlyOne |> snd
+    Assert.Equal(1000_00L, invoice.Total.Minor)
+    // The receivable and the revenue were posted to the organization's own accounts.
+    Assert.Contains(books.Ledger.Entries.Values, fun e -> e.Lines |> List.exists (fun l -> l.AccountId = "4000"))

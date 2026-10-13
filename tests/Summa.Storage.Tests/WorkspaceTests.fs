@@ -91,16 +91,7 @@ let ``books at an older manifest schema wait for an administrator's migration`` 
     let store = founded ()
     let ns = Storage.organizationNamespace production (bindingOf production) "org_acme" |> ok
     let kevinActor = Summa.Access.Actor.person "583231" "kevin" "corr-1"
-
-    Commands.execute store.Provider defaultApprovalGates ns 3
-        { Actor = kevinActor
-          Capability = ManageSettings
-          Summary = "chart"
-          IdempotencyKey = "cmd-chart-0001"
-          Transition = fun r -> Ok { r with Books = Summa.Ledger.Invoicing.openBooks chart } }
-    |> Async.RunSynchronously
-    |> ok
-    |> ignore
+    // Founding wrote the starting chart, with 2100, 2200 and 6500 (DF-SUMMA-2026-0024).
 
     // As a schema 1 Summa left the manifest.
     let file = RelativePath.render ns.Root + "/records/summa.organization/org_acme.json"
@@ -198,4 +189,31 @@ let ``start-up reads Summa's application manifest and refuses books that need a 
 
     match Workspace.checkApplication store.Provider (bindingOf production) |> Async.RunSynchronously with
     | Error(Commands.Untrustworthy problems) -> Assert.Contains("need Summa 9.0.0", problems |> List.map describe |> String.concat " ")
+    | other -> failwith $"%A{other}"
+
+[<Fact>]
+let ``founding writes the starting chart as the organization's accounts, with one audit event naming each account`` () =
+    let store = founded ()
+
+    match opening store kevin.PrincipalId with
+    | Workspace.Opened opened ->
+        let ledger = opened.Books.Books.Ledger
+        // Every account of the starting chart is the organization's own record.
+        Assert.Equal<Summa.Ledger.Ledger.Account list>(Organization.startingChart, ledger.Accounts |> Map.toList |> List.map snd |> List.sortBy _.Code)
+
+        // One event by the founder, and it names every account it created: code, name and type.
+        match ledger.Audit |> List.filter (fun a -> a.What = "chart-founded") with
+        | [ founding ] ->
+            Assert.Equal(kevin.PrincipalId, founding.Who)
+            Assert.Equal("org_acme", founding.Subject)
+            let named = founding.Change |> Option.map _.Changed |> Option.defaultValue []
+            Assert.Equal(Organization.startingChart.Length, named.Length)
+
+            for account in Organization.startingChart do
+                Assert.Contains($"account {account.Code}: {account.Name} ({account.Type})", named)
+
+            Assert.Contains("account 4000: Consulting Revenue (Revenue)", named)
+        | other -> failwith $"%A{other}"
+
+        Assert.DoesNotContain(ledger.Audit, fun a -> a.What = "account-saved")
     | other -> failwith $"%A{other}"

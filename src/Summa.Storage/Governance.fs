@@ -65,7 +65,8 @@ let administrator (principal: Principal) (roster: Roster) : Membership =
 /// Sets a new organization up for its founder: one commit creating Arca's
 /// manifest, the organization manifest and the founder's membership. Only
 /// when `decide` said `Found`.
-let found
+let foundWith
+    (records: Change list)
     (config: DeploymentConfig)
     (binding: ApplicationBinding)
     (visibility: RepositoryVisibility)
@@ -82,4 +83,10 @@ let found
         |> Result.bind (fun p -> MemberRecord.encode membership |> Result.map (fun content -> Change.Create(p, content)))
         |> Result.mapError List.singleton
         |> Result.bind (fun change ->
-            Storage.operation initial.Namespace context $"found organization {manifest.OrganizationId}" (initial.Changes @ [ change ])))
+            Storage.operation initial.Namespace context $"found organization {manifest.OrganizationId}" (initial.Changes @ [ change ] @ records)))
+
+/// Founds an organization with no financial records: its manifest and its
+/// founder as administrator. `Workspace.foundingOperations` founds it with
+/// its starting chart as well.
+let found config binding visibility overrideDecision context manifest founder =
+    foundWith [] config binding visibility overrideDecision context manifest founder

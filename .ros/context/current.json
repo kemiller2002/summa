@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-13T08:54:15Z",
+  "updatedAt": "2026-10-13T09:24:09Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -2298,6 +2298,32 @@
       },
       "completedAt": "2026-10-13T08:54:15Z",
       "conclusion": "DEL-A-021, DEL-A-046 and DEL-P-007 fixed (escaped from WI-0027, PR #39). Each reproduced first: DEL-A-046 and DEL-P-007 as failing assertions, DEL-A-021 as a compile failure (the API had no authority input). 497 .NET tests pass."
+    },
+    {
+      "id": "WI-0048",
+      "type": "bug",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Workspace.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/StoreTests.fs"
+        },
+        {
+          "type": "decision",
+          "path": "research/decisions/DF-SUMMA-2026-0024--books-founded-on-a-store-start-with-their-chart.md"
+        }
+      ],
+      "updatedAt": "2026-10-13T09:24:09Z",
+      "telemetryExecutionIds": [
+        "EXE-20261013T092158480Z-a1b3e67c"
+      ],
+      "completedAt": "2026-10-13T09:24:09Z",
+      "conclusion": "Books founded on GitHub start with their chart as the organization's own records (DF-SUMMA-2026-0024); escaped from WI-0037 (PR #53). Red first: the end-to-end test failed at 'account 1000' with the old founding. 501 .NET tests pass; the browser end-to-end test runs in CI."
     }
   ]
 }

@@ -1142,6 +1142,31 @@
       },
       "source": "manual",
       "sourceReference": null
+    },
+    {
+      "id": "WI-0048",
+      "title": "Summa: books founded on GitHub have no ledger accounts, so no invoice can be submitted or issued there (escaped from WI-0037)",
+      "description": "Founding on GitHub (WI-0037, PR #53; DF-SUMMA-2026-0012, PR #50) wrote the manifest naming 1000/1100/2100/2200/4000/6500 but no account records, and the application has no way to add accounts, so submitting a draft fails with '4000 is not an active revenue account'. Found 2026-10-13 writing a WI-0029 end-to-end test. Revisit the decision (DF-SUMMA-2026-0024): found the books with the starting chart as the organization's own records. End-to-end tests: found on GitHub, then submit and issue through the page (StoreTests, github-books.spec.js). Affects SUM0-002.",
+      "tags": [
+        "summa",
+        "defect",
+        "github"
+      ],
+      "priority": "high",
+      "status": "complete",
+      "attachments": [],
+      "createdAt": "2026-10-13T09:21:57Z",
+      "updatedAt": "2026-10-13T09:24:09Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
     }
   ]
 }

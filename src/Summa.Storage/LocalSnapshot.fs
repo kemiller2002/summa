@@ -31,27 +31,9 @@ let Version = 1
 [<Literal>]
 let OrganizationId = "org_local"
 
-/// The chart a new local organization starts with. Account ids are their
-/// codes, which is how the manifest names its default accounts.
-let defaultChart =
-    [ "1000", "Operating Cash", Asset
-      "1100", "Accounts Receivable", Asset
-      "2100", "Customer Credits", Liability
-      "2200", "Customer Deposits", Liability
-      "2300", "Sales Tax Payable", Liability
-      "3000", "Owner Equity", Equity
-      "3100", "Retained Earnings", Equity
-      "4000", "Consulting Revenue", Revenue
-      "4100", "Reimbursed Expenses", Revenue
-      "6100", "Software", Expense
-      "6200", "Travel", Expense
-      "6500", "Bad Debt", Expense ]
-    |> List.map (fun (code, name, kind) ->
-        { Id = code
-          Code = code
-          Name = name
-          Type = kind
-          Active = true })
+/// The chart a new local organization starts with: the same starting chart
+/// as books on a store.
+let defaultChart = Organization.startingChart
 
 /// A new local organization: its manifest and books with the default chart.
 let start (context: Context) (displayName: string) (company: Organization.CompanyInformation) (paymentInstructions: string) =
