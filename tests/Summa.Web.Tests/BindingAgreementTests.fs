@@ -194,6 +194,12 @@ module private Accounting =
           view (visit "#/periods")
           view (visit "#/periods/2026-10")
           view (step (visit "#/periods/2026-10") PeriodClosed)
+          // A Chrona batch previewed: accepted, rejected, duplicates and warnings (SUM3-025).
+          view (
+              let timer = Summa.Contracts.GoldenVectors.valid |> List.find (fun v -> v.Name = "billable-time-published-timer-approved") |> _.Text
+              let unknown = Summa.Contracts.GoldenVectors.valid |> List.find (fun v -> v.Name = "billable-time-published-duration-unknown-origin") |> _.Text
+              [ ImportTextChanged(String.concat "\n" [ timer; unknown; timer; "{" ]); ImportPreviewed ] |> List.fold step (visit "#/proposals")
+          )
           // Legal fields recorded on the organization and a customer (INV-INTL-001).
           view (
               [ LegalKindChosen "vat-id"; LegalJurisdictionChanged "GB"; LegalValueChanged "GB1"; OrganizationLegalFieldAdded ]

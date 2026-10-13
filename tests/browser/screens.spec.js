@@ -105,3 +105,20 @@ test("an engagement is added and opens at its own address", async ({ app: { page
   await expect(page).toHaveURL(/#\/engagements$/);
   await expect(page.locator("#engagements-table tbody tr")).toHaveCount(1);
 });
+
+test("time from Chrona is pasted, previewed with its summary, and applied only when accepted (SUM3-025)", async ({ app: { page } }) => {
+  const fs = await import("node:fs");
+  const vector = (name) => fs.readFileSync(new URL(`../../src/Summa.Contracts/vectors/valid/${name}.json`, import.meta.url), "utf8").trim();
+  const timer = vector("billable-time-published-timer-approved");
+  const unknown = vector("billable-time-published-duration-unknown-origin");
+  await page.goto(page.url().replace(/#.*$/, "") + "#/proposals");
+  await running(page);
+  await page.fill("#import-text", [timer, unknown, timer, "{not json"].join("\n"));
+  await page.click("#preview-import");
+  await expect(page.locator("#import-summary")).toHaveText("2 accepted, 1 rejected, 1 duplicates, 1 warnings.");
+  await expect(page.locator("#import-rejected tbody tr")).toHaveText(/line 4/);
+  await expect(page.locator("#import-warnings tbody tr")).toContainText("Chrona does not know where this time came from");
+  await page.click("#accept-import");
+  await expect(page.locator("#notice")).toHaveText("2 publications imported.");
+  await expect(page.locator("#import-preview")).toHaveCount(0);
+});
