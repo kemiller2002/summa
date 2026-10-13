@@ -62,6 +62,11 @@ let private ofInvoiceProblem =
     | StaleDraft current -> [ blocker "stale-version" $"The draft changed; it is now version {current}." "Review the current version." ]
     | NegativeLine line -> [ blocker "negative-line" $"'{line}' has a negative quantity or price." "Use a credit memo or a discount instead of a negative line." ]
     | InvalidAdjustment why -> [ blocker "invalid-adjustment" $"An adjustment is invalid: {why}." "Correct the adjustment." ]
+    | IssueConflict(draft, invoice) ->
+        [ blocker
+              "issue-conflict"
+              $"Draft {draft} was already issued as {invoice}, with another date, version or number. Nothing was changed."
+              "Open the issued invoice; correct it with a credit memo or a void if it is wrong." ]
 
 /// A context for checks that are never committed.
 let private dryRun = { Who = "readiness"; When = DateTimeOffset.UnixEpoch; Source = "summa"; CorrelationId = None; Provenance = None }
@@ -278,18 +283,24 @@ let private withArtifacts (invoice: IssuedInvoice) (r: Receivables) =
 /// the invoice already issued (INV-ISS-005).
 let issueInvoice (context: Context) (request: IssueRequest) (r: Receivables) : Result<Receivables * IssuedInvoice, Blocker list> =
     match r.Books.IssuedFrom.TryFind request.DraftId with
-    | Some invoiceId -> Ok(r, r.Books.Invoices[invoiceId])
+    | Some invoiceId ->
+        reissued request r.Books.Invoices[invoiceId]
+        |> Result.map (fun invoice -> r, invoice)
+        |> Result.mapError (List.collect ofInvoiceProblem)
     | None ->
         match r.Books.Drafts.TryFind request.DraftId with
         | None -> Error(ofInvoiceProblem (UnknownDraft request.DraftId))
         | Some draft ->
             let reviewed =
-                match draft.Review, request.ExpectedVersion with
-                | SubmittedForReview v, Some expected when v = expected && v = draft.Version -> true
-                | SubmittedForReview v, None when v = draft.Version -> true
+                match draft.Review with
+                | SubmittedForReview v -> v = request.ExpectedVersion && v = draft.Version
                 | _ -> false
 
-            if not reviewed then
+            // The version reviewed here is not the draft any more: someone
+            // changed it since (INV-CON-002). Nothing is issued.
+            if request.ExpectedVersion <> draft.Version then
+                Error(ofInvoiceProblem (StaleDraft draft.Version))
+            elif not reviewed then
                 Error
                     [ blocker
                           "not-reviewed"

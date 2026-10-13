@@ -45,7 +45,7 @@ let ``a draft may be edited freely and posts nothing until it is issued`` () =
     Assert.Empty(changed.Ledger.Entries)
     Assert.Equal<string list>([ "invoice-created"; "invoice-changed" ], changed.Ledger.Audit |> List.filter (fun a -> a.Subject = "D-1") |> List.map _.What)
     // Once issued it is not a draft any more.
-    let issuedBooks, invoice = issue context request changed |> ok
+    let issuedBooks, invoice = issue context { request with ExpectedVersion = 2 } changed |> ok
     Assert.Equal<InvoiceProblem list>([ AlreadyIssued invoice.InvoiceId ], saveDraft context { edited with Version = 2 } issuedBooks |> refused)
 
 [<Fact>]
@@ -84,7 +84,7 @@ let ``void and reissue: the original stays visible and the new invoice names it`
     // The original took the customer's terms, so the reissue resolves them again.
     Assert.Equal(None, draft.Terms)
     let corrected = saveDraft context { draft with Lines = [ consulting 34500L 16000L ] } voided.Books |> ok
-    let reissue = { request with DraftId = "D-2"; InvoiceId = "INV-002"; JournalEntryId = "JE-000002"; ObligationId = "OBL-002"; IssueDate = DateOnly(2026, 10, 9) }
+    let reissue = { request with DraftId = "D-2"; InvoiceId = "INV-002"; JournalEntryId = "JE-000002"; ObligationId = "OBL-002"; IssueDate = DateOnly(2026, 10, 9); ExpectedVersion = 2 }
     let books', second = issue context reissue corrected |> ok
     let after = { voided with Books = books' }
     Assert.Equal(Some "INV-001", second.Corrects)
@@ -111,7 +111,7 @@ let ``a correcting invoice names the invoice it corrects, for the same customer 
     Assert.Equal(original, r.Books.Invoices["INV-001"])
     let stranger = { abc with Id = "CUST-XYZ" }
     let wrong = saveDraft context { extra with CustomerId = stranger.Id; Version = 1 } (withExtra |> saveCustomer context stranger) |> ok
-    Assert.Equal<InvoiceProblem list>([ InvalidCorrection "invoice INV-001 is another customer's" ], issue context second wrong |> refused)
+    Assert.Equal<InvoiceProblem list>([ InvalidCorrection "invoice INV-001 is another customer's" ], issue context { second with ExpectedVersion = 2 } wrong |> refused)
     let missing = saveDraft context { extra with Corrects = Some "INV-404" } r.Books |> ok
     Assert.Equal<InvoiceProblem list>([ InvalidCorrection "invoice INV-404 is not issued" ], issue context second missing |> refused)
 

@@ -56,10 +56,12 @@ let ``issue needs the reviewed version, and a change sends the draft back to edi
     // A change after review returns it to Editing at a new version.
     let edited = { reviewed with Books = saveDraft context { reviewed.Books.Drafts["D-1"] with Adjustments = [ { Kind = Fee; Label = "Processing fee"; Amount = usd 500L } ] } reviewed.Books |> ok }
     Assert.Equal((Editing, 2), (edited.Books.Drafts["D-1"].Review, edited.Books.Drafts["D-1"].Version))
-    Assert.Equal<string list>([ "not-reviewed" ], issueInvoice context { request with ExpectedVersion = Some 1 } edited |> refused |> codes)
-    let again = submitForReview context request edited |> ok
-    Assert.Equal<string list>([ "not-reviewed" ], issueInvoice context { request with ExpectedVersion = Some 1 } again |> refused |> codes)
-    let _, invoice = issueInvoice context { request with ExpectedVersion = Some 2 } again |> ok
+    // Issuing the version that was reviewed, now changed, is stale (INV-CON-002).
+    Assert.Equal<string list>([ "stale-version" ], issueInvoice context { request with ExpectedVersion = 1 } edited |> refused |> codes)
+    Assert.Equal<string list>([ "not-reviewed" ], issueInvoice context { request with ExpectedVersion = 2 } edited |> refused |> codes)
+    let again = submitForReview context { request with ExpectedVersion = 2 } edited |> ok
+    Assert.Equal<string list>([ "stale-version" ], issueInvoice context { request with ExpectedVersion = 1 } again |> refused |> codes)
+    let _, invoice = issueInvoice context { request with ExpectedVersion = 2 } again |> ok
     Assert.Equal(2, invoice.Approval.DraftVersion)
     // Returning to draft is explicit too.
     Assert.Equal(Editing, (returnToDraft context "D-1" reviewed |> ok).Books.Drafts["D-1"].Review)
@@ -202,3 +204,20 @@ let ``a draft billing a source that is reserved elsewhere cannot be issued`` () 
     let sneaky = draftFor [ { consulting 1000L 10000L with Source = TimeSource [ { PublicationId = "pub-1"; ActivityId = "act-1"; Revision = 1; Minutes = 60 } ] } ]
     let withDraft = { reserved with Books = saveDraft context sneaky reserved.Books |> ok }
     Assert.Equal<string list>([ "source-unavailable" ], blockers withDraft request |> codes)
+
+[<Fact>]
+let ``INV-CON-007/008: issuing the same draft again returns the invoice; with materially different input it is a conflict`` () =
+    let issued, invoice = submitted () |> issueInvoice context request |> ok
+    // The same request again: the invoice already issued, and nothing changes.
+    let again, same = issueInvoice context request issued |> ok
+    Assert.Equal(invoice, same)
+    Assert.True((issued = again))
+    // The same draft, but another date, version or number: refused, never guessed.
+    for different in
+        [ { request with IssueDate = request.IssueDate.AddDays 1 }
+          { request with ExpectedVersion = 2 }
+          { request with NumberOverride = Some "EF-9999" } ] do
+        Assert.True(Result.isError (issueInvoice context different issued))
+        Assert.True(Result.isError (Summa.Ledger.Invoicing.issue context different issued.Books))
+    // Generated ids are not input: a retry that numbered them again still returns the invoice.
+    Assert.Equal(invoice, issueInvoice context { request with InvoiceId = "INV-OTHER"; JournalEntryId = "JE-OTHER" } issued |> ok |> snd)

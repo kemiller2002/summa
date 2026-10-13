@@ -236,7 +236,7 @@ let private company =
         Invoices = { acme.Invoices with PaymentInstructions = "ACH to account ending 0042" } }
 
 let private requestFor draftId invoiceId n =
-    Organization.issueRequest company chart draftId (DateOnly(2026, 10, 7)) invoiceId $"JE-ISS-{n}" $"OBL-{n}"
+    Organization.issueRequest company chart draftId 1 (DateOnly(2026, 10, 7)) invoiceId $"JE-ISS-{n}" $"OBL-{n}"
 
 let private prepare (draftId: string) (r: Receivables) =
     saveDraft ledgerContext { draft with DraftId = draftId } r.Books

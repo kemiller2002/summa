@@ -2184,20 +2184,20 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "ab52c6da1175966c2a7e95c9",
-        "recordedAt": "2026-10-13T08:37:37Z",
+        "id": "8d06bf075117fcd848addd36",
+        "recordedAt": "2026-10-13T09:14:47Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
         "repository": "summa",
-        "branch": "feat/wi-0029-safety",
-        "commit": "8026e8e3b96b19fd73f0e5b20382ff598c3acfaf",
+        "branch": "feat/wi-0029-concurrency",
+        "commit": "717d2defeef048612f74a8387b5b081f30dcc84f",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0029-safety",
-        "remoteCommit": "8026e8e3b96b19fd73f0e5b20382ff598c3acfaf",
-        "summary": "Sensitive data refused at storage, import preview, integration states (GitHub queue and delivery), retention, import and migration events (DF-SUMMA-2026-0021); IBAN-shaped digits no longer read as a card",
-        "nextAction": "Served import preview/accept, integration state in the app, export file handling, the INV operational families (OPS, FAIL, SEC, PERF, EXP, FX, INTL, ACC, REC, SET, DATA, CON, ARCH), SUM3-011, SUM2-031, INV-CONTRACT 001..003, SUM3-006 scheduling, SUM0-034 index reads",
+        "remoteBranch": "feat/wi-0029-concurrency",
+        "remoteCommit": "717d2defeef048612f74a8387b5b081f30dcc84f",
+        "summary": "INV-CON: issue requires the reviewed version, the app commits the version on screen, a reissue with other input is a conflict (DF-SUMMA-2026-0023); INV-CONTRACT-001/003 evidenced",
+        "nextAction": "INV-FAIL (clear errors with retry safety), INV-SEC capabilities, INV-CONTRACT-002, SUM3-011 API contracts, SUM2-031, served import preview, integration state in the app, export handling, SUM3-006 scheduling, SUM0-034 index reads, INV OPS/PERF/EXP/FX/INTL/ACC/REC/SET/DATA/ARCH",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"

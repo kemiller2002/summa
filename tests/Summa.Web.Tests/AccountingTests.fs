@@ -317,3 +317,42 @@ let ``an invoice's history says which version changed and what changed in it`` (
     let changed = history |> List.map (fun row -> row["changed"])
     Assert.Contains(Text "version 1", changed)
     Assert.Contains(Text "version 2; purchase order: none -> PO-77", changed)
+
+[<Fact>]
+let ``INV-CON-001: an issue is committed as the draft version on screen`` () =
+    let reviewed = started () |> customer |> drafted |> run [ DraftSubmitted ] |> fst
+    let version = reviewed.Books.Value.Books.Drafts["D-0001"].Version
+    Assert.Equal(DraftIssuedAt version, pinned reviewed DraftIssued)
+    // Nothing else is rewritten.
+    Assert.Equal(DraftSubmitted, pinned reviewed DraftSubmitted)
+
+[<Fact>]
+let ``INV-CON-002: issuing a draft someone changed since it was reviewed here is refused as stale, and nothing is issued`` () =
+    let reviewed = started () |> customer |> drafted |> run [ DraftSubmitted ] |> fst
+    let seen = reviewed.Books.Value
+    let draft = seen.Books.Drafts["D-0001"]
+    let someone: Summa.Ledger.Ledger.Context = { Who = "someone-else"; When = ctx.Now; Source = "summa"; CorrelationId = None; Provenance = None }
+
+    // Someone else changes the draft and submits it again, on the books as they stand.
+    let changed =
+        Summa.Ledger.Invoicing.saveDraft someone { draft with Details = { draft.Details with PurchaseOrder = Some "PO-9" } } seen.Books
+        |> Result.defaultWith (fun e -> failwith $"%A{e}")
+
+    let manifest = reviewed.Manifest.Value
+    let request = Summa.Storage.Organization.issueRequest manifest changed.Ledger "D-0001" 2 (DateOnly.FromDateTime ctx.Now.UtcDateTime) "x" "y" "z"
+
+    let stored =
+        Summa.Ledger.Issuance.submitForReview someone request { seen with Books = changed }
+        |> Result.defaultWith (fun e -> failwith $"%A{e}")
+
+    Assert.Equal(2, stored.Books.Drafts["D-0001"].Version)
+    // The command this page committed names version 1: decided again on the books as they stand, it is refused.
+    match replay ctx (pinned reviewed DraftIssued) reviewed stored with
+    | Error _ -> ()
+    | Ok books -> failwith $"issued %A{books.Books.Invoices |> Map.keys |> List.ofSeq}"
+
+    let refused, _ = update ctx (DraftIssuedAt 1) { reviewed with Books = Some stored }
+    Assert.Contains(refused.Blockers, fun b -> b.Code = "stale-version")
+    Assert.Empty(refused.Books.Value.Books.Invoices)
+    // The version on screen once the page has the change issues.
+    Assert.True(Result.isOk (replay ctx (DraftIssuedAt 2) reviewed stored))
