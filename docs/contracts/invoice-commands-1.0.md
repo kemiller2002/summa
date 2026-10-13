@@ -127,6 +127,15 @@ from Chrona. A person reviews the proposal before anything is issued.
 |---|---|---|
 | `reasons` | list | At least one reason. Each is `{code, message}`: a stable code (for example `void-refused` or `proposal-refused`) and a sentence. |
 
+Refusal codes are an **open set**, in every 1.x version.
+
+- A reader must accept a code it does not know, and act on the outcome
+  (`refused`, so nothing changed) and the sentence.
+- New codes, such as `not-authorized` (added with the capability check),
+  appear in responses at any 1.x version, and are not a version change.
+- Only the outcome kinds (`accepted`, `refused` and `conflict`) are fixed
+  by the version.
+
 **`conflict`**: the draft is not at the version the caller named, and
 nothing changed. Review the current version, then send the command again
 naming it.

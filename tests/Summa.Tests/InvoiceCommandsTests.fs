@@ -277,3 +277,13 @@ let ``every command, 1.0 to 1.2, is refused for a caller without the capability 
         match (handle everything host request books |> snd).Outcome with
         | Refused reasons -> Assert.DoesNotContain(reasons, fun r -> r.Code = "not-authorized")
         | _ -> ()
+
+[<Fact>]
+let ``refusal codes are an open set: a 1.0 response carrying not-authorized, or a code no version defines, is read`` () =
+    for code in [ "not-authorized"; "some-code-a-later-summa-adds" ] do
+        let text =
+            $"""{{"contract":"summa.invoice-commands","kind":"response","message":{{"outcome":{{"kind":"refused","reasons":[{{"code":"{code}","message":"Why."}}]}},"requestId":"req-1"}},"version":"1.0"}}"""
+
+        Assert.Equal(Ok { RequestId = "req-1"; Outcome = Refused [ { Code = code; Message = "Why." } ] }, decodeResponse text)
+        // Written by this Summa, the response is still a 1.0 message.
+        Assert.Equal(text, encodeResponse { RequestId = "req-1"; Outcome = Refused [ { Code = code; Message = "Why." } ] })

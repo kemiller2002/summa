@@ -84,6 +84,14 @@ lived in the web engine, where an external caller would not meet it.
      temporary removal of the check made it fail.
    - **Signature change:** \`handle context host request books\` becomes
      \`handle caller host request books\`.
+   - **Compatibility of the new refusal code.**
+     - Responses stay at 1.0. The 1.0 decoder reads a refusal code as any
+       non-blank text, and no golden vector lists codes, so refusal codes
+       were already an open set.
+     - The 1.0, 1.1 and 1.2 documents now say so: a reader must accept an
+       unknown code. This is a clarification, not a wire change.
+     - A test reads a 1.0 response carrying \`not-authorized\`, and one
+       carrying a code no version defines.
 
 ## Consequences
 
