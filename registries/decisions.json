@@ -1953,7 +1953,7 @@
     ],
     "title": "A customer may require a purchase order; an invoice for them is not issued without one",
     "updated": "2026-10-13",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   {
     "created": "2026-10-05",
