@@ -14,6 +14,7 @@
   <ItemGroup>
     <Compile Include="Diagnostics.fs" />
     <Compile Include="Codec.fs" />
+    <Compile Include="Sensitive.fs" />
     <Compile Include="Organization.fs" />
     <Compile Include="Deployment.fs" />
     <Compile Include="Application.fs" />
@@ -28,6 +29,8 @@
     <Compile Include="Commands.fs" />
     <Compile Include="Telemetry.fs" />
     <Compile Include="Exports.fs" />
+    <Compile Include="Integrations.fs" />
+    <Compile Include="Retention.fs" />
     <Compile Include="Verification.fs" />
     <Compile Include="Environments.fs" />
     <Compile Include="Settings.fs" />

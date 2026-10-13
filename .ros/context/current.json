@@ -2184,20 +2184,20 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "5227e0228db4475ee7e22a39",
-        "recordedAt": "2026-10-09T04:51:24.000Z",
+        "id": "ab52c6da1175966c2a7e95c9",
+        "recordedAt": "2026-10-13T08:37:37Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
         "repository": "summa",
-        "branch": "feat/wi-0029-operations",
-        "commit": "2e8557de3fd0aee7f9971bbee356d81514ad59d0",
+        "branch": "feat/wi-0029-safety",
+        "commit": "8026e8e3b96b19fd73f0e5b20382ff598c3acfaf",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0029-operations",
-        "remoteCommit": "2e8557de3fd0aee7f9971bbee356d81514ad59d0",
-        "summary": "Command telemetry and structured logs, self-describing exports, projection checks, determinism and business dates (DF-SUMMA-2026-0020)",
-        "nextAction": "Sensitive data, secrets, encryption, import safety, delivery/integration failure, idempotency, deletion and retention; then the INV families",
+        "remoteBranch": "feat/wi-0029-safety",
+        "remoteCommit": "8026e8e3b96b19fd73f0e5b20382ff598c3acfaf",
+        "summary": "Sensitive data refused at storage, import preview, integration states (GitHub queue and delivery), retention, import and migration events (DF-SUMMA-2026-0021); IBAN-shaped digits no longer read as a card",
+        "nextAction": "Served import preview/accept, integration state in the app, export file handling, the INV operational families (OPS, FAIL, SEC, PERF, EXP, FX, INTL, ACC, REC, SET, DATA, CON, ARCH), SUM3-011, SUM2-031, INV-CONTRACT 001..003, SUM3-006 scheduling, SUM0-034 index reads",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"

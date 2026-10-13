@@ -73,6 +73,34 @@ let ``every command run is one structured event, with financial problems told ap
     | other -> failwith $"%A{other}"
 
 [<Fact>]
+let ``an import batch and a migration step are events too, with integration failures told apart`` () =
+    let at = DateTimeOffset(2026, 10, 13, 9, 0, 0, TimeSpan.Zero)
+    let summary: Summa.Ledger.ChronaImport.ImportSummary =
+        { Accepted = [ "pub-1" ]; Rejected = [ "pub-2", "invalid" ]; Duplicates = [ "pub-3" ]; Warnings = [] }
+
+    let mixed = Telemetry.importEvent at kevin summary
+    Assert.Equal("chrona-import", mixed.Command)
+    Assert.Equal("corr-ops-1", mixed.CorrelationId)
+    Assert.Equal<string list>([ "pub-1" ], mixed.Entities)
+    Assert.Equal("accepted 1, rejected 1, duplicates 1", mixed.Outcome)
+    // A message refused is an integration failure, not a financial one.
+    Assert.Equal(Telemetry.Technical, mixed.Category)
+    Assert.False(mixed.Duplicate)
+    // The reason a message was refused is not logged: identifiers and counts only.
+    Assert.DoesNotContain("invalid", Telemetry.toJson mixed)
+
+    let replay = Telemetry.importEvent at kevin { summary with Accepted = []; Rejected = [] }
+    Assert.Equal(Telemetry.Succeeded, replay.Category)
+    Assert.True(replay.Duplicate)
+
+    let migrated = Telemetry.stepEvent at kevin "migrate-organization" (Ok 3: Result<int, CommandFailure<string>>)
+    Assert.Equal(("committed", Telemetry.Succeeded), (migrated.Outcome, migrated.Category))
+    let failed = Telemetry.stepEvent at kevin "migrate-organization" (Error(StillConflicted 4): Result<int, CommandFailure<string>>)
+    Assert.Equal(("still-conflicted", Telemetry.Technical), (failed.Outcome, failed.Category))
+    let unsafe = Telemetry.stepEvent at kevin "migrate-organization" (Error(Unstorable []): Result<int, CommandFailure<string>>)
+    Assert.Equal(Telemetry.Financial, unsafe.Category)
+
+[<Fact>]
 let ``storage failures are technical, and the correlation id reaches the audit trail`` () =
     let store, ns = founded ()
     let events = Collections.Generic.List<Telemetry.CommandEvent>()
@@ -166,3 +194,119 @@ let ``today is the organization's business date, never the UTC date of the insta
     Assert.Equal(DateOnly(2026, 10, 8), Organization.businessDate { acme with TimeZone = "Europe/Berlin" } lateEvening)
     // A zone this system does not know falls back to UTC rather than guessing.
     Assert.Equal(DateOnly(2026, 10, 8), Organization.businessDate { acme with TimeZone = "Mars/Olympus_Mons" } lateEvening)
+
+// ---- Sensitive data and secrets (SUM3-022, SUM3-023, SUM3-024) --------------------------------
+
+[<Fact>]
+let ``full card numbers, bank account numbers and credentials are found, and references are not`` () =
+    Assert.Equal<Sensitive.Finding list>([ Sensitive.CardNumber ], Sensitive.scan "card 4111 1111 1111 1111")
+    Assert.Equal<Sensitive.Finding list>([ Sensitive.CardNumber ], Sensitive.scan "4111-1111-1111-1111")
+    Assert.Empty(Sensitive.scan "card ending 1111, ACH-20261007-000123")
+    // Not a card: fails Luhn, or sits inside an id or a hash.
+    Assert.Empty(Sensitive.scan "4111111111111112")
+    Assert.Empty(Sensitive.scan "sha256:a4111111111111111b and EXE-20261009T031528777Z")
+    Assert.Equal<Sensitive.Finding list>([ Sensitive.BankAccountNumber ], Sensitive.scan "IBAN DE89 3704 0044 0532 0130 00")
+    Assert.Empty(Sensitive.scan "DE89 3704 0044 0532 0130 01")
+    // The account digits of that mistyped IBAN pass Luhn by chance. Inside the IBAN they are
+    // judged by the IBAN rule only; standing alone they are still a card number.
+    Assert.Equal<Sensitive.Finding list>([ Sensitive.CardNumber ], Sensitive.scan "3704 0044 0532 0130 01")
+    // A card next to an IBAN is still found, as is each.
+    Assert.Equal<Sensitive.Finding list>(
+        [ Sensitive.CardNumber; Sensitive.BankAccountNumber ],
+        Sensitive.scan "IBAN DE89 3704 0044 0532 0130 00, card 4111 1111 1111 1111")
+    Assert.Equal<Sensitive.Finding list>([ Sensitive.Credential "GitHub token" ], Sensitive.scan ("token " + "ghp_" + String('a', 36)))
+    Assert.Equal<Sensitive.Finding list>([ Sensitive.Credential "private key" ], Sensitive.scan "-----BEGIN RSA PRIVATE KEY-----")
+
+[<Fact>]
+let ``a command that would store a card number is refused, and nothing is written`` () =
+    let store, ns = founded ()
+    execute store.Provider defaultApprovalGates ns 3 (request kevin ManageSettings "chart" setUp) |> Async.RunSynchronously |> Support.ok |> ignore
+    let before = store.State.History.Length
+    let withCard = { payment with Reference = "paid with 4111 1111 1111 1111" }
+
+    match execute store.Provider defaultApprovalGates ns 3 (request kevin RecordPayment "pay-card" (recordPayment ledgerContext withCard)) |> Async.RunSynchronously with
+    | Error(Unstorable [ Diagnostics.SensitiveData(path, what) ]) ->
+        Assert.StartsWith("records/summa.payment/", path)
+        Assert.Equal("a full payment card number", what)
+    | other -> failwith $"%A{other}"
+
+    Assert.Equal(before, store.State.History.Length)
+    // The last four digits are a reference, and are kept.
+    let lastFour = { payment with Reference = "card ending 1111" }
+    Assert.True(execute store.Provider defaultApprovalGates ns 3 (request kevin RecordPayment "pay-ref" (recordPayment ledgerContext lastFour)) |> Async.RunSynchronously |> Result.isOk)
+
+[<Fact>]
+let ``secrets stay out of configuration, and transport is https`` () =
+    let identity = """{"exchange":"https://fides.test","application":"summa-test","provider":"github","clientId":"Iv23liTEST","redirectUri":"https://summa.example/app/"}"""
+    let config (identity: string) = $$"""{"environment":"test","environmentName":"test","identity":{{identity}}}"""
+    Assert.True(Result.isOk (Deployment.parse (config identity)))
+    // A client secret has no place in the deployment document: it is refused, not ignored.
+    Assert.True(Result.isError (Deployment.parse (config (identity.Replace("}", ",\"clientSecret\":\"s3cr3t\"}")))))
+    // An exchange over plain http, anywhere but this machine, is refused.
+    Assert.True(Result.isError (Deployment.parse (config (identity.Replace("https://fides.test", "http://fides.test")))))
+
+[<Fact>]
+let ``no source file or committed configuration holds a credential`` () =
+    let root =
+        Seq.unfold (Option.map (fun (d: IO.DirectoryInfo) -> d, Option.ofObj d.Parent)) (Some(IO.DirectoryInfo AppContext.BaseDirectory))
+        |> Seq.find (fun d -> IO.File.Exists(IO.Path.Combine(d.FullName, "Summa.sln")))
+
+    let generated (path: string) =
+        [ "/bin/"; "/obj/"; "/node_modules/" ] |> List.exists (fun part -> path.Replace('\\', '/').Contains part)
+
+    let files =
+        [ "src", "*.fs"; "app", "*.*"; "web-kernel", "*.js"; "deploy", "*.*"; ".github", "*.yml" ]
+        |> List.collect (fun (folder, pattern) ->
+            let dir = IO.Path.Combine(root.FullName, folder)
+            if IO.Directory.Exists dir then IO.Directory.GetFiles(dir, pattern, IO.SearchOption.AllDirectories) |> List.ofArray else [])
+        |> List.append (root.GetFiles "*.json" |> Array.map (fun f -> f.FullName) |> List.ofArray)
+        |> List.filter (generated >> not)
+
+    Assert.NotEmpty files
+
+    let found =
+        files
+        |> List.collect (fun path ->
+            Sensitive.scan (IO.File.ReadAllText path)
+            |> List.filter (function Sensitive.Credential _ -> true | _ -> false)
+            |> List.map (fun finding -> IO.Path.GetRelativePath(root.FullName, path), Sensitive.describe finding))
+
+    Assert.Empty found
+
+// ---- Integrations, deletion and retention (SUM3-031..035) -------------------------------------
+
+[<Fact>]
+let ``integration states: a delivery failure leaves the invoice issued and may be retried; a GitHub refusal needs a person`` () =
+    Assert.Equal(Integrations.Pending, Integrations.ofDelivery Queued)
+    Assert.Equal(Integrations.Succeeded, Integrations.ofDelivery Delivered)
+    Assert.Equal(Integrations.Retryable "transient", Integrations.ofDelivery (DeliveryFailed "transient"))
+    Assert.Equal(Integrations.PermanentFailure "permanent", Integrations.ofDelivery (DeliveryFailed "permanent"))
+    Assert.Equal(Integrations.PermanentFailure "mailbox does not exist", Integrations.ofDelivery (Bounced "mailbox does not exist"))
+    Assert.Equal(Integrations.Pending, Integrations.ofQueued EntryState.Pending)
+    Assert.Equal(Integrations.Pending, Integrations.ofQueued (EntryState.InFlight "t1"))
+    Assert.Equal(Integrations.Succeeded, Integrations.ofQueued (EntryState.Synchronized "t2"))
+    // Someone else's change or an unknown outcome is decided or reconciled again, never lost.
+    Assert.True(match Integrations.ofQueued (EntryState.Conflicted [ "records/a.json" ]) with Integrations.Retryable _ -> true | _ -> false)
+    Assert.True(match Integrations.ofQueued (EntryState.OutcomeUnknown "t1") with Integrations.Retryable _ -> true | _ -> false)
+    Assert.Equal(Integrations.PermanentFailure "refused", Integrations.ofQueued (EntryState.Refused "refused"))
+    Assert.Equal(Integrations.PermanentFailure "given up", Integrations.ofQueued (EntryState.Abandoned "given up"))
+
+[<Fact>]
+let ``financial records are never deleted; only a draft may be`` () =
+    let store, ns = founded ()
+    let run key capability transition = execute store.Provider defaultApprovalGates ns 3 (request kevin capability key transition) |> Async.RunSynchronously
+    run "chart" ManageSettings setUp |> Support.ok |> ignore
+    run "draft" CreateDraftInvoice (fun r -> saveDraft ledgerContext draft r.Books |> Result.map (fun b -> { r with Books = b })) |> Support.ok |> ignore
+    // A draft may go: it has no financial effect.
+    Assert.True(run "drop-draft" CreateDraftInvoice (fun r -> Ok { r with Books = { r.Books with Drafts = Map.empty } }) |> Result.isOk)
+    // A customer may become inactive, never disappear.
+    match run "drop-customer" ManageBilling (fun r -> Ok { r with Books = { r.Books with Customers = Map.empty } }) with
+    | Error(Unstorable problems) -> Assert.Contains(problems, fun p -> (Diagnostics.describe p).Contains "never deleted")
+    | other -> failwith $"%A{other}"
+
+[<Fact>]
+let ``every financial record type has a retention, and only drafts are not kept for good`` () =
+    for recordType, _, deletable in FinancialRecords.types do
+        match Retention.ofType recordType with
+        | Retention.Permanent _ -> Assert.False(deletable, RecordType.value recordType)
+        | Retention.UntilResolved _ -> Assert.True(deletable, RecordType.value recordType)

@@ -72,12 +72,16 @@ let changes (seen: Map<string, Seen>) (wanted: Map<string, RecordKey * string>) 
         wanted
         |> Map.toList
         |> List.choose (fun (p, (key, content)) ->
-            match seen.TryFind p with
-            | None -> Some(parse p |> Result.map (fun path -> Change.Create(path, content)))
-            | Some found when found.Content = content -> None
-            | Some _ when not (List.exists (fun (t, m, _) -> t = key.Type && m = Mutability.Mutable) types) ->
+            // What is written is scanned first: never a card, an account number or a credential.
+            let sensitive = Sensitive.scan content |> List.tryHead
+
+            match seen.TryFind p, sensitive with
+            | Some found, _ when found.Content = content -> None
+            | _, Some finding -> Some(Error(SensitiveData(p, Sensitive.describe finding)))
+            | None, None -> Some(parse p |> Result.map (fun path -> Change.Create(path, content)))
+            | Some _, None when not (List.exists (fun (t, m, _) -> t = key.Type && m = Mutability.Mutable) types) ->
                 Some(Error(InvalidStoredRecord(p, "a posted record cannot be rewritten; correct it with a new record")))
-            | Some found -> Some(parse p |> Result.map (fun path -> Change.Update(path, content, found.Revision))))
+            | Some found, None -> Some(parse p |> Result.map (fun path -> Change.Update(path, content, found.Revision))))
 
     let deletes =
         seen
