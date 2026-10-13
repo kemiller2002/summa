@@ -158,7 +158,8 @@ let ``the kept form reads back as it was written`` () =
           Notes = "Thanks"
           Tax = { noTax with Code = "NY-8.875"; Amount = "39.94"; Inclusive = true; Rate = "8.875" }
           References = [ { Key = "reference-5"; Kind = "cost-center"; Value = "CC-7" } ]
-          BaseVersion = Some 3 }
+          BaseVersion = Some 3
+          EngagementId = "ENG-1" }
 
     Assert.Equal(Some(12, form), decodeEditor (encodeEditor 12 form))
 
