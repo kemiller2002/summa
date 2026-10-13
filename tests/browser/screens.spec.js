@@ -28,6 +28,7 @@ test("from a customer to an invoice, a payment and a credit memo, each at its ow
   await row.locator(".line-rate").fill("1000");
   await page.click("#review-draft");
   await page.click("#issue-invoice");
+  await page.click("#confirm-issue");
   await expect(page).toHaveURL(/#\/invoices\/INV-0001$/);
 
   await page.click('.summa-tab[data-tab="payments"]');
@@ -39,6 +40,7 @@ test("from a customer to an invoice, a payment and a credit memo, each at its ow
   await page.fill("#credit-amount", "150");
   await page.fill("#credit-reason", "Workshop shortened");
   await page.click("#issue-credit");
+  await page.click("#confirm-credit");
   await expect(page.locator("#notice")).toHaveText("Credit memo CM-0001 issued and applied.");
   await expect(page.locator("#invoice-outstanding")).toHaveText("450.00 USD");
 
@@ -71,6 +73,7 @@ test("payments are filtered in the address and each opens to what it paid", asyn
   await row.locator(".line-rate").fill("300");
   await page.click("#review-draft");
   await page.click("#issue-invoice");
+  await page.click("#confirm-issue");
   await page.click('.summa-tab[data-tab="payments"]');
   await page.fill("#payment-amount", "300");
   await page.fill("#payment-reference", "ACH-77");
