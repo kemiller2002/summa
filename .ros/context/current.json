@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-09T04:32:44.000Z",
+  "updatedAt": "2026-10-13T08:54:15Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -2252,6 +2252,52 @@
         }
       },
       "completedAt": "2026-10-09T04:32:44.000Z"
+    },
+    {
+      "id": "WI-0047",
+      "type": "bug",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Ledger/Lifecycle.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Tests/LifecycleTests.fs"
+        },
+        {
+          "type": "decision",
+          "path": "research/decisions/DF-SUMMA-2026-0022--delivery-authority-outcome-events-and-attention.md"
+        }
+      ],
+      "updatedAt": "2026-10-13T08:54:15Z",
+      "telemetryExecutionIds": [
+        "EXE-20261013T083907443Z-4a0e1018"
+      ],
+      "latestCheckpoint": {
+        "id": "d5a4578692122f8a7828b229",
+        "recordedAt": "2026-10-13T08:53:19Z",
+        "executionId": "EXE-20261013T083907443Z-4a0e1018",
+        "repository": "summa",
+        "branch": "fix/wi-0047-delivery-defects",
+        "commit": "fa5ec7c56ac27f06e10670cee2875b6d1138adc4",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "fix/wi-0047-delivery-defects",
+        "remoteCommit": "fa5ec7c56ac27f06e10670cee2875b6d1138adc4",
+        "summary": "DEL-A-021, DEL-A-046, DEL-P-007 fixed with failing tests first; DeliverInvoice capability; DF-SUMMA-2026-0022",
+        "nextAction": "Open PR, pass the strict gate, complete WI-0047",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-13T08:54:15Z",
+      "conclusion": "DEL-A-021, DEL-A-046 and DEL-P-007 fixed (escaped from WI-0027, PR #39). Each reproduced first: DEL-A-046 and DEL-P-007 as failing assertions, DEL-A-021 as a compile failure (the API had no authority input). 497 .NET tests pass."
     }
   ]
 }

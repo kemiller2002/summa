@@ -487,12 +487,22 @@ type CollectionStage =
     | Escalated of note: string
     | OnHold of reason: string
 
+/// A person's explicit resolution of a failed or bounced delivery
+/// (INV-DEL-008): the attempt it resolves, why, by whom and when.
+type DeliveryResolution =
+    { AttemptId: string
+      Note: string
+      By: string
+      At: DateTimeOffset }
+
 /// The operational follow-up of an invoice (INV-STATE-006, INV-STATE-007):
 /// it never changes the invoice or the ledger.
 type FollowUp =
     { InvoiceId: string
       Dispute: DisputeState
-      Collection: CollectionStage }
+      Collection: CollectionStage
+      /// The delivery problem a person last resolved, if any.
+      DeliveryResolved: DeliveryResolution option }
 
 type Books =
     { Ledger: Ledger

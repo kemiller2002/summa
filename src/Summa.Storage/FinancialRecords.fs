@@ -118,8 +118,9 @@ let types: (RecordType * Mutability * bool) list =
 
 /// The record types with a schema 2: tax as the person said it (customers,
 /// drafts, invoices, proposals; INV-ADJ-005), and where an action came from
-/// (audit events, proposal contributions; INV-AUD-002, INV-PROV-007).
-let private taxedTypes = set [ "summa.customer"; "summa.draft"; "summa.invoice"; "summa.proposal"; "summa.audit" ]
+/// (audit events, proposal contributions; INV-AUD-002, INV-PROV-007), and a
+/// follow-up's resolved delivery problem (INV-DEL-008).
+let private taxedTypes = set [ "summa.customer"; "summa.draft"; "summa.invoice"; "summa.proposal"; "summa.audit"; "summa.follow-up" ]
 
 /// Schema support for every financial record type: version 1, and version 2
 /// for the types that can record tax. A record is written at version 2 only
@@ -842,6 +843,20 @@ let private collectionJson =
     | Escalated note -> Json.objectOf [ "kind", Json.String "escalated"; "times", Json.Null; "text", Json.String note ]
     | OnHold reason -> Json.objectOf [ "kind", Json.String "on-hold"; "times", Json.Null; "text", Json.String reason ]
 
+/// A follow-up's resolved delivery problem, when it has one.
+let private deliveryResolutionOf (followUp: Json) : Decoded<DeliveryResolution option> =
+    match Codec.tryField "deliveryResolved" followUp with
+    | None -> Ok None
+    | Some value ->
+        decode {
+            do! closed [ "at"; "attemptId"; "by"; "note" ] value
+            let! attempt = text "attemptId" value
+            let! note = text "note" value
+            let! by = text "by" value
+            let! at = preciseInstant "at" value
+            return Some { AttemptId = attempt; Note = note; By = by; At = at }
+        }
+
 let private collectionOf (value: Json) : Decoded<CollectionStage> =
     decode {
         do! closed [ "kind"; "text"; "times" ] value
@@ -1463,7 +1478,20 @@ let toRecords (r: Receivables) : Result<FinancialRecord list, Diagnostic list> =
                     "instructions", Json.String p.Instructions ]
           for KeyValue(_, f) in books.FollowUps ->
               keyOf followUpType [] f.InvoiceId,
-              Json.objectOf [ "invoiceId", Json.String f.InvoiceId; "dispute", disputeJson f.Dispute; "collection", collectionJson f.Collection ]
+              Json.objectOf
+                  [ "invoiceId", Json.String f.InvoiceId
+                    "dispute", disputeJson f.Dispute
+                    "collection", collectionJson f.Collection
+                    // Written only once a delivery problem is resolved, so other follow-ups keep their bytes.
+                    match f.DeliveryResolved with
+                    | Some d ->
+                        "deliveryResolved",
+                        Json.objectOf
+                            [ "attemptId", Json.String d.AttemptId
+                              "note", Json.String d.Note
+                              "by", Json.String d.By
+                              "at", Json.String(preciseTimestamp d.At) ]
+                    | None -> () ]
           for id, a in auditIds ledger.Audit -> keyOf auditType (yearMonth (DateOnly.FromDateTime a.When.UtcDateTime)) id, auditBody a ]
 
     match records |> List.choose (fun (k, _) -> match k with Error d -> Some d | Ok _ -> None) with
@@ -1478,7 +1506,7 @@ let schemaVersionOf (record: FinancialRecord) =
         match value with
         | Json.Object members ->
             members
-            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || key = "change" || recordsTax inner)
+            |> List.exists (fun (key, inner) -> key = "tax" || key = "taxDetails" || key = "provenance" || key = "contributions" || key = "change" || key = "deliveryResolved" || recordsTax inner)
         | Json.Array items -> items |> List.exists recordsTax
         | _ -> false
 
@@ -1799,11 +1827,18 @@ let private partOf (t: RecordType) (b: Json) : Decoded<Part> =
         }
     | "summa.follow-up" ->
         decode {
-            do! closed [ "collection"; "dispute"; "invoiceId" ] b
+            do! closed [ "collection"; "deliveryResolved"; "dispute"; "invoiceId" ] b
             let! invoice = text "invoiceId" b
             let! dispute = field "dispute" b |> Result.bind disputeOf
             let! collection = field "collection" b |> Result.bind collectionOf
-            return FollowUpPart { InvoiceId = invoice; Dispute = dispute; Collection = collection }
+            let! resolved = deliveryResolutionOf b
+
+            return
+                FollowUpPart
+                    { InvoiceId = invoice
+                      Dispute = dispute
+                      Collection = collection
+                      DeliveryResolved = resolved }
         }
     | "summa.obligation" ->
         decode {

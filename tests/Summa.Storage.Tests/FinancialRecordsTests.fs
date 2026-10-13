@@ -232,6 +232,27 @@ let ``deliveries, payment profiles, follow-up and typed draft details round-trip
         Assert.Contains(expected, paths)
 
 [<Fact>]
+let ``a resolved delivery problem round-trips at schema 2; an unresolved follow-up keeps its schema 1 bytes`` () =
+    let original = withLifecycle ()
+    let path = "records/summa.follow-up/INV-001.json"
+    let versionOf r = toRecords r |> ok |> List.find (fun x -> RelativePath.render (Layout.recordPath x.Key |> ok) = path) |> schemaVersionOf
+    Assert.Equal(1, versionOf original)
+    let anyone = Summa.Ledger.Lifecycle.DeliveryAuthority(fun who -> who = ledgerContext.Who)
+    let later = { ledgerContext with When = ledgerContext.When.AddHours 1.0 }
+    let bounced =
+        Summa.Ledger.Lifecycle.resend later anyone "DL-2" "DL-1" original
+        |> Result.bind (Summa.Ledger.Lifecycle.recordOutcome later "DL-2" (Summa.Ledger.Invoicing.Bounced "mailbox full") None)
+        |> ok
+    Assert.NotEmpty(Summa.Ledger.Lifecycle.attention bounced)
+    let resolved = Summa.Ledger.Lifecycle.resolveDeliveryProblem later anyone "INV-001" "customer collected it" bounced |> ok
+    Assert.Empty(Summa.Ledger.Lifecycle.attention resolved)
+    Assert.Equal(2, versionOf resolved)
+    let loaded = load (stored resolved)
+    Assert.Empty loaded.Problems
+    Assert.True((resolved.Books.FollowUps = loaded.State.Books.FollowUps))
+    Assert.Empty(Summa.Ledger.Lifecycle.attention loaded.State)
+
+[<Fact>]
 let ``a stored payment profile holding a full account number is an integrity failure`` () =
     let r = withLifecycle ()
     let leaked = { r.Books.PaymentProfiles["us-bank@1"] with Instructions = "ACH account 123456789012" }

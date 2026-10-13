@@ -196,6 +196,12 @@ let contextFor (actor: Actor.Actor) (at: DateTimeOffset) (source: string) (sourc
               SourceId = sourceId
               Reason = reason } }
 
+/// Who may deliver invoices in the organization: the roster's members
+/// holding `DeliverInvoice` (INV-DEL-005). The delivery commands check it
+/// against the context's actor, whatever the interface showed.
+let deliveryAuthority (roster: Roster) =
+    Summa.Ledger.Lifecycle.DeliveryAuthority(fun who -> permits roster who DeliverInvoice)
+
 /// The Arca operation metadata of a command: the actor, its execution and
 /// correlation, and the idempotency key, never a token.
 /// The authorized agent interface (INV-AGENT-001): a request in words,
