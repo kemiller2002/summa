@@ -1632,6 +1632,142 @@
         "name": "step",
         "mechanism": "step-lifecycle"
       }
+    },
+    {
+      "type": "step.started",
+      "occurredAt": "2026-10-13T22:21:36Z",
+      "stepId": "STEP-20261013T222136000Z-e897ed8d",
+      "actor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": {
+        "type": "ros-cli",
+        "name": "step",
+        "mechanism": "step-lifecycle"
+      }
+    },
+    {
+      "type": "step.telemetry.availability",
+      "occurredAt": "2026-10-13T22:39:13Z",
+      "stepId": "STEP-20261013T222136000Z-e897ed8d",
+      "actor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": {
+        "type": "ros-cli",
+        "name": "step",
+        "mechanism": "step-lifecycle"
+      }
+    },
+    {
+      "type": "step.telemetry.availability",
+      "occurredAt": "2026-10-13T22:39:16Z",
+      "stepId": "STEP-20261013T222136000Z-e897ed8d",
+      "actor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": {
+        "type": "ros-cli",
+        "name": "step",
+        "mechanism": "step-lifecycle"
+      }
+    },
+    {
+      "type": "step.telemetry.availability",
+      "occurredAt": "2026-10-13T22:39:18Z",
+      "stepId": "STEP-20261013T222136000Z-e897ed8d",
+      "actor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": {
+        "type": "ros-cli",
+        "name": "step",
+        "mechanism": "step-lifecycle"
+      }
+    },
+    {
+      "type": "step.telemetry.availability",
+      "occurredAt": "2026-10-13T22:39:21Z",
+      "stepId": "STEP-20261013T222136000Z-e897ed8d",
+      "actor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": {
+        "type": "ros-cli",
+        "name": "step",
+        "mechanism": "step-lifecycle"
+      }
+    },
+    {
+      "type": "step.telemetry.availability",
+      "occurredAt": "2026-10-13T22:39:24Z",
+      "stepId": "STEP-20261013T222136000Z-e897ed8d",
+      "actor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": {
+        "type": "ros-cli",
+        "name": "step",
+        "mechanism": "step-lifecycle"
+      }
+    },
+    {
+      "type": "step.telemetry.availability",
+      "occurredAt": "2026-10-13T22:39:26Z",
+      "stepId": "STEP-20261013T222136000Z-e897ed8d",
+      "actor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": {
+        "type": "ros-cli",
+        "name": "step",
+        "mechanism": "step-lifecycle"
+      }
+    },
+    {
+      "type": "step.completed",
+      "occurredAt": "2026-10-13T22:39:28Z",
+      "stepId": "STEP-20261013T222136000Z-e897ed8d",
+      "actor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": {
+        "type": "ros-cli",
+        "name": "step",
+        "mechanism": "step-lifecycle"
+      }
     }
   ],
   "repository": {
@@ -2212,6 +2348,281 @@
           "from": "active",
           "to": "completed",
           "occurredAt": "2026-10-13T22:13:13Z",
+          "reason": null,
+          "actor": {
+            "kind": "agent",
+            "id": "anthropic/claude-code",
+            "provider": "anthropic",
+            "model": "unknown",
+            "runtime": "claude-code"
+          }
+        }
+      ]
+    },
+    {
+      "schemaVersion": "1.0.0",
+      "stepId": "STEP-20261013T222136000Z-e897ed8d",
+      "executionId": "EXE-20261009T024702576Z-bcf1e384",
+      "workItemId": "WI-0044",
+      "instanceId": null,
+      "sequence": 3,
+      "siblingSequence": 3,
+      "parentStepId": null,
+      "name": "WI-0044 slice: choosing a customer proposes the billing details, terms, revenue account, engagement and rate, all shown and editable before review (SUM4-005)",
+      "description": null,
+      "classification": [],
+      "status": "completed",
+      "plannedAt": "2026-10-13T22:21:36Z",
+      "startedAt": "2026-10-13T22:21:36Z",
+      "completedAt": "2026-10-13T22:39:28Z",
+      "endedAt": "2026-10-13T22:39:28Z",
+      "updatedAt": "2026-10-13T22:39:28Z",
+      "actor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "identity": {
+        "provider": "anthropic",
+        "model": null,
+        "modelVersion": null,
+        "runtime": "claude-code",
+        "runtimeVersion": null,
+        "sessionId": "7bcb3038-90cc-534e-8e5b-9be62aa1de8c",
+        "conversationId": null,
+        "runId": null,
+        "agentId": null,
+        "subagentId": null,
+        "parentExecutionId": null
+      },
+      "telemetry": {
+        "measurementIds": [],
+        "rawSnapshotIds": [],
+        "checkpoints": [],
+        "deltas": [],
+        "capabilities": [
+          {
+            "metricId": "tokens.input",
+            "status": "supported-unavailable",
+            "reason": "Claude Code subagent runtime exposes only a remaining-context budget, not per-request provider usage or cost",
+            "discoveredAt": "2026-10-13T22:39:13Z",
+            "source": {
+              "type": "agent-report",
+              "name": "step-availability",
+              "mechanism": "explicit"
+            },
+            "lastAssessedAt": "2026-10-13T22:39:13Z",
+            "recordedAt": "2026-10-13T22:39:13Z"
+          },
+          {
+            "metricId": "tokens.output",
+            "status": "supported-unavailable",
+            "reason": "Claude Code subagent runtime exposes only a remaining-context budget, not per-request provider usage or cost",
+            "discoveredAt": "2026-10-13T22:39:16Z",
+            "source": {
+              "type": "agent-report",
+              "name": "step-availability",
+              "mechanism": "explicit"
+            },
+            "lastAssessedAt": "2026-10-13T22:39:16Z",
+            "recordedAt": "2026-10-13T22:39:16Z"
+          },
+          {
+            "metricId": "tokens.cached_input",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-09T02:47:02.576Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "tokens.cache_read",
+            "status": "supported-unavailable",
+            "reason": "Claude Code subagent runtime exposes only a remaining-context budget, not per-request provider usage or cost",
+            "discoveredAt": "2026-10-13T22:39:18Z",
+            "source": {
+              "type": "agent-report",
+              "name": "step-availability",
+              "mechanism": "explicit"
+            },
+            "lastAssessedAt": "2026-10-13T22:39:18Z",
+            "recordedAt": "2026-10-13T22:39:18Z"
+          },
+          {
+            "metricId": "tokens.cache_write",
+            "status": "supported-unavailable",
+            "reason": "Claude Code subagent runtime exposes only a remaining-context budget, not per-request provider usage or cost",
+            "discoveredAt": "2026-10-13T22:39:21Z",
+            "source": {
+              "type": "agent-report",
+              "name": "step-availability",
+              "mechanism": "explicit"
+            },
+            "lastAssessedAt": "2026-10-13T22:39:21Z",
+            "recordedAt": "2026-10-13T22:39:21Z"
+          },
+          {
+            "metricId": "tokens.reasoning",
+            "status": "supported-unavailable",
+            "reason": "Claude Code subagent runtime exposes only a remaining-context budget, not per-request provider usage or cost",
+            "discoveredAt": "2026-10-13T22:39:24Z",
+            "source": {
+              "type": "agent-report",
+              "name": "step-availability",
+              "mechanism": "explicit"
+            },
+            "lastAssessedAt": "2026-10-13T22:39:24Z",
+            "recordedAt": "2026-10-13T22:39:24Z"
+          },
+          {
+            "metricId": "tokens.tool",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-09T02:47:02.576Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "tokens.total",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-09T02:47:02.576Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "session.tokens.cumulative",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-09T02:47:02.576Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "cost.input",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-09T02:47:02.576Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "cost.output",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-09T02:47:02.576Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "cost.reasoning",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-09T02:47:02.576Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "cost.cache",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-09T02:47:02.576Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "cost.tool_api",
+            "status": "unknown",
+            "reason": "runtime capability not reported or mapped",
+            "discoveredAt": "2026-10-09T02:47:02.576Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          },
+          {
+            "metricId": "cost.execution_total",
+            "status": "supported-unavailable",
+            "reason": "Claude Code subagent runtime exposes only a remaining-context budget, not per-request provider usage or cost",
+            "discoveredAt": "2026-10-13T22:39:26Z",
+            "source": {
+              "type": "agent-report",
+              "name": "step-availability",
+              "mechanism": "explicit"
+            },
+            "lastAssessedAt": "2026-10-13T22:39:26Z",
+            "recordedAt": "2026-10-13T22:39:26Z"
+          },
+          {
+            "metricId": "cost.session_cumulative",
+            "status": "supported-unavailable",
+            "reason": "runtime family can expose this metric, but no observation has been ingested for this execution",
+            "discoveredAt": "2026-10-09T02:47:02.576Z",
+            "source": {
+              "type": "environment",
+              "name": "runtime-identity",
+              "mechanism": "whitelisted-claude-environment"
+            }
+          }
+        ]
+      },
+      "relationships": {
+        "filesObserved": [],
+        "filesChanged": [],
+        "commits": [],
+        "commands": [],
+        "tests": [],
+        "validations": [],
+        "evidence": [],
+        "decisions": [],
+        "requirements": [],
+        "outcomes": []
+      },
+      "transitions": [
+        {
+          "from": null,
+          "to": "active",
+          "occurredAt": "2026-10-13T22:21:36Z",
+          "reason": null,
+          "actor": {
+            "kind": "agent",
+            "id": "anthropic/claude-code",
+            "provider": "anthropic",
+            "model": "unknown",
+            "runtime": "claude-code"
+          }
+        },
+        {
+          "from": "active",
+          "to": "completed",
+          "occurredAt": "2026-10-13T22:39:28Z",
           "reason": null,
           "actor": {
             "kind": "agent",

@@ -358,7 +358,17 @@
                 <option value="">Choose a customer</option>
                 <template data-each="customerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
               </select>
-              <p class="ef-field__description" id="draft-customer-facts"><template data-if="draftCustomerChosen"><span>Terms: <span id="draft-terms" data-text="draftCustomerTerms"></span>. Tax: <span id="draft-customer-tax" data-text="draftCustomerTax"></span></span></template><template data-if="draftCustomerUnchosen"><span>Choose a customer to see their payment terms and tax status.</span></template></p></div>
+              <p class="ef-field__description" id="draft-customer-facts"><template data-if="draftCustomerChosen"><span>Terms: <span id="draft-terms" data-text="draftCustomerTerms"></span>. Tax: <span id="draft-customer-tax" data-text="draftCustomerTax"></span></span></template><template data-if="draftCustomerUnchosen"><span>Choose a customer to see their payment terms and tax status.</span></template></p>
+              <p class="ef-field__description summa-optional-note" id="draft-bill-to" data-text="draftBillTo"></p>
+              <p class="ef-field__description summa-optional-note" id="draft-rate-note" data-text="draftRateNote"></p></div>
+            <template data-if="hasDraftEngagements">
+              <div class="ef-field"><label class="ef-field__label" for="draft-engagement">Engagement</label>
+                <select id="draft-engagement" data-event="draftEngagementChosen" data-bind-value="draftEngagement">
+                  <option value="">No engagement</option>
+                  <template data-each="draftEngagementOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
+                </select>
+                <p class="ef-field__description">Its terms and rates apply before the customer's.</p></div>
+            </template>
             <div class="ef-field"><label class="ef-field__label" for="draft-po">Purchase order</label>
               <input id="draft-po" type="text" aria-describedby="draft-po-note" data-event="draftPurchaseOrderChanged" data-on="input" data-bind-value="draftPurchaseOrder" />
               <p class="ef-field__description summa-optional-note" id="draft-po-note" data-text="draftPurchaseOrderNote"></p></div>
