@@ -76,3 +76,39 @@ let ``INV-EXP-003: an invoice's history can be rebuilt from open formats alone``
     for path, (_, content) in FinancialRecords.toRecords r |> Result.bind FinancialRecords.contents |> ok |> Map.toList do
         use record = JsonDocument.Parse(content: string)
         Assert.True(record.RootElement.ValueKind = JsonValueKind.Object, path)
+
+[<Fact>]
+let ``CSV cells are quoted per RFC 4180, and a cell a spreadsheet would run as a formula stays text`` () =
+    for input, expected in
+        [ "=SUM(A1:A9)", "'=SUM(A1:A9)"
+          "+15551234", "'+15551234"
+          "-2+3", "'-2+3"
+          "@cmd", "'@cmd"
+          "\tTAB", "'\tTAB"
+          "\rCR", "\"'\rCR\""
+          "a,b", "\"a,b\""
+          "say \"hi\"", "\"say \"\"hi\"\"\""
+          "line 1\nline 2", "\"line 1\nline 2\""
+          "=1,2", "\"'=1,2\""
+          "Acme LLC", "Acme LLC"
+          "", "" ] do
+        Assert.Equal(expected, Reports.csvField input)
+
+[<Fact>]
+let ``an invoices CSV neutralizes formulas in names and references, and exports nothing the storage scan would refuse`` () =
+    let r = full ()
+    let invoice = r.Books.Invoices |> Map.toList |> List.head |> snd
+    let hostile = { invoice with Customer = { invoice.Customer with BillingName = "=HYPERLINK(\"http://x\",\"pay\")" } }
+    let csv = Reports.invoicesCsv r [ hostile ]
+    let row = (csv.TrimEnd('\n').Split '\n')[1]
+    Assert.Contains(",\"'=HYPERLINK(\"\"http://x\"\",\"\"pay\"\")\",", row)
+    Assert.DoesNotContain(",=HYPERLINK", row)
+
+    // Every export holds only what the books hold, and the books hold nothing the scan refuses.
+    let exports =
+        [ Reports.invoicesCsv r (r.Books.Invoices |> Map.toList |> List.map snd)
+          Reports.journalCsv r.Books.Ledger
+          Exports.invoiceJson (exportOf r invoice.InvoiceId) (Documents.toJson (Documents.ofInvoice invoice)) ]
+
+    for text in exports do
+        Assert.Empty(Sensitive.scan text)

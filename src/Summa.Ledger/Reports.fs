@@ -140,8 +140,16 @@ let balances (sheet: BalanceSheet) =
 let private decimalText (m: Money) =
     (decimal m.Minor / 100m).ToString("0.00", CultureInfo.InvariantCulture)
 
-let private csvField (text: string) =
-    if text.IndexOfAny [| ','; '"'; '\n'; '\r' |] >= 0 then "\"" + text.Replace("\"", "\"\"") + "\"" else text
+/// A text cell (RFC 4180): quoted when it holds a comma, a quote or a line
+/// break, quotes doubled. A cell a spreadsheet would read as a formula,
+/// one starting with =, +, -, @, a tab or a carriage return, is written
+/// with a leading apostrophe so it stays text (OWASP CSV injection).
+/// Amounts are not text cells and are written as numbers.
+let csvField (text: string) =
+    let safe =
+        if text.Length > 0 && "=+-@\t\r".IndexOf text[0] >= 0 then "'" + text else text
+
+    if safe.IndexOfAny [| ','; '"'; '\n'; '\r' |] >= 0 then "\"" + safe.Replace("\"", "\"\"") + "\"" else safe
 
 /// The trial balance as CSV (§20): code, name, debit, credit.
 let trialBalanceCsv (tb: TrialBalance) =

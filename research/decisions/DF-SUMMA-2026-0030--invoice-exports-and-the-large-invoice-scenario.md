@@ -69,7 +69,20 @@ no document claims compliance.
      and JSON, and total exactly.
    - It takes about 0.1 s in the tests. The bound is set at 20 s so that
      slow CI cannot make it flaky.
-4. **Locale and compliance.** The document and its JSON must be identical
+4. **CSV cells are safe to open.** \`Reports.csvField\`, which every CSV
+   export uses, does two things:
+   - It quotes per RFC 4180: a cell with a comma, a quote or a line break
+     is quoted, and its quotes are doubled.
+   - It neutralizes formulas (OWASP CSV injection): a text cell starting
+     with =, +, -, @, a tab or a carriage return gets a leading
+     apostrophe, so a spreadsheet keeps it as text.
+
+   Amounts are written as numbers, not text cells, so a negative amount
+   stays a number. Exports hold only what the books hold, and the storage
+   scan refuses card numbers, account numbers and credentials before
+   anything is stored (DF-SUMMA-2026-0021). A test scans the exports
+   anyway.
+5. **Locale and compliance.** The document and its JSON must be identical
    under any culture, and must contain no claim of tax or e-invoicing
    compliance. Tests assert both.
 
