@@ -1743,6 +1743,47 @@
     "version": "1.0.0"
   },
   {
+    "created": "2026-10-13",
+    "id": "DF-SUMMA-2026-0040",
+    "owners": [
+      "summa"
+    ],
+    "path": "research/decisions/DF-SUMMA-2026-0040--integration-states-on-the-work-page.md",
+    "provenance": {
+      "contributions": {
+        "EXE-20261009T031528777Z-d8d5aa1a": {
+          "actor": {
+            "id": "anthropic/claude-code",
+            "kind": "agent",
+            "model": "claude-opus-5-5",
+            "provider": "anthropic",
+            "runtime": "claude-code"
+          },
+          "at": "2026-10-13T15:19:43.000Z",
+          "operations": [
+            "created"
+          ],
+          "reason": "Record integration states in the app (WI-0029 slice 19)"
+        }
+      }
+    },
+    "related_documents": [
+      "research/decisions/DF-SUMMA-2026-0021--sensitive-data-integration-states-and-retention.md"
+    ],
+    "review_cycle": "on-trigger",
+    "status": "accepted",
+    "superseded_by": [],
+    "supersedes": [],
+    "tags": [
+      "integrations",
+      "outages",
+      "operations"
+    ],
+    "title": "Each integration's state, in one vocabulary, on the Work page",
+    "updated": "2026-10-13",
+    "version": "1.0.0"
+  },
+  {
     "created": "2026-10-05",
     "id": "DF-SUMMA-FND-2026-0001",
     "owners": [

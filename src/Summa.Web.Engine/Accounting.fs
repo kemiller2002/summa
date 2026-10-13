@@ -308,9 +308,11 @@ type Unsent =
       /// that were kept before Summa recorded who made them. They are held,
       /// never sent as this person or dropped, until the person chooses
       /// (Arca 0.4.0, LCP-070).
-      Foreign: int }
+      Foreign: int
+      /// The blocked change's integration state (`Integrations.ofQueued`).
+      BlockedState: Integrations.IntegrationState option }
 
-let noneUnsent = { Waiting = 0; Blocked = None; Note = None; Foreign = 0 }
+let noneUnsent = { Waiting = 0; Blocked = None; Note = None; Foreign = 0; BlockedState = None }
 
 /// Checking the books on GitHub against their history (WI-0037): records
 /// edited outside Summa are shown, never trusted or put right silently.
@@ -1259,6 +1261,61 @@ let private openInvoices (today: DateOnly) (r: Receivables) =
     |> List.map snd
     |> List.filter (fun i -> (outstanding r i).Minor > 0L)
     |> List.sortBy (fun i -> i.DueDate, i.Number)
+
+/// Every outside system Summa exchanges with, in one state vocabulary
+/// (SUM3-032): where the books are kept, invoice delivery, and time from
+/// Chrona. An unavailable integration never changes the books; this says
+/// what is waiting, what may pass on its own, and what needs a person.
+let integrationStates (onGitHub: bool) (unsent: Unsent) (r: Receivables) =
+    let storage =
+        if not onGitHub then
+            "Books storage", Integrations.Succeeded, "Kept in this browser; nothing to send.", Routes.href Routes.Settings
+        else
+            match unsent.BlockedState, unsent.Blocked with
+            | Some state, Some(_, what, why) -> "GitHub", state, $"{what}: {why}", Routes.href Routes.Settings
+            | _ when unsent.Waiting > 0 ->
+                "GitHub", Integrations.Pending, $"{unsent.Waiting} changes made here have not reached GitHub yet.", Routes.href Routes.Settings
+            | _ -> "GitHub", Integrations.Succeeded, "Every change made here is on GitHub.", Routes.href Routes.Settings
+
+    // The latest attempt of each invoice that has one.
+    let latest =
+        r.Books.Invoices
+        |> Map.toList
+        |> List.choose (fun (id, _) -> Lifecycle.attempts r id |> List.tryLast |> Option.map (fun a -> id, Integrations.ofDelivery a.Outcome))
+
+    let number id = r.Books.Invoices.TryFind id |> Option.map _.Number |> Option.defaultValue id
+    let invoiceHref id = Routes.href (Routes.Invoice(id, Routes.InvoicePayments))
+
+    let delivery =
+        match latest |> List.filter (fun (_, s) -> match s with Integrations.PermanentFailure _ -> true | _ -> false) with
+        | (id, Integrations.PermanentFailure why) :: rest ->
+            let more = if rest.IsEmpty then "" else $" and {rest.Length} more"
+            "Invoice delivery", Integrations.PermanentFailure why, $"Invoice {number id} could not be delivered ({why}){more}; send it again to a corrected address, or record how it was sent.", invoiceHref id
+        | _ ->
+            match latest |> List.filter (fun (_, s) -> match s with Integrations.Retryable _ -> true | _ -> false) with
+            | (id, Integrations.Retryable why) :: _ ->
+                "Invoice delivery", Integrations.Retryable why, $"Invoice {number id}: the last attempt failed ({why}); sending it again may succeed.", invoiceHref id
+            | _ ->
+                match latest |> List.filter (fun (_, s) -> s = Integrations.Pending) with
+                | [] -> "Invoice delivery", Integrations.Succeeded, "No delivery is waiting or failed.", Routes.href Routes.Work
+                | pending -> "Invoice delivery", Integrations.Pending, $"{pending.Length} deliveries sent with no final answer yet.", invoiceHref (fst pending.Head)
+
+    let time =
+        match r.Books.Reviews |> Map.toList |> List.filter (fun (_, v) -> v.Resolution.IsNone) with
+        | [] -> "Time from Chrona", Integrations.Succeeded, $"{r.Books.Time.Count} publications received; none needs a person.", Routes.href Routes.Proposals
+        | open' ->
+            let _, first = open'.Head
+            "Time from Chrona", Integrations.PermanentFailure first.Reason, $"{open'.Length} corrections to invoiced time need a person.", invoiceHref first.InvoiceId
+
+    [ storage; delivery; time ]
+
+/// An integration state in words.
+let integrationStateText =
+    function
+    | Integrations.Pending -> "Pending"
+    | Integrations.Succeeded -> "Succeeded"
+    | Integrations.Retryable _ -> "Retryable"
+    | Integrations.PermanentFailure _ -> "Needs a person"
 
 /// Everything that needs someone's attention (v0.4 §31), each with where to act.
 let workItems (today: DateOnly) (r: Receivables) =
@@ -3434,6 +3491,28 @@ let private attentionValues (model: Model) (shown: Screen) : View =
       "hasWork", flagOf (not work.IsEmpty)
       "noWork", flagOf work.IsEmpty
       "workCount", textOf (string work.Length)
+      // Each outside system's state (SUM3-032).
+      "integrations",
+      Items(
+          books
+          |> Option.map (fun b ->
+              integrationStates (onGitHub model) model.Unsent b
+              |> List.mapi (fun i (name, state, detail, href) ->
+                  [ "key", Text(string i)
+                    "name", Text name
+                    "state", Text(integrationStateText state)
+                    // The lozenge's tone, as invoice statuses use it.
+                    "stateKey",
+                    Text(
+                        match state with
+                        | Integrations.Succeeded -> "ok"
+                        | Integrations.Pending -> ""
+                        | _ -> "attention"
+                    )
+                    "detail", Text detail
+                    "href", Text href ]))
+          |> Option.defaultValue []
+      )
       "followUpHref", textOf (Routes.href (Routes.FollowUp Routes.OverdueInvoices))
       "inboxHref", textOf (Routes.href (Routes.Inbox None))
       "cpaHref", textOf (Routes.href (Routes.Cpa None))
