@@ -2184,20 +2184,20 @@
         "EXE-20261009T031528777Z-d8d5aa1a"
       ],
       "latestCheckpoint": {
-        "id": "ccd7a0de32a07fe2f2cbef56",
-        "recordedAt": "2026-10-13T14:29:34Z",
+        "id": "714e8b1e3455a7f3270da16a",
+        "recordedAt": "2026-10-13T14:41:53Z",
         "executionId": "EXE-20261009T031528777Z-d8d5aa1a",
         "repository": "summa",
-        "branch": "feat/wi-0029-payment-contracts",
-        "commit": "d642b4da3308a4429bd14028b197244f82a7ce37",
+        "branch": "feat/wi-0029-domain-operations",
+        "commit": "5c4594f28f88bf661c2b7b162ac89ddbadbe995f",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0029-payment-contracts",
-        "remoteCommit": "d642b4da3308a4429bd14028b197244f82a7ce37",
-        "summary": "SUM3-011: contract 1.1 adds record-payment and allocate-payment; each message is written at the oldest version that defines it so 1.0 bytes are unchanged; a 1.0 message carrying a 1.1 command is refused (DF-SUMMA-2026-0037, docs/contracts/invoice-commands-1.1.md); partial: agent requests in words have no versioned envelope",
-        "nextAction": "SUM2-031, served import preview, integration state in the app, export handling (SUM3-024), SUM3-006 scheduling (runs generateDue), template screen; editor inputs for line details and references; INV-OPS-006 required PO and payment promise; INV-CONTRACT-004 business events; versioned agent request envelope; INV-ARCH and INV-INTL-001 partials",
+        "remoteBranch": "feat/wi-0029-domain-operations",
+        "remoteCommit": "5c4594f28f88bf661c2b7b162ac89ddbadbe995f",
+        "summary": "SUM2-031: contract 1.2 adds apply-credit-memo, reverse-payment and close-period; the month-close rule moved into the domain (Periods.closeBlockers) for page and contract alike; generic record operations refused (DF-SUMMA-2026-0038, docs/contracts/invoice-commands-1.2.md)",
+        "nextAction": "served import preview, integration state in the app, export handling (SUM3-024), SUM3-006 scheduling (runs generateDue), template screen; editor inputs for line details and references; INV-OPS-006 required PO and payment promise; INV-CONTRACT-004 business events; versioned agent request envelope; INV-ARCH and INV-INTL-001 partials",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
