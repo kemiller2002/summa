@@ -30,6 +30,15 @@ test("the work queue links to what needs attention, and a dispute is recorded on
   await nav(page, "Work").click();
   await expect(page).toHaveURL(/#\/work$/);
   await expect(page.locator("#work-list li").first()).toBeVisible();
+  // Each item says why it is raised (SUM4-032).
+  const reasons = await page.locator("#work-list .summa-trigger").allTextContents();
+  expect(reasons.length).toBeGreaterThan(0);
+  for (const reason of reasons) expect(["Action required", "Deadline approaching", "Failed", "Changed"]).toContain(reason);
+  // The dashboard counts the same queue and links to it.
+  await nav(page, "Home").click();
+  await expect(page.locator("#work-count")).toHaveText(String(reasons.length));
+  await page.click("#work-link");
+  await expect(page).toHaveURL(/#\/work$/);
 
   await page.goto(page.url().replace(/#.*$/, "#/invoices/INV-0002?tab=payments"));
   await page.fill("#follow-up-note", "Hours not agreed");

@@ -36,6 +36,7 @@
     <Compile Include="SearchPageTests.fs" />
     <Compile Include="AccountingOnDemandTests.fs" />
     <Compile Include="ManagementReportTests.fs" />
+    <Compile Include="NotificationTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
