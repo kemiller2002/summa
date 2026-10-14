@@ -147,6 +147,12 @@ a.summa-nav__link {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
   gap: 1rem;
+  /* Peer fields share a top edge (ULI-L01). Without this the grid stretches
+     every field to the tallest one in its row, and Forma's .ef-field (an
+     auto-row grid) spreads that extra height between its label and control,
+     so a field whose neighbour has help text drops its control below its
+     peers'. The composition owns this relationship (ULI-L03). */
+  align-items: start;
 }
 
 .summa-table {
@@ -173,9 +179,17 @@ a.summa-nav__link {
   font-variant-numeric: tabular-nums;
 }
 
-.summa-lines input {
+.summa-lines input:not([type="checkbox"]) {
   inline-size: 100%;
   min-inline-size: 5rem;
+}
+
+/* Forma breaks table text anywhere so no cell can overflow; in the line
+   editor that sizes columns to single letters and splits "Remove" and
+   "Taxable" mid-word at tablet widths (ULI-L05). Break only what would
+   otherwise overflow; below 40rem the rows stack instead. */
+.summa-lines :is(th, td) {
+  overflow-wrap: break-word;
 }
 
 /* A control in a table cell, named by a label only screen readers hear. */
@@ -497,4 +511,62 @@ a.summa-tab {
     border: 0;
     padding: 0;
   }
+}
+
+/* A route's wrapper element (see the onInvoice template): it exists so the
+   route's mount has an element root, and takes no part in the layout. */
+.summa-route {
+  display: contents;
+}
+
+/* Primary navigation on a narrow screen (ULI-L09): a disclosure. The menu
+   button sits beside the brand; opened, the sections are a full-width list
+   of 2.75rem targets in their usual order. From 40rem up the button is not
+   shown and every section stays in view. */
+.summa-menu-button {
+  display: none;
+}
+
+@media (max-width: 40rem) {
+  .summa-header {
+    justify-content: space-between;
+  }
+
+  .summa-menu-button {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .summa-nav {
+    flex: 1 1 100%;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .summa-nav[data-open="false"] {
+    display: none;
+  }
+
+  .summa-header__actions {
+    flex: 1 1 100%;
+  }
+}
+
+/* Forma's data grid scrolls a wide table inside itself (ULI-L05). Two
+   things in Summa's composition kept it from doing so at 200% text, where
+   the page grew 65 CSS px wider than the viewport:
+   - each view in the main column is a flex item whose automatic minimum
+     size was the grid's 42rem table, so it is allowed to shrink to the
+     column;
+   - the visually hidden labels in table cells are absolutely positioned,
+     and with no positioned ancestor inside the scroller they escaped it, so
+     Summa's tables are their containing block.
+   Forma's own share is recorded as FORMA-GRID-MIN-SIZE in
+   docs/ui-conformance/upstream-defects.md. */
+.summa-main > * {
+  min-inline-size: 0;
+}
+
+.summa-table {
+  position: relative;
 }

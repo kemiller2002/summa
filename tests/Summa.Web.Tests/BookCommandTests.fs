@@ -19,7 +19,7 @@ let private changesNoBooks =
           "ReturnTargetRead"; "BooksOpened"; "BooksNotOpened"; "FoundRequested"; "ConfirmRequested"; "MigrateRequested"; "BooksCommitted"
           "ManifestCommitted"; "StoreRefused"; "ChangeKept"; "BooksSynchronized"; "UnsentChanged"; "SendUnsentRequested"; "CheckRequested"
           "BooksChecked"; "AbandonUnsentRequested"; "ForeignUnsentSendRequested"; "ForeignUnsentDiscardRequested"; "Loaded"; "Saved"
-          "LinkCopyRequested"; "LinkCopied"; "InvoiceSearchChanged"; "GlobalSearchChanged"; "ManagementFromChanged"; "ManagementToChanged"; "InvoiceStatusToggled"; "InvoiceCustomerChosen"; "InvoiceFromChanged"
+          "LinkCopyRequested"; "LinkCopied"; "MenuToggled"; "InvoiceSearchChanged"; "GlobalSearchChanged"; "ManagementFromChanged"; "ManagementToChanged"; "InvoiceStatusToggled"; "InvoiceCustomerChosen"; "InvoiceFromChanged"
           "InvoiceToChanged"; "InvoiceOverdueToggled"; "InvoiceSortChosen"; "InvoiceFiltersCleared"; "CustomerSearchChanged"; "CustomerSortChosen"
           "CustomerInactiveToggled"; "ReceivablesAsOfChanged"; "ReceivablesCustomerChosen"; "InvoiceTabChosen"; "CustomerNameChanged"
           "CustomerBillingNameChanged"; "CustomerAddressChanged"; "CustomerEmailChanged"; "CustomerTermsChanged"; "DraftCustomerChanged"

@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-13T17:52:02Z",
+  "updatedAt": "2026-10-14T08:47:40.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -2421,6 +2421,424 @@
       },
       "completedAt": "2026-10-13T17:52:02Z",
       "conclusion": "echelon-current 1.19.0 to 1.22.0 applied one set per PR through Conditor (Forma 0.6.1, Folio 0.4.0, Ordo 1.7.0; #86, #87, #92, #93); drift ok for every component; the clean pre-step is tools/authorize-clean.sh with tests."
+    },
+    {
+      "id": "WI-0053",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "app/index.html"
+        },
+        {
+          "type": "implementation",
+          "path": "app/summa-app.css"
+        },
+        {
+          "type": "implementation",
+          "path": "web-kernel/page.css"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Engine/Accounting.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Engine/BacklogPage.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Exports.fs"
+        },
+        {
+          "type": "implementation",
+          "path": ".github/workflows/build.yml"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/ui-conformance.app.spec.js"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/ui-conformance.pages.spec.js"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/ui-conformance.github.spec.js"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/BacklogPageTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "docs/ui-conformance/summa.ui-conformance.json"
+        }
+      ],
+      "updatedAt": "2026-10-13T18:51:09.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261013T172932287Z-85b7157e"
+      ],
+      "latestCheckpoint": {
+        "id": "a7b9e1db226120b51d33be22",
+        "recordedAt": "2026-10-13T18:51:07.000Z",
+        "executionId": "EXE-20261013T172932287Z-85b7157e",
+        "repository": "summa",
+        "branch": "feat/ui-conformance-2026-10",
+        "commit": "b4f614640d357551d1992b8f2fd3937431c0de16",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/ui-conformance-2026-10",
+        "remoteCommit": "b4f614640d357551d1992b8f2fd3937431c0de16",
+        "summary": "Merged origin/main; full suites green; draft PR #95 open",
+        "nextAction": "Complete WI-0053, registry build, validate",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-13T18:51:09.000Z",
+      "conclusion": "UI-LAYOUT-INTERACTION@1.0.0 adopted: 13 baseline defects repaired, 22 @ui-conformance tests in CI; open upstream Forma ULI-L02 control-height defect recorded; draft PR #95"
+    },
+    {
+      "id": "WI-0054",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Application/Store.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Migrations.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Storage/Verification.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Engine/Accounting.fs"
+        },
+        {
+          "type": "implementation",
+          "path": "app/index.html"
+        },
+        {
+          "type": "implementation",
+          "path": "app/summa-app.css"
+        },
+        {
+          "type": "implementation",
+          "path": "docs/ui-conformance/upstream-defects.md"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/ui-conformance.app.spec.js"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/ui-conformance.github.spec.js"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/DeepLinkTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/StoreTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "docs/ui-conformance/summa.ui-conformance.json"
+        }
+      ],
+      "updatedAt": "2026-10-13T19:28:31.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261013T185225720Z-b85c4718"
+      ],
+      "latestCheckpoint": {
+        "id": "8fc314c4a1314df3fa5c5e91",
+        "recordedAt": "2026-10-13T19:20:35.000Z",
+        "executionId": "EXE-20261013T185225720Z-b85c4718",
+        "repository": "summa",
+        "branch": "feat/ui-conformance-2026-10",
+        "commit": "b04b9dfc5d270e05eb2c787088980973bb4679f3",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/ui-conformance-2026-10",
+        "remoteCommit": "b04b9dfc5d270e05eb2c787088980973bb4679f3",
+        "summary": "Six UNKNOWN actions resolved (Turn hang fixed), 320px Menu disclosure, upstream defects recorded",
+        "nextAction": "Full suites, CI on PR, update PR body, complete WI-0054",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-13T19:28:31.000Z",
+      "conclusion": "Six UNKNOWN action groups now PASS (Confirm/Update/Check the books hang fixed: bridge Turn); 320px Menu disclosure (ULI-L09); merged .ros audited (0 eventId mismatches); Limen nested data-if defect recorded with repro"
+    },
+    {
+      "id": "WI-0055",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "app/index.html"
+        },
+        {
+          "type": "implementation",
+          "path": "app/summa-app.css"
+        },
+        {
+          "type": "implementation",
+          "path": ".ros/events/events.jsonl"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/ui-conformance.app.spec.js"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/ui-conformance.github.spec.js"
+        },
+        {
+          "type": "tests",
+          "path": "tests/Summa.Web.Tests/BookCommandTests.fs"
+        }
+      ],
+      "updatedAt": "2026-10-13T23:09:48.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261013T205353433Z-b505be06"
+      ],
+      "latestCheckpoint": {
+        "id": "5fc4baa9285a731bcd26e5a9",
+        "recordedAt": "2026-10-13T23:09:40.000Z",
+        "executionId": "EXE-20261013T205353433Z-b505be06",
+        "repository": "summa",
+        "branch": "feat/ui-conformance-2026-10",
+        "commit": "d52c78f94484ed8c1dbf7c8c88e2d20b75de4879",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/ui-conformance-2026-10",
+        "remoteCommit": "d52c78f94484ed8c1dbf7c8c88e2d20b75de4879",
+        "summary": "Merged #98-#103 with verified scripted .ros union; CI green on d52c78f",
+        "nextAction": "Complete WI-0055 and watch CI on the final head",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-13T23:09:48.000Z",
+      "conclusion": "origin/main #98-#103 merged three times by scripted, verified union of Praxis state (0 non-verbatim lines, 0 duplicate eventIds, 0 eventId mismatches, 0 out of order); data-grid 200% text overflow fixed in composition; CI green"
+    },
+    {
+      "id": "WI-0056",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "app/index.html"
+        },
+        {
+          "type": "implementation",
+          "path": "src/Summa.Web.Engine/Accounting.fs"
+        },
+        {
+          "type": "implementation",
+          "path": ".ros/events/events.jsonl"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/ui-conformance.app.spec.js"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/ui-conformance.github.spec.js"
+        }
+      ],
+      "updatedAt": "2026-10-13T23:57:09.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261013T231023627Z-201eb9f8"
+      ],
+      "latestCheckpoint": {
+        "id": "8d0b9b3a1e1772012ad7c858",
+        "recordedAt": "2026-10-13T23:57:07.000Z",
+        "executionId": "EXE-20261013T231023627Z-201eb9f8",
+        "repository": "summa",
+        "branch": "feat/ui-conformance-2026-10",
+        "commit": "b49e930cf18a5af1d31f18e9cc11bb737931bcf9",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/ui-conformance-2026-10",
+        "remoteCommit": "b49e930cf18a5af1d31f18e9cc11bb737931bcf9",
+        "summary": "Merged #104 and #105 by verified scripted union; all suites green locally",
+        "nextAction": "Complete WI-0056; watch CI",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-13T23:57:09.000Z",
+      "conclusion": "origin/main #104-#105 merged by verified scripted union (0 non-verbatim, 0 duplicate eventIds, 0 eventId mismatches, 0 out of order); 92 browser tests and all .NET suites pass"
+    },
+    {
+      "id": "WI-0057",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": ".ros/events/events.jsonl"
+        },
+        {
+          "type": "implementation",
+          "path": "tests/Summa.Web.Tests/BookCommandTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/ui-conformance.app.spec.js"
+        }
+      ],
+      "updatedAt": "2026-10-14T00:31:56.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261014T001846141Z-f0442485"
+      ],
+      "latestCheckpoint": {
+        "id": "2663c54da28bcce26039ef3a",
+        "recordedAt": "2026-10-14T00:31:54.000Z",
+        "executionId": "EXE-20261014T001846141Z-f0442485",
+        "repository": "summa",
+        "branch": "feat/ui-conformance-2026-10",
+        "commit": "8d10305c7c394c75ffdded06b933d4781849e2ec",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/ui-conformance-2026-10",
+        "remoteCommit": "8d10305c7c394c75ffdded06b933d4781849e2ec",
+        "summary": "Merged #106 by verified scripted union; 320px header test bound made principled after CI failure",
+        "nextAction": "Complete WI-0057; watch CI on final head",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-14T00:31:56.000Z",
+      "conclusion": "origin/main #106 merged by verified scripted union (240 events: 0 non-verbatim, 0 duplicate ids, 0 id mismatches, 0 out of order); CI failure at 834c0a7 (fixed 400px bound broken by main's header search) fixed with a screen-relative bound"
+    },
+    {
+      "id": "WI-0058",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": ".ros/events/events.jsonl"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/ui-conformance.app.spec.js"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/editor.spec.js"
+        }
+      ],
+      "updatedAt": "2026-10-14T01:01:07.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261014T005137021Z-81a85d28"
+      ],
+      "latestCheckpoint": {
+        "id": "bbee8e2e021527649a1071b0",
+        "recordedAt": "2026-10-14T01:01:03.000Z",
+        "executionId": "EXE-20261014T005137021Z-81a85d28",
+        "repository": "summa",
+        "branch": "feat/ui-conformance-2026-10",
+        "commit": "d01de7e42efd698043fd811edb77ec622a90d84c",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/ui-conformance-2026-10",
+        "remoteCommit": "d01de7e42efd698043fd811edb77ec622a90d84c",
+        "summary": "Merged #107 by verified scripted union; builds and affected suites pass",
+        "nextAction": "Complete WI-0058; watch CI",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-14T01:01:07.000Z",
+      "conclusion": "origin/main #107 merged by verified scripted union (244 events: 0 non-verbatim, 0 missing, 0 duplicate ids, 0 id mismatches, 0 out of order)"
+    },
+    {
+      "id": "WI-0059",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": ".ros/events/events.jsonl"
+        },
+        {
+          "type": "implementation",
+          "path": "tests/Summa.Web.Tests/BookCommandTests.fs"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/books.spec.js"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/ui-conformance.app.spec.js"
+        }
+      ],
+      "updatedAt": "2026-10-14T08:47:40.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261014T082424421Z-045c4d5c"
+      ],
+      "latestCheckpoint": {
+        "id": "7a8f8a0845a948dc0beef5b4",
+        "recordedAt": "2026-10-14T08:47:36.000Z",
+        "executionId": "EXE-20261014T082424421Z-045c4d5c",
+        "repository": "summa",
+        "branch": "feat/ui-conformance-2026-10",
+        "commit": "644204b001f491c2ba0d7851bf40d0199238f162",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "feat/ui-conformance-2026-10",
+        "remoteCommit": "644204b001f491c2ba0d7851bf40d0199238f162",
+        "summary": "Merged #108 by verified scripted union; touched suites pass",
+        "nextAction": "Complete WI-0059; watch CI",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-14T08:47:40.000Z",
+      "conclusion": "origin/main #108 merged by verified scripted union (248 events: 0 non-verbatim, 0 missing, 0 duplicate ids, 0 id mismatches, 0 out of order)"
     }
   ]
 }

@@ -384,6 +384,9 @@ type Model =
       Page: Limen.Routing.PageLocation option
       /// The link to copy by hand when the browser refused to copy it.
       CopyFallback: string option
+      /// Whether the narrow-screen menu of primary sections is open
+      /// (ULI-L09). Closed again by any arrival at a place.
+      MenuOpen: bool
       Today: DateOnly
       Customer: CustomerForm
       Draft: DraftForm
@@ -471,6 +474,7 @@ let initial =
       Router = Limen.Routing.Navigation.initial
       Page = None
       CopyFallback = None
+      MenuOpen = false
       Today = DateOnly(2000, 1, 1)
       Customer = emptyCustomer
       Draft = draft
@@ -555,6 +559,8 @@ type Msg =
     | Saved of ok: bool
     | LinkCopyRequested
     | LinkCopied of ok: bool
+    /// The narrow-screen menu button: opens or closes the primary sections.
+    | MenuToggled
     | InvoiceSearchChanged of string
     /// The header's search, which opens the search page (v0.4 §18-19).
     | GlobalSearchChanged of string
@@ -1654,7 +1660,9 @@ let integrationStates (onGitHub: bool) (unsent: Unsent) (r: Receivables) =
                 "Invoice delivery", Integrations.Retryable why, $"Invoice {number id}: the last attempt failed ({why}); sending it again may succeed.", invoiceHref id
             | _ ->
                 match latest |> List.filter (fun (_, s) -> s = Integrations.Pending) with
-                | [] -> "Invoice delivery", Integrations.Succeeded, "No delivery is waiting or failed.", Routes.href Routes.Work
+                // This row is shown on the Work page itself, so it links to the
+                // invoices it speaks for, not back to Work (ULI-A01).
+                | [] -> "Invoice delivery", Integrations.Succeeded, "No delivery is waiting or failed.", Routes.href (Routes.Invoices Routes.allInvoices)
                 | pending -> "Invoice delivery", Integrations.Pending, $"{pending.Length} deliveries sent with no final answer yet.", invoiceHref (fst pending.Head)
 
     let time =
@@ -1730,7 +1738,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
     | Started page ->
         let started, effects = adopt page { model with Configuration = Configuring; Storage = Loading }
         started, LoadConfiguration :: ReadEditor :: effects
-    | LocationChanged page -> adopt page model
+    | LocationChanged page -> adopt page { model with MenuOpen = false }
     | ConfigurationRead(Error why) ->
         { model with Configuration = Misconfigured $"The deployment's configuration could not be read ({why})." }, []
     | ConfigurationRead(Ok document) ->
@@ -1895,6 +1903,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
             Unsaved = max 0 (model.Unsaved - 1)
             Error = Some "This browser could not save the books. The last change is shown but may be lost on reload." },
         []
+    | MenuToggled -> { model with MenuOpen = not model.MenuOpen }, []
     | LinkCopyRequested ->
         match model.Page, model.Router.Current with
         | Some page, Some location -> model, [ CopyText(Limen.Routing.Link.share Routes.mode page location) ]
@@ -4944,6 +4953,7 @@ let view (model: Model) : View =
           | _ -> ""
       )
       "hasCopyFallback", flag model.CopyFallback.IsSome
+      "menuOpen", text (if model.MenuOpen then "true" else "false")
       "copyFallback", text (model.CopyFallback |> Option.defaultValue "")
       "navigation",
       Items(
@@ -5072,6 +5082,10 @@ let view (model: Model) : View =
       // Editor
       "draftCustomer", text model.Draft.CustomerId
       "draftCustomerTerms", text draftCustomerTerms
+      // The customer's terms and tax status describe the chosen customer; with
+      // none chosen the field says what choosing one shows (ULI-L08).
+      "draftCustomerChosen", flag (books |> Option.exists (fun b -> b.Books.Customers.ContainsKey model.Draft.CustomerId))
+      "draftCustomerUnchosen", flag (not (books |> Option.exists (fun b -> b.Books.Customers.ContainsKey model.Draft.CustomerId)))
       // What the customer chosen proposes (v0.4 §5), shown so the review stays explicit.
       yield!
           (let defaults = defaultsFor model (Some model.Draft.EngagementId)

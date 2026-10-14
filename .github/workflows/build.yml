@@ -116,7 +116,15 @@ jobs:
       # The composed path: DOM event, Limen kernel, WASM shim, F# engine,
       # Node server and back, in a real browser, for both pages.
       - name: Verify the composed browser path
-        run: npx playwright test
+        run: npx playwright test --grep-invert @ui-conformance
+
+      # Universal UI layout and action conformance
+      # (visual-engineering UI-LAYOUT-INTERACTION@1.0.0, summa#90): declared
+      # peer alignment, overflow at 320/390/768/1280, navigation, keyboard,
+      # reduced motion and honest failure/recovery. `npm run ui:conformance`
+      # runs the same tests locally. A separate step so its result is named.
+      - name: Verify UI layout and action conformance
+        run: npx playwright test --grep @ui-conformance
 
       - name: Upload browser traces on failure
         if: failure()

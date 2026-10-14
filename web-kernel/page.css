@@ -28,6 +28,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
+  /* Peer fields share a top edge (ULI-L01): stretching would hand a field
+     the height of a neighbour's help text, and Forma's .ef-field spreads it
+     between label and control, dropping the control below its peers. */
+  align-items: start;
 }
 
 .form-row > * {

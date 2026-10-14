@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 47,
+  "nextSeq": 60,
   "items": [
     {
       "id": "WI-0001",
@@ -1257,6 +1257,167 @@
       "attachments": [],
       "createdAt": "2026-10-13T15:47:04Z",
       "updatedAt": "2026-10-13T17:52:02Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0053",
+      "title": "Summa: universal UI layout/action conformance (UI-LAYOUT-INTERACTION@1.0.0) for the accounting app, backlog and hub pages (https://github.com/kemiller2002/summa/issues/90)",
+      "description": null,
+      "tags": [
+        "summa,ui,conformance,playwright"
+      ],
+      "priority": "high",
+      "status": "complete",
+      "attachments": [],
+      "createdAt": "2026-10-13T17:29:26.743Z",
+      "updatedAt": "2026-10-13T18:51:09.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0054",
+      "title": "Summa: UI conformance follow-ups on #95 - CI watch, audit the merged .ros state, resolve the 6 UNKNOWN actions, recompose the 320px primary navigation (ULI-L09), record the Limen nested data-if unmount defect (https://github.com/kemiller2002/summa/issues/90)",
+      "description": null,
+      "tags": [
+        "summa,ui,conformance"
+      ],
+      "priority": "high",
+      "status": "complete",
+      "attachments": [],
+      "createdAt": "2026-10-13T18:52:19.108Z",
+      "updatedAt": "2026-10-13T19:28:31.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0055",
+      "title": "Summa: merge origin/main (#98-#101) into the UI conformance branch (#95) with a verified scripted union of Praxis state; re-run every suite (https://github.com/kemiller2002/summa/issues/90)",
+      "description": null,
+      "tags": [
+        "summa,ui,conformance,merge"
+      ],
+      "priority": "high",
+      "status": "complete",
+      "attachments": [],
+      "createdAt": "2026-10-13T20:53:52.273Z",
+      "updatedAt": "2026-10-13T23:09:48.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0056",
+      "title": "Summa: merge origin/main #104 into the UI conformance branch (#95) by the verified scripted union; re-run every suite (https://github.com/kemiller2002/summa/issues/90)",
+      "description": null,
+      "tags": [
+        "summa,ui,conformance,merge"
+      ],
+      "priority": "high",
+      "status": "complete",
+      "attachments": [],
+      "createdAt": "2026-10-13T23:10:19.538Z",
+      "updatedAt": "2026-10-13T23:57:09.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0057",
+      "title": "Summa: merge origin/main #106 into the UI conformance branch (#95) by the verified scripted union; re-run every suite (https://github.com/kemiller2002/summa/issues/90)",
+      "description": null,
+      "tags": [
+        "summa,ui,conformance,merge"
+      ],
+      "priority": "high",
+      "status": "complete",
+      "attachments": [],
+      "createdAt": "2026-10-14T00:18:43.065Z",
+      "updatedAt": "2026-10-14T00:31:56.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0058",
+      "title": "Summa: merge origin/main #107 into the UI conformance branch (#95) by the verified scripted union (https://github.com/kemiller2002/summa/issues/90)",
+      "description": null,
+      "tags": [
+        "summa,ui,conformance,merge"
+      ],
+      "priority": "high",
+      "status": "complete",
+      "attachments": [],
+      "createdAt": "2026-10-14T00:51:35.222Z",
+      "updatedAt": "2026-10-14T01:01:07.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
+    },
+    {
+      "id": "WI-0059",
+      "title": "Summa: merge origin/main #108 into the UI conformance branch (#95) by the verified scripted union (https://github.com/kemiller2002/summa/issues/90)",
+      "description": null,
+      "tags": [
+        "summa,ui,conformance,merge"
+      ],
+      "priority": "high",
+      "status": "complete",
+      "attachments": [],
+      "createdAt": "2026-10-14T08:24:19.706Z",
+      "updatedAt": "2026-10-14T08:47:40.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",

@@ -649,3 +649,26 @@ let ``after a change is committed, the next read pins to the new commit and neve
         Assert.Equal<(string * string) list>([ "CUST-0001", "Acme"; "CUST-0002", "Globex" ], storedCustomers repository)
     finally
         pinning <- None
+
+// ---- The administrator and migration gates (summa#95, WI-0054) ------------------------------
+
+let private organizationFolder (repository: InMemoryStore) =
+    let config = Summa.Storage.Deployment.parse configuration |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    let binding = Summa.Storage.Storage.binding config |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    let ns = Summa.Storage.Storage.organizationNamespace config binding "org_acme" |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    ns, RelativePath.render ns.Root
+
+[<Fact>]
+let ``books whose only administrator was removed wait for a listed one, who confirms and opens them`` () =
+    browser <- None
+    let repository = InMemoryStore()
+    let env, session, _ = openAs repository "583231" "octocat"
+    send env session [ "foundRequested", "" ] |> ignore
+    let ns, root = organizationFolder repository
+    repository.WriteExternally(ns.Location, root + "/records/summa.member/github_583231.json", None)
+
+    let env, session, reply = openAs repository "583231" "octocat"
+    Assert.True(flag "awaitingAdministrator" reply)
+    Assert.True(flag "canConfirm" reply)
+    let _, reply = send env session [ "confirmRequested", "" ]
+    Assert.True(flag "isReady" reply, "confirming opens the books")

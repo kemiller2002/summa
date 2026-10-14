@@ -42,9 +42,11 @@ let private isImmutable (path: RelativePath) =
 /// the records themselves (schema, identity, references and invariants).
 /// Meant for start-up and reconciliation, not for every command: it asks
 /// the provider for each record's history.
-let audit (provider: StorageProvider) (ns: Namespace) : Async<Result<Diagnostic list, StorageFailure>> =
+/// `turn` is where the folder read resumes (`Commands.Turn`); the browser
+/// passes its bridge's.
+let auditWith (turn: Commands.Turn) (provider: StorageProvider) (ns: Namespace) : Async<Result<Diagnostic list, StorageFailure>> =
     async {
-        match! Commands.readAll provider ns with
+        match! Commands.readAllKnowing turn Map.empty provider ns with
         | Error(Commands.StorageFailed failure) -> return Error failure
         | Error(Commands.Untrustworthy problems) -> return Ok problems
         | Error _ -> return Ok [ StorageOperationRefused "the folder could not be read" ]
@@ -69,6 +71,9 @@ let audit (provider: StorageProvider) (ns: Namespace) : Async<Result<Diagnostic 
             | Error failure -> return Error failure
             | Ok fromHistory -> return Ok(fromHistory @ (FinancialRecords.load financial).Problems)
     }
+
+/// `auditWith` on a host whose continuations may resume at once.
+let audit provider ns = auditWith Commands.Turn.now provider ns
 
 /// Whether a command may run after an audit: outside edits that pass every
 /// check are allowed (they are reported, not trusted for anything else);

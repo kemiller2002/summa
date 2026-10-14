@@ -212,6 +212,21 @@ export const headFiles = (state) => filesAt(state, state.head);
 // The commits on the branch, newest first, with their messages.
 export const history = (state) => lineage(state, state.head).map((sha) => ({ sha, message: state.commits[sha].message }));
 
+// A commit made outside the page (another person, another tool), on top of
+// the branch head: `changes` maps a path to its new content, or to null to
+// delete it. Pure: returns the next state.
+export function commitExternally(state, changes, message = "external change") {
+  const files = { ...filesAt(state, state.head) };
+  for (const [path, content] of Object.entries(changes)) {
+    if (content === null) delete files[path];
+    else files[path] = content;
+  }
+  const tree = treeSha(files);
+  const commit = { tree, parents: [state.head], message };
+  const head = commitSha(commit);
+  return { ...state, trees: { ...state.trees, [tree]: sorted(files) }, commits: { ...state.commits, [head]: commit }, head };
+}
+
 // ---- the edge -----------------------------------------------------------------
 
 const cors = (origin, request) => ({
@@ -242,6 +257,10 @@ export async function serveGitHub(context, initial, origin = "http://127.0.0.1:4
   });
   return {
     current: () => state,
+    // Changes the repository as something other than this page would.
+    update: (change) => {
+      state = change(state);
+    },
     reachable: (flag) => {
       online = flag;
     }

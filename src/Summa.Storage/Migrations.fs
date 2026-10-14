@@ -104,7 +104,16 @@ type Migrated =
 /// integrity check, as one commit conditioned on what was read. Books stored
 /// on GitHub are never read as current until this has run: until then the
 /// folder is read-only (`Compatibility.storedAccess`).
-let migrate (provider: StorageProvider) (gates: Set<Summa.Access.Access.Capability>) (ns: Namespace) (actor: Summa.Access.Actor.Actor) (key: string) : Async<Result<Migrated, Commands.CommandFailure<unit>>> =
+/// `turn` is where the folder read's fork-join resumes (`Commands.Turn`): the
+/// browser must pass its bridge's, or the read waits for the next message.
+let migrateWith
+    (turn: Commands.Turn)
+    (provider: StorageProvider)
+    (gates: Set<Summa.Access.Access.Capability>)
+    (ns: Namespace)
+    (actor: Summa.Access.Actor.Actor)
+    (key: string)
+    : Async<Result<Migrated, Commands.CommandFailure<unit>>> =
     let organizationId = ns.Dataset |> Option.map DatasetId.value |> Option.defaultValue ""
 
     async {
@@ -112,7 +121,7 @@ let migrate (provider: StorageProvider) (gates: Set<Summa.Access.Access.Capabili
         | Ok arcaPath, Ok organizationPath ->
             let! arca = provider.Read ns arcaPath
             let! organization = provider.Read ns organizationPath
-            let! objects = Commands.readAll provider ns
+            let! objects = Commands.readAllKnowing turn Map.empty provider ns
 
             match arca, organization, objects with
             | Error failure, _, _
@@ -155,3 +164,6 @@ let migrate (provider: StorageProvider) (gates: Set<Summa.Access.Access.Capabili
                                     | Error failure -> return Error(Commands.StorageFailed failure)
         | _ -> return Error(Commands.Untrustworthy [ InvalidOrganizationId organizationId ])
     }
+
+/// `migrateWith` on a host whose continuations may resume at once.
+let migrate provider gates ns actor key = migrateWith Commands.Turn.now provider gates ns actor key

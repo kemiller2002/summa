@@ -63,3 +63,10 @@
 | WI-0050 | Summa: adopt echelon-current 1.19.0 (Arca 0.5.0): batched read-cache save and pinned reads without a ref fetch | complete | summa, arca, performance | medium |
 | WI-0051 | Summa: local books encrypted at rest in the browser (SUM3-024 remainder) | captured | summa, security, encryption | medium |
 | WI-0052 | Summa: adopt Forma and Folio through Conditor 0.9.0 (step 1: echelon-current 1.19.0, step 2: 1.20.0) | complete | summa, foundations, forma, folio | medium |
+| WI-0053 | Summa: universal UI layout/action conformance (UI-LAYOUT-INTERACTION@1.0.0) for the accounting app, backlog and hub pages (https://github.com/kemiller2002/summa/issues/90) | complete | summa,ui,conformance,playwright | high |
+| WI-0054 | Summa: UI conformance follow-ups on #95 - CI watch, audit the merged .ros state, resolve the 6 UNKNOWN actions, recompose the 320px primary navigation (ULI-L09), record the Limen nested data-if unmount defect (https://github.com/kemiller2002/summa/issues/90) | complete | summa,ui,conformance | high |
+| WI-0055 | Summa: merge origin/main (#98-#101) into the UI conformance branch (#95) with a verified scripted union of Praxis state; re-run every suite (https://github.com/kemiller2002/summa/issues/90) | complete | summa,ui,conformance,merge | high |
+| WI-0056 | Summa: merge origin/main #104 into the UI conformance branch (#95) by the verified scripted union; re-run every suite (https://github.com/kemiller2002/summa/issues/90) | complete | summa,ui,conformance,merge | high |
+| WI-0057 | Summa: merge origin/main #106 into the UI conformance branch (#95) by the verified scripted union; re-run every suite (https://github.com/kemiller2002/summa/issues/90) | complete | summa,ui,conformance,merge | high |
+| WI-0058 | Summa: merge origin/main #107 into the UI conformance branch (#95) by the verified scripted union (https://github.com/kemiller2002/summa/issues/90) | complete | summa,ui,conformance,merge | high |
+| WI-0059 | Summa: merge origin/main #108 into the UI conformance branch (#95) by the verified scripted union (https://github.com/kemiller2002/summa/issues/90) | complete | summa,ui,conformance,merge | high |

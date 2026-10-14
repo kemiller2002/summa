@@ -273,3 +273,18 @@ let ``the wire reads the address, asks the kernel to navigate and to copy, and h
 
     let notice = copied["view"]["notice"]
     Assert.Equal("Link copied.", notice.GetValue<string>())
+
+// ---- The narrow-screen menu (ULI-L09, summa#95) -------------------------------------------------
+
+[<Fact>]
+let ``the menu opens and closes on its button, and any arrival at a place closes it`` () =
+    let opened = openedAt "#/customers"
+    Assert.Equal("false", value "menuOpen" opened)
+    let shown, effects = run [ MenuToggled ] opened
+    Assert.Empty effects
+    Assert.Equal("true", value "menuOpen" shown)
+    Assert.Equal("false", value "menuOpen" (run [ MenuToggled ] shown |> fst))
+    // Choosing a section is a location change: it closes the menu.
+    let arrived = run [ go "#/invoices" ] shown |> fst
+    Assert.Equal("false", value "menuOpen" arrived)
+    Assert.Equal(Routes.Invoices Routes.allInvoices, arrived.Place)

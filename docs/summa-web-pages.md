@@ -159,3 +159,19 @@ never edited here: Praxis replaces it on upgrade.
   servers and throwaway repositories: capture with attachments, the full
   lifecycle through the dialogs, filters, refusals, an Aegis fault, the Folio
   print surface, and reflow at 320 CSS px.
+- `npm run ui:conformance` (Playwright, the tests titled `@ui-conformance`):
+  the three pages against Visual Engineering's universal layout and action
+  contract, `UI-LAYOUT-INTERACTION@1.0.0` (summa#90). Peer fields are
+  declared by accessible role and name and measured after fonts settle
+  (top edges within 1 CSS px where they share a row, source order where they
+  stack); every route is checked for horizontal scrolling at 320, 390, 768
+  and 1280 CSS px, empty and with long labels, and at 200% text; primary
+  navigation, keyboard operation and reduced motion are asserted; and each
+  critical workflow asserts its before and after state, including a refused
+  or unreachable server that must claim nothing and a retry that recovers.
+  The helpers in `tests/browser/ui-conformance-helpers.js` mirror Forma's
+  reference helpers so they can be swapped for Forma's once it ships them.
+  CI runs this as its own step. The evidence record, with the action
+  inventory, the declared groups, the open Forma-owned control-height defect
+  and what remains unknown, is
+  [`ui-conformance/summa.ui-conformance.json`](ui-conformance/summa.ui-conformance.json).
