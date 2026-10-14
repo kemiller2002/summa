@@ -50,6 +50,7 @@ let events: Map<string, string -> string -> Msg> =
     Map.ofList
         [ "linkCopyRequested", (fun _ _ -> LinkCopyRequested)
           "invoiceSearchChanged", (fun _ value -> InvoiceSearchChanged value)
+          "globalSearchChanged", (fun _ value -> GlobalSearchChanged value)
           "invoiceStatusToggled", (fun key _ -> InvoiceStatusToggled key)
           "invoiceCustomerChosen", (fun _ value -> InvoiceCustomerChosen value)
           "invoiceFromChanged", (fun _ value -> InvoiceFromChanged value)

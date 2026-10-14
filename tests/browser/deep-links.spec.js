@@ -105,6 +105,34 @@ test("the invoices list opens with what needs action first, saying why (SUM4-010
   await expect(rows.nth(0).locator('[data-label="Customer"]')).toHaveText("Beta");
 });
 
+test("the header's search finds records as it is typed and offers commands, every result a link (SUM4-018, SUM4-019)", async ({ app: { page } }) => {
+  await twoInvoices(page);
+  await nav(page, "Home").click();
+  // Typed key by key: the field keeps focus and every key, while the search page opens and refines.
+  await page.locator("#global-search").pressSequentially("acme");
+  await expect(page.locator("#global-search")).toBeFocused();
+  await expect(page.locator("#global-search")).toHaveValue("acme");
+  await expect(page).toHaveURL(/#\/search\?q=acme$/);
+  await expect(page.locator("#search-summary")).toHaveText(/found for "acme"/);
+  const results = page.locator("#search-results li");
+  await expect(results.first()).toContainText("Customer");
+  await expect(results.first()).toContainText("Acme");
+
+  // An amount finds what is exactly that amount.
+  await page.locator("#global-search").fill("250");
+  await expect(page).toHaveURL(/#\/search\?q=250$/);
+  await page.locator("#search-results a", { hasText: "INV" }).first().click();
+  await expect(page).toHaveURL(/#\/invoices\/INV-0002$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/search\?q=250$/);
+
+  // The palette: a command is a link.
+  await page.locator("#global-search").fill("trial");
+  await expect(page.locator("#search-commands a")).toHaveText(["Run trial balance"]);
+  await page.locator("#search-commands a").click();
+  await expect(page).toHaveURL(/#\/reports\/trial-balance$/);
+});
+
 test("Back returns to the previous place, not the previous filter", async ({ app: { page } }) => {
   await twoInvoices(page);
   await nav(page, "Home").click();

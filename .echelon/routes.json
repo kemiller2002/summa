@@ -791,6 +791,27 @@
         "ViewFinancials"
       ],
       "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
+      "name": "search",
+      "params": [
+        {
+          "default": null,
+          "in": "query",
+          "name": "q",
+          "required": false,
+          "type": "string",
+          "values": null
+        }
+      ],
+      "pattern": "/search",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
     }
   ],
   "schema": "echelon.routes/v1",
