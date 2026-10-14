@@ -660,6 +660,9 @@ type Msg =
     | ReportAsOfChanged of string
     | IncomeFromChanged of string
     | IncomeToChanged of string
+    /// The period of a management report view (v0.4 §29-30).
+    | ManagementFromChanged of string
+    | ManagementToChanged of string
     | IncomeBasisChosen of string
     /// A common date range (v0.4 §24): this-month, last-month, this-quarter,
     /// last-quarter, year-to-date or last-year.
@@ -2521,6 +2524,14 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
         | Routes.TrialBalance _ -> refineTo (Routes.TrialBalance(parseDate v)) model
         | Routes.BalanceSheet _ -> refineTo (Routes.BalanceSheet(parseDate v)) model
         | _ -> model, []
+    | ManagementFromChanged v ->
+        match model.Place with
+        | Routes.Management(view, _, until) -> refineTo (Routes.Management(view, parseDate v, until)) model
+        | _ -> model, []
+    | ManagementToChanged v ->
+        match model.Place with
+        | Routes.Management(view, from, _) -> refineTo (Routes.Management(view, from, parseDate v)) model
+        | _ -> model, []
     | IncomeFromChanged v ->
         match model.Place with
         | Routes.IncomeStatement(_, until, basis) -> refineTo (Routes.IncomeStatement(parseDate v, until, basis)) model
@@ -3082,6 +3093,7 @@ let screen (model: Model) =
         | Routes.Reports
         | Routes.TrialBalance _
         | Routes.IncomeStatement _
+        | Routes.Management _
         | Routes.BalanceSheet _
         | Routes.Work
         | Routes.FollowUp _
@@ -4308,6 +4320,103 @@ let private searchValues (model: Model) =
           )
       ) ]
 
+/// The management report views (v0.4 §29-30), in the order the reports
+/// page lists them.
+let managementViewNames =
+    [ Routes.RevenueByClient, "Revenue by client"
+      Routes.RevenueByProject, "Revenue by project"
+      Routes.ExpensesByProject, "Expenses by project"
+      Routes.EngagementContribution, "Profitability by engagement"
+      Routes.OutstandingByCustomer, "Outstanding by customer" ]
+
+let private managementValues (model: Model) =
+    let today = model.Today
+
+    let view, from, until, on =
+        match model.Place with
+        | Routes.Management(view, from, until) -> view, from, until, true
+        | _ -> Routes.RevenueByClient, None, None, false
+
+    let fromDate = from |> Option.defaultValue (DateOnly(today.Year, 1, 1))
+    let toDate = until |> Option.defaultValue today
+    let money (m: Money) = Text(Documents.amountText m)
+    let notAvailable = "Not available"
+
+    let rows, contribution =
+        match model.Books, on with
+        | Some b, true ->
+            match view with
+            | Routes.RevenueByClient -> Management.revenueBy Management.ByClient b "USD" fromDate toDate, []
+            | Routes.RevenueByProject -> Management.revenueBy Management.ByProject b "USD" fromDate toDate, []
+            | Routes.ExpensesByProject -> Management.expensesBy Management.ByProject b "USD" fromDate toDate, []
+            | Routes.OutstandingByCustomer -> Management.outstandingByCustomer b "USD" toDate, []
+            | Routes.EngagementContribution -> [], Management.contribution b "USD" fromDate toDate
+        | _ -> [], []
+
+    let total =
+        match view with
+        | Routes.EngagementContribution -> contribution |> List.map _.Contribution |> sum "USD"
+        | _ -> rows |> List.map _.Amount |> sum "USD"
+
+    let label = managementViewNames |> List.find (fst >> (=) view) |> snd
+    let isContribution = view = Routes.EngagementContribution
+    let isAsOf = view = Routes.OutstandingByCustomer
+    let key (k: string option) = Text(k |> Option.defaultValue "unassigned")
+
+    [ "onManagement", Value(Flag on)
+      "managementTitle", Value(Text label)
+      // Each view is a reusable link; the period chosen stays in it.
+      "managementViews",
+      Items(
+          managementViewNames
+          |> List.map (fun (v, name) ->
+              [ "key", Text(Routes.managementViewText v)
+                "label", Text name
+                "href", Text(Routes.href (Routes.Management(v, from, until)))
+                "current", Text(if on && v = view then "page" else "") ])
+      )
+      "managementViewLinks",
+      Items(managementViewNames |> List.map (fun (v, name) -> [ "key", Text(Routes.managementViewText v); "label", Text name; "href", Text(Routes.href (Routes.Management(v, None, None))) ]))
+      "managementFrom", Value(Text(fromDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)))
+      "managementTo", Value(Text(toDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)))
+      "managementIsPeriod", Value(Flag(not isAsOf))
+      "managementPeriod",
+      Value(
+          Text(
+              if isAsOf then $"As of {Documents.dateText toDate}, in USD"
+              else $"{Documents.dateText fromDate} to {Documents.dateText toDate}, in USD"
+          )
+      )
+      "isBreakdown", Value(Flag(not isContribution))
+      "isContribution", Value(Flag isContribution)
+      "managementRows", Items(rows |> List.map (fun r -> [ "key", key r.Key; "label", Text r.Label; "amount", money r.Amount ]))
+      "contributionRows",
+      Items(
+          contribution
+          |> List.map (fun c ->
+              let cost = Option.map Documents.amountText >> Option.defaultValue notAvailable >> Text
+
+              [ "key", key c.Key
+                "label", Text c.Label
+                "revenue", money c.Revenue
+                "expenses", money c.ExternalExpenses
+                "labor", cost c.LaborCost
+                "ai", cost c.AiCost
+                "infrastructure", cost c.InfrastructureCost
+                "contribution", money c.Contribution ])
+      )
+      "noManagementRows", Value(Flag(on && rows.IsEmpty && contribution.IsEmpty))
+      "managementTotal", Value(Text(Documents.amountText total))
+      "managementNote",
+      Value(
+          Text(
+              if isContribution then
+                  "Labor, AI and infrastructure costs have no source in Summa yet, so they are shown as not available rather than as zero, and the contribution is revenue less external expenses."
+              else
+                  "A management view from the posted books, not a formal statement."
+          )
+      ) ]
+
 let view (model: Model) : View =
     let books = model.Books
     let zeroUsd = zero "USD"
@@ -4890,6 +4999,7 @@ let view (model: Model) : View =
                   | Routes.Reports
                   | Routes.TrialBalance _
                   | Routes.IncomeStatement _
+                  | Routes.Management _
                   | Routes.BalanceSheet _ -> "reports"
                   | Routes.Periods _
                   | Routes.Period _ -> "periods"
@@ -5147,6 +5257,7 @@ let view (model: Model) : View =
       "noListedInvoices", flag (not invoices.IsEmpty && listed.IsEmpty)
       "invoiceCountText", text $"{listed.Length} of {invoices.Length} invoices"
       "invoices", Items invoiceRows
+      yield! managementValues model
       yield! searchValues model
       "invoiceSearch", text (filters.Search |> Option.defaultValue "")
       "invoiceCustomer", text (filters.Customer |> Option.defaultValue "")
