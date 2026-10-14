@@ -1311,6 +1311,52 @@
           <li><a class="summa-link" id="income-statement-link" data-bind-href="incomeStatementHref">Income statement</a></li>
           <li><a class="summa-link" id="balance-sheet-link" data-bind-href="balanceSheetHref">Balance sheet</a></li>
         </ul>
+        <h2 id="saved-views-title">Saved views</h2>
+        <p>Management views from the posted books. Each is a link: choose a period, then copy or bookmark it to keep that view.</p>
+        <ul class="summa-report-list" id="saved-views" aria-labelledby="saved-views-title">
+          <template data-each="managementViewLinks" data-key="key"><li><a class="summa-link" data-bind-href="href" data-text="label"></a></li></template>
+        </ul>
+      </section>
+    </template>
+
+    <!-- Management report views (v0.4 §29-30): each view and period is a link. -->
+    <template data-if="onManagement">
+      <section class="ef-stack" aria-labelledby="management-title">
+        <h1 id="management-title" data-text="managementTitle"></h1>
+        <nav class="summa-tabs" aria-label="Report views">
+          <template data-each="managementViews" data-key="key"><a class="summa-tab" data-bind-href="href" data-bind-aria-current="current" data-text="label"></a></template>
+        </nav>
+        <div class="summa-filters" role="search" aria-label="Period">
+          <template data-if="managementIsPeriod">
+            <div class="ef-field"><label class="ef-field__label" for="management-from">From</label>
+              <input id="management-from" type="date" data-event="managementFromChanged" data-on="change" data-bind-value="managementFrom" /></div>
+          </template>
+          <div class="ef-field"><label class="ef-field__label" for="management-to">To</label>
+            <input id="management-to" type="date" data-event="managementToChanged" data-on="change" data-bind-value="managementTo" /></div>
+        </div>
+        <p class="summa-count" id="management-period" data-text="managementPeriod"></p>
+        <p class="summa-optional-note" id="management-note" data-text="managementNote"></p>
+        <template data-if="noManagementRows"><p id="no-management-rows">Nothing in this period.</p></template>
+        <template data-if="isBreakdown">
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Breakdown">
+            <table class="summa-table" id="management-table">
+              <caption class="ef-visually-hidden">Breakdown</caption>
+              <thead><tr><th scope="col">Name</th><th scope="col" class="summa-number">Amount</th></tr></thead>
+              <tbody><template data-each="managementRows" data-key="key"><tr><td data-text="label" data-label="Name"></td><td class="summa-number" data-text="amount" data-label="Amount"></td></tr></template></tbody>
+              <tfoot><tr><th scope="row">Total</th><td class="summa-number" id="management-total" data-text="managementTotal" data-label="Total"></td></tr></tfoot>
+            </table>
+          </div>
+        </template>
+        <template data-if="isContribution">
+          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Contribution by engagement">
+            <table class="summa-table" id="contribution-table">
+              <caption class="ef-visually-hidden">Contribution by engagement</caption>
+              <thead><tr><th scope="col">Engagement</th><th scope="col" class="summa-number">Revenue</th><th scope="col" class="summa-number">Labor cost</th><th scope="col" class="summa-number">AI cost</th><th scope="col" class="summa-number">Infrastructure</th><th scope="col" class="summa-number">External expenses</th><th scope="col" class="summa-number">Contribution</th></tr></thead>
+              <tbody><template data-each="contributionRows" data-key="key"><tr><td data-text="label" data-label="Engagement"></td><td class="summa-number" data-text="revenue" data-label="Revenue"></td><td class="summa-number" data-text="labor" data-label="Labor cost"></td><td class="summa-number" data-text="ai" data-label="AI cost"></td><td class="summa-number" data-text="infrastructure" data-label="Infrastructure"></td><td class="summa-number" data-text="expenses" data-label="External expenses"></td><td class="summa-number" data-text="contribution" data-label="Contribution"></td></tr></template></tbody>
+              <tfoot><tr><th scope="row" colspan="6">Total contribution</th><td class="summa-number" id="contribution-total" data-text="managementTotal" data-label="Total contribution"></td></tr></tfoot>
+            </table>
+          </div>
+        </template>
       </section>
     </template>
 

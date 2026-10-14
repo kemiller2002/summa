@@ -51,6 +51,14 @@ type FollowUpView =
     | DisputedInvoices
     | AllOpenInvoices
 
+/// The management report views (v0.4 §29-30), each a reusable link.
+type ManagementView =
+    | RevenueByClient
+    | RevenueByProject
+    | ExpensesByProject
+    | EngagementContribution
+    | OutstandingByCustomer
+
 /// Accrual or cash basis for the income statement (SUM2-024).
 type Basis =
     | Accrual
@@ -105,6 +113,8 @@ type Place =
     | Reports
     | TrialBalance of asOf: DateOnly option
     | IncomeStatement of from: DateOnly option * until: DateOnly option * Basis
+    /// A management report view over a period (v0.4 §29-30).
+    | Management of ManagementView * from: DateOnly option * until: DateOnly option
     | BalanceSheet of asOf: DateOnly option
     | Settings
     /// Everything that needs attention, in one list (v0.4 §31).
@@ -164,6 +174,14 @@ let paymentSortText, paymentSortOf, paymentSorts =
     names [ NewestPayment, "newest"; OldestPayment, "oldest" ]
 
 let basisText, basisOf, bases = names [ Accrual, "accrual"; Cash, "cash" ]
+
+let managementViewText, managementViewOf, managementViews =
+    names
+        [ RevenueByClient, "revenue-by-client"
+          RevenueByProject, "revenue-by-project"
+          ExpensesByProject, "expenses-by-project"
+          EngagementContribution, "engagement-contribution"
+          OutstandingByCustomer, "outstanding-by-customer" ]
 
 let followUpText, followUpOf, followUpViews =
     names [ OverdueInvoices, "overdue"; DisputedInvoices, "disputed"; AllOpenInvoices, "all" ]
@@ -232,6 +250,7 @@ let routes: Route list =
       financial "reports" "reports" []
       financial "trial-balance" "reports/trial-balance" [ date "asOf" ]
       financial "income-statement" "reports/income-statement" [ date "from"; date "to"; choice "basis" bases "accrual" ]
+      financial "management" "reports/management" [ choice "view" managementViews "revenue-by-client"; date "from"; date "to" ]
       financial "balance-sheet" "reports/balance-sheet" [ date "asOf" ]
       route "settings" "settings" [] [ viewFinancials; "ManageSettings" ]
       financial "work" "work" []
@@ -327,6 +346,8 @@ let toTarget (place: Place) : Target =
     | JournalEntry entryId -> target "journal-entry" (id entryId) []
     | Reports -> target "reports" Map.empty []
     | TrialBalance asOf -> target "trial-balance" Map.empty [ some "asOf" (dateValue asOf) ]
+    | Management(view, from, until) ->
+        target "management" Map.empty [ Some("view", Value.Text(managementViewText view)); some "from" (dateValue from); some "to" (dateValue until) ]
     | IncomeStatement(from, until, basis) ->
         target "income-statement" Map.empty [ some "from" (dateValue from); some "to" (dateValue until); Some("basis", Value.Text(basisText basis)) ]
     | BalanceSheet asOf -> target "balance-sheet" Map.empty [ some "asOf" (dateValue asOf) ]
@@ -431,6 +452,7 @@ let ofMatch (matched: Match) : Result<Place, string> =
     | "reports" -> Ok Reports
     | "trial-balance" -> Ok(TrialBalance(dateOf "asOf"))
     | "income-statement" -> named basisOf "basis" |> Result.map (fun basis -> IncomeStatement(dateOf "from", dateOf "to", basis))
+    | "management" -> named managementViewOf "view" |> Result.map (fun view -> Management(view, dateOf "from", dateOf "to"))
     | "balance-sheet" -> Ok(BalanceSheet(dateOf "asOf"))
     | "settings" -> Ok Settings
     | "work" -> Ok Work

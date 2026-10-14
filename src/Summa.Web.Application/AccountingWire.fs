@@ -86,6 +86,8 @@ let events: Map<string, string -> string -> Msg> =
           "ledgerToChanged", (fun _ value -> LedgerToChanged value)
           "reportAsOfChanged", (fun _ value -> ReportAsOfChanged value)
           "incomeFromChanged", (fun _ value -> IncomeFromChanged value)
+          "managementFromChanged", (fun _ value -> ManagementFromChanged value)
+          "managementToChanged", (fun _ value -> ManagementToChanged value)
           "incomeToChanged", (fun _ value -> IncomeToChanged value)
           "incomeBasisChosen", (fun _ value -> IncomeBasisChosen value)
           "incomeRangeChosen", (fun key _ -> IncomeRangeChosen key)

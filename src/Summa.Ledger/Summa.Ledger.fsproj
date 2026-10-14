@@ -32,6 +32,7 @@
     <Compile Include="PostedFor.fs" />
     <Compile Include="ChronaImport.fs" />
     <Compile Include="Reports.fs" />
+    <Compile Include="Management.fs" />
     <Compile Include="Periods.fs" />
     <Compile Include="InvoiceCommands.fs" />
   </ItemGroup>

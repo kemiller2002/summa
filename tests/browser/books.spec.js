@@ -68,6 +68,28 @@ test("reports keep their dates and basis in the address", async ({ app: { page, 
   await expect(page.locator("#sheet-balances")).toBeVisible();
 });
 
+test("saved report views are links; each keeps its view and period in the address (SUM4-029, SUM4-030)", async ({ app: { page, origin } }) => {
+  await invoicePartlyPaid(page);
+  await nav(page, "Reports").click();
+  await page.locator("#saved-views a", { hasText: "Revenue by client" }).click();
+  await expect(page).toHaveURL(/#\/reports\/management$/);
+  await expect(page.locator("#management-title")).toHaveText("Revenue by client");
+  await expect(page.locator("#management-table tbody tr")).toHaveCount(1);
+  await expect(page.locator("#management-table tbody tr td").first()).toHaveText("Acme");
+  await expect(page.locator("#management-total")).toHaveText("1,000.00");
+
+  await page.locator(".summa-tab", { hasText: "Outstanding by customer" }).click();
+  await expect(page).toHaveURL(/#\/reports\/management\?view=outstanding-by-customer$/);
+  await expect(page.locator("#management-total")).toHaveText("600.00");
+  await expect(page.locator("#management-from")).toHaveCount(0);
+
+  // Profitability: costs Summa has no source for are not shown as zero.
+  await page.goto(`${origin}/#/reports/management?view=engagement-contribution`);
+  await running(page);
+  await expect(page.locator("#contribution-table tbody tr td").nth(2)).toHaveText("Not available");
+  await expect(page.locator("#management-note")).toContainText("no source in Summa yet");
+});
+
 test("a period is closed from its own page and says so", async ({ app: { page } }) => {
   await invoicePartlyPaid(page);
   await nav(page, "Periods").click();

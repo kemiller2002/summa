@@ -648,6 +648,49 @@
       "guards": [
         "signed-in"
       ],
+      "name": "management",
+      "params": [
+        {
+          "default": "revenue-by-client",
+          "in": "query",
+          "name": "view",
+          "required": false,
+          "type": "enum",
+          "values": [
+            "revenue-by-client",
+            "revenue-by-project",
+            "expenses-by-project",
+            "engagement-contribution",
+            "outstanding-by-customer"
+          ]
+        },
+        {
+          "default": null,
+          "in": "query",
+          "name": "from",
+          "required": false,
+          "type": "date",
+          "values": null
+        },
+        {
+          "default": null,
+          "in": "query",
+          "name": "to",
+          "required": false,
+          "type": "date",
+          "values": null
+        }
+      ],
+      "pattern": "/reports/management",
+      "requires": [
+        "ViewFinancials"
+      ],
+      "returnTarget": true
+    },
+    {
+      "guards": [
+        "signed-in"
+      ],
       "name": "balance-sheet",
       "params": [
         {
