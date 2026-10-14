@@ -191,6 +191,9 @@ module private Accounting =
           view (visit "#/reports/trial-balance")
           view (visit "#/reports/income-statement?basis=cash")
           view (visit "#/reports/balance-sheet")
+          // Search with records and commands found, and with nothing found (v0.4 §18-19).
+          view (visit "#/search?q=INV")
+          view (visit "#/search?q=nothing-matches")
           view (visit "#/periods")
           view (visit "#/periods/2026-10")
           view (step (visit "#/periods/2026-10") PeriodClosed)

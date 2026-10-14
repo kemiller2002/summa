@@ -118,6 +118,8 @@ type Place =
     /// Invoice proposals waiting for review, an agent's among them (v0.4 §42).
     | Proposals
     | Proposal of proposalId: string
+    /// One search over the books, with the commands that match (v0.4 §18-19).
+    | Search of query: string option
 
 let allInvoices =
     { Search = None
@@ -237,7 +239,8 @@ let routes: Route list =
       route "inbox" "inbox" [ text "customer" ] [ viewFinancials; "AllocatePayment" ]
       route "cpa" "cpa" [ QueryParam.optional "year" ParamType.Int ] [ viewFinancials; "ExportData" ]
       financial "proposals" "proposals" []
-      financial "proposal" "proposals/{id}" [] ]
+      financial "proposal" "proposals/{id}" []
+      financial "search" "search" [ text "q" ] ]
 
 let roles =
     { Home = "home"
@@ -333,6 +336,7 @@ let toTarget (place: Place) : Target =
     | Inbox customerId -> target "inbox" Map.empty [ some "customer" (textValue customerId) ]
     | Cpa year -> target "cpa" Map.empty [ some "year" (year |> Option.map (int64 >> Value.Integer)) ]
     | Proposals -> target "proposals" Map.empty []
+    | Search query -> target "search" Map.empty [ some "q" (textValue query) ]
     | Proposal proposalId -> target "proposal" (id proposalId) []
 
 /// The typed values of a match. The table has already checked every type,
@@ -438,6 +442,7 @@ let ofMatch (matched: Match) : Result<Place, string> =
         | Some _ -> Error "a year is between 1 and 9999"
         | None -> Ok(Cpa None)
     | "proposals" -> Ok Proposals
+    | "search" -> Ok(Search(textOf "q"))
     | "proposal" -> id () |> Result.map Proposal
     | other -> Error $"no place is named '{other}'"
 

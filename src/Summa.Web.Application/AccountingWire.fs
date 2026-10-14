@@ -51,6 +51,7 @@ let events: Map<string, string -> string -> Msg> =
         [ "linkCopyRequested", (fun _ _ -> LinkCopyRequested)
           "menuToggled", (fun _ _ -> MenuToggled)
           "invoiceSearchChanged", (fun _ value -> InvoiceSearchChanged value)
+          "globalSearchChanged", (fun _ value -> GlobalSearchChanged value)
           "invoiceStatusToggled", (fun key _ -> InvoiceStatusToggled key)
           "invoiceCustomerChosen", (fun _ value -> InvoiceCustomerChosen value)
           "invoiceFromChanged", (fun _ value -> InvoiceFromChanged value)

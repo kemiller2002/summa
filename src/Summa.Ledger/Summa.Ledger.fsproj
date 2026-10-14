@@ -28,6 +28,7 @@
     <Compile Include="AgentRequests.fs" />
     <Compile Include="Issuance.fs" />
     <Compile Include="Lifecycle.fs" />
+    <Compile Include="Search.fs" />
     <Compile Include="ChronaImport.fs" />
     <Compile Include="Reports.fs" />
     <Compile Include="Periods.fs" />

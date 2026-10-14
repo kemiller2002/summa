@@ -33,6 +33,7 @@
     <Compile Include="ConfirmationTests.fs" />
     <Compile Include="SmartDefaultsTests.fs" />
     <Compile Include="ReceivablesAttentionTests.fs" />
+    <Compile Include="SearchPageTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

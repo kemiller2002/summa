@@ -557,6 +557,8 @@ type Msg =
     /// The narrow-screen menu button: opens or closes the primary sections.
     | MenuToggled
     | InvoiceSearchChanged of string
+    /// The header's search, which opens the search page (v0.4 §18-19).
+    | GlobalSearchChanged of string
     | InvoiceStatusToggled of string
     | InvoiceCustomerChosen of string
     | InvoiceFromChanged of string
@@ -1907,6 +1909,11 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                 Option.map2 (Limen.Routing.Link.share Routes.mode) model.Page model.Router.Current },
         []
     | InvoiceSearchChanged v -> refineTo (Routes.Invoices { invoiceList model with Search = nonEmpty v }) model
+    | GlobalSearchChanged v ->
+        // Typing refines the search page in place; from anywhere else it opens it.
+        match model.Place with
+        | Routes.Search _ -> refineTo (Routes.Search(nonEmpty v)) model
+        | _ -> goTo (Routes.Search(nonEmpty v)) model
     | InvoiceStatusToggled status when List.contains status Routes.invoiceStatuses ->
         let list = invoiceList model
         let toggled = if list.Status.Contains status then list.Status.Remove status else list.Status.Add status
@@ -3044,7 +3051,8 @@ let screen (model: Model) =
         | Routes.Engagement _ as place -> Showing place
         | Routes.Proposal id when not (holds (fun b -> b.Books.Proposals) id) -> Missing
         | Routes.Proposals
-        | Routes.Proposal _ as place -> Showing place
+        | Routes.Proposal _
+        | Routes.Search _ as place -> Showing place
         | Routes.JournalEntry id when not (holds (fun b -> b.Books.Ledger.Entries) id) -> Missing
         | Routes.Ledger(Some account, _, _) when not (holds (fun b -> b.Books.Ledger.Accounts) account) -> Missing
         | Routes.Periods _
@@ -4192,6 +4200,93 @@ let private proposalValues (model: Model) (shown: Screen) : View =
       "propRate", Value(Text model.ProposalRate.Rate)
       "propRateReason", Value(Text model.ProposalRate.Reason) ]
 
+/// The high-frequency operations the palette offers (v0.4 §19): a label,
+/// the words it also answers to, and where it goes. Each is a link.
+let paletteCommands: (string * string * Routes.Place) list =
+    [ "Create invoice", "new invoice draft", Routes.NewInvoice None
+      "Record payment", "payment received receive", Routes.Payments Routes.allPayments
+      "Show overdue invoices", "overdue late invoices", Routes.Invoices { Routes.allInvoices with Overdue = true }
+      "Show receivables", "receivables aging owed", Routes.Receivables(None, None)
+      "Run trial balance", "trial balance report", Routes.TrialBalance None
+      "Open the work queue", "work queue attention", Routes.Work ]
+
+/// What the query asks the books for: a leading "open", "find" or "go to"
+/// names a command, not part of what is looked for ("Open ABC Corp").
+let searchTerm (query: string) =
+    let q = query.Trim()
+
+    [ "go to "; "open "; "find "; "show " ]
+    |> List.tryFind (fun verb -> q.StartsWith(verb, StringComparison.OrdinalIgnoreCase))
+    |> Option.map (fun verb -> q.Substring(verb.Length).Trim())
+    |> Option.defaultValue q
+
+/// The commands whose label or words contain every word of the query; all
+/// of them for an empty query.
+let matchingCommands (query: string) =
+    let words = query.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+
+    paletteCommands
+    |> List.filter (fun (label, also, _) -> words |> Array.forall (fun w -> $"{label} {also}".Contains(w, StringComparison.OrdinalIgnoreCase)))
+
+let private searchHref (hit: Search.Hit) =
+    Routes.href (
+        match hit.Kind with
+        | Search.CustomerHit -> Routes.Customer(hit.Id, Routes.CustomerInvoices)
+        | Search.InvoiceHit -> Routes.Invoice(hit.Id, Routes.Document)
+        | Search.PaymentHit -> Routes.Payment hit.Id
+        | Search.JournalEntryHit -> Routes.JournalEntry hit.Id
+        | Search.ProjectHit -> Routes.Invoices { Routes.allInvoices with Search = Some hit.Id }
+    )
+
+let private searchValues (model: Model) =
+    let query =
+        match model.Place with
+        | Routes.Search q -> q |> Option.defaultValue ""
+        | _ -> ""
+
+    let hits, count =
+        match model.Books with
+        | Some b -> Search.find b (searchTerm query)
+        | None -> [], 0
+
+    let commands = matchingCommands query
+
+    let kindText =
+        function
+        | Search.CustomerHit -> "Customer"
+        | Search.InvoiceHit -> "Invoice"
+        | Search.PaymentHit -> "Payment"
+        | Search.JournalEntryHit -> "Journal entry"
+        | Search.ProjectHit -> "Project"
+
+    [ "globalSearch", Value(Text query)
+      "onSearch", Value(Flag(match model.Place with Routes.Search _ -> true | _ -> false))
+      "searchCommands",
+      Items(commands |> List.map (fun (label, _, place) -> [ "key", Text label; "label", Text label; "href", Text(Routes.href place) ]))
+      "hasSearchCommands", Value(Flag(not commands.IsEmpty))
+      "searchResults",
+      Items(
+          hits
+          |> List.map (fun h ->
+              [ "key", Text $"{kindText h.Kind}:{h.Id}"
+                "kind", Text(kindText h.Kind)
+                "title", Text h.Title
+                "detail", Text h.Detail
+                "matched", Text h.Matched
+                "href", Text(searchHref h) ])
+      )
+      "hasSearchResults", Value(Flag(not hits.IsEmpty))
+      "searchSummary",
+      Value(
+          Text(
+              if query.Trim() = "" then "Type a customer, invoice number, payment reference, amount, project, journal entry or memo."
+              elif count = 0 then $"Nothing in the books matches \"{searchTerm query}\"."
+              elif count > hits.Length then $"{count} found for \"{searchTerm query}\": showing the first {hits.Length}."
+              elif count = 1 then $"1 found for \"{searchTerm query}\"."
+              else $"{count} found for \"{searchTerm query}\"."
+          )
+      ) ]
+
 let view (model: Model) : View =
     let books = model.Books
     let zeroUsd = zero "USD"
@@ -4750,6 +4845,7 @@ let view (model: Model) : View =
                   | Routes.Draft _ -> "invoices"
                   | Routes.Proposals
                   | Routes.Proposal _ -> "proposals"
+                  | Routes.Search _ -> "search"
                   | Routes.Customers _
                   | Routes.Customer _ -> "customers"
                   | Routes.Engagements _
@@ -5021,6 +5117,7 @@ let view (model: Model) : View =
       "noListedInvoices", flag (not invoices.IsEmpty && listed.IsEmpty)
       "invoiceCountText", text $"{listed.Length} of {invoices.Length} invoices"
       "invoices", Items invoiceRows
+      yield! searchValues model
       "invoiceSearch", text (filters.Search |> Option.defaultValue "")
       "invoiceCustomer", text (filters.Customer |> Option.defaultValue "")
       "invoiceFrom", text (dateInput filters.From)
