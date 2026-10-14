@@ -251,6 +251,8 @@
           <div class="ef-surface summa-metric"><p class="summa-metric__label">Overdue</p><p class="summa-metric__value" id="overdue-amount" data-text="overdueAmount"></p><p class="summa-metric__note"><span data-text="overdueCount"></span> invoices</p></div>
           <div class="ef-surface summa-metric"><p class="summa-metric__label">Drafts</p><p class="summa-metric__value" id="draft-count" data-text="draftCount"></p></div>
           <div class="ef-surface summa-metric"><p class="summa-metric__label">Invoices issued</p><p class="summa-metric__value" id="invoice-count" data-text="invoiceCount"></p></div>
+          <!-- The work queue is where Summa raises anything (v0.4 §32). -->
+          <div class="ef-surface summa-metric"><p class="summa-metric__label">Needs attention</p><p class="summa-metric__value" id="work-count" data-text="workCount"></p><p class="summa-metric__note"><a class="summa-link" id="work-link" href="#/work">Open the work queue</a></p></div>
         </div>
         <template data-if="hasOverdue">
           <section class="ef-surface ef-stack" aria-labelledby="overdue-title">
@@ -1513,7 +1515,7 @@
         <template data-if="noWork"><p id="no-work">Nothing needs attention.</p></template>
         <template data-if="hasWork">
           <ul class="summa-work" id="work-list">
-            <template data-each="workItems" data-key="key"><li><span class="ef-status-lozenge" data-text="kind"></span> <a class="summa-link" data-bind-href="href" data-text="text"></a></li></template>
+            <template data-each="workItems" data-key="key"><li><span class="ef-status-lozenge" data-text="kind"></span> <a class="summa-link" data-bind-href="href" data-text="text"></a> <span class="summa-optional-note summa-trigger" data-text="trigger"></span></li></template>
           </ul>
         </template>
         <section class="ef-stack" aria-labelledby="integrations-title" id="integrations">

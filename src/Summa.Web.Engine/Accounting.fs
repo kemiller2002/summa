@@ -1674,52 +1674,76 @@ let integrationStateText =
     | Integrations.Retryable _ -> "Retryable"
     | Integrations.PermanentFailure _ -> "Needs a person"
 
-/// Everything that needs someone's attention (v0.4 §31), each with where to act.
+/// Why something is raised (v0.4 §32): the only four reasons Summa puts
+/// anything in front of a person. Each work item names one.
+type Trigger =
+    | ActionRequired
+    | DeadlineApproaching
+    | OperationFailed
+    | ConditionChanged
+
+let triggerText =
+    function
+    | ActionRequired -> "Action required"
+    | DeadlineApproaching -> "Deadline approaching"
+    | OperationFailed -> "Failed"
+    | ConditionChanged -> "Changed"
+
+/// How many days before a customer's promised date it is raised.
+let promiseNoticeDays = 3
+
+/// Everything that needs someone's attention (v0.4 §31), each with why it is
+/// raised (v0.4 §32) and where to act. Derived from the books: an item
+/// exists while its condition holds and goes when it is resolved, so
+/// nothing repeats or piles up.
 let workItems (today: DateOnly) (r: Receivables) =
     let invoice id = Routes.href (Routes.Invoice(id, Routes.InvoicePayments))
     let number id = r.Books.Invoices.TryFind id |> Option.map _.Number |> Option.defaultValue id
 
     [ for KeyValue(id, d) in r.Books.Drafts do
           match d.Review with
-          | SubmittedForReview _ -> "Ready to issue", $"Draft {id} is reviewed and ready to issue.", Routes.href (Routes.Draft id)
-          | Editing -> "Draft", $"Draft {id} is not yet submitted for review.", Routes.href (Routes.Draft id)
+          | SubmittedForReview _ -> "Ready to issue", ActionRequired, $"Draft {id} is reviewed and ready to issue.", Routes.href (Routes.Draft id)
+          | Editing -> "Draft", ActionRequired, $"Draft {id} is not yet submitted for review.", Routes.href (Routes.Draft id)
           // A purchase order the customer requires and the draft lacks (INV-OPS-006).
           match r.Books.Customers.TryFind d.CustomerId with
           | Some c when c.RequiresPurchaseOrder && d.Details.PurchaseOrder.IsNone ->
-              "Missing PO", $"Draft {id} for {c.Name} needs the customer's purchase order before it can be issued.", Routes.href (Routes.Draft id)
+              "Missing PO", ActionRequired, $"Draft {id} for {c.Name} needs the customer's purchase order before it can be issued.", Routes.href (Routes.Draft id)
           | _ -> ()
       for i in openInvoices today r do
           match (Lifecycle.followUp r i.InvoiceId).Dispute with
-          | Disputed(reason, _) -> "Disputed", $"Invoice {i.Number} is disputed: {reason}", invoice i.InvoiceId
-          | _ when isOverdue today r i -> "Overdue", $"Invoice {i.Number} is overdue by {today.DayNumber - i.DueDate.DayNumber} days.", invoice i.InvoiceId
+          | Disputed(reason, _) -> "Disputed", ConditionChanged, $"Invoice {i.Number} is disputed: {reason}", invoice i.InvoiceId
+          | _ when isOverdue today r i -> "Overdue", ActionRequired, $"Invoice {i.Number} is overdue by {today.DayNumber - i.DueDate.DayNumber} days.", invoice i.InvoiceId
           | _ -> ()
       for KeyValue(_, p) in r.Payments do
           if (unallocated r p).Minor > 0L then
-              "Unapplied payment", $"Payment {p.Id} has {Documents.moneyText (unallocated r p)} not yet applied.", Routes.href (Routes.Inbox(Some p.CustomerId))
+              "Unapplied payment", ActionRequired, $"Payment {p.Id} has {Documents.moneyText (unallocated r p)} not yet applied.", Routes.href (Routes.Inbox(Some p.CustomerId))
       for id, why in Lifecycle.attention r do
-          "Delivery", $"Invoice {number id}: {why}.", invoice id
+          "Delivery", OperationFailed, $"Invoice {number id}: {why}.", invoice id
       // A promise to pay whose date passed without the payment (INV-OPS-006, SUM4-016).
       for KeyValue(id, i) in r.Books.Invoices do
           match Lifecycle.promiseStatus r today id with
           | Some(p, Lifecycle.PromiseMissed) ->
-              "Payment promise missed", $"Invoice {i.Number}: {i.Customer.Name} promised {Documents.moneyText p.Amount} by {Documents.dateText p.By}, and it has not been paid.", invoice id
+              "Payment promise missed", ConditionChanged, $"Invoice {i.Number}: {i.Customer.Name} promised {Documents.moneyText p.Amount} by {Documents.dateText p.By}, and it has not been paid.", invoice id
+          // A promised date close at hand, not yet kept (v0.4 §32).
+          | Some(p, Lifecycle.PromiseDue) when p.By.DayNumber - today.DayNumber <= promiseNoticeDays ->
+              "Payment promise due", DeadlineApproaching, $"Invoice {i.Number}: {i.Customer.Name} promised {Documents.moneyText p.Amount} by {Documents.dateText p.By}.", invoice id
           | _ -> ()
       // Proposals waiting for a person, and time corrected after it was invoiced (INV-OPS-006).
       for KeyValue(id, p) in r.Books.Proposals do
           if p.State = ReadyForReview then
-              "Proposal ready", $"Proposal {id} is ready for review.", Routes.href (Routes.Proposal id)
+              "Proposal ready", ActionRequired, $"Proposal {id} is ready for review.", Routes.href (Routes.Proposal id)
       for KeyValue(_, review) in r.Books.Reviews do
           if review.Resolution.IsNone then
-              "Source conflict", $"Invoice {number review.InvoiceId}: {review.Reason}.", invoice review.InvoiceId
+              "Source conflict", ConditionChanged, $"Invoice {number review.InvoiceId}: {review.Reason}.", invoice review.InvoiceId
       for KeyValue(id, a) in r.Books.Artifacts do
           if a.Kind = Sources.InvoicePdf && a.Status = Sources.Pending then
-              "PDF", $"Invoice {number a.InvoiceId} has no stored PDF yet.", Routes.href (Routes.Invoice(a.InvoiceId, Routes.Document))
+              "PDF", ActionRequired, $"Invoice {number a.InvoiceId} has no stored PDF yet.", Routes.href (Routes.Invoice(a.InvoiceId, Routes.Document))
       let lastMonth = DateOnly(today.Year, today.Month, 1).AddMonths -1
 
       let lastMonthName = lastMonth.ToString("MMMM yyyy", CultureInfo.InvariantCulture)
 
       if r.Books.Ledger.Periods.TryFind((lastMonth.Year, lastMonth.Month)) |> Option.defaultValue PeriodState.Open = PeriodState.Open then
-          "Period", $"{lastMonthName} is still open.", Routes.href (Routes.Period(lastMonth.Year, lastMonth.Month)) ]
+          "Period", ActionRequired, $"{lastMonthName} is still open.", Routes.href (Routes.Period(lastMonth.Year, lastMonth.Month)) ]
 
 // ---- Update ----------------------------------------------------------------------------
 
@@ -4020,7 +4044,11 @@ let private attentionValues (model: Model) (shown: Screen) : View =
       "onCpa", placeIs (function Routes.Cpa _ -> true | _ -> false)
       // Work queue
       "workItems",
-      Items(work |> List.mapi (fun i (kind, what, href) -> [ "key", Text(string i); "kind", Text kind; "text", Text what; "href", Text href ]))
+      Items(
+          work
+          |> List.mapi (fun i (kind, trigger, what, href) ->
+              [ "key", Text(string i); "kind", Text kind; "trigger", Text(triggerText trigger); "text", Text what; "href", Text href ])
+      )
       "hasWork", flagOf (not work.IsEmpty)
       "noWork", flagOf work.IsEmpty
       "workCount", textOf (string work.Length)
