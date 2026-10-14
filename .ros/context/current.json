@@ -2153,21 +2153,21 @@
         "EXE-20261009T024702576Z-bcf1e384"
       ],
       "latestCheckpoint": {
-        "id": "bc46fc4cb44f8b5606aa5dd3",
-        "recordedAt": "2026-10-14T00:29:56Z",
+        "id": "9ed82d17d2f569afa9f296a0",
+        "recordedAt": "2026-10-14T01:06:09Z",
         "executionId": "EXE-20261009T024702576Z-bcf1e384",
-        "stepId": "STEP-20261014T001423000Z-87cc1658",
+        "stepId": "STEP-20261014T005105000Z-74cb57fc",
         "repository": "summa",
-        "branch": "feat/wi-0044-accounting-on-demand",
-        "commit": "e86b0b137a701b9b26061dfb05ff983bea4d3cc5",
+        "branch": "feat/wi-0044-management-reports",
+        "commit": "8eb95ba34d585ca15b1cf316887ed35101a229e7",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0044-accounting-on-demand",
-        "remoteCommit": "e86b0b137a701b9b26061dfb05ff983bea4d3cc5",
-        "summary": "SUM4-021, SUM4-033 and SUM4-034 tested: PostedFor.why states each generated entry's business event, lines read Debit/Credit X amount because ...; issue, payment and credit memo notices offer View accounting entry; ordinary confirmations say recorded in the books and a guard keeps debit/journal/posting to ledger and audit contexts; DF-SUMMA-2026-0052; summary 190/38/7.",
-        "nextAction": "Gate the accounting-on-demand PR, then SUM4-029 saved report views and SUM4-030 project profitability.",
+        "remoteBranch": "feat/wi-0044-management-reports",
+        "remoteCommit": "8eb95ba34d585ca15b1cf316887ed35101a229e7",
+        "summary": "SUM4-029 tested and SUM4-030 partial: Management module (revenue and expenses by client/project/engagement, engagement contribution, outstanding by customer) at #/reports/management, five saved views as links on Reports; contribution = revenue less external expenses, labor/AI/infrastructure cost not available (no source; out of scope until one exists); DF-SUMMA-2026-0053; summary 191/39/5.",
+        "nextAction": "Gate the management reports PR, then SUM4-032 notification philosophy.",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"

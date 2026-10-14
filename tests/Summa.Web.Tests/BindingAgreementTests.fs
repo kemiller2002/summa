@@ -194,6 +194,9 @@ module private Accounting =
           // Search with records and commands found, and with nothing found (v0.4 §18-19).
           view (visit "#/search?q=INV")
           view (visit "#/search?q=nothing-matches")
+          // Management views: a breakdown and the contribution table (v0.4 §29-30).
+          view (visit "#/reports/management")
+          view (visit "#/reports/management?view=engagement-contribution")
           view (visit "#/periods")
           view (visit "#/periods/2026-10")
           view (step (visit "#/periods/2026-10") PeriodClosed)

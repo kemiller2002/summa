@@ -385,6 +385,14 @@ a.summa-new {
   cursor: pointer;
 }
 
+/* Report views are links (v0.4 §29): the current one is marked like a pressed tab. */
+a.summa-tab {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.summa-tab[aria-current="page"],
 .summa-tab[aria-pressed="true"] {
   border-bottom-color: var(--ef-color-action-primary, #0b5cad);
   font-weight: 600;

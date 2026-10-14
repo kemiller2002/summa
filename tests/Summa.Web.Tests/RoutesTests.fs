@@ -71,6 +71,8 @@ let private samples =
       Proposals
       Proposal "P-1"
       Search None
+      Management(RevenueByClient, None, None)
+      Management(EngagementContribution, Some(DateOnly(2026, 1, 1)), Some(DateOnly(2026, 12, 31)))
       Search(Some "ABC Corp")
       Receivables(None, None)
       Receivables(Some(DateOnly(2026, 6, 30)), Some "CUST-0001")

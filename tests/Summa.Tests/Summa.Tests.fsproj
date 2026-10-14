@@ -18,6 +18,7 @@
     <Compile Include="InvoiceDefaultsTests.fs" />
     <Compile Include="AttentionRankTests.fs" />
     <Compile Include="SearchTests.fs" />
+    <Compile Include="ManagementTests.fs" />
     <Compile Include="CreditsTests.fs" />
     <Compile Include="CorrectionsTests.fs" />
     <Compile Include="BillingTests.fs" />

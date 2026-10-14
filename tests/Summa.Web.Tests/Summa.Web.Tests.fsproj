@@ -35,6 +35,7 @@
     <Compile Include="ReceivablesAttentionTests.fs" />
     <Compile Include="SearchPageTests.fs" />
     <Compile Include="AccountingOnDemandTests.fs" />
+    <Compile Include="ManagementReportTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
