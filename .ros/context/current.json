@@ -2153,21 +2153,21 @@
         "EXE-20261009T024702576Z-bcf1e384"
       ],
       "latestCheckpoint": {
-        "id": "9ed82d17d2f569afa9f296a0",
-        "recordedAt": "2026-10-14T01:06:09Z",
+        "id": "1d7c591addc4f7a9d3d7b318",
+        "recordedAt": "2026-10-14T08:41:01Z",
         "executionId": "EXE-20261009T024702576Z-bcf1e384",
-        "stepId": "STEP-20261014T005105000Z-74cb57fc",
+        "stepId": "STEP-20261014T082231000Z-79274e92",
         "repository": "summa",
-        "branch": "feat/wi-0044-management-reports",
-        "commit": "8eb95ba34d585ca15b1cf316887ed35101a229e7",
+        "branch": "feat/wi-0044-notification-triggers",
+        "commit": "94ed56ba1c9d57b182c8c02fa858b22c70398a67",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa"
         },
-        "remoteBranch": "feat/wi-0044-management-reports",
-        "remoteCommit": "8eb95ba34d585ca15b1cf316887ed35101a229e7",
-        "summary": "SUM4-029 tested and SUM4-030 partial: Management module (revenue and expenses by client/project/engagement, engagement contribution, outstanding by customer) at #/reports/management, five saved views as links on Reports; contribution = revenue less external expenses, labor/AI/infrastructure cost not available (no source; out of scope until one exists); DF-SUMMA-2026-0053; summary 191/39/5.",
-        "nextAction": "Gate the management reports PR, then SUM4-032 notification philosophy.",
+        "remoteBranch": "feat/wi-0044-notification-triggers",
+        "remoteCommit": "94ed56ba1c9d57b182c8c02fa858b22c70398a67",
+        "summary": "SUM4-032 tested: the work queue (counted on the dashboard) is the one notification surface; every item names one of four typed triggers shown beside it; a promised date is raised 3 days ahead and becomes Changed once missed; items are derived so they go when resolved and never repeat; DF-SUMMA-2026-0054; summary 192/39/4.",
+        "nextAction": "Gate the notification PR, then the process rows SUM2-032, SUM3-042, SUM3-043 and SUM0-050.",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
