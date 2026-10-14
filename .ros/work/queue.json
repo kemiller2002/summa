@@ -1414,10 +1414,10 @@
         "summa,ui,conformance,merge"
       ],
       "priority": "high",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-10-14T08:24:19.706Z",
-      "updatedAt": "2026-10-14T08:24:21.000Z",
+      "updatedAt": "2026-10-14T08:47:40.000Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
