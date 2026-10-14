@@ -183,6 +183,7 @@
   <main class="summa-main ef-stack" id="main" tabindex="-1">
     <div role="status" aria-live="polite" class="summa-messages">
       <template data-if="hasNotice"><p class="summa-notice" id="notice" data-text="notice"></p></template>
+      <template data-if="hasNoticeEntry"><p class="summa-notice-action"><a class="summa-link" id="notice-entry" data-bind-href="noticeEntryHref">View accounting entry</a></p></template>
     </div>
     <template data-if="hasError"><p class="summa-error" id="error" role="alert" data-text="error"></p></template>
     <template data-if="isReadOnly"><p class="summa-notice" id="read-only">These books can only be read: <span data-text="readOnlyReasons"></span></p></template>
@@ -1299,7 +1300,7 @@
         <template data-if="hasEntryOrigin"><p>Posted by <a class="summa-link" id="entry-origin" data-bind-href="entryOriginHref" data-text="entryOrigin"></a></p></template>
         <template data-if="entryReverses"><p>Reverses <a class="summa-link" data-bind-href="entryReversesHref" data-text="entryReversesId"></a></p></template>
         <section class="ef-stack" aria-labelledby="entry-explained-title">
-          <h2 id="entry-explained-title">In plain words</h2>
+          <h2 id="entry-explained-title">Why was this posted?</h2>
           <ul id="entry-explanation"><template data-each="entryExplanation" data-key="key"><li data-text="text"></li></template></ul>
         </section>
         <div class="ef-data-grid" role="region" tabindex="0" aria-label="Lines">

@@ -374,7 +374,7 @@ let ``an invoice shows what settled it, and its journal entry is explained in pl
 
     match items "entryExplanation" entry with
     | first :: _ as sentences ->
-        Assert.Equal(Text "This entry was posted for invoice INV-0001: Invoice INV-2026-0001.", first |> List.pick (fun (n, v) -> if n = "text" then Some v else None))
+        Assert.Equal(Text "Invoice INV-2026-0001 was issued to ABC Corp for 6,037.50 USD.", first |> List.pick (fun (n, v) -> if n = "text" then Some v else None))
         Assert.True(sentences.Length >= 3)
     | [] -> failwith "no explanation"
 

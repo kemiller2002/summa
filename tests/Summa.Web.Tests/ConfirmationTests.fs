@@ -45,7 +45,7 @@ let private drafted () =
 [<Fact>]
 let ``SUM4-038: issuing says who it goes to, for how much, and that the number never changes`` () =
     Assert.Equal(
-        "Issue this invoice to ABC Corp for 1,500.00 USD? It gets the next invoice number, which never changes, and is posted to the books. To correct it afterwards, issue a credit memo.",
+        "Issue this invoice to ABC Corp for 1,500.00 USD? It gets the next invoice number, which never changes, and is recorded in the books. To correct it afterwards, issue a credit memo.",
         value "confirmIssueText" (drafted ())
     )
 
@@ -56,7 +56,7 @@ let ``SUM4-038: a credit memo says how much it credits, against which invoice, a
     Assert.Equal("Issue a credit memo against INV-2026-0001? Enter the amount to credit first.", value "confirmCreditText" onInvoice)
     let typed = run [ CreditAmountChanged "200.00" ] onInvoice |> fst
     Assert.Equal(
-        "Issue a credit memo for 200.00 USD against INV-2026-0001? It reduces what ABC Corp owes, is posted to the books and is sent as its own document. It cannot be withdrawn.",
+        "Issue a credit memo for 200.00 USD against INV-2026-0001? It reduces what ABC Corp owes, is recorded in the books and is sent as its own document. It cannot be withdrawn.",
         value "confirmCreditText" typed
     )
 
