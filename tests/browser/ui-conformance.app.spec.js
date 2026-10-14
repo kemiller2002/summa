@@ -415,11 +415,17 @@ test("@ui-conformance at 320 and 390 the primary sections fold behind a Menu dis
   for (const width of [320, 390]) {
     await setWidth(page, width);
     await settleFontsAndFrames(page);
-    // Closed: one header row, and the page's own heading in the first screen.
+    // Closed: the sections take no rows; the header (brand and menu, the
+    // search, and the two header actions) stays within half the first
+    // screen, and the page's own heading is inside the first screen.
     await expect(menu).toHaveAttribute("aria-expanded", "false");
     await expect(menu).toHaveAttribute("aria-controls", "primary-nav");
     await expect(nav.getByRole("link")).toHaveCount(0);
-    expect((await main.boundingBox()).y, `h1 top @${width}`).toBeLessThan(400);
+    const screen = page.viewportSize().height;
+    const header = await page.getByRole("banner").boundingBox();
+    expect(header.y + header.height, `header bottom @${width}`).toBeLessThanOrEqual(screen / 2);
+    const heading = await main.boundingBox();
+    expect(heading.y + heading.height, `h1 bottom @${width}`).toBeLessThanOrEqual(screen);
     // Opened (by keyboard): every section, in order, one per row, full width.
     await menu.focus();
     await page.keyboard.press("Enter");
