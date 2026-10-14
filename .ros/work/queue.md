@@ -68,3 +68,4 @@
 | WI-0055 | Summa: merge origin/main (#98-#101) into the UI conformance branch (#95) with a verified scripted union of Praxis state; re-run every suite (https://github.com/kemiller2002/summa/issues/90) | complete | summa,ui,conformance,merge | high |
 | WI-0056 | Summa: merge origin/main #104 into the UI conformance branch (#95) by the verified scripted union; re-run every suite (https://github.com/kemiller2002/summa/issues/90) | complete | summa,ui,conformance,merge | high |
 | WI-0057 | Summa: merge origin/main #106 into the UI conformance branch (#95) by the verified scripted union; re-run every suite (https://github.com/kemiller2002/summa/issues/90) | complete | summa,ui,conformance,merge | high |
+| WI-0058 | Summa: merge origin/main #107 into the UI conformance branch (#95) by the verified scripted union (https://github.com/kemiller2002/summa/issues/90) | ready | summa,ui,conformance,merge | high |
