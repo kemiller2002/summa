@@ -337,7 +337,7 @@ let ``a proposal shows its lines, how it was made and who contributed, before an
     // Approving issues an invoice: it asks first and says so (SUM4-038).
     let total = value "propTotal" shown
     Assert.Equal(
-        $"Approve proposal P-1 and issue it to ABC Corp for {total}? It becomes an invoice with the next number, which never changes, and is posted to the books. To correct it afterwards, issue a credit memo.",
+        $"Approve proposal P-1 and issue it to ABC Corp for {total}? It becomes an invoice with the next number, which never changes, and is recorded in the books. To correct it afterwards, issue a credit memo.",
         value "confirmApproveText" shown
     )
 

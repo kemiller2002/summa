@@ -128,13 +128,29 @@ test("issuing asks first and says what will happen; not yet issues nothing", asy
   await page.click("#review-draft");
   await page.click("#issue-invoice");
   await expect(page.locator("#issue-dialog")).toBeVisible();
-  await expect(page.locator("#issue-dialog-text")).toHaveText("Issue this invoice to ABC Corp for 1,500.00 USD? It gets the next invoice number, which never changes, and is posted to the books. To correct it afterwards, issue a credit memo.");
+  await expect(page.locator("#issue-dialog-text")).toHaveText("Issue this invoice to ABC Corp for 1,500.00 USD? It gets the next invoice number, which never changes, and is recorded in the books. To correct it afterwards, issue a credit memo.");
   await page.click("#issue-dialog-cancel");
   await expect(page.locator("#issue-dialog")).toBeHidden();
   await expect(page).toHaveURL(/#\/drafts\//);
   await page.click("#issue-invoice");
   await page.click("#confirm-issue");
   await expect(page).toHaveURL(/#\/invoices\/INV-\d{4}$/);
+});
+
+test("after issuing, the accounting is one link away and says why it was posted (SUM4-021, SUM4-034)", async ({ app: { page } }) => {
+  await addCustomer(page, "ABC Corp");
+  await typeLine(page, "Assessment", "10", "150.00");
+  await page.click("#review-draft");
+  await page.click("#issue-invoice");
+  await page.click("#confirm-issue");
+  await expect(page.locator("#notice")).toHaveText(/^Invoice \S+ issued\.$/);
+  const number = (await page.locator("#notice").textContent()).split(" ")[1];
+  await expect(page.locator("#notice-entry")).toHaveText("View accounting entry");
+  await page.click("#notice-entry");
+  await expect(page).toHaveURL(/#\/ledger\/entries\/[^/]+$/);
+  await expect(page.locator("#entry-explained-title")).toHaveText("Why was this posted?");
+  await expect(page.locator("#entry-explanation li").first()).toHaveText(`Invoice ${number} was issued to ABC Corp for 1,500.00 USD.`);
+  await expect(page.locator("#entry-explanation li").nth(1)).toHaveText(/^Debit .*because/);
 });
 
 test("proposals have their own place, empty until something proposes an invoice", async ({ app: { page } }) => {

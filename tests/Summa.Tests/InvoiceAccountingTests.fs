@@ -83,10 +83,14 @@ let ``INV-ACC-006: a generated entry is explained in business language, line by 
     let books, invoice, entry = issuedEntry ()
     let sentences = Explanations.entry books.Ledger entry
     Assert.Equal($"This entry was posted for invoice {invoice.InvoiceId}: {entry.Description}.", sentences.Head)
-    Assert.Contains("Accounts Receivable (1100) goes up by 6,050.00 USD for EF-2026-0001: the business owns, or is owed, that much more.", sentences)
-    Assert.Contains(sentences, fun s -> s.StartsWith "Consulting Revenue (4000): " && s.Contains "earned for Architecture assessment")
+    Assert.Contains("Debit Accounts Receivable (1100) 6,050.00 USD for EF-2026-0001, because the business owns, or is owed, that much more.", sentences)
+    Assert.Contains(sentences, fun s -> s.StartsWith "Credit Consulting Revenue (4000) " && s.Contains "for Architecture assessment, because that much was earned.")
     Assert.Equal("Debits and credits are equal: 6,050.00 USD each, so the books still balance.", List.last sentences)
     Assert.Equal(entry.Lines.Length + 2, sentences.Length)
+    // With the books, the first sentence is the business event (v0.4 §21).
+    let r = Summa.Ledger.Payments.start books
+    Assert.Equal($"Invoice {invoice.Number} was issued to {invoice.Customer.Name} for 6,050.00 USD.", PostedFor.why r entry)
+    Assert.Equal<string list>(PostedFor.why r entry :: List.tail sentences, PostedFor.explain r entry)
 
 [<Fact>]
 let ``INV-SET-001 and INV-SET-006: the settlement timeline runs from the total to what is outstanding`` () =
@@ -143,3 +147,19 @@ let ``INV-FX-003: amounts in different currencies are never added or converted i
     Assert.Throws<InvalidOperationException>(fun () -> add (usd 1L) { Currency = "EUR"; Minor = 1L } |> ignore) |> ignore
     let mixed = { Date = DateOnly(2026, 10, 7); Description = "mixed"; Lines = [ line "cash" (Debit(usd 100L)); line "revenue" (Credit { Currency = "EUR"; Minor = 100L }) ]; Source = "manual" }
     Assert.Contains(MixedCurrencies, post context "k-fx" "JE-FX" mixed chart |> refused)
+
+[<Fact>]
+let ``SUM4-021: a payment's entry and a reversal each say the business event they record`` () =
+    let r =
+        receivables ()
+        |> recordPayment context { payment "PAY-1" 100000L with Reference = "ACH 4471" } |> ok
+        |> allocate context (allocation "AL-1" "PAY-1" "INV-001" 100000L) |> ok
+
+    let paid = r.Books.Ledger.Entries["JE-AL-1"]
+    Assert.Equal($"ABC Corp paid 1,000.00 USD (ACH 4471), and it was applied to what they owe: {paid.Description}.", PostedFor.why r paid)
+
+    let reversed = reverse context "JE-AL-1" "JE-REV-1" (DateOnly(2026, 10, 21)) r.Books.Ledger |> ok |> fst
+    let undone = { r with Books = { r.Books with Ledger = reversed } }
+    let reversal = reversed.Entries["JE-REV-1"]
+    Assert.Equal($"This entry undoes entry JE-AL-1, line by line: {reversal.Description}.", PostedFor.why undone reversal)
+    Assert.StartsWith("Credit ", PostedFor.explain undone reversal |> List.item 1)

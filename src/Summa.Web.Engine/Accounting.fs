@@ -407,6 +407,10 @@ type Model =
       Pdf: PdfWork
       Blockers: Issuance.Blocker list
       Notice: string option
+      /// The notice of something just posted and the journal entry it
+      /// posted, offered as "View accounting entry" while that notice shows
+      /// (v0.4 §34).
+      NoticeEntry: (string * string) option
       Error: string option
       /// Draws keys for form rows, so a sequence of inputs always gives the same keys.
       Counter: int
@@ -497,6 +501,7 @@ let initial =
       ProposalRate = { Line = "0"; Rate = ""; Reason = "" }
       Blockers = []
       Notice = None
+      NoticeEntry = None
       Error = None
       Counter = counter
       Unsaved = 0 }
@@ -2148,6 +2153,7 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                             Counter = counter
                             Blockers = []
                             Notice = Some $"Invoice {invoice.Number} issued."
+                            NoticeEntry = Some($"Invoice {invoice.Number} issued.", invoice.JournalEntryId)
                             Error = None }
 
                 let moved, more = goTo (Routes.Invoice(invoice.InvoiceId, Routes.Document)) saved
@@ -2189,7 +2195,8 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
             with
             | Ok(issued, invoice) ->
                 let saved, effects =
-                    save { model with Books = Some issued; Notice = Some $"Invoice {invoice.Number} issued from proposal {proposalId}."; Error = None }
+                    let notice = $"Invoice {invoice.Number} issued from proposal {proposalId}."
+                    save { model with Books = Some issued; Notice = Some notice; NoticeEntry = Some(notice, invoice.JournalEntryId); Error = None }
 
                 let moved, more = goTo (Routes.Invoice(invoice.InvoiceId, Routes.Document)) saved
                 moved, effects @ more
@@ -2275,7 +2282,15 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                             | [ ExceedsOutstanding owed ] -> $"That is more than the {Documents.moneyText owed} still owed."
                             | _ -> describe problems))
 
-            (if recorded.Error.IsNone then { recorded with Payment = { recorded.Payment with Amount = ""; Reference = ""; Date = "" } } else recorded), effects
+            // The payment's posting, offered on demand (v0.4 §34).
+            let posted =
+                match recorded.Error, recorded.Notice, model.Books, recorded.Books with
+                | None, Some notice, Some before, Some after ->
+                    let paymentId = nextId "PAY" before.Payments.ContainsKey
+                    after.Allocations |> List.tryFind (fun a -> a.PaymentId = paymentId) |> Option.map (fun a -> notice, a.JournalEntryId)
+                | _ -> None
+
+            (if recorded.Error.IsNone then { recorded with Payment = { recorded.Payment with Amount = ""; Reference = ""; Date = "" }; NoticeEntry = posted } else recorded), effects
     | CompanyLegalNameChanged v -> { model with Company = { model.Company with LegalName = v } }, []
     | CompanyAddressChanged v -> { model with Company = { model.Company with Address = v } }, []
     | CompanyEmailChanged v -> { model with Company = { model.Company with Email = v } }, []
@@ -2416,7 +2431,12 @@ let rec private apply (ctx: Ctx) (msg: Msg) (model: Model) : Model * AppEffect l
                             | [ Credits.ExceedsOutstandingBalance owed ] -> $"That is more than the {Documents.moneyText owed} still owed."
                             | _ -> describe problems))
 
-            (if issued.Error.IsNone then { issued with Credit = { Amount = ""; Reason = "" } } else issued), effects
+            let posted =
+                match issued.Error, issued.Notice, issued.Books |> Option.bind (fun b -> b.CreditMemos.TryFind memoId) with
+                | None, Some notice, Some memo -> Some(notice, memo.JournalEntryId)
+                | _ -> None
+
+            (if issued.Error.IsNone then { issued with Credit = { Amount = ""; Reason = "" }; NoticeEntry = posted } else issued), effects
         | Routes.Invoice _, _, _, None -> { model with Error = Some "Enter the amount to credit, such as 150.00."; Notice = None }, []
         | Routes.Invoice _, _, _, Some _ -> { model with Error = Some "A credit memo needs a reason the customer will read."; Notice = None }, []
         | _ -> model, []
@@ -3434,7 +3454,7 @@ let private placeValues (model: Model) (shown: Screen) : View =
               | Routes.Invoice(invoiceId, _), Some b ->
                   match b.Books.Invoices.TryFind invoiceId, parseAmount model.Credit.Amount with
                   | Some i, Some amount ->
-                      $"Issue a credit memo for {Documents.moneyText amount} against {i.Number}? It reduces what {i.Customer.Name} owes, is posted to the books and is sent as its own document. It cannot be withdrawn."
+                      $"Issue a credit memo for {Documents.moneyText amount} against {i.Number}? It reduces what {i.Customer.Name} owes, is recorded in the books and is sent as its own document. It cannot be withdrawn."
                   | Some i, None -> $"Issue a credit memo against {i.Number}? Enter the amount to credit first."
                   | None, _ -> ""
               | _ -> ""
@@ -3726,12 +3746,13 @@ let private bookValues (model: Model) (shown: Screen) : View =
       "entryReverses", flagOf (entry |> Option.exists (fun (_, e) -> e.Reverses.IsSome))
       "entryReversesHref", textOf (entry |> Option.bind (fun (_, e) -> e.Reverses) |> Option.map (fun id -> Routes.href (Routes.JournalEntry id)) |> Option.defaultValue "")
       "entryReversesId", entryText (fun e -> e.Reverses |> Option.defaultValue "")
-      // The entry in business language, on demand (INV-ACC-006).
+      // Why it was posted, in business language, on demand (INV-ACC-006, v0.4 §21).
       "entryExplanation",
       Items(
-          entry
-          |> Option.map (fun (l, e) -> Explanations.entry l e |> List.mapi (fun i sentence -> [ "key", Text(string i); "text", Text sentence ]))
-          |> Option.defaultValue []
+          match entry, books with
+          | Some(_, e), Some b -> PostedFor.explain b e |> List.mapi (fun i sentence -> [ "key", Text(string i); "text", Text sentence ])
+          | Some(l, e), None -> Explanations.entry l e |> List.mapi (fun i sentence -> [ "key", Text(string i); "text", Text sentence ])
+          | None, _ -> []
       )
       "entryLines",
       Items(
@@ -4134,7 +4155,7 @@ let private proposalValues (model: Model) (shown: Screen) : View =
       // What approving does, said before it is done (v0.4 §38).
       "confirmApproveText",
       propText (fun b p ->
-          $"Approve proposal {p.Id} and issue it to {customerName b p.CustomerId} for {Documents.moneyText (proposalTotal p)}? It becomes an invoice with the next number, which never changes, and is posted to the books. To correct it afterwards, issue a credit memo.")
+          $"Approve proposal {p.Id} and issue it to {customerName b p.CustomerId} for {Documents.moneyText (proposalTotal p)}? It becomes an invoice with the next number, which never changes, and is recorded in the books. To correct it afterwards, issue a credit memo.")
       "propByAgent",
       Value(Flag(shownProposal |> Option.exists (fun (_, p) -> p.Contributions |> List.exists (fun c -> c.Provenance |> Option.exists (fun v -> v.ActorKind = "agent")))))
       "propIssuedHref",
@@ -4782,6 +4803,15 @@ let view (model: Model) : View =
       "environmentBanner", text (banner model |> Option.defaultValue "")
       "hasNotice", flag model.Notice.IsSome
       "notice", text (model.Notice |> Option.defaultValue "")
+      // What was just posted, on demand: only while its own notice shows (v0.4 §34).
+      yield!
+          (let posted =
+              match model.Notice, model.NoticeEntry with
+              | Some notice, Some(said, entryId) when notice = said -> Some entryId
+              | _ -> None
+
+           [ "hasNoticeEntry", flag posted.IsSome
+             "noticeEntryHref", text (posted |> Option.map (Routes.JournalEntry >> Routes.href) |> Option.defaultValue "") ])
       "hasError", flag model.Error.IsSome
       "error", text (model.Error |> Option.defaultValue "")
       "hasUnsaved", flag (model.Unsaved > 0)
@@ -4985,7 +5015,7 @@ let view (model: Model) : View =
       "confirmIssueText",
       text (
           let customer = books |> Option.bind (fun b -> b.Books.Customers.TryFind model.Draft.CustomerId) |> Option.map _.Name |> Option.defaultValue "the customer"
-          $"Issue this invoice to {customer} for {Documents.moneyText draftTotal}? It gets the next invoice number, which never changes, and is posted to the books. To correct it afterwards, issue a credit memo."
+          $"Issue this invoice to {customer} for {Documents.moneyText draftTotal}? It gets the next invoice number, which never changes, and is recorded in the books. To correct it afterwards, issue a credit memo."
       )
       "draftLabel", text (model.Draft.DraftId |> Option.map (fun id -> $"Draft {id}") |> Option.defaultValue "New invoice")
       "draftLines",

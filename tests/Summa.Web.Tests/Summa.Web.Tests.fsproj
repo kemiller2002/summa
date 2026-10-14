@@ -34,6 +34,7 @@
     <Compile Include="SmartDefaultsTests.fs" />
     <Compile Include="ReceivablesAttentionTests.fs" />
     <Compile Include="SearchPageTests.fs" />
+    <Compile Include="AccountingOnDemandTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
