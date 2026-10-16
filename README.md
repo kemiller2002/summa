@@ -63,3 +63,9 @@ Or from the command line:
 The installed snapshot is self-contained; it does not read from the source
 ROS repository. `.ros/installation.json` records the package version and
 checksums of installed files.
+
+## License
+
+Source available under PolyForm Noncommercial 1.0.0 for permitted noncommercial uses. Commercial use requires a separate license from Echelon Foundry. Previously distributed versions remain subject to the licenses under which they were released.
+
+Commercial licensing information is forthcoming.

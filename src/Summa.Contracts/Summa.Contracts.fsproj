@@ -18,7 +18,7 @@
     <Authors>Echelon Foundry</Authors>
     <Description>The Chrona-to-Summa billing contract, owned by Summa as the receiving application: F# types for billable time Chrona publishes and the feedback Summa returns, a canonical JSON codec, boundary validation and golden vectors. No I/O, no dependencies beyond FSharp.Core.</Description>
     <PackageTags>echelon;summa;chrona;contracts;billing;fsharp</PackageTags>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageLicenseExpression>PolyForm-Noncommercial-1.0.0</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/kemiller2002/summa</RepositoryUrl>
     <PackageProjectUrl>https://github.com/kemiller2002/summa</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
