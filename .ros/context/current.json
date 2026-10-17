@@ -2433,21 +2433,21 @@
         "EXE-20261017T163958200Z-b0a63140"
       ],
       "latestCheckpoint": {
-        "id": "f41f230cbe9b7d96856afa18",
-        "recordedAt": "2026-10-17T19:48:06.000Z",
+        "id": "39438da7b173164649129c38",
+        "recordedAt": "2026-10-17T19:55:28.000Z",
         "executionId": "EXE-20261017T163958200Z-b0a63140",
-        "stepId": "STEP-20261017T194749000Z-c9348921",
+        "stepId": "STEP-20261017T195347000Z-af602bae",
         "repository": "summa",
         "branch": "codex/summa-forma-090",
-        "commit": "129994d2d4473f19f4a88eaffa7620212a7354f6",
+        "commit": "debd3dfd0af633d8ca10d04e9204d9ec579e225e",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa.git"
         },
         "remoteBranch": "codex/summa-forma-090",
-        "remoteCommit": "129994d2d4473f19f4a88eaffa7620212a7354f6",
-        "summary": "Forma color requirement intake is durable; Conditor 0.10.6 and Registry 1.24.0 are verified; the exact upgrade plan digest is sha256:933981bdf61d243bcbd96de5f997529dd369baf98f1a02556e42efa10ac19bd9.",
-        "nextAction": "Authorize the clean-tree Conditor upgrade, then migrate Summa CSS to the Forma 0.9 semantic color contract.",
+        "remoteCommit": "debd3dfd0af633d8ca10d04e9204d9ec579e225e",
+        "summary": "Conditor applied echelon-current 1.24.0; Summa now consumes Forma 0.9.0 semantic color roles with the published validator, regression tests, and light/dark computed-color browser checks.",
+        "nextAction": "Run the full repository, browser, accessibility, foundation, and Praxis validation gates; record inspected-commit evidence and open the review PR.",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
