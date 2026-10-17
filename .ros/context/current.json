@@ -2433,20 +2433,21 @@
         "EXE-20261017T163958200Z-b0a63140"
       ],
       "latestCheckpoint": {
-        "id": "f3d087565918c21b98ea0af4",
-        "recordedAt": "2026-10-17T16:41:48.000Z",
+        "id": "f41f230cbe9b7d96856afa18",
+        "recordedAt": "2026-10-17T19:48:06.000Z",
         "executionId": "EXE-20261017T163958200Z-b0a63140",
+        "stepId": "STEP-20261017T194749000Z-c9348921",
         "repository": "summa",
         "branch": "codex/summa-forma-090",
-        "commit": "a0b97a6ccc9d42cf2bd34a36be56d496d2b89d98",
+        "commit": "129994d2d4473f19f4a88eaffa7620212a7354f6",
         "remote": {
           "name": "origin",
           "url": "https://github.com/kemiller2002/summa.git"
         },
         "remoteBranch": "codex/summa-forma-090",
-        "remoteCommit": "a0b97a6ccc9d42cf2bd34a36be56d496d2b89d98",
-        "summary": "SUMMA-VIS-001 ingested as a draft canonical requirement with provenance; issue #110 is active; Forma 0.9.0 is published and verified.",
-        "nextAction": "Update the authoritative echelon-current registry to select Forma 0.9.0, then apply that set to Summa through Conditor before migrating tokens and adding validator tests.",
+        "remoteCommit": "129994d2d4473f19f4a88eaffa7620212a7354f6",
+        "summary": "Forma color requirement intake is durable; Conditor 0.10.6 and Registry 1.24.0 are verified; the exact upgrade plan digest is sha256:933981bdf61d243bcbd96de5f997529dd369baf98f1a02556e42efa10ac19bd9.",
+        "nextAction": "Authorize the clean-tree Conditor upgrade, then migrate Summa CSS to the Forma 0.9 semantic color contract.",
         "verification": {
           "status": "verified",
           "mechanism": "git-remote-observation"
