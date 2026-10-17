@@ -1,7 +1,7 @@
 {
   "schema": "praxis.inbox-claim/1",
   "claimId": "INPUT-950614e34eca68b4",
-  "state": "claimed",
+  "state": "completed",
   "source": {
     "path": ".praxis/inbox/documents/2026-10-14-SUMMA-VIS-001.md",
     "fileName": "2026-10-14-SUMMA-VIS-001.md",
@@ -36,7 +36,7 @@
     }
   ],
   "noDerivationReason": null,
-  "closedAt": null,
+  "closedAt": "2026-10-17T16:41:37.985Z",
   "releaseReason": null,
   "rejectionReason": null
 }
