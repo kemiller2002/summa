@@ -1,0 +1,42 @@
+{
+  "schema": "praxis.inbox-claim/1",
+  "claimId": "INPUT-950614e34eca68b4",
+  "state": "claimed",
+  "source": {
+    "path": ".praxis/inbox/documents/2026-10-14-SUMMA-VIS-001.md",
+    "fileName": "2026-10-14-SUMMA-VIS-001.md",
+    "sha256": "1c834f841b5ebf8baf166c12779f471f69585a1f7f80c49ca74a92297997b661",
+    "size": 4609
+  },
+  "claimedAt": "2026-10-17T16:41:23.648Z",
+  "claimant": {
+    "kind": "agent",
+    "id": "openai/codex",
+    "provider": "openai",
+    "model": "unknown",
+    "runtime": "codex"
+  },
+  "executionId": "EXE-20261017T163958200Z-b0a63140",
+  "derivations": [
+    {
+      "kind": "requirement",
+      "targetKind": "path",
+      "target": "docs/requirements/SUMMA-VISUAL-COLOR.md",
+      "summary": "Preserve SUMMA-VIS-001.1 through .6, acceptance criteria, cross-repository dependencies, and the separate product-review boundary.",
+      "locator": null,
+      "recordedAt": "2026-10-17T16:41:26.330Z",
+      "actor": {
+        "kind": "agent",
+        "id": "openai/codex",
+        "provider": "openai",
+        "model": "unknown",
+        "runtime": "codex"
+      },
+      "executionId": "EXE-20261017T163958200Z-b0a63140"
+    }
+  ],
+  "noDerivationReason": null,
+  "closedAt": null,
+  "releaseReason": null,
+  "rejectionReason": null
+}
