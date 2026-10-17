@@ -1,24 +1,24 @@
 {
   "schemaVersion": 4,
   "project": "summa",
-  "manifestSha256": "726183361cae557c0310fe616e4f2520c4efc0999aaa6f54742d70c2a4911bdb",
+  "manifestSha256": "8047d4bd1e671c4d67d91ae99a80aeae8996981fa87b9be4840e57f6de472bf5",
   "manifest": {
     "schemaVersion": 1,
     "name": "summa",
     "registryAuthority": {
       "kind": "resolved-release-set",
       "path": ".conditor/authority/resolved-release-set.json",
-      "sha256": "f969e5e92d6a3a208f35df7da4c74cd8159b3d80646de6a9d90ca77ed55fcd72"
+      "sha256": "68718d8a1bb9a7a0cca90dfe3aaae27227f6af7455f33eeb209b254dc0b2bb81"
     },
     "components": [
       {
         "id": "ordo",
-        "version": "1.7.0",
+        "version": "1.8.2",
         "required": true
       },
       {
         "id": "praxis",
-        "version": "3.11.0",
+        "version": "3.12.0",
         "required": true
       },
       {
@@ -43,7 +43,7 @@
       },
       {
         "id": "forma",
-        "version": "0.6.1",
+        "version": "0.9.0",
         "required": true
       },
       {
@@ -60,21 +60,21 @@
   "components": [
     {
       "id": "ordo",
-      "version": "1.7.0",
+      "version": "1.8.2",
       "distribution": "host-tool",
       "package": "ordo",
-      "descriptorSha256": "95f0e4d93296abc9707e62df34fc0a023e3d680f1e338d654497ae1597cb85de",
+      "descriptorSha256": "cf3f63f7dff131aac358584c24e136b2eee408ed8fd8293146b994f22521b2cb",
       "authority": "embedded-component-descriptor",
-      "sourceReference": "host:ordo@1.7.0"
+      "sourceReference": "host:ordo@1.8.2"
     },
     {
       "id": "praxis",
-      "version": "3.11.0",
+      "version": "3.12.0",
       "distribution": "host-tool",
       "package": "praxis",
-      "descriptorSha256": "5ff0736baf99518b2a8b9652a9bb0bd4f9403c77170d711c28e69025dba5f6a0",
+      "descriptorSha256": "04d969c79e03ca25037d582b67a0b7152577462468e068ec1af5f1d3b4a31170",
       "authority": "embedded-component-descriptor",
-      "sourceReference": "host:praxis@3.11.0"
+      "sourceReference": "host:praxis@3.12.0"
     },
     {
       "id": "visual-engineering",
@@ -111,12 +111,12 @@
     },
     {
       "id": "forma",
-      "version": "0.6.1",
+      "version": "0.9.0",
       "distribution": "npm",
       "package": "@echelon-foundry/design-system",
-      "descriptorSha256": "4893621f78f0af5165124418db433e37f7b67365dca13453c5994a7ccf4da1d5",
+      "descriptorSha256": "2fda898c501998908c57dc0258bb887cd81d7332fb26350672d6815f31de43f5",
       "authority": "embedded-component-descriptor",
-      "sourceReference": "npm:@echelon-foundry/design-system@0.6.1"
+      "sourceReference": "npm:@echelon-foundry/design-system@0.9.0"
     },
     {
       "id": "folio",
@@ -135,14 +135,14 @@
       "code": "SDE-STRUCT-001",
       "band": "conformance-concern",
       "path": "src/Summa.Web.Engine/Accounting.fs",
-      "lineCount": 4458
+      "lineCount": 5329
     },
     {
       "component": "ordo",
       "code": "SDE-STRUCT-001",
       "band": "justification-required",
       "path": "src/Summa.Storage/FinancialRecords.fs",
-      "lineCount": 2766
+      "lineCount": 2802
     },
     {
       "component": "ordo",
@@ -163,21 +163,21 @@
       "code": "SDE-STRUCT-001",
       "band": "strong-review",
       "path": "src/Summa.Ledger/Invoicing.fs",
-      "lineCount": 1140
+      "lineCount": 1167
     },
     {
       "component": "ordo",
       "code": "SDE-STRUCT-001",
       "band": "strong-review",
       "path": "src/Summa.Web.Application/AccountingWire.fs",
-      "lineCount": 1035
+      "lineCount": 1060
     },
     {
       "component": "ordo",
       "code": "SDE-STRUCT-001",
       "band": "review",
       "path": "src/Summa.Ledger/Billing.fs",
-      "lineCount": 813
+      "lineCount": 856
     },
     {
       "component": "ordo",
@@ -192,6 +192,13 @@
       "band": "review",
       "path": "tests/Summa.Web.Tests/StoreTests.fs",
       "lineCount": 651
+    },
+    {
+      "component": "ordo",
+      "code": "SDE-STRUCT-001",
+      "band": "review",
+      "path": "src/Summa.Ledger/Lifecycle.fs",
+      "lineCount": 588
     },
     {
       "component": "ordo",
@@ -218,6 +225,13 @@
       "component": "ordo",
       "code": "SDE-STRUCT-001",
       "band": "review",
+      "path": "src/Summa.Web.Engine/Routes.fs",
+      "lineCount": 526
+    },
+    {
+      "component": "ordo",
+      "code": "SDE-STRUCT-001",
+      "band": "review",
       "path": "src/Summa.Storage/Organization.fs",
       "lineCount": 522
     },
@@ -239,8 +253,8 @@
       "component": "ordo",
       "code": "SDE-STRUCT-001",
       "band": "review",
-      "path": "src/Summa.Ledger/Lifecycle.fs",
-      "lineCount": 503
+      "path": "src/Summa.Ledger/Documents.fs",
+      "lineCount": 500
     }
   ]
 }

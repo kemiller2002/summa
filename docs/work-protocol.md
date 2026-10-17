@@ -33,7 +33,7 @@ For substantial execution, record meaningful plan units with `./praxis step begi
 
 Completion validates configured evidence types and paths before changing state. `./praxis validate` rejects meaningful dirty paths when enforcement is enabled and neither active context nor a completed event attributes them. Committed changes that were made without an active work item are repaired with `./praxis work reconcile` (see "Post-hoc attribution reconciliation" below), never by touching files. CI is the authoritative enforcement boundary; hooks are optional convenience.
 
-When the Praxis executable genuinely cannot run, an agent may write the approved runtime-free envelope and let `./praxis reconcile --envelope FILE` enter the same planners and canonical stores. The envelope is proposed input, not state; do not edit `.ros` files directly. See [`fallback-reconciliation.md`](https://github.com/kemiller2002/praxis/blob/v3.11.0/docs/fallback-reconciliation.md). This is distinct from `work reconcile`, which repairs Git attribution after work was committed without an active work item.
+When the Praxis executable genuinely cannot run, an agent may write the approved runtime-free envelope and let `./praxis reconcile --envelope FILE` enter the same planners and canonical stores. The envelope is proposed input, not state; do not edit `.ros` files directly. See [`fallback-reconciliation.md`](https://github.com/kemiller2002/praxis/blob/v3.12.0/docs/fallback-reconciliation.md). This is distinct from `work reconcile`, which repairs Git attribution after work was committed without an active work item.
 
 Deterministic housekeeping may use the configured `mechanical` work type. It still requires an explicit work-item identity and event, but the default profile does not require implementation/test evidence for that type.
 
@@ -68,7 +68,7 @@ changes exist on a branch whose name is not the ID of a work item in the work
 context, so each work item runs on a branch named for its ID (DER-01 of
 `requirements/PRAXIS-DUAL-ENTRY-RECONCILIATION.md`). Pull-request CI uses
 `GITHUB_HEAD_REF`; a detached HEAD with meaningful work fails. See
-[`identity.md`](https://github.com/kemiller2002/praxis/blob/v3.11.0/docs/identity.md#branch-policy-der-01).
+[`identity.md`](https://github.com/kemiller2002/praxis/blob/v3.12.0/docs/identity.md#branch-policy-der-01).
 
 ## Quality evidence at completion
 
@@ -502,6 +502,20 @@ completes, finalization closes every active execution; "finalized" means
 closed, not successful, and the `work.continued` event remains the record of
 the interruption.
 
+An interrupted predecessor may have left steps planned, active or blocked.
+Only their owner may resolve a step, and the owner is gone, so completion
+does not wait for it (WI-0088). Its `execution.finalized` event carries an
+`interruption` naming those step IDs, the continuation event and the
+successor, with `disposition: interrupted` and `dispositionSource:
+observed-by-successor`. The steps themselves keep their last recorded state;
+nothing marks them completed or abandoned. This applies only to an execution
+that a `work.continued` event for the same work item took over as
+interrupted. Unresolved steps of any other execution, including the
+successor's own, still refuse completion. `validate` accepts a finalized
+execution with unresolved steps only when its interruption lists exactly
+those steps and cites a continuation that took that execution over as
+interrupted for the named successor.
+
 The output also includes the checkpoint, the completed work, the next
 action, the completion evidence still required, the test measurements every
 execution recorded (with their evidence quality), and the predecessor's
@@ -694,6 +708,13 @@ with its own small lifecycle: `captured -> ready -> {blocked, abandoned}`.
 Canonical storage is `.ros/work/queue.json`; `.ros/work/queue.md` is a
 generated human-readable projection, and `.ros/work/items/<ID>.md` is an
 optional free-form detail file `work show` will include when present.
+
+When two branches each capture backlog rows, `queue.json` and `queue.md`
+conflict in Git. Do not take one side's queue, which drops the other
+branch's rows, and do not hand-edit them: run `./praxis work history merge`
+(preview) and `--apply`, which merges the queue by row ID together with the
+conflicted native history and regenerates `queue.md`. See
+[native history reconciliation](https://github.com/kemiller2002/praxis/blob/v3.12.0/docs/work-history-merge.md#backlog-queue).
 
 The backlog is **not** a second work-item authority. `work start` requires
 `ready`, then delegates directly to the existing `begin` transition above --

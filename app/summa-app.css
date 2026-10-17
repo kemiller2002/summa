@@ -21,9 +21,9 @@ body {
   padding: 0.5rem 1rem;
   text-align: center;
   font-size: 0.875rem;
-  color: var(--ef-color-text-primary, #1f2328);
-  background: color-mix(in srgb, var(--ef-color-status-warning, #b7791f) 14%, Canvas);
-  border-bottom: 2px solid var(--ef-color-status-warning, #b7791f);
+  color: var(--ef-color-text-primary);
+  background: color-mix(in srgb, var(--ef-color-status-warning) 14%, var(--ef-color-surface-primary));
+  border-bottom: 2px solid var(--ef-color-status-warning);
 }
 
 .summa-gate {
@@ -38,7 +38,7 @@ body {
   align-items: center;
   gap: 0.75rem 1.5rem;
   padding: 0.75rem clamp(1rem, 3vw, 2rem);
-  border-bottom: 1px solid var(--ef-color-border-subtle, #d0d7de);
+  border-bottom: 1px solid var(--ef-color-border-subtle);
 }
 
 .summa-brand {
@@ -55,8 +55,8 @@ body {
   inline-size: 2rem;
   block-size: 2rem;
   border-radius: 0.5rem;
-  color: var(--ef-color-text-inverse, #fff);
-  background: var(--ef-color-action-primary, #0b5cad);
+  color: var(--ef-color-text-inverse);
+  background: var(--ef-color-surface-inverse);
 }
 
 .summa-nav {
@@ -84,7 +84,7 @@ a.summa-nav__link {
 }
 
 .summa-nav__link[aria-current="page"] {
-  background: color-mix(in srgb, var(--ef-color-action-primary, #0b5cad) 12%, Canvas);
+  background: color-mix(in srgb, var(--ef-color-accent-primary) 12%, var(--ef-color-surface-primary));
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 0.3em;
@@ -92,8 +92,9 @@ a.summa-nav__link {
 
 .summa-nav__link:focus-visible,
 .summa-link:focus-visible {
-  outline: 3px solid var(--ef-color-focus, #1f6feb);
+  outline: 3px solid var(--ef-color-focus-gap);
   outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--ef-color-focus-ring);
 }
 
 .summa-main {
@@ -111,13 +112,13 @@ a.summa-nav__link {
   margin: 0;
   padding: 0.75rem 1rem;
   border-radius: 0.375rem;
-  border-inline-start: 4px solid var(--ef-color-status-success, #1a7f37);
-  background: color-mix(in srgb, var(--ef-color-status-success, #1a7f37) 10%, Canvas);
+  border-inline-start: 4px solid var(--ef-color-status-success);
+  background: color-mix(in srgb, var(--ef-color-status-success) 10%, var(--ef-color-surface-primary));
 }
 
 .summa-error {
-  border-inline-start-color: var(--ef-color-status-danger, #cf222e);
-  background: color-mix(in srgb, var(--ef-color-status-danger, #cf222e) 10%, Canvas);
+  border-inline-start-color: var(--ef-color-status-danger);
+  background: color-mix(in srgb, var(--ef-color-status-danger) 10%, var(--ef-color-surface-primary));
 }
 
 .summa-metrics {
@@ -158,7 +159,7 @@ a.summa-nav__link {
 .summa-table td {
   padding: 0.5rem 0.75rem;
   text-align: start;
-  border-bottom: 1px solid var(--ef-color-border-subtle, #d0d7de);
+  border-bottom: 1px solid var(--ef-color-border-subtle);
   vertical-align: top;
 }
 
@@ -188,7 +189,7 @@ a.summa-nav__link {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--ef-color-text-link, #0b5cad);
+  color: var(--ef-color-accent-primary);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -200,8 +201,8 @@ a.summa-nav__link {
 
 .summa-blockers {
   padding: 0.75rem 1rem;
-  border-inline-start: 4px solid var(--ef-color-status-warning, #b7791f);
-  background: color-mix(in srgb, var(--ef-color-status-warning, #b7791f) 10%, Canvas);
+  border-inline-start: 4px solid var(--ef-color-status-warning);
+  background: color-mix(in srgb, var(--ef-color-status-warning) 10%, var(--ef-color-surface-primary));
 }
 
 .summa-blockers h2 {
@@ -223,9 +224,9 @@ a.summa-nav__link {
 .summa-document {
   display: block;
   padding: clamp(1rem, 3vw, 2.5rem);
-  border: 1px solid var(--ef-color-border-subtle, #d0d7de);
+  border: 1px solid var(--ef-color-border-subtle);
   border-radius: 0.5rem;
-  background: Canvas;
+  background: var(--ef-color-surface-primary);
 }
 
 .summa-document__head {
@@ -288,7 +289,7 @@ a.summa-nav__link {
   display: block;
   white-space: pre-line;
   font-size: 0.875em;
-  color: var(--ef-color-text-muted, #57606a);
+  color: var(--ef-color-text-secondary);
 }
 
 .summa-line-note:empty,
@@ -309,7 +310,7 @@ a.summa-nav__link {
   .summa-table tr {
     display: grid;
     padding-block: 0.5rem;
-    border-bottom: 1px solid var(--ef-color-border-subtle, #d0d7de);
+    border-bottom: 1px solid var(--ef-color-border-subtle);
   }
 
   .summa-table td {
@@ -346,7 +347,7 @@ a.summa-new {
   gap: 0.25rem 1rem;
   margin: 0;
   padding: 0.25rem 0.75rem 0.5rem;
-  border: 1px solid var(--ef-color-border-subtle, #d0d7de);
+  border: 1px solid var(--ef-color-border-subtle);
   border-radius: 0.375rem;
 }
 
@@ -364,14 +365,14 @@ a.summa-new {
 
 .summa-count {
   margin: 0;
-  color: var(--ef-color-text-muted, #57606a);
+  color: var(--ef-color-text-secondary);
 }
 
 .summa-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
-  border-bottom: 1px solid var(--ef-color-border-subtle, #d0d7de);
+  border-bottom: 1px solid var(--ef-color-border-subtle);
 }
 
 .summa-tab {
@@ -394,13 +395,14 @@ a.summa-tab {
 
 .summa-tab[aria-current="page"],
 .summa-tab[aria-pressed="true"] {
-  border-bottom-color: var(--ef-color-action-primary, #0b5cad);
+  border-bottom-color: var(--ef-color-accent-primary);
   font-weight: 600;
 }
 
 .summa-tab:focus-visible {
-  outline: 3px solid var(--ef-color-focus, #1f6feb);
+  outline: 3px solid var(--ef-color-focus-gap);
   outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--ef-color-focus-ring);
 }
 
 .summa-outcome {
@@ -421,7 +423,7 @@ a.summa-tab {
 }
 
 .summa-facts dt {
-  color: var(--ef-color-text-muted, #57606a);
+  color: var(--ef-color-text-secondary);
   font-size: 0.875rem;
 }
 
@@ -437,7 +439,7 @@ a.summa-tab {
 }
 
 .summa-checks li[data-tone="attention"] strong {
-  color: var(--ef-color-text-danger, #b42318);
+  color: var(--ef-color-status-danger);
 }
 
 .summa-report-list {
@@ -448,7 +450,7 @@ a.summa-tab {
 
 .summa-preview {
   padding: 1rem;
-  border: 1px dashed var(--ef-color-border-subtle, #d0d7de);
+  border: 1px dashed var(--ef-color-border-subtle);
   border-radius: 0.5rem;
 }
 

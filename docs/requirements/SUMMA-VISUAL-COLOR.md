@@ -2,7 +2,7 @@
 id: SUMMA-VIS
 title: Summa semantic color and visual-intent requirements
 status: draft
-version: 0.1.0
+version: 0.2.0
 created: 2026-10-17
 updated: 2026-10-17
 owners:
@@ -16,8 +16,9 @@ derived_from: [INPUT-950614e34eca68b4]
 provenance:
   contributions:
     EXE-20261017T163958200Z-b0a63140:
-      operations: [created]
+      operations: [created, modified]
       at: 2026-10-17T16:41:00.000Z
+      last: 2026-10-17T19:53:34.989Z
       actor:
         kind: agent
         id: openai/codex
@@ -38,12 +39,14 @@ Work item: `GH-110`.
 
 ## Problem and boundary
 
-`app/summa-app.css` was authored against Forma 0.6.1 with four unsupported
+`app/summa-app.css` was authored against Forma 0.6.1 with five unsupported
 names: `--ef-color-action-primary`, `--ef-color-text-link`,
-`--ef-color-focus`, and `--ef-color-text-danger`. Literal fallbacks therefore
-determined their rendering. Summa must consume released Forma semantic roles
-without forking Forma CSS, while retaining Summa's ownership of accounting
-meaning and task hierarchy.
+`--ef-color-focus`, `--ef-color-text-danger`, and
+`--ef-color-text-muted`. The first four were reported by issue #110; the fifth
+was found when the published Forma validator was applied. Literal fallbacks
+therefore determined their rendering. Summa must consume released Forma
+semantic roles without forking Forma CSS, while retaining Summa's ownership
+of accounting meaning and task hierarchy.
 
 ## Requirements
 
@@ -85,6 +88,32 @@ meaning and task hierarchy.
 - A product reviewer signs off on hierarchy and palette separately from
   accessibility and automated-test success.
 
+## Proposed product visual intent
+
+This is the implementation baseline submitted for product review, not an
+approval record. Summa inherits Forma's light and dark palettes through
+semantic roles; it owns the accounting meaning and non-color cues below.
+
+| Product purpose | Forma role or pairing | Required non-color signal |
+|---|---|---|
+| Page text and financial values | `text-primary` on `surface-primary` | Labels, tabular numerals, weight, and document structure |
+| Supporting labels and notes | `text-secondary` on `surface-primary` | Position and explicit label relationship; never status by dimness |
+| Brand mark and primary actions | `text-inverse` on `surface-inverse` | Visible action label and native button semantics |
+| Links and selected navigation | `accent-primary` on `surface-primary` | Underline or link context; `aria-current` plus weight/underline for selection |
+| Keyboard focus | `focus-gap` outline with `focus-ring` halo | Two-part outline geometry on `:focus-visible` |
+| Successful payment or completion | `status-success` on `surface-primary` | Explicit success text plus border or status component |
+| Failed save, invalid state, or overdue consequence | `status-danger` on `surface-primary` | Explicit error/overdue text plus fault or border treatment |
+| Blocked work or warning | `status-warning` on `surface-primary` | Explicit blocker/warning text plus border treatment |
+| Unknown, pending, or review state | `status-info` on `surface-primary` | Explicit pending/review wording; never promoted to success or failure |
+| Tables and document boundaries | `border-subtle` with primary surfaces and text | Headers, captions, alignment, and responsive `data-label` values |
+| Charts | No Summa chart palette is approved or currently used | Future charts require direct labels or patterns and contextual review |
+| Print | Folio's print contract; semantic text remains authoritative | Status and amounts remain explicit in document text without screen color |
+
+Every pairing follows the active Forma theme. Summa supplies no raw palette
+values and does not freeze a light-theme value as a fallback. Color is
+supplemental: accounting state remains visible in text, structure, native or
+ARIA state, and borders or underlines after hue is removed.
+
 ## Dependencies and implementation state
 
 - Forma issues [#159](https://github.com/kemiller2002/forma/issues/159) and
@@ -95,9 +124,9 @@ meaning and task hierarchy.
 - Visual Engineering issue
   [#49](https://github.com/kemiller2002/visual-engineering/issues/49) governs
   product-level acceptance.
-- The `echelon-current` registry must select Forma 0.9.0 before Summa may apply
-  the dependency through Conditor. Direct edits to governed pins are not an
-  acceptable workaround.
+- `echelon-current` 1.24.0 selects Forma 0.9.0, Ordo 1.8.2, and Praxis
+  3.12.0. Summa applied that exact release set through Conditor 0.10.6; the
+  governed pins were not edited by hand.
 
 Implementation and automated evidence may complete before human palette and
 hierarchy approval. This requirement remains draft until that independent

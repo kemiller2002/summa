@@ -5,6 +5,17 @@ import { test, expect } from "./support.js";
 
 const nav = (page, label) => page.locator(".summa-nav__link", { hasText: label });
 
+const luminance = (color) => {
+  const channels = color.match(/[\d.]+/g).slice(0, 3).map((value) => Number(value) / 255)
+    .map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+};
+
+const contrast = (left, right) => {
+  const values = [luminance(left), luminance(right)].sort((a, b) => b - a);
+  return (values[0] + 0.05) / (values[1] + 0.05);
+};
+
 async function addCustomer(page, name, terms) {
   await nav(page, "Customers").click();
   await page.fill("#customer-name", name);
@@ -32,6 +43,79 @@ test("a new browser starts its own books, marked as a local demo", async ({ app:
   await expect(page.locator("#notice")).toHaveText("A new set of books was started in this browser.");
   await expect(page.locator("#total-outstanding")).toHaveText("0.00 USD");
   await expect(nav(page, "Home")).toHaveAttribute("aria-current", "page");
+});
+
+test("semantic colors resolve through Forma in both themes and survive constrained presentation", async ({ app: { page } }) => {
+  const inspect = async (theme) => page.evaluate((selectedTheme) => {
+    document.documentElement.dataset.efTheme = selectedTheme;
+    const resolve = (token) => {
+      const probe = document.createElement("span");
+      probe.style.color = `var(${token})`;
+      document.body.append(probe);
+      const value = getComputedStyle(probe).color;
+      probe.remove();
+      return value;
+    };
+    const brand = getComputedStyle(document.querySelector(".summa-brand__mark"));
+    const link = getComputedStyle(document.querySelector("#work-link"));
+    const current = getComputedStyle(document.querySelector('.summa-nav__link[aria-current="page"]'));
+
+    return {
+      surface: resolve("--ef-color-surface-primary"),
+      inverseSurface: resolve("--ef-color-surface-inverse"),
+      inverseText: resolve("--ef-color-text-inverse"),
+      accent: resolve("--ef-color-accent-primary"),
+      danger: resolve("--ef-color-status-danger"),
+      success: resolve("--ef-color-status-success"),
+      warning: resolve("--ef-color-status-warning"),
+      focusRing: resolve("--ef-color-focus-ring"),
+      focusGap: resolve("--ef-color-focus-gap"),
+      brandBackground: brand.backgroundColor,
+      brandText: brand.color,
+      linkText: link.color,
+      currentDecoration: current.textDecorationLine,
+      currentBackground: current.backgroundColor,
+    };
+  }, theme);
+
+  const light = await inspect("light");
+  const dark = await inspect("dark");
+
+  for (const evidence of [light, dark]) {
+    expect(evidence.brandBackground).toBe(evidence.inverseSurface);
+    expect(evidence.brandText).toBe(evidence.inverseText);
+    expect(evidence.linkText).toBe(evidence.accent);
+    expect(evidence.currentDecoration).toContain("underline");
+    expect(evidence.currentBackground).not.toBe("rgba(0, 0, 0, 0)");
+    expect(contrast(evidence.inverseText, evidence.inverseSurface)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(evidence.accent, evidence.surface)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(evidence.danger, evidence.surface)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(evidence.success, evidence.surface)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(evidence.warning, evidence.surface)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(evidence.focusRing, evidence.surface)).toBeGreaterThanOrEqual(3);
+  }
+  expect(light.surface).not.toBe(dark.surface);
+  expect(light.accent).not.toBe(dark.accent);
+
+  await page.locator("#work-link").focus();
+  const focus = await page.locator("#work-link").evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { outline: style.outlineColor, shadow: style.boxShadow };
+  });
+  expect(focus.outline).toBe(dark.focusGap);
+  expect(focus.shadow).toContain(dark.focusRing);
+
+  // A 640 CSS-pixel viewport is the reflow target for a 1280-pixel window at
+  // 200% browser zoom; the narrower size also covers a representative phone.
+  for (const width of [640, 375]) {
+    await page.setViewportSize({ width, height: 812 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  }
+
+  await page.emulateMedia({ forcedColors: "active" });
+  await page.locator("#work-link").focus();
+  await expect(page.locator("#work-link")).toBeFocused();
+  await expect(page.locator("#work-link")).not.toHaveCSS("outline-style", "none");
 });
 
 test("customer, invoice, review, issue, payment: the first vertical slice in the browser", async ({ app: { page } }) => {

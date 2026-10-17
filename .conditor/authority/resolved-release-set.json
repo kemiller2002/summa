@@ -2,51 +2,51 @@
   "schema": "echelon.resolved-release-set/v1",
   "profile": {
     "id": "echelon-current",
-    "version": "1.22.0",
-    "sha256": "4cef6996750ed4973b6dc8eb640e56bdb527384ad40243e83705a54a88523fac"
+    "version": "1.24.0",
+    "sha256": "efe437489cc2b741cacc756b2c9b11f119627cc5aaf25c917933884a47b39c53"
   },
-  "platform": "linux-x64",
+  "platform": "osx-arm64",
   "resolver": {
     "name": "echelon-registry-resolver",
     "version": "0.1.0"
   },
   "catalogSnapshot": {
-    "sha256": "9ab9380be1886fc06cbb40c3e4e07bc7cd22e5f672478b91dd4ee2aa9f8c9b20"
+    "sha256": "ad71605de8d9e3cd8b97538b5fcab89013c225575b75cf1bd280fc80a43bda61"
   },
   "components": [
     {
       "systemId": "praxis",
       "role": "host-tool",
       "required": true,
-      "version": "3.11.0",
+      "version": "3.12.0",
       "repository": "kemiller2002/praxis",
-      "tag": "v3.11.0",
-      "commit": "5673d6ab07aad07b51ceadaeb4230b1591800886",
+      "tag": "v3.12.0",
+      "commit": "6e2d1f938f0cf9e57b415a732ded6b624e41e9ca",
       "releaseStage": "stable",
       "lifecycleState": "active",
       "distributionClass": "self-contained-native-cli",
       "executable": "praxis",
       "releaseManifest": {
         "schema": "echelon.release/v2",
-        "sha256": "c535097a24754f58dac21947d822cbfdbb78277ff2e41cd72e320f86eb65b58e"
+        "sha256": "9a854f48aaf4100f16318be03dc20034085b818cf93ea70f35984e0102f12cd3"
       },
       "distribution": {
         "mechanism": "github-release",
         "package": null,
-        "url": "https://github.com/kemiller2002/praxis/releases/tag/v3.11.0"
+        "url": "https://github.com/kemiller2002/praxis/releases/tag/v3.12.0"
       },
       "artifacts": [
         {
-          "name": "praxis-linux-x64.tar.gz",
+          "name": "praxis-osx-arm64.tar.gz",
           "purpose": "executable",
-          "platform": "linux-x64",
-          "sha256": "b107557ec0a33556c5c97abeddabd676a81afbcfd30a735d9e2fdd3d052038c2"
+          "platform": "osx-arm64",
+          "sha256": "eb7c18c230d378096510586febbeb8e89203c9cc6ed31f266347384111900f8d"
         },
         {
           "name": "native-checksums.txt",
           "purpose": "checksums",
           "platform": null,
-          "sha256": "05ffa0f06a2ce5fb85e8f8b026b70c9724dd20d6a5a4d02a8e16b415daf19378"
+          "sha256": "e357bfa814e121b5edfa95cd96b1c944ecc780ca2ca07d6b0411f5edbeddcee0"
         }
       ]
     },
@@ -54,35 +54,35 @@
       "systemId": "ordo",
       "role": "host-tool",
       "required": true,
-      "version": "1.7.0",
+      "version": "1.8.2",
       "repository": "kemiller2002/ordo",
-      "tag": "v1.7.0",
-      "commit": "e6cbeff8876f870b2636715735bb79041a9a06a0",
+      "tag": "v1.8.2",
+      "commit": "907a38951a0018c493050be5ded2158d5b17733b",
       "releaseStage": "stable",
       "lifecycleState": "active",
       "distributionClass": "self-contained-native-cli",
       "executable": "ordo",
       "releaseManifest": {
         "schema": "echelon.release/v2",
-        "sha256": "5261ec97e76008c64553f35719d961019a7d89a803bfb6a4bd1de70a9bc0bcba"
+        "sha256": "272bcc4dff151d26aac5212e26421aa60026e91ced625967d186c3be10240c38"
       },
       "distribution": {
         "mechanism": "github-release",
         "package": null,
-        "url": "https://github.com/kemiller2002/ordo/releases/tag/v1.7.0"
+        "url": "https://github.com/kemiller2002/ordo/releases/tag/v1.8.2"
       },
       "artifacts": [
         {
-          "name": "ordo-linux-x64.tar.gz",
+          "name": "ordo-osx-arm64.tar.gz",
           "purpose": "executable",
-          "platform": "linux-x64",
-          "sha256": "3b11f7b8218678fce0bce124bf1d8ad5875992b970c4c915ac40633687a46e74"
+          "platform": "osx-arm64",
+          "sha256": "43cd831162a8db32ffdf4a2c8d9a5846c2515b172cf2362755f10ff47fe1c712"
         },
         {
           "name": "native-checksums.txt",
           "purpose": "checksums",
           "platform": null,
-          "sha256": "2b48abc9f87961c08b8a7ca3a3dc4c85053b58236958006b6fe7cb6d4f0718a6"
+          "sha256": "d9b3ff8f9e3b488ecd2b372bb95b764479e15a6b9bbe55eab55c93e9ae823b67"
         }
       ]
     },
@@ -109,10 +109,10 @@
       },
       "artifacts": [
         {
-          "name": "percepta-repo-linux-x64",
+          "name": "percepta-repo-osx-arm64",
           "purpose": "executable",
-          "platform": "linux-x64",
-          "sha256": "e46113aa08c9d2a97dfb1f75ca65c986946e1601c5f2c5cdcc9e8c25841d6039"
+          "platform": "osx-arm64",
+          "sha256": "5492754f4fc04551bdd3a595fa87a947875a59835f870cc4558a25b001e3ddbe"
         },
         {
           "name": "checksums.txt",
@@ -149,10 +149,10 @@
       },
       "artifacts": [
         {
-          "name": "dokimos-linux-x64.tar.gz",
+          "name": "dokimos-osx-arm64.tar.gz",
           "purpose": "executable",
-          "platform": "linux-x64",
-          "sha256": "bb61505cf8fa23bf6b0992019ca2e2805bda46eeba42eecde9497e15a060441a"
+          "platform": "osx-arm64",
+          "sha256": "34595f09c80f2f4433f51d671134e1d27136c7124dda9367f63655026779f897"
         },
         {
           "name": "dokimos-checksums.txt",
@@ -334,35 +334,35 @@
       "systemId": "forma",
       "role": "project-binding",
       "required": true,
-      "version": "0.6.1",
+      "version": "0.9.0",
       "repository": "kemiller2002/forma",
-      "tag": "v0.6.1",
-      "commit": "0bce8d120364f6df5e480929a172c5e77b4d08a9",
+      "tag": "v0.9.0",
+      "commit": "18e6ff7b15e54862521a101ac2589da0c597fc98",
       "releaseStage": "stable",
       "lifecycleState": "active",
       "distributionClass": "web-package",
       "executable": null,
       "releaseManifest": {
         "schema": "echelon.release/v2",
-        "sha256": "164660ba86d913aaf4715c790ac81034142d4cf90e5c1ebd56d3bbb73041feb9"
+        "sha256": "674c10a5a317c5e4dbf2f52a495ae3ec4a995907c24d86e02c0bdc3625f70da9"
       },
       "distribution": {
         "mechanism": "github-release",
         "package": "@echelon-foundry/design-system",
-        "url": "https://github.com/kemiller2002/forma/releases/tag/v0.6.1"
+        "url": "https://github.com/kemiller2002/forma/releases/tag/v0.9.0"
       },
       "artifacts": [
         {
-          "name": "echelon-foundry-design-system-0.6.1.tgz",
+          "name": "echelon-foundry-design-system-0.9.0.tgz",
           "purpose": "package",
           "platform": null,
-          "sha256": "0b28b9d320bb4a821dbcedfae5ed0e3c43b6191bd1f4d2acafbe75e197f4b4d0"
+          "sha256": "0158986344f1330fe5b42f83d332f3f75a3dcfab66ddc279080eb6526f245218"
         },
         {
           "name": "forma-marketing.sha256",
           "purpose": "checksums",
           "platform": null,
-          "sha256": "c647d7b2316ec099d66899745186d6a1c12343120e4393ddae4d88bbc7b9bc61"
+          "sha256": "ccf12574371a4fbe42e307d926985ca432af856972594a8931b5cbe14b9720d2"
         }
       ]
     },
@@ -429,10 +429,10 @@
       },
       "artifacts": [
         {
-          "name": "strata-linux-x64.tar.gz",
+          "name": "strata-osx-arm64.tar.gz",
           "purpose": "executable",
-          "platform": "linux-x64",
-          "sha256": "497ec245b60994e13b8a8923ec6a8fb994acdb8365d022e9e4fcf955605f2a1b"
+          "platform": "osx-arm64",
+          "sha256": "e0f50e7d792e72aff320d6cf4b082d0e5842ee6e89e5b82aea3bfea626ad8e69"
         },
         {
           "name": "native-checksums.txt",
