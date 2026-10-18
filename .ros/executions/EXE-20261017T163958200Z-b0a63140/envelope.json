@@ -50,8 +50,8 @@
   "humanOnlyTransitions": [],
   "parentExecution": null,
   "startedAt": "2026-10-17T16:39:58.398Z",
-  "state": "blocked",
-  "stateReason": "Engineering implementation and validation are complete at durable checkpoint 07219ac685011fef180e35d1; independent product reviewer approval of the palette and accounting hierarchy is still required before merge.",
+  "state": "active",
+  "stateReason": null,
   "origin": {
     "kind": "work-transition",
     "reference": "work.begin"

@@ -1,8 +1,8 @@
 ---
 id: SUMMA-VIS
 title: Summa semantic color and visual-intent requirements
-status: draft
-version: 0.2.0
+status: accepted
+version: 1.0.0
 created: 2026-10-17
 updated: 2026-10-17
 owners:
@@ -18,7 +18,7 @@ provenance:
     EXE-20261017T163958200Z-b0a63140:
       operations: [created, modified]
       at: 2026-10-17T16:41:00.000Z
-      last: 2026-10-17T19:53:34.989Z
+      last: 2026-10-18T01:09:38.095Z
       actor:
         kind: agent
         id: openai/codex
@@ -30,12 +30,20 @@ provenance:
 
 # SUMMA-VIS — semantic color and visual intent
 
-Status: **Draft requirement**. Source: `INPUT-950614e34eca68b4`, preserving
+Status: **Accepted requirement**. Source: `INPUT-950614e34eca68b4`, preserving
 GitHub issue [#110](https://github.com/kemiller2002/summa/issues/110).
-Ingestion records the obligation; it does not approve Summa's palette or
-substitute automated contrast checks for product review.
+Automated contrast and accessibility checks remain evidence rather than a
+substitute for product review.
 
 Work item: `GH-110`.
+
+## Product approval
+
+The repository owner reviewed the proposed palette and accounting hierarchy
+and authorized merge on 2026-10-17 (America/Indiana/Indianapolis). The public
+approval record is attached to
+[PR #111](https://github.com/kemiller2002/summa/pull/111#issuecomment-6244066478),
+separately from the engineering and accessibility evidence.
 
 ## Problem and boundary
 
@@ -128,6 +136,6 @@ ARIA state, and borders or underlines after hue is removed.
   3.12.0. Summa applied that exact release set through Conditor 0.10.6; the
   governed pins were not edited by hand.
 
-Implementation and automated evidence may complete before human palette and
-hierarchy approval. This requirement remains draft until that independent
-review is recorded.
+Implementation, automated evidence, and the independent palette and hierarchy
+review are complete. Future chart work still requires its own product review
+because no chart palette was in scope for this approval.
