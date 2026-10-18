@@ -18,7 +18,7 @@ let private str (node: JsonNode) = node.GetValue<string>()
 let private pages = [ "web"; "web-hub" ]
 
 let private formaRelease =
-    "https://github.com/kemiller2002/forma/releases/download/v0.6.1/echelon-foundry-design-system-0.6.1.tgz"
+    "https://github.com/kemiller2002/forma/releases/download/v0.9.0/echelon-foundry-design-system-0.9.0.tgz"
 
 let private folioRelease =
     "https://github.com/kemiller2002/folio/releases/download/v0.4.0/echelon-foundry-print-components-0.4.0.tgz"
@@ -27,7 +27,7 @@ let private folioRelease =
 let ``foundations.json requires every foundation, at the echelon-current versions`` () =
     let capabilities = (json ".echelon/foundations.json").["capabilities"]
 
-    for name, version in [ "aegis", "1.0.0"; "forma", "0.6.1"; "folio", "0.4.0"; "limen", "0.9.0" ] do
+    for name, version in [ "aegis", "1.0.0"; "forma", "0.9.0"; "folio", "0.4.0"; "limen", "0.9.0" ] do
         Assert.True(capabilities.[name].["required"].GetValue<bool>(), $"{name} must be required")
         Assert.Equal(version, str capabilities.[name].["version"])
 
@@ -43,7 +43,7 @@ let ``the npm foundations are pinned to immutable releases and locked`` () =
     let packages = (json "package-lock.json").["packages"]
 
     for name, version in
-        [ "@echelon-foundry/design-system", "0.6.1"
+        [ "@echelon-foundry/design-system", "0.9.0"
           "@echelon-foundry/print-components", "0.4.0"
           "@echelon-foundry/limen", "0.9.0" ] do
         let locked = packages.[$"node_modules/{name}"]

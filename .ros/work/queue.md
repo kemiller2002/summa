@@ -4,6 +4,7 @@
 |---|---|---|---|---|
 | ECHELON-UPGRADE-2026-09-21 | Modernize Summa Echelon engineering capabilities | complete | tooling, ordo, limen | high |
 | FOUNDATIONS-APPLICABILITY | FOUNDATIONS-APPLICABILITY | complete |  |  |
+| GH-110 | SUMMA-VIS-001: adopt Forma 0.9 semantic colors | complete | forma, color, accessibility | high |
 | GH-4 | Prepare Summa implementation baseline | complete | readiness,bootstrap | high |
 | LIMEN-0-7-0 | LIMEN-0-7-0 | complete |  |  |
 | LIMEN-0-7-0-APPLY | LIMEN-0-7-0-APPLY | complete |  |  |

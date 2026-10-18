@@ -11,10 +11,10 @@
         "setup"
       ],
       "priority": "medium",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-09-14T07:39:31.762Z",
-      "updatedAt": "2026-09-14T07:39:36.684Z",
+      "updatedAt": "2026-09-14T07:39:47.015Z",
       "createdBy": "unknown",
       "source": "manual",
       "sourceReference": null
@@ -27,10 +27,10 @@
         "setup"
       ],
       "priority": "medium",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-09-14T07:40:46.183Z",
-      "updatedAt": "2026-09-14T07:40:46.251Z",
+      "updatedAt": "2026-09-14T07:40:46.406Z",
       "createdBy": "unknown",
       "source": "manual",
       "sourceReference": null
@@ -46,10 +46,10 @@
         "ros"
       ],
       "priority": "high",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-09-14T08:12:07.621Z",
-      "updatedAt": "2026-09-14T08:12:20.982Z",
+      "updatedAt": "2026-09-14T08:12:28.071Z",
       "createdBy": "unknown",
       "source": "manual",
       "sourceReference": null
@@ -1267,6 +1267,31 @@
       },
       "source": "manual",
       "sourceReference": null
+    },
+    {
+      "id": "GH-110",
+      "title": "SUMMA-VIS-001: adopt Forma 0.9 semantic colors",
+      "description": "Ingest issue #110, upgrade Summa to Forma 0.9.0, replace unsupported token aliases, integrate the release-pinned color validator, and preserve independent product-review boundaries.",
+      "tags": [
+        "forma",
+        "color",
+        "accessibility"
+      ],
+      "priority": "high",
+      "status": "complete",
+      "attachments": [],
+      "createdAt": "2026-10-17T16:39:40.000Z",
+      "updatedAt": "2026-10-18T01:10:06.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "openai/codex",
+        "provider": "openai",
+        "model": "unknown",
+        "runtime": "codex"
+      },
+      "source": "github-issue",
+      "sourceReference": "https://github.com/kemiller2002/summa/issues/110"
     }
   ]
 }

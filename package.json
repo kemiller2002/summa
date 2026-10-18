@@ -5,16 +5,18 @@
   "scripts": {
     "build:wasm": "dotnet publish src/Summa.Wasm/Summa.Wasm.csproj -c Release -o build/wasm",
     "build": "dotnet build Summa.sln -c Release && npm run build:wasm",
+    "check:forma-color": "forma-color validate app/summa-app.css web/styles.css web/summa.css web-hub/styles.css web-hub/summa.css web-kernel/page.css",
     "check:limen": "limen verify --strict",
+    "test:forma-color": "npm run check:forma-color && node --test tests/color-contract.test.mjs",
     "test:dotnet": "dotnet test Summa.sln -c Release",
     "test:browser": "npm run build:wasm && playwright test",
-    "test": "npm run check:limen && npm run test:dotnet && npm run test:browser",
+    "test": "npm run test:forma-color && npm run check:limen && npm run test:dotnet && npm run test:browser",
     "web": "npm run build:wasm && node tools/ros_server.mjs",
     "hub": "npm run build:wasm && node tools/ros_hub_server.mjs",
     "app": "npm run build:wasm && node tools/app_server.mjs"
   },
   "dependencies": {
-    "@echelon-foundry/design-system": "https://github.com/kemiller2002/forma/releases/download/v0.6.1/echelon-foundry-design-system-0.6.1.tgz",
+    "@echelon-foundry/design-system": "https://github.com/kemiller2002/forma/releases/download/v0.9.0/echelon-foundry-design-system-0.9.0.tgz",
     "@echelon-foundry/limen": "0.9.0",
     "@echelon-foundry/print-components": "https://github.com/kemiller2002/folio/releases/download/v0.4.0/echelon-foundry-print-components-0.4.0.tgz"
   },

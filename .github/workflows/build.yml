@@ -41,6 +41,9 @@ jobs:
       - name: Test
         run: dotnet test Summa.sln --no-build --configuration Release --verbosity normal
 
+      - name: Verify the Forma color contract
+        run: npm run test:forma-color
+
       - name: Verify the Limen boundary
         run: npm run check:limen
 

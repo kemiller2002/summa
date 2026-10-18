@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "tool": "ros",
   "package": "@echelon-foundry/repository-operating-system",
-  "installedVersion": "3.11.0",
+  "installedVersion": "3.12.0",
   "configurationVersion": 1,
   "profile": "project-administration",
   "managedArtifacts": [
     {
       "path": ".echelon/toolchain.json",
       "ownership": "shared",
-      "sha256": "e7808278868a88e5c658055a0562465973bddcba936f7150eccc9fa2b868c38c"
+      "sha256": "dbbf013fde5b5dadd826531ca27ee021a3364ae4f17e2ee1bc576492a8175d38"
     },
     {
       "path": ".editorconfig",
@@ -69,7 +69,7 @@
     {
       "path": "README.md",
       "ownership": "user-owned",
-      "sha256": "eb74fe1feead858364b24cb4ceeb2413c9f208dba13b2a6c8a9d45ceda04c98b"
+      "sha256": "2962c0752e6427242c798f3f3c57e147b43e0a70d33d73b222907ec1c6fce9b8"
     },
     {
       "path": "context/ARCHITECTURE.md",
@@ -114,7 +114,7 @@
     {
       "path": "docs/00-governance/README.md",
       "ownership": "tool-owned",
-      "sha256": "825a47a543ad3e32cb31e17f66f43e0551f661b4864b9251e5306be9d1bfcae1"
+      "sha256": "227fecba9857d7e1d80d7603125035e6f9e6cc3362c2d79080dfbffcd86edd6c"
     },
     {
       "path": "docs/agent-provenance.md",
@@ -124,7 +124,7 @@
     {
       "path": "docs/development-telemetry.md",
       "ownership": "tool-owned",
-      "sha256": "edc9f9a5b826940186e7cd9aebcc7700595612c4260de299a781c2976c213bec"
+      "sha256": "6f555ce2675efe075bb6cd6de828e7bd7f0465f55e9e97646f24718695043a8f"
     },
     {
       "path": "docs/ordo-observation.md",
@@ -134,7 +134,7 @@
     {
       "path": "docs/project-administration-hub.md",
       "ownership": "tool-owned",
-      "sha256": "da45d595dc7630004f0e84d7bca4386c9f398c50b0c305b6e0dc74c1c441d2bd"
+      "sha256": "63539c988ff4cb7aea83867781e44470fde5909ff0118062ab34c9701ec9fbcd"
     },
     {
       "path": "docs/remote-agent-contract.md",
@@ -144,7 +144,7 @@
     {
       "path": "docs/remote-protocol.md",
       "ownership": "tool-owned",
-      "sha256": "627256968eb663181649da221fa0dd41b8e9ded3c97779ee43b248df3fb8510c"
+      "sha256": "ba991f3f812bcf09d986be5b0ca5146cd8066399f81f63f27445e8d72b47e6e0"
     },
     {
       "path": "docs/web-interface.md",
@@ -159,12 +159,12 @@
     {
       "path": "docs/work-backlog-guide.md",
       "ownership": "tool-owned",
-      "sha256": "2da57ba479713f3897588a7c95cea3a8c6132f955bfc1d03a39af3cae3ac99e4"
+      "sha256": "1b0b567e54ce98db36fe3a52478112a7217f0dd96947ca70dbb0b8890d355cee"
     },
     {
       "path": "docs/work-protocol.md",
       "ownership": "tool-owned",
-      "sha256": "4e9c2b61608ec75c436d3b7529313117ba57987adcf0a0dc57b146ba6ac85655"
+      "sha256": "40a7495513154b6a6678931448c44b3a7574db95f766ebb18f55d6466c8e1c15"
     },
     {
       "path": "praxis",
@@ -189,7 +189,7 @@
     {
       "path": "registries/decisions.json",
       "ownership": "generated",
-      "sha256": "87bd5dcfe332390675d066497b349a3549c919bd3202d51b403dee65956c2375"
+      "sha256": "021c5fe161425134b501c290593b6d3647bd63bcd24f08b55b232689ef808942"
     },
     {
       "path": "registries/evidence.json",
@@ -260,6 +260,11 @@
       "path": "schemas/artifact-metadata.schema.json",
       "ownership": "tool-owned",
       "sha256": "dfc3b8726c44dc9b4c9b380882155cc2ef8665c031722c4419e34fda375ae5d3"
+    },
+    {
+      "path": "schemas/ecir-approval-v1.schema.json",
+      "ownership": "tool-owned",
+      "sha256": "63730005d1310bc5bf37d3cd9505fcf67277179f1a8e4ad3039ea04ac7d2aa93"
     },
     {
       "path": "schemas/evidence.schema.json",
