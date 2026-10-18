@@ -2482,7 +2482,28 @@
       "updatedAt": "2026-10-18T07:19:02.000Z",
       "telemetryExecutionIds": [
         "EXE-20261018T071903931Z-5035a47a"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "d863b030f886ba29a06fa833",
+        "recordedAt": "2026-10-18T07:34:36.000Z",
+        "executionId": "EXE-20261018T071903931Z-5035a47a",
+        "stepId": "STEP-20261018T073424000Z-777b3494",
+        "repository": "summa",
+        "branch": "codex/summa-layout-action-090",
+        "commit": "a5382265c0c573209501f166c74c48f55076c426",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa.git"
+        },
+        "remoteBranch": "codex/summa-layout-action-090",
+        "remoteCommit": "a5382265c0c573209501f166c74c48f55076c426",
+        "summary": "Adopted UI conformance 1.0.0, added responsive/alignment/action checks, and recorded passing local evidence for five Summa surfaces.",
+        "nextAction": "Open PR, verify exact-head CI, then complete GH-90 after independent review and merge authorization.",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      }
     }
   ]
 }
