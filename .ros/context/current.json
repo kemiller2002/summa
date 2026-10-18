@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-10-18T01:10:06.000Z",
+  "updatedAt": "2026-10-18T12:30:58.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -2472,6 +2472,60 @@
       },
       "blockReason": "Engineering implementation and validation are complete at durable checkpoint 07219ac685011fef180e35d1; independent product reviewer approval of the palette and accounting hierarchy is still required before merge.",
       "completedAt": "2026-10-18T01:10:06.000Z"
+    },
+    {
+      "id": "GH-90",
+      "type": "task",
+      "state": "complete",
+      "semanticState": "complete",
+      "evidence": [
+        {
+          "type": "implementation",
+          "path": "tests/browser/ui-conformance.spec.js"
+        },
+        {
+          "type": "tests",
+          "path": "tests/browser/ui-conformance-helpers.js"
+        },
+        {
+          "type": "requirements",
+          "path": "docs/requirements/SUMMA-UI-CONFORMANCE.md"
+        },
+        {
+          "type": "ui-conformance",
+          "path": "docs/measurement/ui-conformance/GH-90/evidence.json"
+        },
+        {
+          "type": "test-report",
+          "path": "docs/measurement/ui-conformance/GH-90/README.md"
+        }
+      ],
+      "updatedAt": "2026-10-18T12:30:58.000Z",
+      "telemetryExecutionIds": [
+        "EXE-20261018T071903931Z-5035a47a"
+      ],
+      "latestCheckpoint": {
+        "id": "c168ef6e29573524f5005e5d",
+        "recordedAt": "2026-10-18T12:30:48.000Z",
+        "executionId": "EXE-20261018T071903931Z-5035a47a",
+        "stepId": "STEP-20261018T073424000Z-777b3494",
+        "repository": "summa",
+        "branch": "codex/summa-layout-action-090",
+        "commit": "054ea2106188cbe9a856dc7e8ea9f8ff8bdbe2db",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa.git"
+        },
+        "remoteBranch": "codex/summa-layout-action-090",
+        "remoteCommit": "054ea2106188cbe9a856dc7e8ea9f8ff8bdbe2db",
+        "summary": "Summa UI conformance 1.0.0 adoption and evidence are complete; focused and full local validation and exact-head PR checks passed.",
+        "nextAction": "Complete GH-90, build registries, validate Praxis state, push the final state, and verify the new exact-head checks.",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "completedAt": "2026-10-18T12:30:58.000Z"
     }
   ]
 }

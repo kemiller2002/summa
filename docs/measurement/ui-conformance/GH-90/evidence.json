@@ -1,0 +1,243 @@
+{
+  "standardVersion": "1.0.0",
+  "repository": "kemiller2002/summa",
+  "revision": "20edb0a789d99d64656b03e24c57718ff089ee92",
+  "classification": "app-ui",
+  "surfaces": [
+    {
+      "id": "work-backlog",
+      "path": "web/index.html",
+      "kind": "product",
+      "status": "pass",
+      "viewportWidths": [320, 390, 768, 1280],
+      "alignmentGroups": [
+        {
+          "id": "backlog-capture-tags-priority",
+          "relation": "top-edge",
+          "toleranceCssPx": 1,
+          "targets": [
+            { "role": "textbox", "name": "Tags" },
+            { "role": "combobox", "name": "Priority" }
+          ],
+          "rationale": "Capture metadata fields share one desktop row and intentionally stack at phone widths.",
+          "evidence": ["tests/browser/ui-conformance.spec.js: backlog declares aligned fields and remains operable at universal widths"]
+        },
+        {
+          "id": "backlog-filter-tag-status",
+          "relation": "top-edge",
+          "toleranceCssPx": 1,
+          "targets": [
+            { "role": "textbox", "name": "Tag" },
+            { "role": "combobox", "name": "Status" }
+          ],
+          "rationale": "Filter controls are peer criteria in the same responsive row.",
+          "evidence": ["tests/browser/ui-conformance.spec.js: backlog declares aligned fields and remains operable at universal widths"]
+        }
+      ],
+      "actions": [
+        {
+          "id": "backlog-add-file-row",
+          "control": { "role": "button", "name": "+ file" },
+          "intent": "Add another attachment input row.",
+          "expectedOutcome": "The attachment-row count increases from one to two.",
+          "status": "pass",
+          "evidence": ["tests/browser/ui-conformance.spec.js: backlog critical actions expose observable state and keyboard outcomes"],
+          "resetStrategy": "The test fixture is discarded after the test."
+        },
+        {
+          "id": "backlog-add-work",
+          "control": { "role": "button", "name": "Add" },
+          "intent": "Capture a work item through the real Limen/WASM/server path.",
+          "expectedOutcome": "A named work item appears in the queue and the form resets.",
+          "status": "pass",
+          "evidence": ["tests/browser/ui-conformance.spec.js: backlog critical actions expose observable state and keyboard outcomes", "tests/browser/backlog.spec.js: capturing work, with a renamed attachment, shows it in the queue and the detail"],
+          "resetStrategy": "Each test receives a throwaway Praxis repository."
+        },
+        {
+          "id": "backlog-complete-lifecycle",
+          "control": { "role": "button", "name": "Complete" },
+          "intent": "Complete active work only with required evidence.",
+          "expectedOutcome": "The work status becomes complete; missing evidence is refused and remains recoverable.",
+          "status": "pass",
+          "evidence": ["tests/browser/backlog.spec.js: a row offers exactly the actions the server allows, and its lifecycle runs through the dialogs", "tests/browser/backlog.spec.js: a server refusal is an ordinary error, not an operational fault"],
+          "resetStrategy": "Each test receives a throwaway Praxis repository."
+        },
+        {
+          "id": "backlog-clear-filters",
+          "control": { "role": "button", "name": "Clear" },
+          "intent": "Remove active queue filters.",
+          "expectedOutcome": "Filter controls reset and the complete queue becomes visible.",
+          "status": "pass",
+          "evidence": ["tests/browser/ui-conformance.spec.js: backlog critical actions expose observable state and keyboard outcomes"],
+          "resetStrategy": "The control itself restores the unfiltered state."
+        }
+      ],
+      "evidence": [
+        "tests/browser/ui-conformance.spec.js",
+        "tests/browser/backlog.spec.js",
+        "tests/browser/ui-conformance-helpers.js"
+      ],
+      "unknownScope": ["Firefox, Safari, and assistive-technology combinations beyond Chromium are not run in this repository's current CI matrix."]
+    },
+    {
+      "id": "project-administration-hub",
+      "path": "web-hub/index.html",
+      "kind": "product",
+      "status": "pass",
+      "viewportWidths": [320, 390, 768, 1280],
+      "alignmentGroups": [
+        {
+          "id": "hub-registration-path-name",
+          "relation": "top-edge",
+          "toleranceCssPx": 1,
+          "targets": [
+            { "role": "textbox", "name": "Repository path" },
+            { "role": "textbox", "name": "Display name" }
+          ],
+          "rationale": "Repository identity fields are peer inputs in the registration composition.",
+          "evidence": ["tests/browser/ui-conformance.spec.js: hub declares aligned fields and remains operable at universal widths"]
+        }
+      ],
+      "actions": [
+        {
+          "id": "hub-register-repository",
+          "control": { "role": "button", "name": "Register" },
+          "intent": "Register a repository through the hub server.",
+          "expectedOutcome": "The repository appears in the table and both repository selectors.",
+          "status": "pass",
+          "evidence": ["tests/browser/ui-conformance.spec.js: hub critical actions expose observable state and recovery", "tests/browser/hub.spec.js: registering a spoke lists it, offers it in both selects and aggregates its work"],
+          "resetStrategy": "Each test receives a throwaway hub and spoke repository."
+        },
+        {
+          "id": "hub-create-work",
+          "control": { "role": "button", "name": "Create" },
+          "intent": "Create work in the selected repository through its own Praxis CLI.",
+          "expectedOutcome": "The created work appears in the aggregated queue; a refused request preserves the form for retry.",
+          "status": "pass",
+          "evidence": ["tests/browser/ui-conformance.spec.js: hub critical actions expose observable state and recovery", "tests/browser/hub.spec.js: a single submit of the create form adds no file row, even after a refused create"],
+          "resetStrategy": "The accepted retry resets the form; the throwaway repositories are discarded."
+        },
+        {
+          "id": "hub-unregister-repository",
+          "control": { "role": "button", "name": "Unregister" },
+          "intent": "Remove a repository from hub aggregation after confirmation.",
+          "expectedOutcome": "Cancel keeps the repository; confirmation removes it from the table and selectors.",
+          "status": "pass",
+          "evidence": ["tests/browser/hub.spec.js: unregistering asks first, and Cancel keeps the repository"],
+          "resetStrategy": "Cancel is the non-destructive reset; fixtures are disposable."
+        },
+        {
+          "id": "hub-clear-filters",
+          "control": { "role": "button", "name": "Clear" },
+          "intent": "Remove repository, tag, and status filters.",
+          "expectedOutcome": "All filter controls reset and all aggregated work is visible.",
+          "status": "pass",
+          "evidence": ["tests/browser/ui-conformance.spec.js: hub critical actions expose observable state and recovery"],
+          "resetStrategy": "The control itself restores the unfiltered state."
+        }
+      ],
+      "evidence": [
+        "tests/browser/ui-conformance.spec.js",
+        "tests/browser/hub.spec.js",
+        "tests/browser/ui-conformance-helpers.js"
+      ],
+      "unknownScope": ["Firefox, Safari, and assistive-technology combinations beyond Chromium are not run in this repository's current CI matrix."]
+    },
+    {
+      "id": "accounting-application",
+      "path": "app/index.html",
+      "kind": "product",
+      "status": "pass",
+      "viewportWidths": [320, 390, 768, 1280],
+      "alignmentGroups": [
+        {
+          "id": "app-customer-identity-fields",
+          "relation": "top-edge",
+          "toleranceCssPx": 1,
+          "targets": [
+            { "role": "textbox", "name": "Name" },
+            { "role": "textbox", "name": "Billing name" }
+          ],
+          "rationale": "Customer identity fields share the responsive identity grid.",
+          "evidence": ["tests/browser/ui-conformance.spec.js: accounting app shell and customer form remain aligned and responsive"]
+        }
+      ],
+      "actions": [
+        {
+          "id": "app-create-customer",
+          "control": { "role": "button", "name": "Add customer" },
+          "intent": "Create a customer in the browser-owned books.",
+          "expectedOutcome": "The customer appears in the customer table and becomes available to invoice workflows.",
+          "status": "pass",
+          "evidence": ["tests/browser/app.spec.js: customer, invoice, review, issue, payment: the first vertical slice in the browser"],
+          "resetStrategy": "Each test starts with a fresh browser profile."
+        },
+        {
+          "id": "app-issue-invoice",
+          "control": { "role": "button", "name": "Issue invoice" },
+          "intent": "Post a reviewed invoice after explicit confirmation.",
+          "expectedOutcome": "The invoice receives an issued number and accounting entries; an incomplete draft remains disabled with an explanation.",
+          "status": "pass",
+          "evidence": ["tests/browser/app.spec.js: customer, invoice, review, issue, payment: the first vertical slice in the browser", "tests/browser/app.spec.js: a draft that cannot be issued says why and what resolves it"],
+          "resetStrategy": "The confirmation dialog provides a cancel path; each test starts fresh."
+        },
+        {
+          "id": "app-record-payment",
+          "control": { "role": "button", "name": "Record payment" },
+          "intent": "Record and apply a payment against an invoice.",
+          "expectedOutcome": "Outstanding balance and payment history change; an overpayment is refused without an unauthorized transition.",
+          "status": "pass",
+          "evidence": ["tests/browser/app.spec.js: customer, invoice, review, issue, payment: the first vertical slice in the browser"],
+          "resetStrategy": "Each test starts with a fresh browser profile."
+        },
+        {
+          "id": "app-copy-link",
+          "control": { "role": "button", "name": "Copy link" },
+          "intent": "Copy the canonical address of the current view.",
+          "expectedOutcome": "The clipboard contains the canonical route URL.",
+          "status": "pass",
+          "evidence": ["tests/browser/deep-links.spec.js: Copy link copies the canonical address of the view"],
+          "resetStrategy": "Clipboard permission and contents are isolated to the browser test."
+        }
+      ],
+      "evidence": [
+        "tests/browser/ui-conformance.spec.js",
+        "tests/browser/app.spec.js",
+        "tests/browser/screens.spec.js",
+        "tests/browser/deep-links.spec.js",
+        "tests/browser/attention.spec.js"
+      ],
+      "unknownScope": ["The conformance measurements exercise representative routes that share the common app shell and layout primitives; pixel-level measurement of every data-dependent route state is not exhaustive.", "Firefox, Safari, and assistive-technology combinations beyond Chromium are not run in this repository's current CI matrix."]
+    },
+    {
+      "id": "financial-print-documents",
+      "path": "app/index.html#print-projections",
+      "kind": "print",
+      "status": "pass",
+      "viewportWidths": [1280],
+      "alignmentGroups": [],
+      "actions": [],
+      "evidence": [
+        "tests/browser/pdf.spec.js: a long invoice prints across pages with repeated headers, whole rows and totals kept together",
+        "tests/browser/pdf.spec.js: the PDF the person saved is stored with the invoice and downloads as the same bytes"
+      ],
+      "unknownScope": ["Pagination evidence is Chromium-specific; portable browser output is not represented as pixel-identical."]
+    },
+    {
+      "id": "praxis-queue-print-documents",
+      "path": "web/index.html#print-surface; web-hub/index.html#print-surface",
+      "kind": "print",
+      "status": "pass",
+      "viewportWidths": [1280],
+      "alignmentGroups": [],
+      "actions": [],
+      "evidence": [
+        "tests/browser/backlog.spec.js: printing shows Folio's document of the same rows and hides the controls",
+        "tests/browser/hub.spec.js: printing shows Folio's document of the aggregated queue"
+      ],
+      "unknownScope": ["Queue print tests assert semantic content and visibility under Chromium print media; physical-printer pagination is not exercised."]
+    }
+  ],
+  "exceptions": [],
+  "notes": "No maintained live-demo surface exists, so demo-action inventory is not applicable. Product source actions are recursively inventoried and must have a link, native form/dialog command, or Limen event binding. Focused outcome assertions and existing end-to-end workflows prove critical action effects, refusals, recovery, keyboard operation, and print/PDF behavior. No application-specific layout or action defect reproduced at the pinned Forma 0.9.0 and Folio 0.4.0 baselines."
+}

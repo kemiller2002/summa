@@ -9,6 +9,7 @@
     "check:limen": "limen verify --strict",
     "test:forma-color": "npm run check:forma-color && node --test tests/color-contract.test.mjs",
     "test:dotnet": "dotnet test Summa.sln -c Release",
+    "test:ui-conformance": "npm run build:wasm && playwright test tests/browser/ui-conformance.spec.js",
     "test:browser": "npm run build:wasm && playwright test",
     "test": "npm run test:forma-color && npm run check:limen && npm run test:dotnet && npm run test:browser",
     "web": "npm run build:wasm && node tools/ros_server.mjs",

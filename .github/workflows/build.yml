@@ -116,9 +116,10 @@ jobs:
           fi
           echo "Every shared library Chromium links against is present."
 
-      # The composed path: DOM event, Limen kernel, WASM shim, F# engine,
-      # Node server and back, in a real browser, for both pages.
-      - name: Verify the composed browser path
+      # The composed path plus the pinned Universal UI Layout and Interaction
+      # conformance gate: DOM event, Limen kernel, WASM shim, F# engine,
+      # Node server and back, in a real browser, for every maintained surface.
+      - name: Verify UI conformance and the composed browser path
         run: npx playwright test
 
       - name: Upload browser traces on failure
