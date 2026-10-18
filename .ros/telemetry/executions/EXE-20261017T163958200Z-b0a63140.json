@@ -514,14 +514,30 @@
     },
     {
       "metricId": "agent.interruptions",
-      "status": "unknown",
-      "reason": "runtime capability not reported or mapped",
-      "discoveredAt": "2026-10-17T16:39:58.200Z",
+      "status": "derived",
+      "reason": "normalized measurement recorded",
+      "discoveredAt": "2026-10-18T01:00:51.000Z",
       "source": {
-        "type": "environment",
-        "name": "runtime-identity",
-        "mechanism": "whitelisted-codex-environment"
-      }
+        "type": "calculated",
+        "name": "ros-work-protocol",
+        "mechanism": "blocked-transition"
+      },
+      "lastAssessedAt": "2026-10-18T01:00:51.000Z",
+      "recordedAt": "2026-10-18T01:00:51.000Z",
+      "history": [
+        {
+          "status": "unknown",
+          "reason": "runtime capability not reported or mapped",
+          "source": {
+            "type": "environment",
+            "name": "runtime-identity",
+            "mechanism": "whitelisted-codex-environment"
+          },
+          "discoveredAt": "2026-10-17T16:39:58.200Z",
+          "lastAssessedAt": "2026-10-17T16:39:58.200Z",
+          "recordedAt": "2026-10-17T16:39:58.200Z"
+        }
+      ]
     },
     {
       "metricId": "agent.resumes",
@@ -1363,6 +1379,26 @@
       },
       "collectedAt": "2026-10-17T16:39:58.200Z",
       "schemaVersion": "1.0.0"
+    },
+    {
+      "measurementId": "MEAS-94916120db849d1ebf81893f",
+      "id": "agent.interruptions",
+      "value": 1,
+      "unit": "count",
+      "currency": null,
+      "quality": "derived",
+      "confidence": null,
+      "scope": "execution",
+      "aggregation": "sum",
+      "dimensions": {},
+      "pricing": null,
+      "source": {
+        "type": "calculated",
+        "name": "ros-work-protocol",
+        "mechanism": "blocked-transition"
+      },
+      "collectedAt": "2026-10-18T01:00:51.000Z",
+      "schemaVersion": "1.0.0"
     }
   ],
   "rawTelemetry": [
@@ -1459,6 +1495,34 @@
         "name": "step",
         "mechanism": "step-lifecycle"
       }
+    },
+    {
+      "type": "step.completed",
+      "occurredAt": "2026-10-18T01:00:46.000Z",
+      "stepId": "STEP-20261017T195347000Z-af602bae",
+      "actor": {
+        "kind": "agent",
+        "id": "openai/codex",
+        "provider": "openai",
+        "model": "unknown",
+        "runtime": "codex"
+      },
+      "source": {
+        "type": "ros-cli",
+        "name": "step",
+        "mechanism": "step-lifecycle"
+      }
+    },
+    {
+      "type": "work.blocked",
+      "occurredAt": "2026-10-18T01:00:51.000Z",
+      "reason": "Engineering implementation and validation are complete at durable checkpoint 07219ac685011fef180e35d1; independent product reviewer approval of the palette and accounting hierarchy is still required before merge.",
+      "source": {
+        "type": "ros-clock",
+        "name": "ros",
+        "mechanism": "work-lifecycle"
+      },
+      "eventId": "TEVT-10cf810f70b7f4b61871c020"
     }
   ],
   "repository": {
@@ -1770,12 +1834,12 @@
       "name": "Implement and validate Summa semantic colors",
       "description": null,
       "classification": [],
-      "status": "active",
+      "status": "completed",
       "plannedAt": "2026-10-17T19:53:47.000Z",
       "startedAt": "2026-10-17T19:53:47.000Z",
-      "completedAt": null,
-      "endedAt": null,
-      "updatedAt": "2026-10-17T19:53:47.000Z",
+      "completedAt": "2026-10-18T01:00:46.000Z",
+      "endedAt": "2026-10-18T01:00:46.000Z",
+      "updatedAt": "2026-10-18T01:00:46.000Z",
       "actor": {
         "kind": "agent",
         "id": "openai/codex",
@@ -1997,6 +2061,19 @@
           "from": null,
           "to": "active",
           "occurredAt": "2026-10-17T19:53:47.000Z",
+          "reason": null,
+          "actor": {
+            "kind": "agent",
+            "id": "openai/codex",
+            "provider": "openai",
+            "model": "unknown",
+            "runtime": "codex"
+          }
+        },
+        {
+          "from": "active",
+          "to": "completed",
+          "occurredAt": "2026-10-18T01:00:46.000Z",
           "reason": null,
           "actor": {
             "kind": "agent",
