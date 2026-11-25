@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "repository": "summa",
-  "nextSeq": 47,
+  "nextSeq": 54,
   "items": [
     {
       "id": "WI-0001",
@@ -1292,6 +1292,27 @@
       },
       "source": "github-issue",
       "sourceReference": "https://github.com/kemiller2002/summa/issues/110"
+    },
+    {
+      "id": "WI-0053",
+      "title": "Upgrade Aegis 1.0.0 -> 2.0.0 (echelon-current 1.40.0)",
+      "description": null,
+      "tags": [],
+      "priority": "medium",
+      "status": "ready",
+      "attachments": [],
+      "createdAt": "2026-11-25T12:31:59.704Z",
+      "updatedAt": "2026-11-25T12:32:05.000Z",
+      "createdBy": "unknown",
+      "createdByActor": {
+        "kind": "agent",
+        "id": "anthropic/claude-code",
+        "provider": "anthropic",
+        "model": "unknown",
+        "runtime": "claude-code"
+      },
+      "source": "manual",
+      "sourceReference": null
     }
   ]
 }
