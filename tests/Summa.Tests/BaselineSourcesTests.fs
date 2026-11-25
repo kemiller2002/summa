@@ -17,6 +17,7 @@ let private names =
           "arca", "Arca"
           "fides", "Fides"
           "limen-fsharp", "Limen"
+          "limen", "Limen"
           "forma", "Forma"
           "folio", "Folio" ]
 

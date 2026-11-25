@@ -18,16 +18,16 @@ let private str (node: JsonNode) = node.GetValue<string>()
 let private pages = [ "web"; "web-hub" ]
 
 let private formaRelease =
-    "https://github.com/kemiller2002/forma/releases/download/v0.9.0/echelon-foundry-design-system-0.9.0.tgz"
+    "https://github.com/kemiller2002/forma/releases/download/v1.0.1/echelon-foundry-design-system-1.0.1.tgz"
 
 let private folioRelease =
-    "https://github.com/kemiller2002/folio/releases/download/v0.4.0/echelon-foundry-print-components-0.4.0.tgz"
+    "https://github.com/kemiller2002/folio/releases/download/v0.4.1/echelon-foundry-print-components-0.4.1.tgz"
 
 [<Fact>]
 let ``foundations.json requires every foundation, at the echelon-current versions`` () =
     let capabilities = (json ".echelon/foundations.json").["capabilities"]
 
-    for name, version in [ "aegis", "2.0.2"; "forma", "0.9.0"; "folio", "0.4.0"; "limen", "0.9.0" ] do
+    for name, version in [ "aegis", "2.0.2"; "forma", "1.0.1"; "folio", "0.4.1"; "limen", "0.9.1" ] do
         Assert.True(capabilities.[name].["required"].GetValue<bool>(), $"{name} must be required")
         Assert.Equal(version, str capabilities.[name].["version"])
 
@@ -38,14 +38,14 @@ let ``the npm foundations are pinned to immutable releases and locked`` () =
     let dependencies = (json "package.json").["dependencies"]
     Assert.Equal(formaRelease, str dependencies.["@echelon-foundry/design-system"])
     Assert.Equal(folioRelease, str dependencies.["@echelon-foundry/print-components"])
-    Assert.Equal("0.9.0", str dependencies.["@echelon-foundry/limen"])
+    Assert.Equal("0.9.1", str dependencies.["@echelon-foundry/limen"])
 
     let packages = (json "package-lock.json").["packages"]
 
     for name, version in
-        [ "@echelon-foundry/design-system", "0.9.0"
-          "@echelon-foundry/print-components", "0.4.0"
-          "@echelon-foundry/limen", "0.9.0" ] do
+        [ "@echelon-foundry/design-system", "1.0.1"
+          "@echelon-foundry/print-components", "0.4.1"
+          "@echelon-foundry/limen", "0.9.1" ] do
         let locked = packages.[$"node_modules/{name}"]
         Assert.Equal(version, str locked.["version"])
         Assert.StartsWith("sha512-", str locked.["integrity"])
@@ -98,15 +98,15 @@ let ``the pages compose Forma's components and Folio's document primitives`` () 
         let html = readRepoFile $"{page}/index.html"
 
         for marker in
-            [ "<ef-fault-inline class=\"ef-component-tag\">"
-              "class=\"ef-fault ef-fault--inline"
-              "<ef-alert class=\"ef-component-tag\">"
-              "<ef-data-grid class=\"ef-component-tag\">"
-              "<ef-empty-state class=\"ef-component-tag\">"
-              "class=\"ef-status-lozenge\""
-              "class=\"ef-field\""
-              "class=\"ef-file-upload"
-              "class=\"ef-dialog\""
+            [ "<forma-fault-inline class=\"forma-component-tag\">"
+              "class=\"forma-fault forma-fault--inline"
+              "<forma-alert class=\"forma-component-tag\">"
+              "<forma-data-grid class=\"forma-component-tag\">"
+              "<forma-empty-state class=\"forma-component-tag\">"
+              "class=\"forma-status-lozenge\""
+              "class=\"forma-field\""
+              "class=\"forma-file-upload"
+              "class=\"forma-dialog\""
               "<ef-print-document"
               "<ef-print-table>"
               "<ef-print-page-number>" ] do
@@ -123,8 +123,8 @@ let ``nothing forks Forma or bypasses Limen's binding rules`` () =
     for source in sources do
         let text = readRepoFile source
         // No local design tokens and no restyled Forma components.
-        Assert.False(Regex.IsMatch(text, @"--ef-[\w-]+\s*:"), $"{source} defines a Forma token")
-        Assert.False(Regex.IsMatch(text, @"(^|[\s,}])\.ef-[\w-]+[^{;]*\{", RegexOptions.Multiline), $"{source} restyles a Forma component")
+        Assert.False(Regex.IsMatch(text, @"--forma-[\w-]+\s*:"), $"{source} defines a Forma token")
+        Assert.False(Regex.IsMatch(text, @"(^|[\s,}])\.forma-[\w-]+[^{;]*\{", RegexOptions.Multiline), $"{source} restyles a Forma component")
         // Forma's wrappers are inert; only Folio registers elements.
         Assert.DoesNotContain("customElements.define", text)
         // State cues are data-* attributes plus CSS: never inline or bound styles.

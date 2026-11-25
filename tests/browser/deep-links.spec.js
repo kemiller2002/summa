@@ -190,7 +190,7 @@ test("Copy link copies the canonical address of the view", async ({ app: { page 
 
 test("the skip link moves to the content without losing the place", async ({ app: { page } }) => {
   await nav(page, "Customers").click();
-  await page.locator(".ef-skip-link").focus();
+  await page.locator(".forma-skip-link").focus();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/#\/customers$/);
   await expect(page.locator("#customers-title")).toBeVisible();

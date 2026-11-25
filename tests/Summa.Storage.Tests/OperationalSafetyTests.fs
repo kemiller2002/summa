@@ -283,14 +283,27 @@ let ``integration states: a delivery failure leaves the invoice issued and may b
     Assert.Equal(Integrations.Retryable "transient", Integrations.ofDelivery (DeliveryFailed "transient"))
     Assert.Equal(Integrations.PermanentFailure "permanent", Integrations.ofDelivery (DeliveryFailed "permanent"))
     Assert.Equal(Integrations.PermanentFailure "mailbox does not exist", Integrations.ofDelivery (Bounced "mailbox does not exist"))
-    Assert.Equal(Integrations.Pending, Integrations.ofQueued EntryState.Pending)
-    Assert.Equal(Integrations.Pending, Integrations.ofQueued (EntryState.InFlight "t1"))
-    Assert.Equal(Integrations.Succeeded, Integrations.ofQueued (EntryState.Synchronized "t2"))
+    // From Arca 0.6.0 an application cannot build a state (ARCA-OFF-009):
+    // each is reached through Arca's own commands, on a queued operation.
+    let _, ns = founded ()
+    let operation = Governance.found production (bindingOf production) RepositoryVisibility.Private None (context "found") acme { PrincipalId = "github:583231"; Kind = Human; DisplayName = "kevin" } |> Support.ok
+    let queued, sequence = OfflineQueue.enqueue DateTimeOffset.UnixEpoch operation (OfflineQueue.create OfflinePolicy.QueueWrites) |> Support.ok
+    let stateOf (queue: OfflineQueue) = (queue.Entries |> List.find (fun e -> e.Sequence = sequence)).State
+    let inFlight = OfflineQueue.markInFlight sequence (ChangeToken "t1") queued |> Support.ok
+    let failed failure = OfflineQueue.recordResult sequence (Error failure) inFlight |> Support.ok |> stateOf
+    let receipt = InMemoryStore().Provider.Commit operation |> Async.RunSynchronously |> Support.ok
+    let key = IdempotencyKey.create (operation.Metadata.IdempotencyKey |> IdempotencyKey.value) |> Support.ok
+    let conflict = { Path = RelativePath.parse "records/a.json" |> Support.ok; Expected = None; Actual = None }
+    let unknown = { IdempotencyKey = key; Base = ChangeToken "t1"; Candidate = None; Revisions = Map.empty }
+
+    Assert.Equal(Integrations.Pending, Integrations.ofQueued (stateOf queued))
+    Assert.Equal(Integrations.Pending, Integrations.ofQueued (stateOf inFlight))
+    Assert.Equal(Integrations.Succeeded, Integrations.ofQueued (OfflineQueue.recordResult sequence (Ok receipt) inFlight |> Support.ok |> stateOf))
     // Someone else's change or an unknown outcome is decided or reconciled again, never lost.
-    Assert.True(match Integrations.ofQueued (EntryState.Conflicted [ "records/a.json" ]) with Integrations.Retryable _ -> true | _ -> false)
-    Assert.True(match Integrations.ofQueued (EntryState.OutcomeUnknown "t1") with Integrations.Retryable _ -> true | _ -> false)
-    Assert.Equal(Integrations.PermanentFailure "refused", Integrations.ofQueued (EntryState.Refused "refused"))
-    Assert.Equal(Integrations.PermanentFailure "given up", Integrations.ofQueued (EntryState.Abandoned "given up"))
+    Assert.True(match Integrations.ofQueued (failed (StorageFailure.Conflicted [ conflict ])) with Integrations.Retryable _ -> true | _ -> false)
+    Assert.True(match Integrations.ofQueued (failed (StorageFailure.OutcomeUnknown unknown)) with Integrations.Retryable _ -> true | _ -> false)
+    Assert.Equal(Integrations.PermanentFailure "provider failure refused", Integrations.ofQueued (failed (StorageFailure.ProviderFailed("refused", false, "refused"))))
+    Assert.Equal(Integrations.PermanentFailure "given up", Integrations.ofQueued (OfflineQueue.abandon sequence "given up" queued |> Support.ok |> stateOf))
 
 [<Fact>]
 let ``financial records are never deleted; only a draft may be`` () =

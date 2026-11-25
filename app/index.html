@@ -15,7 +15,7 @@
      bindings, and every control sends a named event back to it. Forma owns
      presentation, Folio the printed invoice. Nothing here decides anything:
      readiness, issue, payments and totals are Summa's domain commands. -->
-<a class="ef-skip-link" href="#main">Skip to content</a>
+<a class="forma-skip-link" href="#main">Skip to content</a>
 
 <template data-if="hasBanner">
   <p class="summa-banner" role="note" data-pages-banner data-text="environmentBanner"></p>
@@ -26,20 +26,20 @@
 </template>
 
 <template data-if="isMisconfigured">
-  <main class="summa-gate ef-stack" id="main">
+  <main class="summa-gate forma-stack" id="main">
     <h1>This deployment is not set up correctly.</h1>
     <p role="alert" id="misconfiguration" data-text="misconfiguration"></p>
   </main>
 </template>
 
 <template data-if="hasOperationalFault">
-  <div class="ef-fault ef-fault--inline operational-fault" id="operational-fault" data-ef-intent="inline" data-ef-severity="error" role="alert" aria-labelledby="operational-fault-title">
-    <div class="ef-fault__marker" aria-hidden="true">!</div>
-    <div class="ef-fault__body">
-      <p class="ef-fault__severity">Operational error</p>
-      <p class="ef-fault__title" id="operational-fault-title"><strong data-text="operationalFaultTitle"></strong></p>
-      <p class="ef-fault__message" data-text="operationalFaultMessage"></p>
-      <p class="ef-fault-reference">Reference <code data-text="operationalFaultReference"></code></p>
+  <div class="forma-fault forma-fault--inline operational-fault" id="operational-fault" data-forma-intent="inline" data-forma-severity="error" role="alert" aria-labelledby="operational-fault-title">
+    <div class="forma-fault__marker" aria-hidden="true">!</div>
+    <div class="forma-fault__body">
+      <p class="forma-fault__severity">Operational error</p>
+      <p class="forma-fault__title" id="operational-fault-title"><strong data-text="operationalFaultTitle"></strong></p>
+      <p class="forma-fault__message" data-text="operationalFaultMessage"></p>
+      <p class="forma-fault-reference">Reference <code data-text="operationalFaultReference"></code></p>
     </div>
   </div>
 </template>
@@ -51,74 +51,74 @@
 </template>
 
 <template data-if="needsSignIn">
-  <main class="summa-gate ef-stack" id="main" aria-labelledby="sign-in-title">
+  <main class="summa-gate forma-stack" id="main" aria-labelledby="sign-in-title">
     <h1 id="sign-in-title">Sign in to Summa</h1>
     <p>These books are kept on GitHub. Sign in with your GitHub account to open them.</p>
     <div role="status" aria-live="polite">
       <template data-if="hasSignInNotice"><p class="summa-notice" id="sign-in-notice" data-text="signInNotice"></p></template>
     </div>
     <label class="summa-check"><input type="checkbox" id="keep-sign-in" data-event="keepSignInToggled" data-on="change" data-bind-checked="keepInTab" /> Keep me signed in while this tab is open</label>
-    <button type="button" class="ef-button" id="sign-in" data-event="signInRequested" data-bind-disabled="isLeavingForProvider">Sign in with GitHub</button>
+    <button type="button" class="forma-button" id="sign-in" data-event="signInRequested" data-bind-disabled="isLeavingForProvider">Sign in with GitHub</button>
   </main>
 </template>
 
 <!-- Books on GitHub (WI-0037): what the store found for the signed-in person. -->
 <template data-if="awaitsGitHubStore">
-  <main class="summa-gate ef-stack" id="main" aria-busy="true" aria-labelledby="signed-in-title">
+  <main class="summa-gate forma-stack" id="main" aria-busy="true" aria-labelledby="signed-in-title">
     <h1 id="signed-in-title">Signed in as <span id="signed-in-login" data-text="signedInLogin"></span></h1>
     <p>Opening the books on GitHub…</p>
   </main>
 </template>
 
 <template data-if="booksNotSetUp">
-  <main class="summa-gate ef-stack" id="main" aria-labelledby="not-set-up-title">
+  <main class="summa-gate forma-stack" id="main" aria-labelledby="not-set-up-title">
     <h1 id="not-set-up-title">These books are not set up yet</h1>
     <template data-if="mayFound">
-      <div class="ef-stack">
+      <div class="forma-stack">
         <p>You are one of this organization's listed administrators. Setting it up creates its folder in the data repository, with you as its first administrator.</p>
-        <button type="button" class="ef-button" id="found-books" data-event="foundRequested">Set up the books</button>
+        <button type="button" class="forma-button" id="found-books" data-event="foundRequested">Set up the books</button>
       </div>
     </template>
     <p id="not-set-up-reason" data-text="notSetUpReason"></p>
-    <button type="button" class="ef-button" data-variant="secondary" id="sign-out" data-event="signOutRequested">Sign out <span data-text="signedInLogin"></span></button>
+    <button type="button" class="forma-button" data-variant="secondary" id="sign-out" data-event="signOutRequested">Sign out <span data-text="signedInLogin"></span></button>
   </main>
 </template>
 
 <template data-if="awaitingAdministrator">
-  <main class="summa-gate ef-stack" id="main" aria-labelledby="awaiting-title">
+  <main class="summa-gate forma-stack" id="main" aria-labelledby="awaiting-title">
     <h1 id="awaiting-title">These books have no listed administrator</h1>
     <p>Nothing is granted until one of the administrators this deployment lists confirms themself.</p>
     <template data-if="canConfirm">
-      <button type="button" class="ef-button" id="confirm-administrator" data-event="confirmRequested">Confirm me as administrator</button>
+      <button type="button" class="forma-button" id="confirm-administrator" data-event="confirmRequested">Confirm me as administrator</button>
     </template>
-    <button type="button" class="ef-button" data-variant="secondary" id="sign-out" data-event="signOutRequested">Sign out <span data-text="signedInLogin"></span></button>
+    <button type="button" class="forma-button" data-variant="secondary" id="sign-out" data-event="signOutRequested">Sign out <span data-text="signedInLogin"></span></button>
   </main>
 </template>
 
 <template data-if="booksOutdated">
-  <main class="summa-gate ef-stack" id="main" aria-labelledby="outdated-title">
+  <main class="summa-gate forma-stack" id="main" aria-labelledby="outdated-title">
     <h1 id="outdated-title">These books need updating before anyone works in them</h1>
     <p>They were written by an earlier version of Summa. Updating names the credit, deposit and bad-debt accounts from the books' own chart, in one commit, and changes no financial record.</p>
     <template data-if="mayMigrate">
-      <button type="button" class="ef-button" id="migrate-books" data-event="migrateRequested">Update the books</button>
+      <button type="button" class="forma-button" id="migrate-books" data-event="migrateRequested">Update the books</button>
     </template>
-    <button type="button" class="ef-button" data-variant="secondary" id="sign-out" data-event="signOutRequested">Sign out <span data-text="signedInLogin"></span></button>
+    <button type="button" class="forma-button" data-variant="secondary" id="sign-out" data-event="signOutRequested">Sign out <span data-text="signedInLogin"></span></button>
   </main>
 </template>
 
 <template data-if="notAMember">
-  <main class="summa-gate ef-stack" id="main" aria-labelledby="not-member-title">
+  <main class="summa-gate forma-stack" id="main" aria-labelledby="not-member-title">
     <h1 id="not-member-title">You are not a member of these books</h1>
     <p>You are signed in as <span data-text="signedInLogin"></span>, but this organization has not given you access. Ask an administrator to add you.</p>
-    <button type="button" class="ef-button" data-variant="secondary" id="sign-out" data-event="signOutRequested">Sign out</button>
+    <button type="button" class="forma-button" data-variant="secondary" id="sign-out" data-event="signOutRequested">Sign out</button>
   </main>
 </template>
 
 <template data-if="storeUnreachable">
-  <main class="summa-gate ef-stack" id="main" aria-labelledby="unreachable-title">
+  <main class="summa-gate forma-stack" id="main" aria-labelledby="unreachable-title">
     <h1 id="unreachable-title">The books on GitHub could not be opened</h1>
     <p role="alert" id="store-problem" data-text="storeProblem"></p>
-    <button type="button" class="ef-button" data-variant="secondary" id="sign-out" data-event="signOutRequested">Sign out <span data-text="signedInLogin"></span></button>
+    <button type="button" class="forma-button" data-variant="secondary" id="sign-out" data-event="signOutRequested">Sign out <span data-text="signedInLogin"></span></button>
   </main>
 </template>
 
@@ -127,24 +127,24 @@
 </template>
 
 <template data-if="isUntrustworthy">
-  <main class="summa-gate ef-stack" id="main">
+  <main class="summa-gate forma-stack" id="main">
     <h1>The books failed their checks.</h1>
     <p>Summa does not run on books it cannot trust. These problems were found:</p>
     <ul id="storage-problems">
       <template data-each="storageProblems" data-key="key"><li data-text="problem"></li></template>
     </ul>
     <template data-if="canResetBooks">
-      <div class="ef-stack">
+      <div class="forma-stack">
         <p>You can start a new, empty set of books in this browser. The damaged copy is replaced.</p>
-        <button type="button" class="ef-button" data-variant="danger" id="reset-books" commandfor="reset-dialog" command="show-modal">Start new books…</button>
-        <dialog class="ef-dialog" id="reset-dialog" aria-labelledby="reset-dialog-title" aria-describedby="reset-dialog-description">
-          <div class="ef-dialog__body">
+        <button type="button" class="forma-button" data-variant="danger" id="reset-books" commandfor="reset-dialog" command="show-modal">Start new books…</button>
+        <dialog class="forma-dialog" id="reset-dialog" aria-labelledby="reset-dialog-title" aria-describedby="reset-dialog-description">
+          <div class="forma-dialog__body">
             <h2 id="reset-dialog-title">Start new books?</h2>
             <p id="reset-dialog-description">The damaged books in this browser are replaced by new, empty books. This cannot be undone.</p>
           </div>
-          <div class="ef-dialog__actions">
-            <button type="button" class="ef-button" data-variant="secondary" id="reset-cancel" commandfor="reset-dialog" command="close">Keep the damaged books</button>
-            <button type="button" class="ef-button" data-variant="danger" id="reset-confirm" data-event="resetConfirmed" commandfor="reset-dialog" command="close">Start new books</button>
+          <div class="forma-dialog__actions">
+            <button type="button" class="forma-button" data-variant="secondary" id="reset-cancel" commandfor="reset-dialog" command="close">Keep the damaged books</button>
+            <button type="button" class="forma-button" data-variant="danger" id="reset-confirm" data-event="resetConfirmed" commandfor="reset-dialog" command="close">Start new books</button>
           </div>
         </dialog>
       </div>
@@ -163,20 +163,20 @@
     </nav>
     <!-- One search over the books, and the command palette (v0.4 §18-19): typing opens #/search. -->
     <div class="summa-search" role="search">
-      <label class="ef-visually-hidden" for="global-search">Search the books or run a command</label>
+      <label class="forma-visually-hidden" for="global-search">Search the books or run a command</label>
       <input id="global-search" type="search" placeholder="Search or run a command" autocomplete="off" data-event="globalSearchChanged" data-on="input" data-bind-value="globalSearch" />
     </div>
     <div class="summa-header__actions">
       <!-- Every view is a link (WI-0041): this copies the address of the one shown. -->
-      <button type="button" class="ef-button" data-variant="secondary" id="copy-link" data-event="linkCopyRequested">Copy link</button>
-      <a class="ef-button summa-new" id="new-invoice" href="#/invoices/new">New invoice</a>
+      <button type="button" class="forma-button" data-variant="secondary" id="copy-link" data-event="linkCopyRequested">Copy link</button>
+      <a class="forma-button summa-new" id="new-invoice" href="#/invoices/new">New invoice</a>
       <template data-if="isSignedIn">
-        <button type="button" class="ef-button" data-variant="secondary" id="header-sign-out" data-event="signOutRequested">Sign out <span data-text="signedInLogin"></span></button>
+        <button type="button" class="forma-button" data-variant="secondary" id="header-sign-out" data-event="signOutRequested">Sign out <span data-text="signedInLogin"></span></button>
       </template>
     </div>
   </header>
 
-  <main class="summa-main ef-stack" id="main" tabindex="-1">
+  <main class="summa-main forma-stack" id="main" tabindex="-1">
     <div role="status" aria-live="polite" class="summa-messages">
       <template data-if="hasNotice"><p class="summa-notice" id="notice" data-text="notice"></p></template>
       <template data-if="hasNoticeEntry"><p class="summa-notice-action"><a class="summa-link" id="notice-entry" data-bind-href="noticeEntryHref">View accounting entry</a></p></template>
@@ -185,58 +185,58 @@
     <template data-if="isReadOnly"><p class="summa-notice" id="read-only">These books can only be read: <span data-text="readOnlyReasons"></span></p></template>
     <!-- Changes GitHub does not have yet (WI-0037): never dropped silently. -->
     <template data-if="hasUnsent">
-      <div class="summa-unsent ef-stack" id="unsent" role="status">
+      <div class="summa-unsent forma-stack" id="unsent" role="status">
         <p id="unsent-text" data-text="unsentText"></p>
         <template data-if="hasUnsentNote"><p id="unsent-note" data-text="unsentNote"></p></template>
         <template data-if="hasForeignUnsent">
-          <div class="ef-stack" id="foreign-unsent">
+          <div class="forma-stack" id="foreign-unsent">
             <p id="foreign-unsent-text" data-text="foreignUnsentText"></p>
             <p>They are held: Summa does not send them as you or drop them without your choice.</p>
-            <div class="ef-actions">
-              <button type="button" class="ef-button" data-variant="secondary" id="send-foreign" data-event="foreignUnsentSendRequested">Send them as me</button>
-              <button type="button" class="ef-button" data-variant="danger" id="discard-foreign" data-event="foreignUnsentDiscardRequested">Discard them</button>
+            <div class="forma-actions">
+              <button type="button" class="forma-button" data-variant="secondary" id="send-foreign" data-event="foreignUnsentSendRequested">Send them as me</button>
+              <button type="button" class="forma-button" data-variant="danger" id="discard-foreign" data-event="foreignUnsentDiscardRequested">Discard them</button>
             </div>
           </div>
         </template>
         <template data-if="hasBlockedChange">
-          <div class="ef-stack" id="blocked-change">
+          <div class="forma-stack" id="blocked-change">
             <p>Waiting on: <strong id="blocked-summary" data-text="blockedSummary"></strong>. <span id="blocked-reason" data-text="blockedReason"></span></p>
             <p>The books show what GitHub holds. Give this change up to send the rest, then make it again if it is still needed.</p>
-            <button type="button" class="ef-button" data-variant="danger" id="abandon-change" data-event="abandonUnsentRequested">Give this change up</button>
+            <button type="button" class="forma-button" data-variant="danger" id="abandon-change" data-event="abandonUnsentRequested">Give this change up</button>
           </div>
         </template>
-        <button type="button" class="ef-button" data-variant="secondary" id="send-unsent" data-event="sendUnsentRequested">Send now</button>
+        <button type="button" class="forma-button" data-variant="secondary" id="send-unsent" data-event="sendUnsentRequested">Send now</button>
       </div>
     </template>
     <template data-if="hasCopyFallback">
-      <div class="ef-field summa-copy-fallback"><label class="ef-field__label" for="copy-fallback">Link to this view</label>
+      <div class="forma-field summa-copy-fallback"><label class="forma-field__label" for="copy-fallback">Link to this view</label>
         <input id="copy-fallback" type="text" readonly data-bind-value="copyFallback" /></div>
     </template>
 
     <!-- What a link that opens nothing says (SUM-LINK-007). Never a blank page. -->
     <template data-if="isNotFound">
-      <section class="ef-stack summa-outcome" aria-labelledby="not-found-title">
+      <section class="forma-stack summa-outcome" aria-labelledby="not-found-title">
         <h1 id="not-found-title">Nothing is at this link</h1>
         <p>The link names a page or a record these books do not have. It may have been mistyped, or the record may be in other books.</p>
         <p><a class="summa-link" href="#/">Go to the home page</a></p>
       </section>
     </template>
     <template data-if="isNotPermitted">
-      <section class="ef-stack summa-outcome" aria-labelledby="not-permitted-title">
+      <section class="forma-stack summa-outcome" aria-labelledby="not-permitted-title">
         <h1 id="not-permitted-title">You do not have access to this page</h1>
         <p>Your role in these books does not include it. Ask an administrator if you need it.</p>
         <p><a class="summa-link" href="#/">Go to the home page</a></p>
       </section>
     </template>
     <template data-if="isInvalidLink">
-      <section class="ef-stack summa-outcome" aria-labelledby="invalid-link-title">
+      <section class="forma-stack summa-outcome" aria-labelledby="invalid-link-title">
         <h1 id="invalid-link-title">This link cannot be opened</h1>
         <p id="invalid-link" data-text="invalidLink"></p>
         <p><a class="summa-link" href="#/">Go to the home page</a></p>
       </section>
     </template>
     <template data-if="isIssuedDraft">
-      <section class="ef-stack summa-outcome" aria-labelledby="issued-draft-title">
+      <section class="forma-stack summa-outcome" aria-labelledby="issued-draft-title">
         <h1 id="issued-draft-title">Draft <span data-text="issuedDraftId"></span> has been issued</h1>
         <p>An issued invoice cannot be edited. <a class="summa-link" id="issued-draft-invoice" data-bind-href="issuedDraftHref">Open the invoice</a></p>
       </section>
@@ -244,22 +244,22 @@
 
     <!-- Home: what needs attention first (v0.4 §1, §10). -->
     <template data-if="onDashboard">
-      <section class="ef-stack" aria-labelledby="dashboard-title">
+      <section class="forma-stack" aria-labelledby="dashboard-title">
         <h1 id="dashboard-title">Home</h1>
         <div class="summa-metrics">
-          <div class="ef-surface summa-metric"><p class="summa-metric__label">Outstanding</p><p class="summa-metric__value" id="total-outstanding" data-text="totalOutstanding"></p></div>
-          <div class="ef-surface summa-metric"><p class="summa-metric__label">Overdue</p><p class="summa-metric__value" id="overdue-amount" data-text="overdueAmount"></p><p class="summa-metric__note"><span data-text="overdueCount"></span> invoices</p></div>
-          <div class="ef-surface summa-metric"><p class="summa-metric__label">Drafts</p><p class="summa-metric__value" id="draft-count" data-text="draftCount"></p></div>
-          <div class="ef-surface summa-metric"><p class="summa-metric__label">Invoices issued</p><p class="summa-metric__value" id="invoice-count" data-text="invoiceCount"></p></div>
+          <div class="forma-surface summa-metric"><p class="summa-metric__label">Outstanding</p><p class="summa-metric__value" id="total-outstanding" data-text="totalOutstanding"></p></div>
+          <div class="forma-surface summa-metric"><p class="summa-metric__label">Overdue</p><p class="summa-metric__value" id="overdue-amount" data-text="overdueAmount"></p><p class="summa-metric__note"><span data-text="overdueCount"></span> invoices</p></div>
+          <div class="forma-surface summa-metric"><p class="summa-metric__label">Drafts</p><p class="summa-metric__value" id="draft-count" data-text="draftCount"></p></div>
+          <div class="forma-surface summa-metric"><p class="summa-metric__label">Invoices issued</p><p class="summa-metric__value" id="invoice-count" data-text="invoiceCount"></p></div>
           <!-- The work queue is where Summa raises anything (v0.4 §32). -->
-          <div class="ef-surface summa-metric"><p class="summa-metric__label">Needs attention</p><p class="summa-metric__value" id="work-count" data-text="workCount"></p><p class="summa-metric__note"><a class="summa-link" id="work-link" href="#/work">Open the work queue</a></p></div>
+          <div class="forma-surface summa-metric"><p class="summa-metric__label">Needs attention</p><p class="summa-metric__value" id="work-count" data-text="workCount"></p><p class="summa-metric__note"><a class="summa-link" id="work-link" href="#/work">Open the work queue</a></p></div>
         </div>
         <template data-if="hasOverdue">
-          <section class="ef-surface ef-stack" aria-labelledby="overdue-title">
+          <section class="forma-surface forma-stack" aria-labelledby="overdue-title">
             <h2 id="overdue-title">Overdue</h2>
-            <div class="ef-data-grid" role="region" tabindex="0" aria-label="Overdue invoices">
+            <div class="forma-data-grid" role="region" tabindex="0" aria-label="Overdue invoices">
               <table class="summa-table" id="overdue-table">
-                <caption class="ef-visually-hidden">Overdue invoices</caption>
+                <caption class="forma-visually-hidden">Overdue invoices</caption>
                 <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Due</th><th scope="col" class="summa-number">Outstanding</th></tr></thead>
                 <tbody>
                   <template data-each="overdueInvoices" data-key="id">
@@ -271,11 +271,11 @@
           </section>
         </template>
         <template data-if="hasDrafts">
-          <section class="ef-surface ef-stack" aria-labelledby="drafts-title">
+          <section class="forma-surface forma-stack" aria-labelledby="drafts-title">
             <h2 id="drafts-title">Drafts</h2>
-            <div class="ef-data-grid" role="region" tabindex="0" aria-label="Draft invoices">
+            <div class="forma-data-grid" role="region" tabindex="0" aria-label="Draft invoices">
               <table class="summa-table" id="drafts-table">
-                <caption class="ef-visually-hidden">Draft invoices</caption>
+                <caption class="forma-visually-hidden">Draft invoices</caption>
                 <thead><tr><th scope="col">Draft</th><th scope="col">Customer</th><th scope="col">State</th><th scope="col" class="summa-number">Total</th></tr></thead>
                 <tbody>
                   <template data-each="drafts" data-key="id">
@@ -291,13 +291,13 @@
 
     <!-- Customers (v0.4 §3). -->
     <template data-if="onCustomers">
-      <section class="ef-stack" aria-labelledby="customers-title">
+      <section class="forma-stack" aria-labelledby="customers-title">
         <h1 id="customers-title">Customers</h1>
         <template data-if="hasCustomers">
           <div class="summa-filters" role="search" aria-label="Customers">
-            <div class="ef-field"><label class="ef-field__label" for="customer-search">Search</label>
+            <div class="forma-field"><label class="forma-field__label" for="customer-search">Search</label>
               <input id="customer-search" type="search" data-event="customerSearchChanged" data-on="input" data-bind-value="customerSearch" /></div>
-            <div class="ef-field"><label class="ef-field__label" for="customer-sort">Sort by</label>
+            <div class="forma-field"><label class="forma-field__label" for="customer-sort">Sort by</label>
               <select id="customer-sort" data-event="customerSortChosen" data-bind-value="customerSort">
                 <option value="name">Name</option><option value="balance">Open balance</option>
               </select></div>
@@ -306,10 +306,10 @@
         </template>
         <template data-if="noListedCustomers"><p id="no-customers">No customer matches.</p></template>
         <template data-if="hasListedCustomers">
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Customers">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Customers">
             <table class="summa-table" id="customers-table">
-              <caption class="ef-visually-hidden">Customers</caption>
-              <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Terms</th><th scope="col" class="summa-number">Open balance</th><th scope="col"><span class="ef-visually-hidden">Invoices</span></th></tr></thead>
+              <caption class="forma-visually-hidden">Customers</caption>
+              <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Terms</th><th scope="col" class="summa-number">Open balance</th><th scope="col"><span class="forma-visually-hidden">Invoices</span></th></tr></thead>
               <tbody>
                 <template data-each="customers" data-key="id">
                   <tr><td data-label="Name"><a class="summa-link" data-bind-href="href" data-text="name"></a></td><td data-text="email" data-label="Email"></td><td data-text="terms" data-label="Terms"></td><td class="summa-number" data-text="balance" data-label="Open balance"></td><td data-label="Invoices"><a class="summa-link" data-bind-href="invoicesHref">Invoices</a></td></tr>
@@ -318,163 +318,163 @@
             </table>
           </div>
         </template>
-        <form class="ef-surface ef-stack" id="customer-form" data-event="customerAdded" aria-labelledby="customer-form-title">
+        <form class="forma-surface forma-stack" id="customer-form" data-event="customerAdded" aria-labelledby="customer-form-title">
           <h2 id="customer-form-title">Add a customer</h2>
           <div class="summa-fields">
-            <div class="ef-field"><label class="ef-field__label" for="customer-name">Name</label>
+            <div class="forma-field"><label class="forma-field__label" for="customer-name">Name</label>
               <input id="customer-name" type="text" required autocomplete="organization" data-event="customerNameChanged" data-on="input" data-bind-value="customerName" /></div>
-            <div class="ef-field"><label class="ef-field__label" for="customer-billing-name">Billing name</label>
+            <div class="forma-field"><label class="forma-field__label" for="customer-billing-name">Billing name</label>
               <input id="customer-billing-name" type="text" aria-describedby="customer-billing-note" data-event="customerBillingNameChanged" data-on="input" data-bind-value="customerBillingName" />
-              <p class="ef-field__description" id="customer-billing-note">Shown on invoices. Leave empty to use the name.</p></div>
-            <div class="ef-field"><label class="ef-field__label" for="customer-email">Billing email</label>
+              <p class="forma-field__description" id="customer-billing-note">Shown on invoices. Leave empty to use the name.</p></div>
+            <div class="forma-field"><label class="forma-field__label" for="customer-email">Billing email</label>
               <input id="customer-email" type="email" autocomplete="email" data-event="customerEmailChanged" data-on="input" data-bind-value="customerEmail" /></div>
-            <div class="ef-field"><label class="ef-field__label" for="customer-terms">Payment terms (days)</label>
+            <div class="forma-field"><label class="forma-field__label" for="customer-terms">Payment terms (days)</label>
               <input id="customer-terms" type="text" inputmode="numeric" aria-describedby="customer-terms-note" data-event="customerTermsChanged" data-on="input" data-bind-value="customerTerms" />
-              <p class="ef-field__description" id="customer-terms-note">0 for due on receipt. Leave empty for the organization's default.</p></div>
+              <p class="forma-field__description" id="customer-terms-note">0 for due on receipt. Leave empty for the organization's default.</p></div>
           </div>
-          <div class="ef-field"><label class="ef-field__label" for="customer-address">Billing address</label>
+          <div class="forma-field"><label class="forma-field__label" for="customer-address">Billing address</label>
             <textarea id="customer-address" rows="3" autocomplete="street-address" data-event="customerAddressChanged" data-on="input" data-bind-value="customerAddress"></textarea></div>
           <div class="summa-fields">
-            <div class="ef-field"><label class="ef-field__label" for="customer-tax-status">Tax status</label>
+            <div class="forma-field"><label class="forma-field__label" for="customer-tax-status">Tax status</label>
               <select id="customer-tax-status" aria-describedby="customer-tax-note" data-event="customerTaxStatusChosen" data-bind-value="customerTaxStatus">
                 <template data-each="customerTaxOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
               </select>
-              <p class="ef-field__description" id="customer-tax-note">What you know of the customer's tax. Summa assumes nothing.</p></div>
-            <div class="ef-field"><label class="ef-field__label" for="customer-tax-jurisdiction">Tax jurisdiction</label>
+              <p class="forma-field__description" id="customer-tax-note">What you know of the customer's tax. Summa assumes nothing.</p></div>
+            <div class="forma-field"><label class="forma-field__label" for="customer-tax-jurisdiction">Tax jurisdiction</label>
               <input id="customer-tax-jurisdiction" type="text" data-event="customerTaxJurisdictionChanged" data-on="input" data-bind-value="customerTaxJurisdiction" /></div>
-            <template data-if="customerTaxExempt"><div class="ef-field"><label class="ef-field__label" for="customer-tax-evidence">Exemption certificate or reference</label>
+            <template data-if="customerTaxExempt"><div class="forma-field"><label class="forma-field__label" for="customer-tax-evidence">Exemption certificate or reference</label>
               <input id="customer-tax-evidence" type="text" required data-event="customerTaxEvidenceChanged" data-on="input" data-bind-value="customerTaxEvidence" /></div></template>
           </div>
           <label class="summa-check"><input id="customer-requires-po" type="checkbox" data-event="customerRequiresPurchaseOrderChanged" data-on="change" data-bind-checked="customerRequiresPurchaseOrder" /> Their accounts payable needs a purchase order on every invoice</label>
-          <div class="ef-actions"><button type="submit" class="ef-button" id="add-customer">Add customer</button></div>
+          <div class="forma-actions"><button type="submit" class="forma-button" id="add-customer">Add customer</button></div>
         </form>
       </section>
     </template>
 
     <!-- Invoice editor and review (v0.4 §4-6, INV-DRAFT, INV-REV). -->
     <template data-if="onEditor">
-      <section class="ef-stack" aria-labelledby="editor-title">
+      <section class="forma-stack" aria-labelledby="editor-title">
         <h1 id="editor-title" data-text="draftLabel"></h1>
-        <form class="ef-surface ef-stack" id="draft-form" data-event="draftSubmitted" aria-labelledby="editor-title">
+        <form class="forma-surface forma-stack" id="draft-form" data-event="draftSubmitted" aria-labelledby="editor-title">
           <div class="summa-fields">
-            <div class="ef-field"><label class="ef-field__label" for="draft-customer">Customer</label>
+            <div class="forma-field"><label class="forma-field__label" for="draft-customer">Customer</label>
               <select id="draft-customer" data-event="draftCustomerChanged" data-bind-value="draftCustomer">
                 <option value="">Choose a customer</option>
                 <template data-each="customerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
               </select>
-              <p class="ef-field__description">Terms: <span id="draft-terms" data-text="draftCustomerTerms"></span>. Tax: <span id="draft-customer-tax" data-text="draftCustomerTax"></span></p>
-              <p class="ef-field__description summa-optional-note" id="draft-bill-to" data-text="draftBillTo"></p>
-              <p class="ef-field__description summa-optional-note" id="draft-rate-note" data-text="draftRateNote"></p></div>
+              <p class="forma-field__description">Terms: <span id="draft-terms" data-text="draftCustomerTerms"></span>. Tax: <span id="draft-customer-tax" data-text="draftCustomerTax"></span></p>
+              <p class="forma-field__description summa-optional-note" id="draft-bill-to" data-text="draftBillTo"></p>
+              <p class="forma-field__description summa-optional-note" id="draft-rate-note" data-text="draftRateNote"></p></div>
             <template data-if="hasDraftEngagements">
-              <div class="ef-field"><label class="ef-field__label" for="draft-engagement">Engagement</label>
+              <div class="forma-field"><label class="forma-field__label" for="draft-engagement">Engagement</label>
                 <select id="draft-engagement" data-event="draftEngagementChosen" data-bind-value="draftEngagement">
                   <option value="">No engagement</option>
                   <template data-each="draftEngagementOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
                 </select>
-                <p class="ef-field__description">Its terms and rates apply before the customer's.</p></div>
+                <p class="forma-field__description">Its terms and rates apply before the customer's.</p></div>
             </template>
-            <div class="ef-field"><label class="ef-field__label" for="draft-po">Purchase order</label>
+            <div class="forma-field"><label class="forma-field__label" for="draft-po">Purchase order</label>
               <input id="draft-po" type="text" aria-describedby="draft-po-note" data-event="draftPurchaseOrderChanged" data-on="input" data-bind-value="draftPurchaseOrder" />
-              <p class="ef-field__description summa-optional-note" id="draft-po-note" data-text="draftPurchaseOrderNote"></p></div>
+              <p class="forma-field__description summa-optional-note" id="draft-po-note" data-text="draftPurchaseOrderNote"></p></div>
           </div>
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Lines">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Lines">
             <table class="summa-table summa-lines" id="draft-lines">
               <caption>Lines</caption>
-              <thead><tr><th scope="col">Description</th><th scope="col">Quantity</th><th scope="col">Rate</th><th scope="col">Taxable</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
+              <thead><tr><th scope="col">Description</th><th scope="col">Quantity</th><th scope="col">Rate</th><th scope="col">Taxable</th><th scope="col"><span class="forma-visually-hidden">Remove</span></th></tr></thead>
               <tbody>
                 <template data-each="draftLines" data-key="key">
                   <tr>
-                    <td data-label="Description"><label class="summa-cell-label"><span class="ef-visually-hidden">Line <span data-text="position"></span> description</span><input type="text" class="line-description" data-event="lineDescriptionChanged" data-on="input" data-bind-value="description" /></label>
-                      <button type="button" class="ef-button line-details" data-variant="secondary" data-event="lineDetailsOpened" commandfor="line-details" command="show-modal">Details<span data-text="detailsNote"></span><span class="ef-visually-hidden"> for line <span data-text="position"></span></span></button></td>
-                    <td data-label="Quantity"><label class="summa-cell-label"><span class="ef-visually-hidden">Line <span data-text="position"></span> quantity</span><input type="text" inputmode="decimal" class="line-hours" data-event="lineHoursChanged" data-on="input" data-bind-value="hours" /></label></td>
-                    <td data-label="Rate"><label class="summa-cell-label"><span class="ef-visually-hidden">Line <span data-text="position"></span> rate</span><input type="text" inputmode="decimal" class="line-rate" data-event="lineRateChanged" data-on="input" data-bind-value="rate" /></label></td>
-                    <td data-label="Taxable"><label class="summa-check"><input type="checkbox" class="line-taxable" data-event="lineTaxableChanged" data-on="change" data-bind-checked="taxable" /><span class="ef-visually-hidden">Line <span data-text="position"></span> is taxable</span></label></td>
-                    <td data-label="Remove"><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="lineRemoved">Remove</button></td>
+                    <td data-label="Description"><label class="summa-cell-label"><span class="forma-visually-hidden">Line <span data-text="position"></span> description</span><input type="text" class="line-description" data-event="lineDescriptionChanged" data-on="input" data-bind-value="description" /></label>
+                      <button type="button" class="forma-button line-details" data-variant="secondary" data-event="lineDetailsOpened" commandfor="line-details" command="show-modal">Details<span data-text="detailsNote"></span><span class="forma-visually-hidden"> for line <span data-text="position"></span></span></button></td>
+                    <td data-label="Quantity"><label class="summa-cell-label"><span class="forma-visually-hidden">Line <span data-text="position"></span> quantity</span><input type="text" inputmode="decimal" class="line-hours" data-event="lineHoursChanged" data-on="input" data-bind-value="hours" /></label></td>
+                    <td data-label="Rate"><label class="summa-cell-label"><span class="forma-visually-hidden">Line <span data-text="position"></span> rate</span><input type="text" inputmode="decimal" class="line-rate" data-event="lineRateChanged" data-on="input" data-bind-value="rate" /></label></td>
+                    <td data-label="Taxable"><label class="summa-check"><input type="checkbox" class="line-taxable" data-event="lineTaxableChanged" data-on="change" data-bind-checked="taxable" /><span class="forma-visually-hidden">Line <span data-text="position"></span> is taxable</span></label></td>
+                    <td data-label="Remove"><button type="button" class="forma-button summa-remove" data-variant="secondary" data-event="lineRemoved">Remove</button></td>
                   </tr>
                 </template>
               </tbody>
             </table>
           </div>
-          <dialog class="ef-flyout" id="line-details" data-ef-side="right" aria-labelledby="line-details-title" data-event="lineDetailsClosed" data-on="close">
-            <div class="ef-flyout__surface">
-              <header class="ef-flyout__header">
+          <dialog class="forma-flyout" id="line-details" data-forma-side="right" aria-labelledby="line-details-title" data-event="lineDetailsClosed" data-on="close">
+            <div class="forma-flyout__surface">
+              <header class="forma-flyout__header">
                 <div>
-                  <p class="ef-component-kicker">Line details</p>
+                  <p class="forma-component-kicker">Line details</p>
                   <h2 id="line-details-title">Line <span data-text="detailsLinePosition"></span>: <span data-text="detailsLineDescription"></span></h2>
                 </div>
-                <button class="ef-flyout__close" type="button" commandfor="line-details" command="close" aria-label="Close the line details">Close</button>
+                <button class="forma-flyout__close" type="button" commandfor="line-details" command="close" aria-label="Close the line details">Close</button>
               </header>
-              <div class="ef-flyout__body summa-fields">
-                <div class="ef-field"><label class="ef-field__label" for="line-detailed-description">Detailed description</label>
+              <div class="forma-flyout__body summa-fields">
+                <div class="forma-field"><label class="forma-field__label" for="line-detailed-description">Detailed description</label>
                   <textarea id="line-detailed-description" rows="2" data-event="lineDetailedDescriptionChanged" data-on="input" data-bind-value="lineDetailedDescription"></textarea></div>
-                <div class="ef-field"><label class="ef-field__label" for="line-unit">Unit</label>
+                <div class="forma-field"><label class="forma-field__label" for="line-unit">Unit</label>
                   <input id="line-unit" type="text" placeholder="hours, days, items" data-event="lineUnitChanged" data-on="input" data-bind-value="lineUnit" /></div>
-                <div class="ef-field"><label class="ef-field__label" for="line-service-from">Service from</label>
+                <div class="forma-field"><label class="forma-field__label" for="line-service-from">Service from</label>
                   <input id="line-service-from" type="date" data-event="lineServiceFromChanged" data-on="input" data-bind-value="lineServiceFrom" /></div>
-                <div class="ef-field"><label class="ef-field__label" for="line-service-to">Service to</label>
+                <div class="forma-field"><label class="forma-field__label" for="line-service-to">Service to</label>
                   <input id="line-service-to" type="date" data-event="lineServiceToChanged" data-on="input" data-bind-value="lineServiceTo" /></div>
-                <div class="ef-field"><label class="ef-field__label" for="line-category">Category</label>
+                <div class="forma-field"><label class="forma-field__label" for="line-category">Category</label>
                   <input id="line-category" type="text" data-event="lineCategoryChanged" data-on="input" data-bind-value="lineCategory" /></div>
-                <div class="ef-field"><label class="ef-field__label" for="line-customer-code">Customer code</label>
+                <div class="forma-field"><label class="forma-field__label" for="line-customer-code">Customer code</label>
                   <input id="line-customer-code" type="text" data-event="lineCustomerCodeChanged" data-on="input" data-bind-value="lineCustomerCode" /></div>
               </div>
-              <footer class="ef-flyout__actions"><button type="button" class="ef-button" data-variant="secondary" id="line-details-done" commandfor="line-details" command="close">Done</button></footer>
+              <footer class="forma-flyout__actions"><button type="button" class="forma-button" data-variant="secondary" id="line-details-done" commandfor="line-details" command="close">Done</button></footer>
             </div>
           </dialog>
-          <div class="ef-actions"><button type="button" class="ef-button" data-variant="secondary" id="add-line" data-event="lineAdded">Add line</button>
+          <div class="forma-actions"><button type="button" class="forma-button" data-variant="secondary" id="add-line" data-event="lineAdded">Add line</button>
             <p class="summa-total">Total <strong id="draft-total" data-text="draftTotal"></strong></p></div>
-          <fieldset class="ef-stack summa-tax" id="draft-tax">
+          <fieldset class="forma-stack summa-tax" id="draft-tax">
             <legend>Tax</legend>
-            <p class="ef-field__description" id="draft-tax-note">Summa does not work tax out. Enter the tax you charge, and mark the lines it applies to.</p>
+            <p class="forma-field__description" id="draft-tax-note">Summa does not work tax out. Enter the tax you charge, and mark the lines it applies to.</p>
             <div class="summa-fields">
-              <div class="ef-field"><label class="ef-field__label" for="draft-tax-code">Tax code</label>
+              <div class="forma-field"><label class="forma-field__label" for="draft-tax-code">Tax code</label>
                 <input id="draft-tax-code" type="text" aria-describedby="draft-tax-note" data-event="draftTaxCodeChanged" data-on="input" data-bind-value="draftTaxCode" /></div>
-              <div class="ef-field"><label class="ef-field__label" for="draft-tax-amount">Tax amount</label>
+              <div class="forma-field"><label class="forma-field__label" for="draft-tax-amount">Tax amount</label>
                 <input id="draft-tax-amount" type="text" inputmode="decimal" data-event="draftTaxAmountChanged" data-on="input" data-bind-value="draftTaxAmount" /></div>
-              <div class="ef-field"><label class="ef-field__label" for="draft-tax-rate">Rate (%)</label>
+              <div class="forma-field"><label class="forma-field__label" for="draft-tax-rate">Rate (%)</label>
                 <input id="draft-tax-rate" type="text" inputmode="decimal" data-event="draftTaxRateChanged" data-on="input" data-bind-value="draftTaxRate" /></div>
-              <div class="ef-field"><label class="ef-field__label" for="draft-tax-account">Liability account</label>
+              <div class="forma-field"><label class="forma-field__label" for="draft-tax-account">Liability account</label>
                 <select id="draft-tax-account" data-event="draftTaxAccountChosen" data-bind-value="draftTaxAccount">
                   <template data-each="taxAccountOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
                 </select></div>
-              <div class="ef-field"><label class="ef-field__label" for="draft-tax-jurisdiction">Jurisdiction</label>
+              <div class="forma-field"><label class="forma-field__label" for="draft-tax-jurisdiction">Jurisdiction</label>
                 <input id="draft-tax-jurisdiction" type="text" data-event="draftTaxJurisdictionChanged" data-on="input" data-bind-value="draftTaxJurisdiction" /></div>
-              <div class="ef-field"><label class="ef-field__label" for="draft-tax-source">Rate source</label>
+              <div class="forma-field"><label class="forma-field__label" for="draft-tax-source">Rate source</label>
                 <input id="draft-tax-source" type="text" data-event="draftTaxRateSourceChanged" data-on="input" data-bind-value="draftTaxRateSource" /></div>
-              <div class="ef-field"><label class="ef-field__label" for="draft-tax-evidence">Evidence or reference</label>
+              <div class="forma-field"><label class="forma-field__label" for="draft-tax-evidence">Evidence or reference</label>
                 <input id="draft-tax-evidence" type="text" data-event="draftTaxEvidenceChanged" data-on="input" data-bind-value="draftTaxEvidence" /></div>
             </div>
             <label class="summa-check"><input id="draft-tax-inclusive" type="checkbox" data-event="draftTaxInclusiveChanged" data-on="change" data-bind-checked="draftTaxInclusive" /> The line prices already include this tax</label>
           </fieldset>
-          <fieldset class="ef-stack summa-references" id="draft-references">
+          <fieldset class="forma-stack summa-references" id="draft-references">
             <legend>Client references</legend>
-            <p class="ef-field__description" id="draft-references-note">References the customer asks to see beside the purchase order, such as a contract or cost center.</p>
+            <p class="forma-field__description" id="draft-references-note">References the customer asks to see beside the purchase order, such as a contract or cost center.</p>
             <template data-if="hasDraftReferences">
-              <div class="ef-data-grid" role="region" tabindex="0" aria-label="Client references">
+              <div class="forma-data-grid" role="region" tabindex="0" aria-label="Client references">
                 <table class="summa-table" id="draft-reference-rows">
-                  <caption class="ef-visually-hidden">Client references</caption>
-                  <thead><tr><th scope="col">Kind</th><th scope="col">Reference</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
+                  <caption class="forma-visually-hidden">Client references</caption>
+                  <thead><tr><th scope="col">Kind</th><th scope="col">Reference</th><th scope="col"><span class="forma-visually-hidden">Remove</span></th></tr></thead>
                   <tbody>
                     <template data-each="draftReferences" data-key="key">
                       <tr>
-                        <td data-label="Kind"><label class="summa-cell-label"><span class="ef-visually-hidden">Reference <span data-text="position"></span> kind</span><select class="reference-kind" data-event="referenceKindChosen" data-bind-value="kind">
+                        <td data-label="Kind"><label class="summa-cell-label"><span class="forma-visually-hidden">Reference <span data-text="position"></span> kind</span><select class="reference-kind" data-event="referenceKindChosen" data-bind-value="kind">
                           <option value="contract">Contract number</option>
                           <option value="engagement">Engagement number</option>
                           <option value="vendor">Vendor reference</option>
                           <option value="cost-center">Cost center</option>
                           <option value="matter">Matter number</option>
                         </select></label></td>
-                        <td data-label="Reference"><label class="summa-cell-label"><span class="ef-visually-hidden">Reference <span data-text="position"></span></span><input type="text" class="reference-value" data-event="referenceValueChanged" data-on="input" data-bind-value="value" /></label></td>
-                        <td data-label="Remove"><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="referenceRemoved">Remove</button></td>
+                        <td data-label="Reference"><label class="summa-cell-label"><span class="forma-visually-hidden">Reference <span data-text="position"></span></span><input type="text" class="reference-value" data-event="referenceValueChanged" data-on="input" data-bind-value="value" /></label></td>
+                        <td data-label="Remove"><button type="button" class="forma-button summa-remove" data-variant="secondary" data-event="referenceRemoved">Remove</button></td>
                       </tr>
                     </template>
                   </tbody>
                 </table>
               </div>
             </template>
-            <div class="ef-actions"><button type="button" class="ef-button" data-variant="secondary" id="add-reference" aria-describedby="draft-references-note" data-event="referenceAdded">Add reference</button></div>
+            <div class="forma-actions"><button type="button" class="forma-button" data-variant="secondary" id="add-reference" aria-describedby="draft-references-note" data-event="referenceAdded">Add reference</button></div>
           </fieldset>
-          <div class="ef-field"><label class="ef-field__label" for="draft-notes">Note to the customer</label>
+          <div class="forma-field"><label class="forma-field__label" for="draft-notes">Note to the customer</label>
             <textarea id="draft-notes" rows="2" data-event="draftNotesChanged" data-on="input" data-bind-value="draftNotes"></textarea></div>
           <template data-if="hasBlockers">
             <section class="summa-blockers" id="blockers" aria-labelledby="blockers-title">
@@ -485,7 +485,7 @@
             </section>
           </template>
           <template data-if="hasPreview">
-            <section class="ef-stack summa-preview" id="invoice-preview" aria-labelledby="preview-title">
+            <section class="forma-stack summa-preview" id="invoice-preview" aria-labelledby="preview-title">
               <h2 id="preview-title">Preview: invoice <span data-text="previewNumber"></span> as it will be issued</h2>
               <ef-print-document class="summa-document">
                 <header class="summa-document__head">
@@ -508,20 +508,20 @@
               </ef-print-document>
             </section>
           </template>
-          <div class="ef-actions">
-            <button type="submit" class="ef-button" data-variant="secondary" id="review-draft">Save and review</button>
-            <button type="button" class="ef-button" id="issue-invoice" commandfor="issue-dialog" command="show-modal" data-bind-disabled="cannotIssue">Issue invoice…</button>
-            <dialog class="ef-dialog" id="issue-dialog" aria-labelledby="issue-dialog-title" aria-describedby="issue-dialog-text">
-              <div class="ef-dialog__body">
+          <div class="forma-actions">
+            <button type="submit" class="forma-button" data-variant="secondary" id="review-draft">Save and review</button>
+            <button type="button" class="forma-button" id="issue-invoice" commandfor="issue-dialog" command="show-modal" data-bind-disabled="cannotIssue">Issue invoice…</button>
+            <dialog class="forma-dialog" id="issue-dialog" aria-labelledby="issue-dialog-title" aria-describedby="issue-dialog-text">
+              <div class="forma-dialog__body">
                 <h2 id="issue-dialog-title">Issue this invoice?</h2>
                 <p id="issue-dialog-text" data-text="confirmIssueText"></p>
               </div>
-              <div class="ef-dialog__actions">
-                <button type="button" class="ef-button" data-variant="secondary" id="issue-dialog-cancel" commandfor="issue-dialog" command="close">Not yet</button>
-                <button type="button" class="ef-button" id="confirm-issue" data-event="draftIssued" commandfor="issue-dialog" command="close">Issue invoice</button>
+              <div class="forma-dialog__actions">
+                <button type="button" class="forma-button" data-variant="secondary" id="issue-dialog-cancel" commandfor="issue-dialog" command="close">Not yet</button>
+                <button type="button" class="forma-button" id="confirm-issue" data-event="draftIssued" commandfor="issue-dialog" command="close">Issue invoice</button>
               </div>
             </dialog>
-            <template data-if="editorChanged"><button type="button" class="ef-button" data-variant="secondary" id="discard-changes" data-event="editorDiscarded">Discard unsaved changes</button></template>
+            <template data-if="editorChanged"><button type="button" class="forma-button" data-variant="secondary" id="discard-changes" data-event="editorDiscarded">Discard unsaved changes</button></template>
           </div>
         </form>
       </section>
@@ -529,23 +529,23 @@
 
     <!-- Invoices (v0.4 §8). -->
     <template data-if="onInvoices">
-      <section class="ef-stack" aria-labelledby="invoices-title">
+      <section class="forma-stack" aria-labelledby="invoices-title">
         <h1 id="invoices-title">Invoices</h1>
         <template data-if="hasInvoices">
-          <div class="ef-stack" id="invoice-list">
+          <div class="forma-stack" id="invoice-list">
           <div class="summa-filters" role="search" aria-label="Invoices">
-            <div class="ef-field"><label class="ef-field__label" for="invoice-search">Search number or customer</label>
+            <div class="forma-field"><label class="forma-field__label" for="invoice-search">Search number or customer</label>
               <input id="invoice-search" type="search" data-event="invoiceSearchChanged" data-on="input" data-bind-value="invoiceSearch" /></div>
-            <div class="ef-field"><label class="ef-field__label" for="invoice-customer">Customer</label>
+            <div class="forma-field"><label class="forma-field__label" for="invoice-customer">Customer</label>
               <select id="invoice-customer" data-event="invoiceCustomerChosen" data-bind-value="invoiceCustomer">
                 <option value="">All customers</option>
                 <template data-each="invoiceCustomerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
               </select></div>
-            <div class="ef-field"><label class="ef-field__label" for="invoice-from">Issued from</label>
+            <div class="forma-field"><label class="forma-field__label" for="invoice-from">Issued from</label>
               <input id="invoice-from" type="date" data-event="invoiceFromChanged" data-on="change" data-bind-value="invoiceFrom" /></div>
-            <div class="ef-field"><label class="ef-field__label" for="invoice-to">Issued to</label>
+            <div class="forma-field"><label class="forma-field__label" for="invoice-to">Issued to</label>
               <input id="invoice-to" type="date" data-event="invoiceToChanged" data-on="change" data-bind-value="invoiceTo" /></div>
-            <div class="ef-field"><label class="ef-field__label" for="invoice-sort">Sort by</label>
+            <div class="forma-field"><label class="forma-field__label" for="invoice-sort">Sort by</label>
               <select id="invoice-sort" data-event="invoiceSortChosen" data-bind-value="invoiceSort">
                 <option value="attention">Needs attention first</option><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="due">Due date</option><option value="number">Number</option><option value="customer">Customer</option>
               </select></div>
@@ -555,20 +555,20 @@
               </template>
               <label class="summa-check"><input id="invoice-overdue" type="checkbox" data-event="invoiceOverdueToggled" data-on="change" data-bind-checked="invoiceOverdue" /> Overdue only</label>
             </fieldset>
-            <template data-if="isFiltered"><button type="button" class="ef-button" data-variant="secondary" id="clear-filters" data-event="invoiceFiltersCleared">Clear filters</button></template>
+            <template data-if="isFiltered"><button type="button" class="forma-button" data-variant="secondary" id="clear-filters" data-event="invoiceFiltersCleared">Clear filters</button></template>
           </div>
           <p class="summa-count" id="invoice-count-text" role="status" data-text="invoiceCountText"></p>
           <template data-if="noListedInvoices"><p id="no-invoices">No invoice matches these filters.</p></template>
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Issued invoices">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Issued invoices">
             <table class="summa-table" id="invoices-table">
-              <caption class="ef-visually-hidden">Issued invoices</caption>
+              <caption class="forma-visually-hidden">Issued invoices</caption>
               <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Issued</th><th scope="col">Due</th><th scope="col">Status</th><th scope="col">Needs attention</th><th scope="col" class="summa-number">Total</th><th scope="col" class="summa-number">Outstanding</th></tr></thead>
               <tbody>
                 <template data-each="invoices" data-key="id">
                   <tr>
                     <td data-label="Invoice"><a class="summa-link" data-bind-href="href" data-text="number"></a></td>
                     <td data-text="customer" data-label="Customer"></td><td data-text="issueDate" data-label="Issued"></td><td data-text="dueDate" data-label="Due"></td>
-                    <td data-label="Status"><span class="ef-status-lozenge" data-bind-data-state="statusTone" data-text="status"></span> <span class="summa-timing" data-text="timing"></span></td>
+                    <td data-label="Status"><span class="forma-status-lozenge" data-bind-data-state="statusTone" data-text="status"></span> <span class="summa-timing" data-text="timing"></span></td>
                     <td data-text="attention" data-label="Needs attention"></td>
                     <td class="summa-number" data-text="total" data-label="Total"></td><td class="summa-number" data-text="outstanding" data-label="Outstanding"></td>
                   </tr>
@@ -584,10 +584,10 @@
     <!-- One invoice: its Folio document, payments and actions. -->
     <template data-if="onInvoice">
       <template data-if="hasInvoice">
-        <section class="ef-stack" aria-labelledby="invoice-title">
+        <section class="forma-stack" aria-labelledby="invoice-title">
           <div class="summa-invoice-head">
             <h1 id="invoice-title">Invoice <span data-text="docNumber"></span></h1>
-            <p><a class="summa-link" id="invoice-customer" data-bind-href="detailCustomerHref" data-text="detailCustomer"></a> · <span class="ef-status-lozenge" id="invoice-status" data-text="detailStatus"></span> Outstanding <strong id="invoice-outstanding" data-text="detailOutstanding"></strong></p>
+            <p><a class="summa-link" id="invoice-customer" data-bind-href="detailCustomerHref" data-text="detailCustomer"></a> · <span class="forma-status-lozenge" id="invoice-status" data-text="detailStatus"></span> Outstanding <strong id="invoice-outstanding" data-text="detailOutstanding"></strong></p>
           </div>
           <!-- The tab is part of the link (?tab=payments); choosing one refines the view. -->
           <div class="summa-tabs summa-screen-only" role="group" aria-label="Invoice views">
@@ -596,9 +596,9 @@
             </template>
           </div>
           <template data-if="onDocumentTab">
-          <div class="ef-stack" id="document-tab">
-          <template data-if="canPrint"><p class="summa-screen-only"><button type="button" class="ef-button" data-variant="secondary" id="print-invoice" data-event="printRequested">Print or save as PDF</button></p></template>
-          <template data-if="canExport"><p class="summa-screen-only"><button type="button" class="ef-button" data-variant="secondary" id="export-invoice-json" data-event="invoiceJsonExported">Download (JSON)</button> <button type="button" class="ef-button" data-variant="secondary" id="export-invoice-html" data-event="invoiceHtmlExported">Download (HTML)</button></p></template>
+          <div class="forma-stack" id="document-tab">
+          <template data-if="canPrint"><p class="summa-screen-only"><button type="button" class="forma-button" data-variant="secondary" id="print-invoice" data-event="printRequested">Print or save as PDF</button></p></template>
+          <template data-if="canExport"><p class="summa-screen-only"><button type="button" class="forma-button" data-variant="secondary" id="export-invoice-json" data-event="invoiceJsonExported">Download (JSON)</button> <button type="button" class="forma-button" data-variant="secondary" id="export-invoice-html" data-event="invoiceHtmlExported">Download (HTML)</button></p></template>
           <ef-print-document class="summa-document" id="invoice-document">
             <ef-print-header repeat="page"><span slot="left" data-text="docIssuer"></span><span slot="right">Invoice <span data-text="docNumber"></span></span></ef-print-header>
             <header class="summa-document__head">
@@ -630,106 +630,106 @@
             <template data-if="docHasStatutory"><section aria-label="Statutory information" id="invoice-statutory"><h2 class="summa-document__label">Statutory information</h2><template data-each="docStatutory" data-key="key"><p class="summa-pre" data-text="line"></p></template></section></template>
             <ef-print-footer repeat="page"><span slot="right"><ef-print-page-number format="page-of-pages"></ef-print-page-number></span></ef-print-footer>
           </ef-print-document>
-          <section class="ef-surface ef-stack summa-screen-only" id="invoice-pdf-section" aria-labelledby="pdf-title">
+          <section class="forma-surface forma-stack summa-screen-only" id="invoice-pdf-section" aria-labelledby="pdf-title">
             <h2 id="pdf-title">PDF</h2>
             <p id="pdf-status" role="status" data-text="pdfStatus"></p>
             <template data-if="canAttachPdf">
-              <div class="ef-field"><label class="ef-field__label" for="invoice-pdf">Attach the PDF you saved from the print dialog</label>
+              <div class="forma-field"><label class="forma-field__label" for="invoice-pdf">Attach the PDF you saved from the print dialog</label>
                 <input id="invoice-pdf" type="file" accept="application/pdf,.pdf" data-files-input="invoicePdf" /></div>
             </template>
             <template data-if="isPdfWorking"><p aria-busy="true">Working…</p></template>
-            <template data-if="canDownloadPdf"><p><button type="button" class="ef-button" data-variant="secondary" id="download-pdf" data-event="pdfDownloadRequested">Download PDF</button></p></template>
+            <template data-if="canDownloadPdf"><p><button type="button" class="forma-button" data-variant="secondary" id="download-pdf" data-event="pdfDownloadRequested">Download PDF</button></p></template>
           </section>
           </div>
           </template>
 
           <template data-if="onPaymentsTab">
 
-          <section class="ef-surface ef-stack summa-screen-only" aria-labelledby="payments-title">
+          <section class="forma-surface forma-stack summa-screen-only" aria-labelledby="payments-title">
             <h2 id="payments-title">Payments and settlement</h2>
-            <div class="ef-data-grid" role="region" tabindex="0" aria-label="Everything that settled this invoice, oldest first">
+            <div class="forma-data-grid" role="region" tabindex="0" aria-label="Everything that settled this invoice, oldest first">
               <table class="summa-table" id="invoice-payments">
-                <caption class="ef-visually-hidden">Everything that settled this invoice, oldest first</caption>
+                <caption class="forma-visually-hidden">Everything that settled this invoice, oldest first</caption>
                 <thead><tr><th scope="col">Date</th><th scope="col">What</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Owed after</th></tr></thead>
                 <tbody><template data-each="detailPayments" data-key="key"><tr><td data-text="date" data-label="Date"></td><td data-label="What"><a class="summa-link" data-bind-href="href" data-text="reference"></a></td><td class="summa-number" data-text="amount" data-label="Amount"></td><td class="summa-number" data-text="balance" data-label="Owed after"></td></tr></template></tbody>
               </table>
             </div>
             <template data-if="canRecordPayment">
-              <form class="ef-stack" id="payment-form" data-event="paymentRecorded" aria-labelledby="payment-form-title">
+              <form class="forma-stack" id="payment-form" data-event="paymentRecorded" aria-labelledby="payment-form-title">
                 <h3 id="payment-form-title">Record a payment</h3>
                 <div class="summa-fields">
-                  <div class="ef-field"><label class="ef-field__label" for="payment-amount">Amount received</label>
+                  <div class="forma-field"><label class="forma-field__label" for="payment-amount">Amount received</label>
                     <input id="payment-amount" type="text" inputmode="decimal" required data-event="paymentAmountChanged" data-on="input" data-bind-value="paymentAmount" /></div>
-                  <div class="ef-field"><label class="ef-field__label" for="payment-date">Date received</label>
+                  <div class="forma-field"><label class="forma-field__label" for="payment-date">Date received</label>
                     <input id="payment-date" type="date" data-event="paymentDateChanged" data-on="input" data-bind-value="paymentDate" /></div>
-                  <div class="ef-field"><label class="ef-field__label" for="payment-method">Method</label>
+                  <div class="forma-field"><label class="forma-field__label" for="payment-method">Method</label>
                     <select id="payment-method" data-event="paymentMethodChanged" data-bind-value="paymentMethod">
                       <option value="ach">ACH</option><option value="check">Check</option><option value="wire">Wire</option><option value="credit-card">Card</option><option value="cash">Cash</option><option value="other">Other</option>
                     </select></div>
-                  <div class="ef-field"><label class="ef-field__label" for="payment-reference">Reference</label>
+                  <div class="forma-field"><label class="forma-field__label" for="payment-reference">Reference</label>
                     <input id="payment-reference" type="text" data-event="paymentReferenceChanged" data-on="input" data-bind-value="paymentReference" /></div>
                 </div>
-                <div class="ef-actions"><button type="submit" class="ef-button" id="record-payment">Record payment</button></div>
+                <div class="forma-actions"><button type="submit" class="forma-button" id="record-payment">Record payment</button></div>
               </form>
             </template>
-            <section class="ef-stack" id="invoice-follow-up" aria-labelledby="follow-up-title">
+            <section class="forma-stack" id="invoice-follow-up" aria-labelledby="follow-up-title">
               <h3 id="follow-up-title">Follow-up</h3>
               <p><span id="follow-up-collection" data-text="fuCollection"></span> <span id="follow-up-dispute" data-text="fuDispute"></span></p>
               <template data-if="canRecordPayment">
-                <div class="ef-actions"><button type="button" class="ef-button" data-variant="secondary" id="record-reminder" data-event="reminderRecorded">Record a reminder sent</button></div>
+                <div class="forma-actions"><button type="button" class="forma-button" data-variant="secondary" id="record-reminder" data-event="reminderRecorded">Record a reminder sent</button></div>
               </template>
-              <div class="ef-field"><label class="ef-field__label" for="follow-up-note">What the customer disputes, or how it was resolved</label>
+              <div class="forma-field"><label class="forma-field__label" for="follow-up-note">What the customer disputes, or how it was resolved</label>
                 <input id="follow-up-note" type="text" data-event="followUpNoteChanged" data-on="input" data-bind-value="fuNote" /></div>
-              <div class="ef-actions">
-                <template data-if="fuNotDisputed"><button type="button" class="ef-button" data-variant="secondary" id="mark-disputed" data-event="disputeMarked">Mark disputed</button></template>
-                <template data-if="fuDisputed"><button type="button" class="ef-button" data-variant="secondary" id="settle-dispute" data-event="disputeSettled">Resolve the dispute</button></template>
+              <div class="forma-actions">
+                <template data-if="fuNotDisputed"><button type="button" class="forma-button" data-variant="secondary" id="mark-disputed" data-event="disputeMarked">Mark disputed</button></template>
+                <template data-if="fuDisputed"><button type="button" class="forma-button" data-variant="secondary" id="settle-dispute" data-event="disputeSettled">Resolve the dispute</button></template>
               </div>
               <h4 id="promise-title">Payment promise</h4>
               <p id="follow-up-promise" class="summa-optional-note" data-text="fuPromise"></p>
               <template data-if="canRecordPayment">
-                <div class="ef-stack" role="group" aria-labelledby="promise-title">
+                <div class="forma-stack" role="group" aria-labelledby="promise-title">
                   <div class="summa-fields">
-                    <div class="ef-field"><label class="ef-field__label" for="promise-amount">Amount promised</label>
+                    <div class="forma-field"><label class="forma-field__label" for="promise-amount">Amount promised</label>
                       <input id="promise-amount" type="text" inputmode="decimal" data-event="promiseAmountChanged" data-on="input" data-bind-value="promiseAmount" /></div>
-                    <div class="ef-field"><label class="ef-field__label" for="promise-by">Promised by</label>
+                    <div class="forma-field"><label class="forma-field__label" for="promise-by">Promised by</label>
                       <input id="promise-by" type="date" data-event="promiseByChanged" data-on="input" data-bind-value="promiseBy" /></div>
-                    <div class="ef-field"><label class="ef-field__label" for="promise-note">Who promised, and how</label>
+                    <div class="forma-field"><label class="forma-field__label" for="promise-note">Who promised, and how</label>
                       <input id="promise-note" type="text" data-event="promiseNoteChanged" data-on="input" data-bind-value="promiseNote" /></div>
                   </div>
-                  <div class="ef-actions">
-                    <button type="button" class="ef-button" data-variant="secondary" id="record-promise" data-event="promiseRecorded">Record the promise</button>
-                    <template data-if="fuHasPromise"><button type="button" class="ef-button" data-variant="secondary" id="withdraw-promise" data-event="promiseWithdrawn">Withdraw the promise</button></template>
+                  <div class="forma-actions">
+                    <button type="button" class="forma-button" data-variant="secondary" id="record-promise" data-event="promiseRecorded">Record the promise</button>
+                    <template data-if="fuHasPromise"><button type="button" class="forma-button" data-variant="secondary" id="withdraw-promise" data-event="promiseWithdrawn">Withdraw the promise</button></template>
                   </div>
                 </div>
               </template>
             </section>
             <h3 id="credits-title">Credits applied</h3>
-            <div class="ef-data-grid" role="region" tabindex="0" aria-label="Credits applied to this invoice">
+            <div class="forma-data-grid" role="region" tabindex="0" aria-label="Credits applied to this invoice">
               <table class="summa-table" id="invoice-credits">
-                <caption class="ef-visually-hidden">Credits applied to this invoice</caption>
+                <caption class="forma-visually-hidden">Credits applied to this invoice</caption>
                 <thead><tr><th scope="col">Applied</th><th scope="col">From</th><th scope="col" class="summa-number">Amount</th></tr></thead>
                 <tbody><template data-each="detailCredits" data-key="key"><tr><td data-text="date" data-label="Applied"></td><td data-label="From"><a class="summa-link" data-bind-href="href" data-text="source"></a></td><td class="summa-number" data-text="amount" data-label="Amount"></td></tr></template></tbody>
               </table>
             </div>
             <template data-if="canRecordPayment">
-              <form class="ef-stack" id="credit-form" aria-labelledby="credit-form-title">
+              <form class="forma-stack" id="credit-form" aria-labelledby="credit-form-title">
                 <h3 id="credit-form-title">Issue a credit memo</h3>
-                <p class="ef-field__description">The invoice stays as issued. A credit memo reduces what is owed, and the customer receives it as its own document.</p>
+                <p class="forma-field__description">The invoice stays as issued. A credit memo reduces what is owed, and the customer receives it as its own document.</p>
                 <div class="summa-fields">
-                  <div class="ef-field"><label class="ef-field__label" for="credit-amount">Amount to credit</label>
+                  <div class="forma-field"><label class="forma-field__label" for="credit-amount">Amount to credit</label>
                     <input id="credit-amount" type="text" inputmode="decimal" required data-event="creditAmountChanged" data-on="input" data-bind-value="creditAmount" /></div>
-                  <div class="ef-field"><label class="ef-field__label" for="credit-reason">Reason, as the customer will read it</label>
+                  <div class="forma-field"><label class="forma-field__label" for="credit-reason">Reason, as the customer will read it</label>
                     <input id="credit-reason" type="text" required data-event="creditReasonChanged" data-on="input" data-bind-value="creditReason" /></div>
                 </div>
-                <div class="ef-actions"><button type="button" class="ef-button" data-variant="secondary" id="issue-credit" commandfor="credit-dialog" command="show-modal">Issue credit memo…</button></div>
-                <dialog class="ef-dialog" id="credit-dialog" aria-labelledby="credit-dialog-title" aria-describedby="credit-dialog-text">
-              <div class="ef-dialog__body">
+                <div class="forma-actions"><button type="button" class="forma-button" data-variant="secondary" id="issue-credit" commandfor="credit-dialog" command="show-modal">Issue credit memo…</button></div>
+                <dialog class="forma-dialog" id="credit-dialog" aria-labelledby="credit-dialog-title" aria-describedby="credit-dialog-text">
+              <div class="forma-dialog__body">
                 <h2 id="credit-dialog-title">Issue this credit memo?</h2>
                 <p id="credit-dialog-text" data-text="confirmCreditText"></p>
               </div>
-              <div class="ef-dialog__actions">
-                <button type="button" class="ef-button" data-variant="secondary" id="credit-dialog-cancel" commandfor="credit-dialog" command="close">Not yet</button>
-                <button type="button" class="ef-button" id="confirm-credit" data-event="creditMemoIssued" commandfor="credit-dialog" command="close">Issue credit memo</button>
+              <div class="forma-dialog__actions">
+                <button type="button" class="forma-button" data-variant="secondary" id="credit-dialog-cancel" commandfor="credit-dialog" command="close">Not yet</button>
+                <button type="button" class="forma-button" id="confirm-credit" data-event="creditMemoIssued" commandfor="credit-dialog" command="close">Issue credit memo</button>
               </div>
             </dialog>
               </form>
@@ -738,17 +738,17 @@
           </template>
 
           <template data-if="onHistoryTab">
-            <section class="ef-surface ef-stack" aria-labelledby="history-title">
+            <section class="forma-surface forma-stack" aria-labelledby="history-title">
               <h2 id="history-title">History</h2>
               <p>Posted to the books as <a class="summa-link" id="invoice-entry" data-bind-href="detailEntryHref" data-text="detailEntryId"></a>.</p>
-              <div class="ef-data-grid" role="region" tabindex="0" aria-label="What happened to this invoice">
+              <div class="forma-data-grid" role="region" tabindex="0" aria-label="What happened to this invoice">
                 <table class="summa-table" id="invoice-history">
-                  <caption class="ef-visually-hidden">What happened to this invoice</caption>
+                  <caption class="forma-visually-hidden">What happened to this invoice</caption>
                   <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th><th scope="col">Changed</th></tr></thead>
                   <tbody><template data-each="history" data-key="key"><tr><td data-text="when" data-label="When"></td><td data-text="who" data-label="Who"></td><td data-text="what" data-label="What"></td><td data-text="changed" data-label="Changed"></td></tr></template></tbody>
                 </table>
               </div>
-              <div class="ef-data-grid" role="region" tabindex="0" aria-label="Where each line came from">
+              <div class="forma-data-grid" role="region" tabindex="0" aria-label="Where each line came from">
                 <table class="summa-table" id="invoice-sources">
                   <caption>Where each line came from</caption>
                   <thead><tr><th scope="col">Line</th><th scope="col">Description</th><th scope="col">Source</th></tr></thead>
@@ -763,12 +763,12 @@
 
     <!-- Receivables by age, on what is still outstanding (v0.4 §9, v0.2 §20). -->
     <template data-if="onReceivables">
-      <section class="ef-stack" aria-labelledby="receivables-title">
+      <section class="forma-stack" aria-labelledby="receivables-title">
         <h1 id="receivables-title">Receivables</h1>
         <div class="summa-filters" role="search" aria-label="Receivables">
-          <div class="ef-field"><label class="ef-field__label" for="receivables-as-of">As of</label>
+          <div class="forma-field"><label class="forma-field__label" for="receivables-as-of">As of</label>
             <input id="receivables-as-of" type="date" data-event="receivablesAsOfChanged" data-on="change" data-bind-value="receivablesAsOf" /></div>
-          <div class="ef-field"><label class="ef-field__label" for="receivables-customer">Customer</label>
+          <div class="forma-field"><label class="forma-field__label" for="receivables-customer">Customer</label>
             <select id="receivables-customer" data-event="receivablesCustomerChosen" data-bind-value="receivablesCustomer">
               <option value="">All customers</option>
               <template data-each="receivablesCustomerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
@@ -776,9 +776,9 @@
         </div>
         <p class="summa-count" id="receivables-date">Aged as of <span data-text="receivablesDate"></span>.</p>
         <template data-if="hasAging">
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Receivables by age">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Receivables by age">
             <table class="summa-table" id="aging-table">
-              <caption class="ef-visually-hidden">Receivables by age</caption>
+              <caption class="forma-visually-hidden">Receivables by age</caption>
               <thead><tr><th scope="col">Customer</th><th scope="col" class="summa-number">Not yet due</th><th scope="col" class="summa-number">1-30</th><th scope="col" class="summa-number">31-60</th><th scope="col" class="summa-number">61-90</th><th scope="col" class="summa-number">Over 90</th><th scope="col" class="summa-number">Total</th></tr></thead>
               <tbody>
                 <template data-each="aging" data-key="key">
@@ -794,11 +794,11 @@
     <!-- Invoice proposals, an agent's among them: inspect, then approve or abandon (v0.4 §42-43, INV-AGENT-004). -->
     <!-- Search and the command palette (v0.4 §18-19): every result is a link. -->
     <template data-if="onSearch">
-      <section class="ef-stack" aria-labelledby="search-title">
+      <section class="forma-stack" aria-labelledby="search-title">
         <h1 id="search-title">Search</h1>
         <p id="search-summary" role="status" data-text="searchSummary"></p>
         <template data-if="hasSearchCommands">
-          <div class="ef-stack">
+          <div class="forma-stack">
             <h2>Commands</h2>
             <ul class="summa-palette" id="search-commands">
               <template data-each="searchCommands" data-key="key"><li><a class="summa-link" data-bind-href="href" data-text="label"></a></li></template>
@@ -806,7 +806,7 @@
           </div>
         </template>
         <template data-if="hasSearchResults">
-          <div class="ef-stack">
+          <div class="forma-stack">
             <h2>In the books</h2>
             <ul class="summa-search-results" id="search-results">
               <template data-each="searchResults" data-key="key">
@@ -819,13 +819,13 @@
     </template>
 
     <template data-if="onProposals">
-      <section class="ef-stack" aria-labelledby="proposals-title">
+      <section class="forma-stack" aria-labelledby="proposals-title">
         <h1 id="proposals-title">Proposals</h1>
         <template data-if="noProposals"><p id="no-proposals">No invoice proposals. Proposals come from approved time, engagements and agents.</p></template>
         <template data-if="hasProposals">
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Invoice proposals">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Invoice proposals">
             <table class="summa-table" id="proposals-table">
-              <caption class="ef-visually-hidden">Invoice proposals</caption>
+              <caption class="forma-visually-hidden">Invoice proposals</caption>
               <thead><tr><th scope="col">Proposal</th><th scope="col">Customer</th><th scope="col">Prepared by</th><th scope="col">State</th><th scope="col" class="summa-number">Total</th></tr></thead>
               <tbody>
                 <template data-each="proposals" data-key="id">
@@ -835,49 +835,49 @@
             </table>
           </div>
         </template>
-        <section class="ef-surface ef-stack" aria-labelledby="import-title" id="time-import">
+        <section class="forma-surface forma-stack" aria-labelledby="import-title" id="time-import">
           <h2 id="import-title">Import time from Chrona</h2>
           <p>Paste the batch Chrona exported, one message per line. Summa checks every message and shows what it would do; nothing changes until you accept it.</p>
-          <form class="ef-stack" id="import-form" data-event="importPreviewed">
-            <div class="ef-field"><label class="ef-field__label" for="import-text">Chrona messages</label>
+          <form class="forma-stack" id="import-form" data-event="importPreviewed">
+            <div class="forma-field"><label class="forma-field__label" for="import-text">Chrona messages</label>
               <textarea id="import-text" rows="6" spellcheck="false" data-event="importTextChanged" data-on="input" data-bind-value="importText"></textarea></div>
-            <div class="ef-actions"><button type="submit" class="ef-button" data-variant="secondary" id="preview-import">Preview</button></div>
+            <div class="forma-actions"><button type="submit" class="forma-button" data-variant="secondary" id="preview-import">Preview</button></div>
           </form>
           <template data-if="hasImportPreview">
-            <section class="ef-stack" aria-labelledby="import-preview-title" id="import-preview">
+            <section class="forma-stack" aria-labelledby="import-preview-title" id="import-preview">
               <h3 id="import-preview-title">What this batch would do</h3>
               <p id="import-summary" role="status" data-text="importSummary"></p>
-              <div class="ef-data-grid" role="region" tabindex="0" aria-label="Accepted">
+              <div class="forma-data-grid" role="region" tabindex="0" aria-label="Accepted">
                 <table class="summa-table" id="import-accepted">
                   <caption>Accepted</caption>
                   <thead><tr><th scope="col">Publication</th></tr></thead>
                   <tbody><template data-each="importAccepted" data-key="key"><tr><td data-text="id" data-label="Publication"></td></tr></template></tbody>
                 </table>
               </div>
-              <div class="ef-data-grid" role="region" tabindex="0" aria-label="Rejected">
+              <div class="forma-data-grid" role="region" tabindex="0" aria-label="Rejected">
                 <table class="summa-table" id="import-rejected">
                   <caption>Rejected</caption>
                   <thead><tr><th scope="col">Message</th><th scope="col">Why</th></tr></thead>
                   <tbody><template data-each="importRejected" data-key="key"><tr><td data-text="id" data-label="Message"></td><td data-text="reason" data-label="Why"></td></tr></template></tbody>
                 </table>
               </div>
-              <div class="ef-data-grid" role="region" tabindex="0" aria-label="Duplicates (already received; they change nothing)">
+              <div class="forma-data-grid" role="region" tabindex="0" aria-label="Duplicates (already received; they change nothing)">
                 <table class="summa-table" id="import-duplicates">
                   <caption>Duplicates (already received; they change nothing)</caption>
                   <thead><tr><th scope="col">Publication</th></tr></thead>
                   <tbody><template data-each="importDuplicates" data-key="key"><tr><td data-text="id" data-label="Publication"></td></tr></template></tbody>
                 </table>
               </div>
-              <div class="ef-data-grid" role="region" tabindex="0" aria-label="Warnings">
+              <div class="forma-data-grid" role="region" tabindex="0" aria-label="Warnings">
                 <table class="summa-table" id="import-warnings">
                   <caption>Warnings</caption>
                   <thead><tr><th scope="col">Publication</th><th scope="col">What to know</th></tr></thead>
                   <tbody><template data-each="importWarnings" data-key="key"><tr><td data-text="id" data-label="Publication"></td><td data-text="reason" data-label="What to know"></td></tr></template></tbody>
                 </table>
               </div>
-              <div class="ef-actions">
-                <button type="button" class="ef-button" id="accept-import" data-event="importAccepted" data-bind-disabled="cannotAcceptImport">Accept and apply</button>
-                <button type="button" class="ef-button" data-variant="secondary" id="discard-import" data-event="importDiscarded">Discard</button>
+              <div class="forma-actions">
+                <button type="button" class="forma-button" id="accept-import" data-event="importAccepted" data-bind-disabled="cannotAcceptImport">Accept and apply</button>
+                <button type="button" class="forma-button" data-variant="secondary" id="discard-import" data-event="importDiscarded">Discard</button>
               </div>
             </section>
           </template>
@@ -886,7 +886,7 @@
     </template>
 
     <template data-if="onProposal">
-      <section class="ef-stack" aria-labelledby="proposal-title">
+      <section class="forma-stack" aria-labelledby="proposal-title">
         <h1 id="proposal-title">Proposal <span data-text="propId"></span></h1>
         <template data-if="propByAgent"><p class="summa-notice" id="proposal-agent-note" role="note">An agent prepared or changed this proposal. Check what it selected and assumed before you approve it.</p></template>
         <dl class="summa-facts">
@@ -897,63 +897,63 @@
           <div><dt>Terms</dt><dd id="proposal-terms" data-text="propTerms"></dd></div>
         </dl>
         <template data-if="propIsIssued"><p><a class="summa-link" id="proposal-invoice" data-bind-href="propIssuedHref">Open the invoice it was issued as</a></p></template>
-        <div class="ef-data-grid" role="region" tabindex="0" aria-label="Lines">
+        <div class="forma-data-grid" role="region" tabindex="0" aria-label="Lines">
           <table class="summa-table" id="proposal-lines">
             <caption>Lines</caption>
             <thead><tr><th scope="col">Description</th><th scope="col" class="summa-number">Quantity</th><th scope="col" class="summa-number">Rate</th><th scope="col" class="summa-number">Amount</th></tr></thead>
             <tbody><template data-each="propLines" data-key="key"><tr><td data-text="description" data-label="Description"></td><td class="summa-number" data-text="quantity" data-label="Quantity"></td><td class="summa-number" data-text="rate" data-label="Rate"></td><td class="summa-number" data-text="amount" data-label="Amount"></td></tr></template></tbody>
           </table>
         </div>
-        <section class="ef-surface ef-stack" id="proposal-explanation" aria-labelledby="explanation-title">
+        <section class="forma-surface forma-stack" id="proposal-explanation" aria-labelledby="explanation-title">
           <h2 id="explanation-title">How it was made</h2>
           <h3>Selected</h3>
           <ul id="proposal-selected"><template data-each="propSelected" data-key="key"><li data-text="text"></li></template></ul>
-          <template data-if="propHasExcluded"><div class="ef-stack"><h3>Left out</h3><ul id="proposal-excluded"><template data-each="propExcluded" data-key="key"><li data-text="text"></li></template></ul></div></template>
+          <template data-if="propHasExcluded"><div class="forma-stack"><h3>Left out</h3><ul id="proposal-excluded"><template data-each="propExcluded" data-key="key"><li data-text="text"></li></template></ul></div></template>
           <h3>Grouping</h3>
           <p id="proposal-grouping" data-text="propGrouping"></p>
           <h3>Rates</h3>
           <ul id="proposal-rates"><template data-each="propRates" data-key="key"><li data-text="text"></li></template></ul>
-          <template data-if="propHasAssumptions"><div class="ef-stack"><h3>Assumptions</h3><ul id="proposal-assumptions"><template data-each="propAssumptions" data-key="key"><li data-text="text"></li></template></ul></div></template>
+          <template data-if="propHasAssumptions"><div class="forma-stack"><h3>Assumptions</h3><ul id="proposal-assumptions"><template data-each="propAssumptions" data-key="key"><li data-text="text"></li></template></ul></div></template>
         </section>
-        <section class="ef-stack" id="proposal-contributions" aria-labelledby="contributions-title">
+        <section class="forma-stack" id="proposal-contributions" aria-labelledby="contributions-title">
           <h2 id="contributions-title">Contributions</h2>
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Who contributed, oldest first">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Who contributed, oldest first">
             <table class="summa-table">
-              <caption class="ef-visually-hidden">Who contributed, oldest first</caption>
+              <caption class="forma-visually-hidden">Who contributed, oldest first</caption>
               <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th></tr></thead>
               <tbody><template data-each="propContributions" data-key="key"><tr><td data-text="when" data-label="When"></td><td data-text="who" data-label="Who"></td><td data-text="what" data-label="What"></td></tr></template></tbody>
             </table>
           </div>
         </section>
         <template data-each="propActions" data-key="id">
-          <div class="ef-stack" id="proposal-decision">
-            <form class="ef-surface ef-stack" id="proposal-rate-form" data-event="proposalRateOverridden" aria-labelledby="proposal-rate-title">
+          <div class="forma-stack" id="proposal-decision">
+            <form class="forma-surface forma-stack" id="proposal-rate-form" data-event="proposalRateOverridden" aria-labelledby="proposal-rate-title">
               <h2 id="proposal-rate-title">Change a rate</h2>
               <div class="summa-fields">
-                <div class="ef-field"><label class="ef-field__label" for="proposal-rate-line">Line</label>
+                <div class="forma-field"><label class="forma-field__label" for="proposal-rate-line">Line</label>
                   <select id="proposal-rate-line" data-event="proposalLineChosen" data-bind-value="propRateLine">
                     <template data-each="propLineOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
                   </select></div>
-                <div class="ef-field"><label class="ef-field__label" for="proposal-rate">New rate</label>
+                <div class="forma-field"><label class="forma-field__label" for="proposal-rate">New rate</label>
                   <input id="proposal-rate" type="text" inputmode="decimal" required data-event="proposalRateChanged" data-on="input" data-bind-value="propRate" /></div>
-                <div class="ef-field"><label class="ef-field__label" for="proposal-rate-reason">Reason</label>
+                <div class="forma-field"><label class="forma-field__label" for="proposal-rate-reason">Reason</label>
                   <input id="proposal-rate-reason" type="text" required data-event="proposalReasonChanged" data-on="input" data-bind-value="propRateReason" /></div>
               </div>
-              <div class="ef-actions"><button type="submit" class="ef-button" data-variant="secondary" id="override-rate">Change rate</button></div>
+              <div class="forma-actions"><button type="submit" class="forma-button" data-variant="secondary" id="override-rate">Change rate</button></div>
             </form>
-            <div class="ef-actions" id="proposal-actions">
-              <button type="button" class="ef-button" id="approve-proposal" commandfor="approve-dialog" command="show-modal">Approve and issue invoice…</button>
-            <dialog class="ef-dialog" id="approve-dialog" aria-labelledby="approve-dialog-title" aria-describedby="approve-dialog-text">
-              <div class="ef-dialog__body">
+            <div class="forma-actions" id="proposal-actions">
+              <button type="button" class="forma-button" id="approve-proposal" commandfor="approve-dialog" command="show-modal">Approve and issue invoice…</button>
+            <dialog class="forma-dialog" id="approve-dialog" aria-labelledby="approve-dialog-title" aria-describedby="approve-dialog-text">
+              <div class="forma-dialog__body">
                 <h2 id="approve-dialog-title">Approve and issue?</h2>
                 <p id="approve-dialog-text" data-text="confirmApproveText"></p>
               </div>
-              <div class="ef-dialog__actions">
-                <button type="button" class="ef-button" data-variant="secondary" id="approve-dialog-cancel" commandfor="approve-dialog" command="close">Not yet</button>
-                <button type="button" class="ef-button" id="confirm-approve" data-event="proposalApproved" commandfor="approve-dialog" command="close">Approve and issue invoice</button>
+              <div class="forma-dialog__actions">
+                <button type="button" class="forma-button" data-variant="secondary" id="approve-dialog-cancel" commandfor="approve-dialog" command="close">Not yet</button>
+                <button type="button" class="forma-button" id="confirm-approve" data-event="proposalApproved" commandfor="approve-dialog" command="close">Approve and issue invoice</button>
               </div>
             </dialog>
-              <button type="button" class="ef-button" data-variant="secondary" id="abandon-proposal" data-event="proposalAbandoned">Abandon proposal</button>
+              <button type="button" class="forma-button" data-variant="secondary" id="abandon-proposal" data-event="proposalAbandoned">Abandon proposal</button>
             </div>
           </div>
         </template>
@@ -962,45 +962,45 @@
 
     <!-- Engagements (v0.2 §16-17). -->
     <template data-if="onEngagements">
-      <section class="ef-stack" aria-labelledby="engagements-title">
+      <section class="forma-stack" aria-labelledby="engagements-title">
         <h1 id="engagements-title">Engagements</h1>
         <div class="summa-filters" role="search" aria-label="Engagements">
-          <div class="ef-field"><label class="ef-field__label" for="engagements-customer">Customer</label>
+          <div class="forma-field"><label class="forma-field__label" for="engagements-customer">Customer</label>
             <select id="engagements-customer" data-event="engagementsCustomerChosen" data-bind-value="engagementCustomer">
               <option value="">All customers</option>
               <template data-each="engagementsCustomerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
             </select></div>
         </div>
         <template data-if="hasEngagements">
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Engagements">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Engagements">
             <table class="summa-table" id="engagements-table">
-              <caption class="ef-visually-hidden">Engagements</caption>
+              <caption class="forma-visually-hidden">Engagements</caption>
               <thead><tr><th scope="col">Engagement</th><th scope="col">Customer</th><th scope="col">Fee</th></tr></thead>
               <tbody><template data-each="engagements" data-key="id"><tr><td data-label="Engagement"><a class="summa-link" data-bind-href="href" data-text="name"></a></td><td data-label="Customer"><a class="summa-link" data-bind-href="customerHref" data-text="customer"></a></td><td data-text="fee" data-label="Fee"></td></tr></template></tbody>
             </table>
           </div>
         </template>
-        <form class="ef-surface ef-stack" id="engagement-form" data-event="engagementAdded" aria-labelledby="engagement-form-title">
+        <form class="forma-surface forma-stack" id="engagement-form" data-event="engagementAdded" aria-labelledby="engagement-form-title">
           <h2 id="engagement-form-title">Add an engagement</h2>
           <div class="summa-fields">
-            <div class="ef-field"><label class="ef-field__label" for="engagement-customer">Customer</label>
+            <div class="forma-field"><label class="forma-field__label" for="engagement-customer">Customer</label>
               <select id="engagement-customer" data-event="engagementCustomerChanged" data-bind-value="engagementFormCustomer">
                 <option value="">Choose a customer</option>
                 <template data-each="engagementFormCustomerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
               </select></div>
-            <div class="ef-field"><label class="ef-field__label" for="engagement-name">Name</label>
+            <div class="forma-field"><label class="forma-field__label" for="engagement-name">Name</label>
               <input id="engagement-name" type="text" required data-event="engagementNameChanged" data-on="input" data-bind-value="engagementFormName" /></div>
-            <div class="ef-field"><label class="ef-field__label" for="engagement-fee">Fixed fee</label>
+            <div class="forma-field"><label class="forma-field__label" for="engagement-fee">Fixed fee</label>
               <input id="engagement-fee" type="text" inputmode="decimal" aria-describedby="engagement-fee-note" data-event="engagementFeeChanged" data-on="input" data-bind-value="engagementFormFee" />
-              <p class="ef-field__description" id="engagement-fee-note">Leave empty for hourly work.</p></div>
+              <p class="forma-field__description" id="engagement-fee-note">Leave empty for hourly work.</p></div>
           </div>
-          <div class="ef-actions"><button type="submit" class="ef-button" id="add-engagement">Add engagement</button></div>
+          <div class="forma-actions"><button type="submit" class="forma-button" id="add-engagement">Add engagement</button></div>
         </form>
       </section>
     </template>
 
     <template data-if="onEngagement">
-      <section class="ef-stack" aria-labelledby="engagement-title">
+      <section class="forma-stack" aria-labelledby="engagement-title">
         <h1 id="engagement-title" data-text="engName"></h1>
         <dl class="summa-facts">
           <div><dt>Customer</dt><dd><a class="summa-link" data-bind-href="engCustomerHref" data-text="engCustomer"></a></dd></div>
@@ -1009,7 +1009,7 @@
         </dl>
         <p><a class="summa-link" data-bind-href="engNewInvoiceHref">New invoice for this customer</a></p>
         <template data-if="engHasMilestones">
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Milestones">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Milestones">
             <table class="summa-table" id="engagement-milestones">
               <caption>Milestones</caption>
               <thead><tr><th scope="col">Milestone</th><th scope="col">State</th><th scope="col" class="summa-number">Amount</th></tr></thead>
@@ -1017,7 +1017,7 @@
             </table>
           </div>
         </template>
-        <div class="ef-data-grid" role="region" tabindex="0" aria-label="Invoices">
+        <div class="forma-data-grid" role="region" tabindex="0" aria-label="Invoices">
           <table class="summa-table" id="engagement-invoices">
             <caption>Invoices</caption>
             <thead><tr><th scope="col">Invoice</th><th scope="col">Issued</th><th scope="col" class="summa-number">Total</th></tr></thead>
@@ -1029,7 +1029,7 @@
 
     <!-- One customer and their invoices, payments and credits (v0.4 §3). -->
     <template data-if="onCustomer">
-      <section class="ef-stack" aria-labelledby="customer-title">
+      <section class="forma-stack" aria-labelledby="customer-title">
         <h1 id="customer-title" data-text="custName"></h1>
         <dl class="summa-facts">
           <div><dt>Billed as</dt><dd data-text="custBillingName"></dd></div>
@@ -1042,25 +1042,25 @@
         <p class="summa-pre" data-text="custAddress"></p>
         <label class="summa-check"><input id="customer-po-required" type="checkbox" data-event="customerPurchaseOrderRequirementSet" data-on="change" data-bind-checked="custRequiresPurchaseOrder" /> Invoices for this customer need a purchase order</label>
         <p><a class="summa-link" id="customer-new-invoice" data-bind-href="custNewInvoiceHref">New invoice for this customer</a></p>
-        <section class="ef-surface ef-stack" aria-labelledby="customer-legal-title" id="customer-legal">
+        <section class="forma-surface forma-stack" aria-labelledby="customer-legal-title" id="customer-legal">
           <h2 id="customer-legal-title">Legal fields on this customer's invoices</h2>
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Recorded legal fields">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Recorded legal fields">
             <table class="summa-table" id="customer-legal-fields">
-              <caption class="ef-visually-hidden">Recorded legal fields</caption>
-              <thead><tr><th scope="col">Field</th><th scope="col">Jurisdiction</th><th scope="col">Value</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
-              <tbody><template data-each="custLegalFields" data-key="key"><tr><td data-text="label" data-label="Field"></td><td data-text="jurisdiction" data-label="Jurisdiction"></td><td data-text="value" data-label="Value"></td><td data-label="Remove"><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="customerLegalFieldRemoved">Remove</button></td></tr></template></tbody>
+              <caption class="forma-visually-hidden">Recorded legal fields</caption>
+              <thead><tr><th scope="col">Field</th><th scope="col">Jurisdiction</th><th scope="col">Value</th><th scope="col"><span class="forma-visually-hidden">Remove</span></th></tr></thead>
+              <tbody><template data-each="custLegalFields" data-key="key"><tr><td data-text="label" data-label="Field"></td><td data-text="jurisdiction" data-label="Jurisdiction"></td><td data-text="value" data-label="Value"></td><td data-label="Remove"><button type="button" class="forma-button summa-remove" data-variant="secondary" data-event="customerLegalFieldRemoved">Remove</button></td></tr></template></tbody>
             </table>
           </div>
-          <form class="ef-stack" id="customer-legal-form" data-event="customerLegalFieldAdded">
-            <div class="ef-field"><label class="ef-field__label" for="customer-legal-kind">Field</label>
+          <form class="forma-stack" id="customer-legal-form" data-event="customerLegalFieldAdded">
+            <div class="forma-field"><label class="forma-field__label" for="customer-legal-kind">Field</label>
               <select id="customer-legal-kind" data-event="legalKindChosen" data-on="change">
                 <template data-each="customerLegalKinds" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
               </select></div>
-            <div class="ef-field"><label class="ef-field__label" for="customer-legal-jurisdiction">Jurisdiction</label>
+            <div class="forma-field"><label class="forma-field__label" for="customer-legal-jurisdiction">Jurisdiction</label>
               <input id="customer-legal-jurisdiction" type="text" data-event="legalJurisdictionChanged" data-on="input" data-bind-value="legalJurisdiction" /></div>
-            <div class="ef-field"><label class="ef-field__label" for="customer-legal-value">Value</label>
+            <div class="forma-field"><label class="forma-field__label" for="customer-legal-value">Value</label>
               <input id="customer-legal-value" type="text" data-event="legalValueChanged" data-on="input" data-bind-value="legalValue" /></div>
-            <div class="ef-actions"><button type="submit" class="ef-button" id="add-customer-legal-field">Add legal field</button></div>
+            <div class="forma-actions"><button type="submit" class="forma-button" id="add-customer-legal-field">Add legal field</button></div>
           </form>
         </section>
         <div class="summa-tabs" role="group" aria-label="Customer views">
@@ -1069,27 +1069,27 @@
           </template>
         </div>
         <template data-if="onCustInvoicesTab">
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Invoices">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Invoices">
             <table class="summa-table" id="customer-invoices">
-              <caption class="ef-visually-hidden">Invoices</caption>
+              <caption class="forma-visually-hidden">Invoices</caption>
               <thead><tr><th scope="col">Invoice</th><th scope="col">Issued</th><th scope="col">Status</th><th scope="col" class="summa-number">Outstanding</th></tr></thead>
               <tbody><template data-each="custInvoices" data-key="id"><tr><td data-label="Invoice"><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="issueDate" data-label="Issued"></td><td data-text="status" data-label="Status"></td><td class="summa-number" data-text="outstanding" data-label="Outstanding"></td></tr></template></tbody>
             </table>
           </div>
         </template>
         <template data-if="onCustPaymentsTab">
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Payments">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Payments">
             <table class="summa-table" id="customer-payments">
-              <caption class="ef-visually-hidden">Payments</caption>
+              <caption class="forma-visually-hidden">Payments</caption>
               <thead><tr><th scope="col">Payment</th><th scope="col">Received</th><th scope="col">Reference</th><th scope="col" class="summa-number">Amount</th></tr></thead>
               <tbody><template data-each="custPayments" data-key="id"><tr><td data-label="Payment"><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date" data-label="Received"></td><td data-text="reference" data-label="Reference"></td><td class="summa-number" data-text="amount" data-label="Amount"></td></tr></template></tbody>
             </table>
           </div>
         </template>
         <template data-if="onCustCreditsTab">
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Credit memos">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Credit memos">
             <table class="summa-table" id="customer-credits">
-              <caption class="ef-visually-hidden">Credit memos</caption>
+              <caption class="forma-visually-hidden">Credit memos</caption>
               <thead><tr><th scope="col">Credit memo</th><th scope="col">Issued</th><th scope="col">Reason</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Unused</th></tr></thead>
               <tbody><template data-each="custCredits" data-key="id"><tr><td data-label="Credit memo"><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date" data-label="Issued"></td><td data-text="reason" data-label="Reason"></td><td class="summa-number" data-text="amount" data-label="Amount"></td><td class="summa-number" data-text="remaining" data-label="Unused"></td></tr></template></tbody>
             </table>
@@ -1100,34 +1100,34 @@
 
     <!-- Payments received (v0.4 §11, §13). -->
     <template data-if="onPayments">
-      <section class="ef-stack" aria-labelledby="payments-list-title">
+      <section class="forma-stack" aria-labelledby="payments-list-title">
         <h1 id="payments-list-title">Payments</h1>
         <template data-if="hasPayments">
-          <div class="ef-stack" id="payment-list">
+          <div class="forma-stack" id="payment-list">
             <div class="summa-filters" role="search" aria-label="Payments">
-              <div class="ef-field"><label class="ef-field__label" for="payment-search">Search reference or customer</label>
+              <div class="forma-field"><label class="forma-field__label" for="payment-search">Search reference or customer</label>
                 <input id="payment-search" type="search" data-event="paymentSearchChanged" data-on="input" data-bind-value="paymentSearch" /></div>
-              <div class="ef-field"><label class="ef-field__label" for="payment-customer">Customer</label>
+              <div class="forma-field"><label class="forma-field__label" for="payment-customer">Customer</label>
                 <select id="payment-customer" data-event="paymentCustomerChosen" data-bind-value="paymentCustomer">
                   <option value="">All customers</option>
                   <template data-each="paymentCustomerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
                 </select></div>
-              <div class="ef-field"><label class="ef-field__label" for="payment-from">Received from</label>
+              <div class="forma-field"><label class="forma-field__label" for="payment-from">Received from</label>
                 <input id="payment-from" type="date" data-event="paymentFromChanged" data-on="change" data-bind-value="paymentFrom" /></div>
-              <div class="ef-field"><label class="ef-field__label" for="payment-to">Received to</label>
+              <div class="forma-field"><label class="forma-field__label" for="payment-to">Received to</label>
                 <input id="payment-to" type="date" data-event="paymentToChanged" data-on="change" data-bind-value="paymentTo" /></div>
-              <div class="ef-field"><label class="ef-field__label" for="payment-sort">Sort by</label>
+              <div class="forma-field"><label class="forma-field__label" for="payment-sort">Sort by</label>
                 <select id="payment-sort" data-event="paymentSortChosen" data-bind-value="paymentSort">
                   <option value="newest">Newest first</option><option value="oldest">Oldest first</option>
                 </select></div>
               <label class="summa-check"><input id="payment-unapplied" type="checkbox" data-event="paymentUnappliedToggled" data-on="change" data-bind-checked="paymentUnapplied" /> Not fully applied</label>
-              <template data-if="isPaymentFiltered"><button type="button" class="ef-button" data-variant="secondary" id="clear-payment-filters" data-event="paymentFiltersCleared">Clear filters</button></template>
+              <template data-if="isPaymentFiltered"><button type="button" class="forma-button" data-variant="secondary" id="clear-payment-filters" data-event="paymentFiltersCleared">Clear filters</button></template>
             </div>
             <p class="summa-count" id="payment-count-text" role="status" data-text="paymentCountText"></p>
             <template data-if="noListedPayments"><p id="no-payments">No payment matches these filters.</p></template>
-            <div class="ef-data-grid" role="region" tabindex="0" aria-label="Payments received">
+            <div class="forma-data-grid" role="region" tabindex="0" aria-label="Payments received">
               <table class="summa-table" id="payments-table">
-                <caption class="ef-visually-hidden">Payments received</caption>
+                <caption class="forma-visually-hidden">Payments received</caption>
                 <thead><tr><th scope="col">Payment</th><th scope="col">Received</th><th scope="col">Customer</th><th scope="col">Method</th><th scope="col">Reference</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Not applied</th></tr></thead>
                 <tbody><template data-each="payments" data-key="id"><tr><td data-label="Payment"><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date" data-label="Received"></td><td data-label="Customer"><a class="summa-link" data-bind-href="customerHref" data-text="customer"></a></td><td data-text="method" data-label="Method"></td><td data-text="reference" data-label="Reference"></td><td class="summa-number" data-text="amount" data-label="Amount"></td><td class="summa-number" data-text="unapplied" data-label="Not applied"></td></tr></template></tbody>
               </table>
@@ -1138,7 +1138,7 @@
     </template>
 
     <template data-if="onPayment">
-      <section class="ef-stack" aria-labelledby="payment-title">
+      <section class="forma-stack" aria-labelledby="payment-title">
         <h1 id="payment-title">Payment <span data-text="payId"></span></h1>
         <template data-if="payReversed"><p class="summa-error" role="note">This payment was reversed.</p></template>
         <dl class="summa-facts">
@@ -1150,19 +1150,19 @@
           <div><dt>Not applied</dt><dd id="payment-unapplied-text" data-text="payUnapplied"></dd></div>
         </dl>
         <template data-if="payCanChoose">
-          <section class="ef-surface ef-stack" id="payment-apply" aria-labelledby="payment-apply-title">
+          <section class="forma-surface forma-stack" id="payment-apply" aria-labelledby="payment-apply-title">
             <h2 id="payment-apply-title">Apply this payment</h2>
             <p id="payment-suggestion" data-text="paySuggestion"></p>
-            <template data-if="payCanApplySuggested"><div class="ef-actions"><button type="button" class="ef-button" id="apply-suggested" data-event="inboxApplied">Apply as suggested</button></div></template>
-            <div class="ef-field"><label class="ef-field__label" for="payment-apply-invoice">Or apply it to</label>
+            <template data-if="payCanApplySuggested"><div class="forma-actions"><button type="button" class="forma-button" id="apply-suggested" data-event="inboxApplied">Apply as suggested</button></div></template>
+            <div class="forma-field"><label class="forma-field__label" for="payment-apply-invoice">Or apply it to</label>
               <select id="payment-apply-invoice" data-event="paymentApplyInvoiceChosen" data-bind-value="payApplyInvoice">
                 <option value="">Choose an open invoice</option>
                 <template data-each="payApplyOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
               </select></div>
-            <div class="ef-actions"><button type="button" class="ef-button" data-variant="secondary" id="apply-chosen" data-event="paymentAppliedToChosen">Apply to this invoice</button></div>
+            <div class="forma-actions"><button type="button" class="forma-button" data-variant="secondary" id="apply-chosen" data-event="paymentAppliedToChosen">Apply to this invoice</button></div>
           </section>
         </template>
-        <div class="ef-data-grid" role="region" tabindex="0" aria-label="Applied to">
+        <div class="forma-data-grid" role="region" tabindex="0" aria-label="Applied to">
           <table class="summa-table" id="payment-allocations">
             <caption>Applied to</caption>
             <thead><tr><th scope="col">Invoice</th><th scope="col" class="summa-number">Amount</th></tr></thead>
@@ -1174,19 +1174,19 @@
 
     <!-- Credit memos (v0.2 §6, INV-COR-008). -->
     <template data-if="onCreditMemos">
-      <section class="ef-stack" aria-labelledby="credit-memos-title">
+      <section class="forma-stack" aria-labelledby="credit-memos-title">
         <h1 id="credit-memos-title">Credit memos</h1>
         <div class="summa-filters" role="search" aria-label="Credit memos">
-          <div class="ef-field"><label class="ef-field__label" for="credit-memos-customer">Customer</label>
+          <div class="forma-field"><label class="forma-field__label" for="credit-memos-customer">Customer</label>
             <select id="credit-memos-customer" data-event="creditMemosCustomerChosen" data-bind-value="memoCustomer">
               <option value="">All customers</option>
               <template data-each="memoCustomerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
             </select></div>
         </div>
         <template data-if="hasCreditMemos">
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Credit memos">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Credit memos">
             <table class="summa-table" id="credit-memos-table">
-              <caption class="ef-visually-hidden">Credit memos</caption>
+              <caption class="forma-visually-hidden">Credit memos</caption>
               <thead><tr><th scope="col">Credit memo</th><th scope="col">Issued</th><th scope="col">Customer</th><th scope="col">Invoice</th><th scope="col" class="summa-number">Amount</th><th scope="col" class="summa-number">Unused</th></tr></thead>
               <tbody><template data-each="creditMemos" data-key="id"><tr><td data-label="Credit memo"><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date" data-label="Issued"></td><td data-label="Customer"><a class="summa-link" data-bind-href="customerHref" data-text="customer"></a></td><td data-label="Invoice"><a class="summa-link" data-bind-href="invoiceHref" data-text="invoice"></a></td><td class="summa-number" data-text="amount" data-label="Amount"></td><td class="summa-number" data-text="remaining" data-label="Unused"></td></tr></template></tbody>
             </table>
@@ -1197,11 +1197,11 @@
     </template>
 
     <template data-if="onCreditMemo">
-      <section class="ef-stack" aria-labelledby="credit-memo-title">
+      <section class="forma-stack" aria-labelledby="credit-memo-title">
         <div class="summa-invoice-head">
           <h1 id="credit-memo-title">Credit memo <span data-text="cmId"></span></h1>
           <p>Credits <a class="summa-link" id="credit-memo-invoice" data-bind-href="cmInvoiceHref" data-text="cmInvoice"></a> · Unused <strong id="credit-memo-remaining" data-text="cmRemaining"></strong></p>
-          <template data-if="canPrint"><p class="summa-screen-only"><button type="button" class="ef-button" data-variant="secondary" id="print-credit-memo" data-event="printRequested">Print or save as PDF</button></p></template>
+          <template data-if="canPrint"><p class="summa-screen-only"><button type="button" class="forma-button" data-variant="secondary" id="print-credit-memo" data-event="printRequested">Print or save as PDF</button></p></template>
         </div>
         <template data-if="cmHasDocument">
           <ef-print-document class="summa-document" id="credit-memo-document">
@@ -1228,7 +1228,7 @@
           </ef-print-document>
         </template>
         <template data-if="cmNoDocument"><p>This credit memo was not raised against an invoice, so it has no customer document. It credited <span data-text="cmAmount"></span>: <span data-text="cmReason"></span>.</p></template>
-        <div class="ef-data-grid summa-screen-only" role="region" tabindex="0" aria-label="Applied to">
+        <div class="forma-data-grid summa-screen-only" role="region" tabindex="0" aria-label="Applied to">
           <table class="summa-table" id="credit-memo-applications">
             <caption>Applied to</caption>
             <thead><tr><th scope="col">Invoice</th><th scope="col">Applied</th><th scope="col" class="summa-number">Amount</th></tr></thead>
@@ -1240,26 +1240,26 @@
 
     <!-- The general ledger: the journal, or one account with a running balance (v0.4 §20-21). -->
     <template data-if="onLedger">
-      <section class="ef-stack" aria-labelledby="ledger-title">
+      <section class="forma-stack" aria-labelledby="ledger-title">
         <h1 id="ledger-title">Ledger</h1>
         <div class="summa-filters" role="search" aria-label="Ledger">
-          <div class="ef-field"><label class="ef-field__label" for="ledger-account">Account</label>
+          <div class="forma-field"><label class="forma-field__label" for="ledger-account">Account</label>
             <select id="ledger-account" data-event="ledgerAccountChosen" data-bind-value="ledgerAccount">
               <option value="">All entries (journal)</option>
               <template data-each="ledgerAccountOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
             </select></div>
-          <div class="ef-field"><label class="ef-field__label" for="ledger-from">From</label>
+          <div class="forma-field"><label class="forma-field__label" for="ledger-from">From</label>
             <input id="ledger-from" type="date" data-event="ledgerFromChanged" data-on="change" data-bind-value="ledgerFrom" /></div>
-          <div class="ef-field"><label class="ef-field__label" for="ledger-to">To</label>
+          <div class="forma-field"><label class="forma-field__label" for="ledger-to">To</label>
             <input id="ledger-to" type="date" data-event="ledgerToChanged" data-on="change" data-bind-value="ledgerTo" /></div>
         </div>
         <template data-if="isAccountLedger">
-          <div class="ef-stack" id="account-ledger">
+          <div class="forma-stack" id="account-ledger">
             <h2 id="ledger-account-name" data-text="ledgerAccountName"></h2>
             <template data-if="hasLedgerOpening"><p class="summa-count">Balance brought forward <strong id="ledger-opening" data-text="ledgerOpening"></strong></p></template>
-            <div class="ef-data-grid" role="region" tabindex="0" aria-label="Entries to this account">
+            <div class="forma-data-grid" role="region" tabindex="0" aria-label="Entries to this account">
               <table class="summa-table" id="ledger-table">
-                <caption class="ef-visually-hidden">Entries to this account</caption>
+                <caption class="forma-visually-hidden">Entries to this account</caption>
                 <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Description</th><th scope="col" class="summa-number">Debit</th><th scope="col" class="summa-number">Credit</th><th scope="col" class="summa-number">Balance</th></tr></thead>
                 <tbody><template data-each="ledgerRows" data-key="key"><tr><td data-text="date" data-label="Date"></td><td data-label="Entry"><a class="summa-link" data-bind-href="href" data-text="entry"></a></td><td data-text="description" data-label="Description"></td><td class="summa-number" data-text="debit" data-label="Debit"></td><td class="summa-number" data-text="credit" data-label="Credit"></td><td class="summa-number" data-text="balance" data-label="Balance"></td></tr></template></tbody>
               </table>
@@ -1267,9 +1267,9 @@
           </div>
         </template>
         <template data-if="isJournal">
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Journal entries">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Journal entries">
             <table class="summa-table" id="journal-table">
-              <caption class="ef-visually-hidden">Journal entries</caption>
+              <caption class="forma-visually-hidden">Journal entries</caption>
               <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Description</th><th scope="col" class="summa-number">Amount</th></tr></thead>
               <tbody><template data-each="journalRows" data-key="key"><tr><td data-text="date" data-label="Date"></td><td data-label="Entry"><a class="summa-link" data-bind-href="href" data-text="entry"></a></td><td data-text="description" data-label="Description"></td><td class="summa-number" data-text="amount" data-label="Amount"></td></tr></template></tbody>
             </table>
@@ -1279,7 +1279,7 @@
     </template>
 
     <template data-if="onJournalEntry">
-      <section class="ef-stack" aria-labelledby="entry-title">
+      <section class="forma-stack" aria-labelledby="entry-title">
         <h1 id="entry-title">Journal entry <span data-text="entryId"></span></h1>
         <dl class="summa-facts">
           <div><dt>Date</dt><dd data-text="entryDate"></dd></div>
@@ -1289,11 +1289,11 @@
         </dl>
         <template data-if="hasEntryOrigin"><p>Posted by <a class="summa-link" id="entry-origin" data-bind-href="entryOriginHref" data-text="entryOrigin"></a></p></template>
         <template data-if="entryReverses"><p>Reverses <a class="summa-link" data-bind-href="entryReversesHref" data-text="entryReversesId"></a></p></template>
-        <section class="ef-stack" aria-labelledby="entry-explained-title">
+        <section class="forma-stack" aria-labelledby="entry-explained-title">
           <h2 id="entry-explained-title">Why was this posted?</h2>
           <ul id="entry-explanation"><template data-each="entryExplanation" data-key="key"><li data-text="text"></li></template></ul>
         </section>
-        <div class="ef-data-grid" role="region" tabindex="0" aria-label="Lines">
+        <div class="forma-data-grid" role="region" tabindex="0" aria-label="Lines">
           <table class="summa-table" id="entry-lines">
             <caption>Lines</caption>
             <thead><tr><th scope="col">Account</th><th scope="col">Memo</th><th scope="col" class="summa-number">Debit</th><th scope="col" class="summa-number">Credit</th></tr></thead>
@@ -1306,7 +1306,7 @@
 
     <!-- Reports (v0.1 §15, v0.2 §24, v0.4 §23). -->
     <template data-if="onReports">
-      <section class="ef-stack" aria-labelledby="reports-title">
+      <section class="forma-stack" aria-labelledby="reports-title">
         <h1 id="reports-title">Reports</h1>
         <ul class="summa-report-list">
           <li><a class="summa-link" id="trial-balance-link" data-bind-href="trialBalanceHref">Trial balance</a></li>
@@ -1323,26 +1323,26 @@
 
     <!-- Management report views (v0.4 §29-30): each view and period is a link. -->
     <template data-if="onManagement">
-      <section class="ef-stack" aria-labelledby="management-title">
+      <section class="forma-stack" aria-labelledby="management-title">
         <h1 id="management-title" data-text="managementTitle"></h1>
         <nav class="summa-tabs" aria-label="Report views">
           <template data-each="managementViews" data-key="key"><a class="summa-tab" data-bind-href="href" data-bind-aria-current="current" data-text="label"></a></template>
         </nav>
         <div class="summa-filters" role="search" aria-label="Period">
           <template data-if="managementIsPeriod">
-            <div class="ef-field"><label class="ef-field__label" for="management-from">From</label>
+            <div class="forma-field"><label class="forma-field__label" for="management-from">From</label>
               <input id="management-from" type="date" data-event="managementFromChanged" data-on="change" data-bind-value="managementFrom" /></div>
           </template>
-          <div class="ef-field"><label class="ef-field__label" for="management-to">To</label>
+          <div class="forma-field"><label class="forma-field__label" for="management-to">To</label>
             <input id="management-to" type="date" data-event="managementToChanged" data-on="change" data-bind-value="managementTo" /></div>
         </div>
         <p class="summa-count" id="management-period" data-text="managementPeriod"></p>
         <p class="summa-optional-note" id="management-note" data-text="managementNote"></p>
         <template data-if="noManagementRows"><p id="no-management-rows">Nothing in this period.</p></template>
         <template data-if="isBreakdown">
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Breakdown">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Breakdown">
             <table class="summa-table" id="management-table">
-              <caption class="ef-visually-hidden">Breakdown</caption>
+              <caption class="forma-visually-hidden">Breakdown</caption>
               <thead><tr><th scope="col">Name</th><th scope="col" class="summa-number">Amount</th></tr></thead>
               <tbody><template data-each="managementRows" data-key="key"><tr><td data-text="label" data-label="Name"></td><td class="summa-number" data-text="amount" data-label="Amount"></td></tr></template></tbody>
               <tfoot><tr><th scope="row">Total</th><td class="summa-number" id="management-total" data-text="managementTotal" data-label="Total"></td></tr></tfoot>
@@ -1350,9 +1350,9 @@
           </div>
         </template>
         <template data-if="isContribution">
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Contribution by engagement">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Contribution by engagement">
             <table class="summa-table" id="contribution-table">
-              <caption class="ef-visually-hidden">Contribution by engagement</caption>
+              <caption class="forma-visually-hidden">Contribution by engagement</caption>
               <thead><tr><th scope="col">Engagement</th><th scope="col" class="summa-number">Revenue</th><th scope="col" class="summa-number">Labor cost</th><th scope="col" class="summa-number">AI cost</th><th scope="col" class="summa-number">Infrastructure</th><th scope="col" class="summa-number">External expenses</th><th scope="col" class="summa-number">Contribution</th></tr></thead>
               <tbody><template data-each="contributionRows" data-key="key"><tr><td data-text="label" data-label="Engagement"></td><td class="summa-number" data-text="revenue" data-label="Revenue"></td><td class="summa-number" data-text="labor" data-label="Labor cost"></td><td class="summa-number" data-text="ai" data-label="AI cost"></td><td class="summa-number" data-text="infrastructure" data-label="Infrastructure"></td><td class="summa-number" data-text="expenses" data-label="External expenses"></td><td class="summa-number" data-text="contribution" data-label="Contribution"></td></tr></template></tbody>
               <tfoot><tr><th scope="row" colspan="6">Total contribution</th><td class="summa-number" id="contribution-total" data-text="managementTotal" data-label="Total contribution"></td></tr></tfoot>
@@ -1363,16 +1363,16 @@
     </template>
 
     <template data-if="onTrialBalance">
-      <section class="ef-stack" aria-labelledby="trial-balance-title">
+      <section class="forma-stack" aria-labelledby="trial-balance-title">
         <h1 id="trial-balance-title">Trial balance</h1>
         <div class="summa-filters" role="search" aria-label="Trial balance">
-          <div class="ef-field"><label class="ef-field__label" for="trial-as-of">As of</label>
+          <div class="forma-field"><label class="forma-field__label" for="trial-as-of">As of</label>
             <input id="trial-as-of" type="date" data-event="reportAsOfChanged" data-on="change" data-bind-value="reportAsOf" /></div>
         </div>
         <p class="summa-count">As of <span data-text="reportDate"></span>.</p>
-        <div class="ef-data-grid" role="region" tabindex="0" aria-label="Trial balance">
+        <div class="forma-data-grid" role="region" tabindex="0" aria-label="Trial balance">
           <table class="summa-table" id="trial-balance-table">
-            <caption class="ef-visually-hidden">Trial balance</caption>
+            <caption class="forma-visually-hidden">Trial balance</caption>
             <thead><tr><th scope="col">Code</th><th scope="col">Account</th><th scope="col" class="summa-number">Debit</th><th scope="col" class="summa-number">Credit</th></tr></thead>
             <tbody><template data-each="trialRows" data-key="key"><tr><td data-text="code" data-label="Code"></td><td data-label="Account"><a class="summa-link" data-bind-href="href" data-text="name"></a></td><td class="summa-number" data-text="debit" data-label="Debit"></td><td class="summa-number" data-text="credit" data-label="Credit"></td></tr></template></tbody>
             <tfoot><tr><th scope="row" colspan="2">Totals</th><td class="summa-number" id="trial-debits" data-text="trialDebits" data-label="Total debits"></td><td class="summa-number" id="trial-credits" data-text="trialCredits" data-label="Total credits"></td></tr></tfoot>
@@ -1383,14 +1383,14 @@
     </template>
 
     <template data-if="onIncomeStatement">
-      <section class="ef-stack" aria-labelledby="income-title">
+      <section class="forma-stack" aria-labelledby="income-title">
         <h1 id="income-title">Income statement</h1>
         <div class="summa-filters" role="search" aria-label="Income statement">
-          <div class="ef-field"><label class="ef-field__label" for="income-from">From</label>
+          <div class="forma-field"><label class="forma-field__label" for="income-from">From</label>
             <input id="income-from" type="date" data-event="incomeFromChanged" data-on="change" data-bind-value="incomeFrom" /></div>
-          <div class="ef-field"><label class="ef-field__label" for="income-to">To</label>
+          <div class="forma-field"><label class="forma-field__label" for="income-to">To</label>
             <input id="income-to" type="date" data-event="incomeToChanged" data-on="change" data-bind-value="incomeTo" /></div>
-          <div class="ef-field"><label class="ef-field__label" for="income-basis">Basis</label>
+          <div class="forma-field"><label class="forma-field__label" for="income-basis">Basis</label>
             <select id="income-basis" data-event="incomeBasisChosen" data-bind-value="incomeBasis">
               <option value="accrual">Accrual</option><option value="cash">Cash</option>
             </select></div>
@@ -1406,7 +1406,7 @@
           <div><dt>Expenses</dt><dd id="income-expenses" data-text="incomeExpenses"></dd></div>
           <div><dt>Net income</dt><dd id="income-net" data-text="incomeNet"></dd></div>
         </dl>
-        <div class="ef-data-grid" role="region" tabindex="0" aria-label="By account">
+        <div class="forma-data-grid" role="region" tabindex="0" aria-label="By account">
           <table class="summa-table" id="income-accounts">
             <caption>By account</caption>
             <thead><tr><th scope="col">Account</th><th scope="col">Kind</th><th scope="col" class="summa-number">Amount</th></tr></thead>
@@ -1417,10 +1417,10 @@
     </template>
 
     <template data-if="onBalanceSheet">
-      <section class="ef-stack" aria-labelledby="balance-sheet-title">
+      <section class="forma-stack" aria-labelledby="balance-sheet-title">
         <h1 id="balance-sheet-title">Balance sheet</h1>
         <div class="summa-filters" role="search" aria-label="Balance sheet">
-          <div class="ef-field"><label class="ef-field__label" for="sheet-as-of">As of</label>
+          <div class="forma-field"><label class="forma-field__label" for="sheet-as-of">As of</label>
             <input id="sheet-as-of" type="date" data-event="reportAsOfChanged" data-on="change" data-bind-value="reportAsOf" /></div>
         </div>
         <p class="summa-count">As of <span data-text="reportDate"></span>.</p>
@@ -1436,12 +1436,12 @@
 
     <!-- Accounting periods and closing them (v0.1 §2, v0.4 period close). -->
     <template data-if="onPeriods">
-      <section class="ef-stack" aria-labelledby="periods-title">
+      <section class="forma-stack" aria-labelledby="periods-title">
         <h1 id="periods-title">Periods <span data-text="periodsYear"></span></h1>
         <p><a class="summa-link" id="previous-year" data-bind-href="previousYearHref">Previous year</a> · <a class="summa-link" id="next-year" data-bind-href="nextYearHref">Next year</a></p>
-        <div class="ef-data-grid" role="region" tabindex="0" aria-label="Months">
+        <div class="forma-data-grid" role="region" tabindex="0" aria-label="Months">
           <table class="summa-table" id="periods-table">
-            <caption class="ef-visually-hidden">Months</caption>
+            <caption class="forma-visually-hidden">Months</caption>
             <thead><tr><th scope="col">Month</th><th scope="col">State</th><th scope="col" class="summa-number">Entries</th></tr></thead>
             <tbody><template data-each="months" data-key="key"><tr><td data-label="Month"><a class="summa-link" data-bind-href="href" data-text="label"></a></td><td data-text="state" data-label="State"></td><td class="summa-number" data-text="entries" data-label="Entries"></td></tr></template></tbody>
           </table>
@@ -1450,7 +1450,7 @@
     </template>
 
     <template data-if="onPeriod">
-      <section class="ef-stack" aria-labelledby="period-title">
+      <section class="forma-stack" aria-labelledby="period-title">
         <h1 id="period-title" data-text="periodLabel"></h1>
         <p>State: <strong id="period-state" data-text="periodState"></strong> · <a class="summa-link" data-bind-href="periodYearHref">All months</a></p>
         <ul class="summa-checks" id="period-checks">
@@ -1462,42 +1462,42 @@
             <ul><template data-each="periodBlockers" data-key="key"><li data-text="blocker"></li></template></ul>
           </div>
         </template>
-        <div class="ef-actions">
-          <template data-if="canClosePeriod"><button type="button" class="ef-button" id="close-period" commandfor="close-dialog" command="show-modal">Close period…</button></template>
-          <template data-if="canLockPeriod"><button type="button" class="ef-button" data-variant="secondary" id="lock-period" commandfor="lock-dialog" command="show-modal">Lock period…</button></template>
-          <template data-if="canReopenPeriod"><button type="button" class="ef-button" data-variant="danger" id="reopen-period" commandfor="reopen-dialog" command="show-modal">Reopen period…</button></template>
+        <div class="forma-actions">
+          <template data-if="canClosePeriod"><button type="button" class="forma-button" id="close-period" commandfor="close-dialog" command="show-modal">Close period…</button></template>
+          <template data-if="canLockPeriod"><button type="button" class="forma-button" data-variant="secondary" id="lock-period" commandfor="lock-dialog" command="show-modal">Lock period…</button></template>
+          <template data-if="canReopenPeriod"><button type="button" class="forma-button" data-variant="danger" id="reopen-period" commandfor="reopen-dialog" command="show-modal">Reopen period…</button></template>
         </div>
-        <dialog class="ef-dialog" id="close-dialog" aria-labelledby="close-dialog-title" aria-describedby="close-dialog-text">
-              <div class="ef-dialog__body">
+        <dialog class="forma-dialog" id="close-dialog" aria-labelledby="close-dialog-title" aria-describedby="close-dialog-text">
+              <div class="forma-dialog__body">
                 <h2 id="close-dialog-title">Close this month?</h2>
                 <p id="close-dialog-text" data-text="confirmCloseText"></p>
               </div>
-              <div class="ef-dialog__actions">
-                <button type="button" class="ef-button" data-variant="secondary" id="close-dialog-cancel" commandfor="close-dialog" command="close">Keep it open</button>
-                <button type="button" class="ef-button" id="confirm-close" data-event="periodClosed" commandfor="close-dialog" command="close">Close period</button>
+              <div class="forma-dialog__actions">
+                <button type="button" class="forma-button" data-variant="secondary" id="close-dialog-cancel" commandfor="close-dialog" command="close">Keep it open</button>
+                <button type="button" class="forma-button" id="confirm-close" data-event="periodClosed" commandfor="close-dialog" command="close">Close period</button>
               </div>
             </dialog>
-        <dialog class="ef-dialog" id="lock-dialog" aria-labelledby="lock-dialog-title" aria-describedby="lock-dialog-text">
-              <div class="ef-dialog__body">
+        <dialog class="forma-dialog" id="lock-dialog" aria-labelledby="lock-dialog-title" aria-describedby="lock-dialog-text">
+              <div class="forma-dialog__body">
                 <h2 id="lock-dialog-title">Lock this month?</h2>
                 <p id="lock-dialog-text" data-text="confirmLockText"></p>
               </div>
-              <div class="ef-dialog__actions">
-                <button type="button" class="ef-button" data-variant="secondary" id="lock-dialog-cancel" commandfor="lock-dialog" command="close">Not yet</button>
-                <button type="button" class="ef-button" id="confirm-lock" data-event="periodLocked" commandfor="lock-dialog" command="close">Lock period</button>
+              <div class="forma-dialog__actions">
+                <button type="button" class="forma-button" data-variant="secondary" id="lock-dialog-cancel" commandfor="lock-dialog" command="close">Not yet</button>
+                <button type="button" class="forma-button" id="confirm-lock" data-event="periodLocked" commandfor="lock-dialog" command="close">Lock period</button>
               </div>
             </dialog>
-        <dialog class="ef-dialog" id="reopen-dialog" aria-labelledby="reopen-dialog-title" aria-describedby="reopen-dialog-text">
-              <div class="ef-dialog__body">
+        <dialog class="forma-dialog" id="reopen-dialog" aria-labelledby="reopen-dialog-title" aria-describedby="reopen-dialog-text">
+              <div class="forma-dialog__body">
                 <h2 id="reopen-dialog-title">Reopen this month?</h2>
                 <p id="reopen-dialog-text" data-text="confirmReopenText"></p>
               </div>
-              <div class="ef-dialog__actions">
-                <button type="button" class="ef-button" data-variant="secondary" id="reopen-dialog-cancel" commandfor="reopen-dialog" command="close">Keep it closed</button>
-                <button type="button" class="ef-button" data-variant="danger" id="confirm-reopen" data-event="periodReopened" commandfor="reopen-dialog" command="close">Reopen period</button>
+              <div class="forma-dialog__actions">
+                <button type="button" class="forma-button" data-variant="secondary" id="reopen-dialog-cancel" commandfor="reopen-dialog" command="close">Keep it closed</button>
+                <button type="button" class="forma-button" data-variant="danger" id="confirm-reopen" data-event="periodReopened" commandfor="reopen-dialog" command="close">Reopen period</button>
               </div>
             </dialog>
-        <div class="ef-data-grid" role="region" tabindex="0" aria-label="Entries">
+        <div class="forma-data-grid" role="region" tabindex="0" aria-label="Entries">
           <table class="summa-table" id="period-entries">
             <caption>Entries</caption>
             <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Description</th><th scope="col" class="summa-number">Amount</th></tr></thead>
@@ -1509,23 +1509,23 @@
 
     <!-- Everything that needs attention, in one list (v0.4 §31). -->
     <template data-if="onWork">
-      <section class="ef-stack" aria-labelledby="work-title">
+      <section class="forma-stack" aria-labelledby="work-title">
         <h1 id="work-title">Work</h1>
         <p><a class="summa-link" id="work-follow-up" data-bind-href="followUpHref">Follow-up</a> · <a class="summa-link" id="work-inbox" data-bind-href="inboxHref">Payments inbox</a> · <a class="summa-link" id="work-cpa" data-bind-href="cpaHref">CPA workspace</a></p>
         <template data-if="noWork"><p id="no-work">Nothing needs attention.</p></template>
         <template data-if="hasWork">
           <ul class="summa-work" id="work-list">
-            <template data-each="workItems" data-key="key"><li><span class="ef-status-lozenge" data-text="kind"></span> <a class="summa-link" data-bind-href="href" data-text="text"></a> <span class="summa-optional-note summa-trigger" data-text="trigger"></span></li></template>
+            <template data-each="workItems" data-key="key"><li><span class="forma-status-lozenge" data-text="kind"></span> <a class="summa-link" data-bind-href="href" data-text="text"></a> <span class="summa-optional-note summa-trigger" data-text="trigger"></span></li></template>
           </ul>
         </template>
-        <section class="ef-stack" aria-labelledby="integrations-title" id="integrations">
+        <section class="forma-stack" aria-labelledby="integrations-title" id="integrations">
           <h2 id="integrations-title">Integrations</h2>
           <p>An outside system being unavailable never changes the books. Each one's state, and what to do.</p>
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Integration states">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Integration states">
             <table class="summa-table" id="integrations-table">
-              <caption class="ef-visually-hidden">Integration states</caption>
+              <caption class="forma-visually-hidden">Integration states</caption>
               <thead><tr><th scope="col">System</th><th scope="col">State</th><th scope="col">Details</th></tr></thead>
-              <tbody><template data-each="integrations" data-key="key"><tr><td data-text="name" data-label="System"></td><td data-label="State"><span class="ef-status-lozenge" data-bind-data-state="stateKey" data-text="state"></span></td><td data-label="Details"><a class="summa-link" data-bind-href="href" data-text="detail"></a></td></tr></template></tbody>
+              <tbody><template data-each="integrations" data-key="key"><tr><td data-text="name" data-label="System"></td><td data-label="State"><span class="forma-status-lozenge" data-bind-data-state="stateKey" data-text="state"></span></td><td data-label="Details"><a class="summa-link" data-bind-href="href" data-text="detail"></a></td></tr></template></tbody>
             </table>
           </div>
         </section>
@@ -1534,7 +1534,7 @@
 
     <!-- Overdue and disputed invoices (v0.4 §14-17). -->
     <template data-if="onFollowUp">
-      <section class="ef-stack" aria-labelledby="follow-up-list-title">
+      <section class="forma-stack" aria-labelledby="follow-up-list-title">
         <h1 id="follow-up-list-title">Follow-up</h1>
         <div class="summa-tabs" role="group" aria-label="Which invoices">
           <template data-each="followUpTabs" data-key="value">
@@ -1543,11 +1543,11 @@
         </div>
         <template data-if="noFollowRows"><p id="no-follow-up">No invoice here.</p></template>
         <template data-if="hasFollowRows">
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Invoices to follow up">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Invoices to follow up">
             <table class="summa-table" id="follow-up-table">
-              <caption class="ef-visually-hidden">Invoices to follow up</caption>
-              <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Due</th><th scope="col">Late</th><th scope="col">Follow-up</th><th scope="col" class="summa-number">Outstanding</th><th scope="col"><span class="ef-visually-hidden">Actions</span></th></tr></thead>
-              <tbody><template data-each="followRows" data-key="id"><tr><td data-label="Invoice"><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="customer" data-label="Customer"></td><td data-text="dueDate" data-label="Due"></td><td data-text="late" data-label="Late"></td><td data-label="Follow-up"><span data-text="collection"></span> <span data-text="dispute"></span> <span data-text="promise"></span></td><td class="summa-number" data-text="outstanding" data-label="Outstanding"></td><td data-label="Actions"><button type="button" class="ef-button summa-remind" data-variant="secondary" data-event="reminderRecorded">Reminder sent</button></td></tr></template></tbody>
+              <caption class="forma-visually-hidden">Invoices to follow up</caption>
+              <thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col">Due</th><th scope="col">Late</th><th scope="col">Follow-up</th><th scope="col" class="summa-number">Outstanding</th><th scope="col"><span class="forma-visually-hidden">Actions</span></th></tr></thead>
+              <tbody><template data-each="followRows" data-key="id"><tr><td data-label="Invoice"><a class="summa-link" data-bind-href="href" data-text="number"></a></td><td data-text="customer" data-label="Customer"></td><td data-text="dueDate" data-label="Due"></td><td data-text="late" data-label="Late"></td><td data-label="Follow-up"><span data-text="collection"></span> <span data-text="dispute"></span> <span data-text="promise"></span></td><td class="summa-number" data-text="outstanding" data-label="Outstanding"></td><td data-label="Actions"><button type="button" class="forma-button summa-remind" data-variant="secondary" data-event="reminderRecorded">Reminder sent</button></td></tr></template></tbody>
             </table>
           </div>
         </template>
@@ -1556,10 +1556,10 @@
 
     <!-- Payments not fully applied (v0.4 §13). -->
     <template data-if="onInbox">
-      <section class="ef-stack" aria-labelledby="inbox-title">
+      <section class="forma-stack" aria-labelledby="inbox-title">
         <h1 id="inbox-title">Payments inbox</h1>
         <div class="summa-filters" role="search" aria-label="Payments inbox">
-          <div class="ef-field"><label class="ef-field__label" for="inbox-customer">Customer</label>
+          <div class="forma-field"><label class="forma-field__label" for="inbox-customer">Customer</label>
             <select id="inbox-customer" data-event="inboxCustomerChosen" data-bind-value="inboxCustomer">
               <option value="">All customers</option>
               <template data-each="inboxCustomerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
@@ -1567,41 +1567,41 @@
         </div>
         <template data-if="noInboxRows"><p id="inbox-empty">Every payment is applied.</p></template>
         <template data-if="hasInboxRows">
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Payments not fully applied">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Payments not fully applied">
             <table class="summa-table" id="inbox-table">
-              <caption class="ef-visually-hidden">Payments not fully applied</caption>
-              <thead><tr><th scope="col">Payment</th><th scope="col">Received</th><th scope="col">Customer</th><th scope="col">Reference</th><th scope="col" class="summa-number">Not applied</th><th scope="col">Open invoices</th><th scope="col"><span class="ef-visually-hidden">Actions</span></th></tr></thead>
-              <tbody><template data-each="inboxRows" data-key="id"><tr><td data-label="Payment"><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date" data-label="Received"></td><td data-text="customer" data-label="Customer"></td><td data-text="reference" data-label="Reference"></td><td class="summa-number" data-text="unapplied" data-label="Not applied"></td><td data-label="Open invoices"><span data-text="openInvoices"></span><br /><span class="summa-suggestion" data-text="suggestion"></span></td><td class="summa-row-actions" data-label="Actions"><button type="button" class="ef-button summa-apply" data-event="inboxApplied" data-bind-disabled="noApply">Apply as suggested</button> <a class="summa-link summa-choose" data-bind-href="href">Choose an invoice</a> <button type="button" class="ef-button summa-credit" data-variant="secondary" data-event="inboxCredited">Keep as credit</button></td></tr></template></tbody>
+              <caption class="forma-visually-hidden">Payments not fully applied</caption>
+              <thead><tr><th scope="col">Payment</th><th scope="col">Received</th><th scope="col">Customer</th><th scope="col">Reference</th><th scope="col" class="summa-number">Not applied</th><th scope="col">Open invoices</th><th scope="col"><span class="forma-visually-hidden">Actions</span></th></tr></thead>
+              <tbody><template data-each="inboxRows" data-key="id"><tr><td data-label="Payment"><a class="summa-link" data-bind-href="href" data-text="id"></a></td><td data-text="date" data-label="Received"></td><td data-text="customer" data-label="Customer"></td><td data-text="reference" data-label="Reference"></td><td class="summa-number" data-text="unapplied" data-label="Not applied"></td><td data-label="Open invoices"><span data-text="openInvoices"></span><br /><span class="summa-suggestion" data-text="suggestion"></span></td><td class="summa-row-actions" data-label="Actions"><button type="button" class="forma-button summa-apply" data-event="inboxApplied" data-bind-disabled="noApply">Apply as suggested</button> <a class="summa-link summa-choose" data-bind-href="href">Choose an invoice</a> <button type="button" class="forma-button summa-credit" data-variant="secondary" data-event="inboxCredited">Keep as credit</button></td></tr></template></tbody>
             </table>
           </div>
         </template>
-        <form class="ef-surface ef-stack" id="receipt-form" data-event="receiptRecorded" aria-labelledby="receipt-title">
+        <form class="forma-surface forma-stack" id="receipt-form" data-event="receiptRecorded" aria-labelledby="receipt-title">
           <h2 id="receipt-title">Record a payment received</h2>
           <div class="summa-fields">
-            <div class="ef-field"><label class="ef-field__label" for="receipt-customer">From</label>
+            <div class="forma-field"><label class="forma-field__label" for="receipt-customer">From</label>
               <select id="receipt-customer" data-event="receiptCustomerChanged" data-bind-value="receiptCustomer">
                 <option value="">Choose a customer</option>
                 <template data-each="receiptCustomerOptions" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
               </select></div>
-            <div class="ef-field"><label class="ef-field__label" for="receipt-amount">Amount</label>
+            <div class="forma-field"><label class="forma-field__label" for="receipt-amount">Amount</label>
               <input id="receipt-amount" type="text" inputmode="decimal" required data-event="receiptAmountChanged" data-on="input" data-bind-value="receiptAmount" /></div>
-            <div class="ef-field"><label class="ef-field__label" for="receipt-date">Received</label>
+            <div class="forma-field"><label class="forma-field__label" for="receipt-date">Received</label>
               <input id="receipt-date" type="date" data-event="receiptDateChanged" data-on="input" data-bind-value="receiptDate" /></div>
-            <div class="ef-field"><label class="ef-field__label" for="receipt-method">Method</label>
+            <div class="forma-field"><label class="forma-field__label" for="receipt-method">Method</label>
               <select id="receipt-method" data-event="receiptMethodChanged" data-bind-value="receiptMethod">
                 <option value="ach">ACH</option><option value="check">Check</option><option value="wire">Wire</option><option value="credit-card">Card</option><option value="cash">Cash</option><option value="other">Other</option>
               </select></div>
-            <div class="ef-field"><label class="ef-field__label" for="receipt-reference">Reference</label>
+            <div class="forma-field"><label class="forma-field__label" for="receipt-reference">Reference</label>
               <input id="receipt-reference" type="text" data-event="receiptReferenceChanged" data-on="input" data-bind-value="receiptReference" /></div>
           </div>
-          <div class="ef-actions"><button type="submit" class="ef-button" id="record-receipt">Record payment</button></div>
+          <div class="forma-actions"><button type="submit" class="forma-button" id="record-receipt">Record payment</button></div>
         </form>
       </section>
     </template>
 
     <!-- The CPA workspace for a year (v0.4 §27-28). -->
     <template data-if="onCpa">
-      <section class="ef-stack" aria-labelledby="cpa-title">
+      <section class="forma-stack" aria-labelledby="cpa-title">
         <h1 id="cpa-title">CPA workspace <span data-text="cpaYear"></span></h1>
         <p><a class="summa-link" id="cpa-previous" data-bind-href="cpaPreviousHref">Previous year</a> · <a class="summa-link" id="cpa-next" data-bind-href="cpaNextHref">Next year</a> · <span id="cpa-closed" data-text="cpaClosedMonths"></span></p>
         <ul class="summa-report-list">
@@ -1613,14 +1613,14 @@
           <li><a class="summa-link" id="cpa-periods" data-bind-href="cpaPeriodsHref">Periods</a></li>
         </ul>
         <template data-if="canExport">
-          <div class="ef-actions">
-            <button type="button" class="ef-button" data-variant="secondary" id="export-trial-balance" data-event="cpaTrialBalanceExported">Download trial balance (CSV)</button>
-            <button type="button" class="ef-button" data-variant="secondary" id="export-journal" data-event="cpaJournalExported">Download journal (CSV)</button>
-            <button type="button" class="ef-button" data-variant="secondary" id="export-invoices" data-event="cpaInvoicesExported">Download invoices (CSV)</button>
+          <div class="forma-actions">
+            <button type="button" class="forma-button" data-variant="secondary" id="export-trial-balance" data-event="cpaTrialBalanceExported">Download trial balance (CSV)</button>
+            <button type="button" class="forma-button" data-variant="secondary" id="export-journal" data-event="cpaJournalExported">Download journal (CSV)</button>
+            <button type="button" class="forma-button" data-variant="secondary" id="export-invoices" data-event="cpaInvoicesExported">Download invoices (CSV)</button>
           </div>
         </template>
         <template data-if="hasCpaAdjustments">
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Adjusting, opening and closing entries">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Adjusting, opening and closing entries">
             <table class="summa-table" id="cpa-adjustments">
               <caption>Adjusting, opening and closing entries</caption>
               <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Kind</th><th scope="col">Description</th></tr></thead>
@@ -1633,49 +1633,49 @@
 
     <!-- The issuer shown on new invoices. -->
     <template data-if="onSettings">
-      <section class="ef-stack" aria-labelledby="settings-title">
+      <section class="forma-stack" aria-labelledby="settings-title">
         <h1 id="settings-title">Settings</h1>
-        <form class="ef-surface ef-stack" id="company-form" data-event="companySaved" aria-labelledby="company-title">
+        <form class="forma-surface forma-stack" id="company-form" data-event="companySaved" aria-labelledby="company-title">
           <h2 id="company-title">Company on invoices</h2>
-          <div class="ef-field"><label class="ef-field__label" for="company-legal-name">Legal name</label>
+          <div class="forma-field"><label class="forma-field__label" for="company-legal-name">Legal name</label>
             <input id="company-legal-name" type="text" required data-event="companyLegalNameChanged" data-on="input" data-bind-value="companyLegalName" /></div>
-          <div class="ef-field"><label class="ef-field__label" for="company-address">Address</label>
+          <div class="forma-field"><label class="forma-field__label" for="company-address">Address</label>
             <textarea id="company-address" rows="3" data-event="companyAddressChanged" data-on="input" data-bind-value="companyAddress"></textarea></div>
-          <div class="ef-field"><label class="ef-field__label" for="company-email">Billing email</label>
+          <div class="forma-field"><label class="forma-field__label" for="company-email">Billing email</label>
             <input id="company-email" type="email" data-event="companyEmailChanged" data-on="input" data-bind-value="companyEmail" /></div>
-          <div class="ef-field"><label class="ef-field__label" for="company-payment">Payment instructions</label>
+          <div class="forma-field"><label class="forma-field__label" for="company-payment">Payment instructions</label>
             <textarea id="company-payment" rows="3" aria-describedby="company-payment-note" data-event="companyPaymentChanged" data-on="input" data-bind-value="companyPayment"></textarea>
-            <p class="ef-field__description" id="company-payment-note">Printed on invoices. Show masked account numbers only, never a full account number.</p></div>
-          <div class="ef-actions"><button type="submit" class="ef-button" id="save-company">Save</button></div>
+            <p class="forma-field__description" id="company-payment-note">Printed on invoices. Show masked account numbers only, never a full account number.</p></div>
+          <div class="forma-actions"><button type="submit" class="forma-button" id="save-company">Save</button></div>
         </form>
-        <section class="ef-surface ef-stack" aria-labelledby="legal-title" id="organization-legal">
+        <section class="forma-surface forma-stack" aria-labelledby="legal-title" id="organization-legal">
           <h2 id="legal-title">Legal fields on invoices</h2>
           <p>Shown on new invoices exactly as recorded. Showing a field does not make an invoice compliant with any jurisdiction's law.</p>
-          <div class="ef-data-grid" role="region" tabindex="0" aria-label="Recorded legal fields">
+          <div class="forma-data-grid" role="region" tabindex="0" aria-label="Recorded legal fields">
             <table class="summa-table" id="organization-legal-fields">
-              <caption class="ef-visually-hidden">Recorded legal fields</caption>
-              <thead><tr><th scope="col">Field</th><th scope="col">Jurisdiction</th><th scope="col">Value</th><th scope="col"><span class="ef-visually-hidden">Remove</span></th></tr></thead>
-              <tbody><template data-each="legalFields" data-key="key"><tr><td data-text="label" data-label="Field"></td><td data-text="jurisdiction" data-label="Jurisdiction"></td><td class="summa-pre" data-text="value" data-label="Value"></td><td data-label="Remove"><button type="button" class="ef-button summa-remove" data-variant="secondary" data-event="organizationLegalFieldRemoved">Remove</button></td></tr></template></tbody>
+              <caption class="forma-visually-hidden">Recorded legal fields</caption>
+              <thead><tr><th scope="col">Field</th><th scope="col">Jurisdiction</th><th scope="col">Value</th><th scope="col"><span class="forma-visually-hidden">Remove</span></th></tr></thead>
+              <tbody><template data-each="legalFields" data-key="key"><tr><td data-text="label" data-label="Field"></td><td data-text="jurisdiction" data-label="Jurisdiction"></td><td class="summa-pre" data-text="value" data-label="Value"></td><td data-label="Remove"><button type="button" class="forma-button summa-remove" data-variant="secondary" data-event="organizationLegalFieldRemoved">Remove</button></td></tr></template></tbody>
             </table>
           </div>
-          <form class="ef-stack" id="organization-legal-form" data-event="organizationLegalFieldAdded">
-            <div class="ef-field"><label class="ef-field__label" for="legal-kind">Field</label>
+          <form class="forma-stack" id="organization-legal-form" data-event="organizationLegalFieldAdded">
+            <div class="forma-field"><label class="forma-field__label" for="legal-kind">Field</label>
               <select id="legal-kind" data-event="legalKindChosen" data-on="change">
                 <template data-each="organizationLegalKinds" data-key="value"><option data-bind-value="value" data-bind-selected="selected" data-text="label"></option></template>
               </select></div>
-            <div class="ef-field"><label class="ef-field__label" for="legal-jurisdiction">Jurisdiction</label>
+            <div class="forma-field"><label class="forma-field__label" for="legal-jurisdiction">Jurisdiction</label>
               <input id="legal-jurisdiction" type="text" aria-describedby="legal-jurisdiction-note" data-event="legalJurisdictionChanged" data-on="input" data-bind-value="legalJurisdiction" />
-              <p class="ef-field__description" id="legal-jurisdiction-note">A country code such as GB, or a subdivision such as US-NY.</p></div>
-            <div class="ef-field"><label class="ef-field__label" for="legal-value">Value</label>
+              <p class="forma-field__description" id="legal-jurisdiction-note">A country code such as GB, or a subdivision such as US-NY.</p></div>
+            <div class="forma-field"><label class="forma-field__label" for="legal-value">Value</label>
               <textarea id="legal-value" rows="2" data-event="legalValueChanged" data-on="input" data-bind-value="legalValue"></textarea></div>
-            <div class="ef-actions"><button type="submit" class="ef-button" id="add-legal-field">Add legal field</button></div>
+            <div class="forma-actions"><button type="submit" class="forma-button" id="add-legal-field">Add legal field</button></div>
           </form>
         </section>
         <template data-if="canCheckBooks">
-          <section class="ef-surface ef-stack" aria-labelledby="check-title" id="books-check">
+          <section class="forma-surface forma-stack" aria-labelledby="check-title" id="books-check">
             <h2 id="check-title">Check the books against GitHub</h2>
             <p>Every financial record's history on GitHub is read, to find any edited outside Summa. Nothing found is changed; what is found is listed here.</p>
-            <button type="button" class="ef-button" data-variant="secondary" id="check-books" data-event="checkRequested" data-bind-disabled="isCheckingBooks">Check the books</button>
+            <button type="button" class="forma-button" data-variant="secondary" id="check-books" data-event="checkRequested" data-bind-disabled="isCheckingBooks">Check the books</button>
             <template data-if="booksCheckedClean"><p id="check-clean">No record was edited outside Summa, and every record passed its checks.</p></template>
             <ul id="check-findings">
               <template data-each="checkFindings" data-key="key"><li data-text="finding"></li></template>

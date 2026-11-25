@@ -29,7 +29,7 @@ test("the page runs on Limen, Forma and Folio from the pinned packages", async (
     "../node_modules/@echelon-foundry/print-components/src/styles/print.css"
   ]));
   const token = await page.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue("--ef-color-accent-primary").trim());
+    getComputedStyle(document.documentElement).getPropertyValue("--forma-color-accent-primary").trim());
   expect(token).not.toBe("");
   // A plain <span> is inline; Forma's status lozenge rule lays it out.
   await expect(page.locator("#row-count")).not.toHaveCSS("display", "inline");
@@ -39,7 +39,7 @@ test("the page runs on Limen, Forma and Folio from the pinned packages", async (
     .every((name) => customElements.get(name) !== undefined))).toBe(true);
 
   // Forma's authoring wrappers stay inert: never registered as elements.
-  expect(await page.evaluate(() => customElements.get("ef-data-grid"))).toBeUndefined();
+  expect(await page.evaluate(() => customElements.get("forma-data-grid"))).toBeUndefined();
 
   await expect(page.getByRole("heading", { name: "No work items" })).toBeVisible();
 });
@@ -87,14 +87,14 @@ test("a row offers exactly the actions the server allows, and its lifecycle runs
   await page.click("#start-dialog-confirm");
   await expect(page.locator("#start-dialog")).toBeHidden();
   await expect.poll(async () => (await queueRows(page))[0][2]).toBe("active");
-  await expect(page.locator('#work-table-body tr[data-id="WI-0001"] .ef-status-lozenge')).toHaveAttribute("data-state", "attention");
+  await expect(page.locator('#work-table-body tr[data-id="WI-0001"] .forma-status-lozenge')).toHaveAttribute("data-state", "attention");
 
   await action(page, "WI-0001", "Block").click();
   await expect(page.locator("#reason-dialog-title")).toHaveText("Reason for blocking");
   await page.fill("#reason-dialog-input", "waiting on review");
   await page.click("#reason-dialog-confirm");
   await expect.poll(async () => (await queueRows(page))[0][2]).toBe("blocked");
-  await expect(page.locator('#work-table-body tr[data-id="WI-0001"] .ef-status-lozenge')).toHaveAttribute("data-state", "blocked");
+  await expect(page.locator('#work-table-body tr[data-id="WI-0001"] .forma-status-lozenge')).toHaveAttribute("data-state", "blocked");
 
   await action(page, "WI-0001", "Resume").click();
   await expect.poll(async () => (await queueRows(page))[0][2]).toBe("active");
@@ -112,7 +112,7 @@ test("a row offers exactly the actions the server allows, and its lifecycle runs
   await evidence.nth(1).locator("input").nth(1).fill("tests.txt");
   await page.click("#complete-dialog-confirm");
   await expect.poll(async () => (await queueRows(page))[0][2]).toBe("complete");
-  await expect(page.locator('#work-table-body tr[data-id="WI-0001"] .ef-status-lozenge')).toHaveAttribute("data-state", "ok");
+  await expect(page.locator('#work-table-body tr[data-id="WI-0001"] .forma-status-lozenge')).toHaveAttribute("data-state", "ok");
 });
 
 test("a server refusal is an ordinary error, not an operational fault", async ({ backlog }) => {
@@ -218,9 +218,9 @@ test("an unreadable server response is an Aegis fault, shown through Forma's fau
 
   const fault = page.locator("#operational-fault");
   await expect(fault).toBeVisible();
-  await expect(fault).toHaveAttribute("data-ef-severity", "error");
-  await expect(fault.locator(".ef-fault__message")).toHaveText(/could not read/);
-  await expect(fault.locator(".ef-fault-reference code")).not.toHaveText("");
+  await expect(fault).toHaveAttribute("data-forma-severity", "error");
+  await expect(fault.locator(".forma-fault__message")).toHaveText(/could not read/);
+  await expect(fault.locator(".forma-fault-reference code")).not.toHaveText("");
   // The fault is not an ordinary error, and it does not leak the exception.
   await expect(page.locator("#error")).toHaveCount(0);
   await expect(fault).not.toContainText("MalformedInput");

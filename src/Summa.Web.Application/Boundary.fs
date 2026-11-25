@@ -112,14 +112,17 @@ let private finished (run: Task<'value>) : 'value = run.GetAwaiter().GetResult()
 /// fault when it failed operationally. Programming defects and cancellation
 /// are re-raised by Aegis, not returned.
 ///
-/// Aegis 2.x `capture` records every fault through `Async.RunSynchronously`.
-/// In the browser the engine runs on the single WebAssembly thread, where
-/// that wait never returns and the page hangs. So the step runs here, on the
-/// calling thread and outside any async (the bridge starts its own), and only
-/// a failure goes to `captureAsync`, started on the calling thread: with the
-/// default `Detached` persistence, which the browser uses, the fault is
-/// classified and its record handed off without waiting, so the run has
-/// finished before `finished` reads it.
+/// Aegis 2.0.0 and 2.0.1 `capture` waited synchronously for every fault
+/// record, even with `Detached` persistence; on the single WebAssembly thread
+/// that wait never returned and the page hung. From Aegis 2.0.2 (the version
+/// pinned) a detached `capture` starts the record and returns without a
+/// blocking wait; only `Blocking` persistence (`forCommandLine`, never used
+/// in the browser) waits. The step still runs here, on the calling thread and
+/// outside any async (the bridge starts its own), and only a failure goes to
+/// `captureAsync`, started on the calling thread: with the default `Detached`
+/// persistence, which the browser uses, the fault is classified and its
+/// record handed off without waiting, so the run has finished before
+/// `finished` reads it.
 let capture (aegis: AegisConfig) (operation: string) (step: unit -> 'result) : Result<'result, FaultView> =
     let scope = Aegis.scope aegis operation Map.empty
 
