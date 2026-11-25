@@ -14,7 +14,9 @@
 /// The declared boundaries are in aegis-boundaries.json.
 module Summa.Web.Application.Boundary
 
+open System.Runtime.ExceptionServices
 open System.Text.Json
+open System.Threading.Tasks
 open Aegis
 open Summa.Web.Engine.Common
 open Summa.Web.Application.Json
@@ -92,10 +94,43 @@ let faultView (fault: FaultView option) : View =
       "operationalFaultMessage", Value(Text(fault |> Option.map _.Message |> Option.defaultValue ""))
       "operationalFaultReference", Value(Text(fault |> Option.map _.Reference |> Option.defaultValue "")) ]
 
+/// The step's value, or its failure kept with the stack it was raised on.
+let private attempt (step: unit -> 'result) : Result<'result, ExceptionDispatchInfo> =
+    try
+        Ok(step ())
+    with ex ->
+        Result.Error(ExceptionDispatchInfo.Capture ex)
+
+/// The outcome of a boundary run started on the calling thread: its value,
+/// or the exception Aegis re-raised (a programming defect, or cancellation)
+/// with its own type. A run that has already finished is read without
+/// waiting; only a run whose fault record must be awaited (`Blocking`
+/// persistence, never used in the browser) waits for it.
+let private finished (run: Task<'value>) : 'value = run.GetAwaiter().GetResult()
+
 /// Runs one step of a page at the boundary: its result, or the presented
 /// fault when it failed operationally. Programming defects and cancellation
 /// are re-raised by Aegis, not returned.
+///
+/// Aegis 2.x `capture` records every fault through `Async.RunSynchronously`.
+/// In the browser the engine runs on the single WebAssembly thread, where
+/// that wait never returns and the page hangs. So the step runs here, on the
+/// calling thread and outside any async (the bridge starts its own), and only
+/// a failure goes to `captureAsync`, started on the calling thread: with the
+/// default `Detached` persistence, which the browser uses, the fault is
+/// classified and its record handed off without waiting, so the run has
+/// finished before `finished` reads it.
 let capture (aegis: AegisConfig) (operation: string) (step: unit -> 'result) : Result<'result, FaultView> =
     let scope = Aegis.scope aegis operation Map.empty
 
-    Aegis.capture aegis scope (classify aegis) step |> Result.mapError present
+    match attempt step with
+    | Ok value -> Ok value
+    | Result.Error failure ->
+        Aegis.captureAsync aegis scope (classify aegis) (fun () ->
+            async {
+                failure.Throw()
+                return Unchecked.defaultof<'result>
+            })
+        |> Async.StartImmediateAsTask
+        |> finished
+        |> Result.mapError present

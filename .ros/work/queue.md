@@ -65,3 +65,4 @@
 | WI-0051 | Summa: local books encrypted at rest in the browser (SUM3-024 remainder) | captured | summa, security, encryption | medium |
 | WI-0052 | Summa: adopt Forma and Folio through Conditor 0.9.0 (step 1: echelon-current 1.19.0, step 2: 1.20.0) | complete | summa, foundations, forma, folio | medium |
 | WI-0053 | Upgrade Aegis 1.0.0 -> 2.0.0 (echelon-current 1.40.0) | complete |  | medium |
+| WI-0054 | Aegis 2.x capture hangs the browser on a fault: record faults without Async.RunSynchronously in the WASM boundary | ready |  | medium |
