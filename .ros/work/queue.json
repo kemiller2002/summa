@@ -1341,10 +1341,10 @@
       "description": null,
       "tags": [],
       "priority": "medium",
-      "status": "ready",
+      "status": "complete",
       "attachments": [],
       "createdAt": "2026-11-25T15:56:07.021Z",
-      "updatedAt": "2026-11-25T15:56:12Z",
+      "updatedAt": "2026-11-25T16:28:31Z",
       "createdBy": "unknown",
       "createdByActor": {
         "kind": "agent",
