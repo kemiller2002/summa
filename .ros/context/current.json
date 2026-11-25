@@ -4,7 +4,7 @@
   "repository": "summa",
   "actor": "anthropic/claude-code",
   "startedAt": "2026-09-14T07:34:52.559Z",
-  "updatedAt": "2026-11-25T12:32:06.000Z",
+  "updatedAt": "2026-11-25T12:35:31.000Z",
   "baselineDirtyPaths": [],
   "workItems": [
     {
@@ -2476,13 +2476,34 @@
     {
       "id": "WI-0053",
       "type": "task",
-      "state": "active",
-      "semanticState": "active",
+      "state": "blocked",
+      "semanticState": "blocked",
       "evidence": [],
-      "updatedAt": "2026-11-25T12:32:06.000Z",
+      "updatedAt": "2026-11-25T12:35:31.000Z",
       "telemetryExecutionIds": [
         "EXE-20261125T123208089Z-3f0bde01"
-      ]
+      ],
+      "latestCheckpoint": {
+        "id": "3af354aa254ad20c88b67706",
+        "recordedAt": "2026-11-25T12:35:29.000Z",
+        "executionId": "EXE-20261125T123208089Z-3f0bde01",
+        "repository": "summa",
+        "branch": "claude/vigila-implementation-jdeps1",
+        "commit": "8adc5766979eb7e84edbebce82fd200c3f536ade",
+        "remote": {
+          "name": "origin",
+          "url": "https://github.com/kemiller2002/summa"
+        },
+        "remoteBranch": "claude/vigila-implementation-jdeps1",
+        "remoteCommit": "8adc5766979eb7e84edbebce82fd200c3f536ade",
+        "summary": "Aegis.Core pin bumped to 2.0.0; restore fails NU1109 in Summa.Wasm because the Aegis 2.0.0 nuspec requires FSharp.Core >= 11.0.101 (known 2.0.0 packaging defect)",
+        "nextAction": "Retarget the pin to Aegis 2.0.1 when released, rerun build.yml steps, then complete",
+        "verification": {
+          "status": "verified",
+          "mechanism": "git-remote-observation"
+        }
+      },
+      "blockReason": "Waiting on Aegis 2.0.1: Aegis 2.0.0 requires FSharp.Core >= 11.0.101, causing NU1109 restore failure"
     }
   ]
 }
