@@ -168,7 +168,7 @@ type ViewValue =
 
 type View = (string * ViewValue) list
 
-/// Forma's status cue for a work status (`data-state` on `.ef-status-lozenge`):
+/// Forma's status cue for a work status (`data-state` on `.forma-status-lozenge`):
 /// done, blocked, in flight, or (empty) the lozenge's neutral form. The status
 /// text is always shown inside the lozenge, so the cue never carries meaning on
 /// colour alone, and it does not decide anything: the server owns status.

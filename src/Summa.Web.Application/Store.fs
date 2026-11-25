@@ -367,14 +367,25 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
         | EntryState.Abandoned _ -> false
         | _ -> true
 
+    /// The account an entry was made by: the one it records, else (kept
+    /// before Summa recorded the account: before Arca 0.4.0, or revised under
+    /// 0.4.0) the one of the actor the entry itself recorded, and nothing else
+    /// (WI-0046). Read, not stamped into the entry: from Arca 0.6.0 only Arca
+    /// changes an entry (ARCA-OFF-009).
+    let ownerOf (entry: QueueEntry) =
+        match entry.Operation.AccountId, ActorId.create entry.Operation.ActorId with
+        | Some recorded, _ -> Some recorded
+        | None, Ok actor -> Some(AccountId.toWire (AccountId.ofActor actor))
+        | None, Error _ -> None
+
     /// Unsent entries this sign-in did not make: another account's, or ones
-    /// kept before Summa recorded the account. They are never stamped with
-    /// this account, sent as it, or dropped without the person's choice.
+    /// that name no account at all. They are never stamped with this account,
+    /// sent as it, or dropped without the person's choice.
     let foreignEntries () =
         match context with
         | Some ctx ->
             let mine = accountsOf ctx
-            queue.Entries |> List.filter (fun e -> isOpen e && not (e.Operation.AccountId |> Option.exists mine.Contains))
+            queue.Entries |> List.filter (fun e -> isOpen e && not (ownerOf e |> Option.exists mine.Contains))
         | None -> []
 
     let held () = not foreignReleased && not (foreignEntries ()).IsEmpty
@@ -413,22 +424,9 @@ let arca (bridge: Bridge) (backend: Backend) (now: unit -> DateTimeOffset) (newK
 
                 match! store.Load() with
                 | Ok(Some loaded) ->
-                    // Entries kept before Summa recorded the account (before Arca
-                    // 0.4.0, or revised under 0.4.0) take it from the actor the
-                    // entry itself recorded, and from nothing else (WI-0046).
-                    let stamped =
-                        { loaded with
-                            Entries =
-                                loaded.Entries
-                                |> List.map (fun e ->
-                                    match e.Operation.AccountId, ActorId.create e.Operation.ActorId with
-                                    | None, Ok actor -> { e with Operation = { e.Operation with AccountId = Some(AccountId.toWire (AccountId.ofActor actor)) } }
-                                    | _ -> e) }
-
-                    queue <- OfflineQueue.recover stamped
-
-                    if stamped <> loaded then
-                        do! store.Save queue |> Async.Ignore
+                    // An entry kept before Summa recorded the account is
+                    // attributed when read (`ownerOf`).
+                    queue <- OfflineQueue.recover loaded
                 | Ok None -> ()
                 | Error _ -> queueNote <- Some "The unsent changes kept in this browser could not be read; changes made now are kept in this tab until sent."
             | QueueOwnership.OwnedElsewhere ->

@@ -398,6 +398,17 @@ let private keptQueue () =
     let key = browser.Value.Storage.Keys |> Seq.find (fun k -> k.StartsWith "arca.queue.")
     key, OfflineQueue.decode browser.Value.Storage[key] |> Result.defaultWith (fun e -> failwith $"%A{e}")
 
+/// The kept queue's text with each entry edited as an older version left it
+/// in the browser. From Arca 0.6.0 a test cannot build or copy an entry
+/// (ARCA-OFF-009), so it edits what the browser keeps.
+let private editedEntries (edit: JsonObject -> unit) (text: string) =
+    let root = JsonNode.Parse(text).AsObject()
+
+    for entry in root["entries"].AsArray() do
+        edit (entry.AsObject())
+
+    root.ToJsonString()
+
 /// A change kept while GitHub could not be reached, then made to look as if
 /// an earlier Summa (or Arca 0.4.0's revise) kept it without its account,
 /// recording `actor` as the one who made it.
@@ -408,9 +419,16 @@ let private keptWithoutAccount (actor: string) =
     let session, _ = send env session [ "foundRequested", "" ]
     (networkOf repository).Online <- false
     addCustomer env session "Acme" |> ignore
-    let key, queue = keptQueue ()
-    let legacy = { queue with Entries = queue.Entries |> List.map (fun e -> { e with Operation = { e.Operation with AccountId = None; ActorId = actor } }) }
-    browser.Value.Storage[key] <- OfflineQueue.encode legacy |> Result.defaultWith (fun e -> failwith $"%A{e}")
+    let key, _ = keptQueue ()
+
+    browser.Value.Storage[key] <-
+        editedEntries
+            (fun entry ->
+                let operation = entry["operation"].AsObject()
+                operation.Remove "accountId" |> ignore
+                operation["actorId"] <- JsonValue.Create actor)
+            browser.Value.Storage[key]
+
     browser.Value.Locks.Clear()
     (networkOf repository).Online <- true
     repository
@@ -422,8 +440,9 @@ let ``a change another sign-in kept without its account is held, never sent as w
     Assert.True(flag "hasForeignUnsent" reply)
     Assert.Equal(1, waiting session)
     Assert.Empty(storedCustomers repository)
-    // Stamped only from the actor it recorded, never with this sign-in's account.
-    Assert.True((snd (keptQueue ())).Entries |> List.forall (fun e -> e.Operation.AccountId = Some "actor:github:999"))
+    // Attributed only to the actor it recorded, never stamped with this
+    // sign-in's account: it is kept as it was.
+    Assert.True((snd (keptQueue ())).Entries |> List.forall (fun e -> e.Operation.AccountId = None && e.Operation.ActorId = "github:999"))
 
     let session, reply = send env session [ "foreignUnsentSendRequested", "" ]
     Assert.False(flag "hasForeignUnsent" reply)
@@ -449,8 +468,15 @@ let ``revising a kept change keeps the account it recorded, and gives none to on
     let session, _ = send env session [ "foundRequested", "" ]
     (networkOf repository).Online <- false
     addCustomer env session "Acme" |> ignore
-    let _, queue = keptQueue ()
-    let refused = { queue with Entries = queue.Entries |> List.map (fun e -> { e with State = EntryState.Refused "test" }) }
+    let key, _ = keptQueue ()
+
+    let keptAs (edit: JsonObject -> unit) =
+        OfflineQueue.decode (editedEntries edit browser.Value.Storage[key]) |> Result.defaultWith (fun e -> failwith $"%A{e}")
+
+    let refusedState (entry: JsonObject) =
+        entry["state"] <- JsonObject(dict [ "kind", JsonValue.Create "refused" :> JsonNode; "reason", JsonValue.Create "test" ])
+
+    let refused = keptAs refusedState
     let entry = refused.Entries.Head
     Assert.Equal(Some "subject:github:583231", entry.Operation.AccountId)
     let config = Summa.Storage.Deployment.parse configuration |> Result.defaultWith (fun e -> failwith $"%A{e}")
@@ -459,7 +485,11 @@ let ``revising a kept change keeps the account it recorded, and gives none to on
     let operation = OfflineQueue.operationOf ns entry.Operation |> Result.defaultWith (fun e -> failwith $"%A{e}")
     let revised = OfflineQueue.revise entry.Sequence operation refused |> Result.defaultWith (fun e -> failwith $"%A{e}")
     Assert.Equal(Some "subject:github:583231", revised.Entries.Head.Operation.AccountId)
-    let unattributed = { refused with Entries = refused.Entries |> List.map (fun e -> { e with Operation = { e.Operation with AccountId = None } }) }
+    let unattributed =
+        keptAs (fun entry ->
+            refusedState entry
+            entry["operation"].AsObject().Remove "accountId" |> ignore)
+
     let stillNone = OfflineQueue.revise entry.Sequence operation unattributed |> Result.defaultWith (fun e -> failwith $"%A{e}")
     Assert.Equal(None, stillNone.Entries.Head.Operation.AccountId)
     browser <- None

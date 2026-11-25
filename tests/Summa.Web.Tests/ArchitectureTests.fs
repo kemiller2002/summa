@@ -45,7 +45,7 @@ let ``INV-ARCH-006: the browser side of the invoice application is Limen's kerne
 let ``INV-ARCH-007: Forma presents the editor, tables, dialogs and fields, and holds none of Summa's rules`` () =
     let html = readRepoFile "app/index.html"
 
-    for used in [ "class=\"ef-field"; "class=\"ef-button"; "class=\"ef-status-lozenge"; "class=\"ef-fault"; "class=\"ef-surface"; "class=\"ef-data-grid"; "class=\"ef-flyout"; "class=\"ef-dialog" ] do
+    for used in [ "class=\"forma-field"; "class=\"forma-button"; "class=\"forma-status-lozenge"; "class=\"forma-fault"; "class=\"forma-surface"; "class=\"forma-data-grid"; "class=\"forma-flyout"; "class=\"forma-dialog" ] do
         Assert.True(html.Contains used, $"app/index.html does not use {used}")
 
     // Every table on screen is Forma's data grid, labelled, with each cell labelled for narrow
@@ -55,7 +55,7 @@ let ``INV-ARCH-007: Forma presents the editor, tables, dialogs and fields, and h
     for table in tables do
         let before = html.Substring(max 0 (table.Index - 200), min 200 table.Index)
         let printed = before.TrimEnd().EndsWith "<ef-print-table>"
-        let grid = Regex.IsMatch(before, "<div class=\"ef-data-grid( summa-screen-only)?\" role=\"region\" tabindex=\"0\" aria-label=\"[^\"]+\">\\s*$")
+        let grid = Regex.IsMatch(before, "<div class=\"forma-data-grid( summa-screen-only)?\" role=\"region\" tabindex=\"0\" aria-label=\"[^\"]+\">\\s*$")
         // What is hidden in print is hidden with its frame: the grid, not the table inside it.
         Assert.DoesNotContain("summa-screen-only", table.Value)
         Assert.True(printed || grid, $"{table.Value} is neither in Forma's data grid nor a printed document's table")
@@ -66,11 +66,11 @@ let ``INV-ARCH-007: Forma presents the editor, tables, dialogs and fields, and h
                 Assert.Contains("data-label=", cell.Value)
 
     // The flyout and the dialog are native dialogs that Forma presents and the browser opens and closes.
-    Assert.Contains("<dialog class=\"ef-flyout\" id=\"line-details\" data-ef-side=\"right\"", html)
+    Assert.Contains("<dialog class=\"forma-flyout\" id=\"line-details\" data-forma-side=\"right\"", html)
     Assert.Contains("commandfor=\"line-details\" command=\"show-modal\"", html)
-    Assert.Contains("<dialog class=\"ef-dialog\" id=\"reset-dialog\"", html)
+    Assert.Contains("<dialog class=\"forma-dialog\" id=\"reset-dialog\"", html)
     // High-impact actions are sent only from a Forma dialog that says what will happen (v0.4 §38).
-    let dialogs = Regex.Matches(html, "<dialog class=\"ef-dialog\".*?</dialog>", RegexOptions.Singleline) |> Seq.map (fun m -> m.Index, m.Index + m.Length) |> List.ofSeq
+    let dialogs = Regex.Matches(html, "<dialog class=\"forma-dialog\".*?</dialog>", RegexOptions.Singleline) |> Seq.map (fun m -> m.Index, m.Index + m.Length) |> List.ofSeq
 
     for highImpact in [ "draftIssued"; "proposalApproved"; "creditMemoIssued"; "periodClosed"; "periodLocked"; "periodReopened"; "resetConfirmed" ] do
         let uses = Regex.Matches(html, $"data-event=\"{highImpact}\"") |> List.ofSeq
@@ -80,7 +80,7 @@ let ``INV-ARCH-007: Forma presents the editor, tables, dialogs and fields, and h
             Assert.True(dialogs |> List.exists (fun (start, finish) -> used.Index > start && used.Index < finish), $"{highImpact} is sent without a confirmation dialog")
 
     // No control sits inside a label hidden for screen readers only: it would be hidden too.
-    Assert.False(Regex.IsMatch(html, "<label class=\"ef-visually-hidden\">(?:(?!</label>).)*<(input|select|textarea)", RegexOptions.Singleline))
+    Assert.False(Regex.IsMatch(html, "<label class=\"forma-visually-hidden\">(?:(?!</label>).)*<(input|select|textarea)", RegexOptions.Singleline))
 
     Assert.Contains("@import \"../node_modules/@echelon-foundry/design-system/dist/all.css\"", readRepoFile "app/summa-app.css")
     // The installed Forma package knows nothing of Summa.

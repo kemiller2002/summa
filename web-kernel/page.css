@@ -53,7 +53,7 @@
 /* The open row, marked by the engine. Its Show button also carries
    aria-pressed, so the cue is not colour alone. */
 tr[data-selected="true"] > td {
-  background: var(--ef-color-surface-secondary);
+  background: var(--forma-color-surface-secondary);
 }
 
 .attachment-list {
@@ -67,7 +67,7 @@ tr[data-selected="true"] > td {
 }
 
 .muted {
-  color: var(--ef-color-text-secondary);
+  color: var(--forma-color-text-secondary);
 }
 
 /* Folio's document is a projection of the same rows; on screen the

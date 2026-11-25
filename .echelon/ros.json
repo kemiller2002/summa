@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "tool": "ros",
   "package": "@echelon-foundry/repository-operating-system",
-  "installedVersion": "3.12.0",
+  "installedVersion": "3.25.0",
   "configurationVersion": 1,
   "profile": "project-administration",
   "managedArtifacts": [
     {
       "path": ".echelon/toolchain.json",
       "ownership": "shared",
-      "sha256": "dbbf013fde5b5dadd826531ca27ee021a3364ae4f17e2ee1bc576492a8175d38"
+      "sha256": "510b28746b4d6826c75e58e0f15ec8fc0d51ae9ee8100db1613753a854fbe9c0"
     },
     {
       "path": ".editorconfig",
@@ -114,7 +114,7 @@
     {
       "path": "docs/00-governance/README.md",
       "ownership": "tool-owned",
-      "sha256": "227fecba9857d7e1d80d7603125035e6f9e6cc3362c2d79080dfbffcd86edd6c"
+      "sha256": "9c41101ef1d6abd3869aedc999c3a37941c6eadcce7bd94f7fa90726dce7f656"
     },
     {
       "path": "docs/agent-provenance.md",
@@ -124,7 +124,7 @@
     {
       "path": "docs/development-telemetry.md",
       "ownership": "tool-owned",
-      "sha256": "6f555ce2675efe075bb6cd6de828e7bd7f0465f55e9e97646f24718695043a8f"
+      "sha256": "bd6e5223e85e98c6cd0d5c636bdf1ffa38daf7bfd2367fe0b165ec40ea0e4520"
     },
     {
       "path": "docs/ordo-observation.md",
@@ -134,7 +134,7 @@
     {
       "path": "docs/project-administration-hub.md",
       "ownership": "tool-owned",
-      "sha256": "63539c988ff4cb7aea83867781e44470fde5909ff0118062ab34c9701ec9fbcd"
+      "sha256": "1ade93f29807e01548a6d8d9f516d138d21380300f344a07597cf4c83efade12"
     },
     {
       "path": "docs/remote-agent-contract.md",
@@ -144,7 +144,7 @@
     {
       "path": "docs/remote-protocol.md",
       "ownership": "tool-owned",
-      "sha256": "ba991f3f812bcf09d986be5b0ca5146cd8066399f81f63f27445e8d72b47e6e0"
+      "sha256": "504a0ce2ed13eee21307b686f78eb47ac11f2cd984774553e3ea8c1235b7b08d"
     },
     {
       "path": "docs/web-interface.md",
@@ -159,12 +159,12 @@
     {
       "path": "docs/work-backlog-guide.md",
       "ownership": "tool-owned",
-      "sha256": "1b0b567e54ce98db36fe3a52478112a7217f0dd96947ca70dbb0b8890d355cee"
+      "sha256": "304f66cb968e614ad0bc3fd0e3b7b1e11317b14364d48bc09c10e8710df58d1a"
     },
     {
       "path": "docs/work-protocol.md",
       "ownership": "tool-owned",
-      "sha256": "40a7495513154b6a6678931448c44b3a7574db95f766ebb18f55d6466c8e1c15"
+      "sha256": "7a816fafb081c4daf4e5ab4793cb4e800e3eef5db1be2a25af824e4fdc908f4a"
     },
     {
       "path": "praxis",
@@ -274,7 +274,7 @@
     {
       "path": "schemas/execution-telemetry.schema.json",
       "ownership": "tool-owned",
-      "sha256": "22b08ad49695139177f4eea44aa4ea1aa589fa9b5294b31979ec9caf4aabdbec"
+      "sha256": "cf16dc704b78f87918f7c49513fce9fef64da8e81ea751203a2a56145cf4ba06"
     },
     {
       "path": "schemas/praxis-completion-readiness.schema.json",

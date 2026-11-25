@@ -47,7 +47,7 @@ test("a new browser starts its own books, marked as a local demo", async ({ app:
 
 test("semantic colors resolve through Forma in both themes and survive constrained presentation", async ({ app: { page } }) => {
   const inspect = async (theme) => page.evaluate((selectedTheme) => {
-    document.documentElement.dataset.efTheme = selectedTheme;
+    document.documentElement.dataset.formaTheme = selectedTheme;
     const resolve = (token) => {
       const probe = document.createElement("span");
       probe.style.color = `var(${token})`;
@@ -61,15 +61,15 @@ test("semantic colors resolve through Forma in both themes and survive constrain
     const current = getComputedStyle(document.querySelector('.summa-nav__link[aria-current="page"]'));
 
     return {
-      surface: resolve("--ef-color-surface-primary"),
-      inverseSurface: resolve("--ef-color-surface-inverse"),
-      inverseText: resolve("--ef-color-text-inverse"),
-      accent: resolve("--ef-color-accent-primary"),
-      danger: resolve("--ef-color-status-danger"),
-      success: resolve("--ef-color-status-success"),
-      warning: resolve("--ef-color-status-warning"),
-      focusRing: resolve("--ef-color-focus-ring"),
-      focusGap: resolve("--ef-color-focus-gap"),
+      surface: resolve("--forma-color-surface-primary"),
+      inverseSurface: resolve("--forma-color-surface-inverse"),
+      inverseText: resolve("--forma-color-text-inverse"),
+      accent: resolve("--forma-color-accent-primary"),
+      danger: resolve("--forma-color-status-danger"),
+      success: resolve("--forma-color-status-success"),
+      warning: resolve("--forma-color-status-warning"),
+      focusRing: resolve("--forma-color-focus-ring"),
+      focusGap: resolve("--forma-color-focus-gap"),
       brandBackground: brand.backgroundColor,
       brandText: brand.color,
       linkText: link.color,
@@ -211,7 +211,7 @@ test("the books survive a reload and stay checked", async ({ app: { page } }) =>
 
 test("keyboard only: every control is reachable and named", async ({ app: { page } }) => {
   await page.keyboard.press("Tab");
-  await expect(page.locator(".ef-skip-link")).toBeFocused();
+  await expect(page.locator(".forma-skip-link")).toBeFocused();
   for (const label of ["Home", "Invoices", "Customers", "Receivables", "Settings"]) {
     await expect(nav(page, label)).toBeVisible();
   }

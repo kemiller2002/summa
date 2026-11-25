@@ -13,65 +13,65 @@
      control sends a named event back to it. Forma owns presentation; Folio
      owns the print surface. The hub decides nothing about work-item legality:
      each spoke repository's own ./ros does, through the server. -->
-<main class="app ef-stack">
-  <header class="ef-record-header page-header">
-    <div class="ef-record-header__main">
-      <div class="ef-record-header__title">
-        <div><span class="ef-record-header__type">Summa</span><h1>Project administration hub</h1></div>
+<main class="app forma-stack">
+  <header class="forma-record-header page-header">
+    <div class="forma-record-header__main">
+      <div class="forma-record-header__title">
+        <div><span class="forma-record-header__type">Summa</span><h1>Project administration hub</h1></div>
       </div>
       <p>Creates work in other ROS repositories by running their own <code>./ros</code>; it never edits a repository's files directly.</p>
     </div>
   </header>
 
   <template data-if="hasOperationalFault">
-    <ef-fault-inline class="ef-component-tag">
-      <div class="ef-fault ef-fault--inline operational-fault" id="operational-fault"
-           data-ef-intent="inline" data-ef-severity="error" role="alert"
+    <forma-fault-inline class="forma-component-tag">
+      <div class="forma-fault forma-fault--inline operational-fault" id="operational-fault"
+           data-forma-intent="inline" data-forma-severity="error" role="alert"
            aria-labelledby="operational-fault-title">
-        <div class="ef-fault__marker" aria-hidden="true">!</div>
-        <div class="ef-fault__body">
-          <p class="ef-fault__severity">Operational error</p>
-          <p class="ef-fault__title" id="operational-fault-title"><strong data-text="operationalFaultTitle"></strong></p>
-          <p class="ef-fault__message" data-text="operationalFaultMessage"></p>
-          <p class="ef-fault-reference">Reference <code data-text="operationalFaultReference"></code></p>
+        <div class="forma-fault__marker" aria-hidden="true">!</div>
+        <div class="forma-fault__body">
+          <p class="forma-fault__severity">Operational error</p>
+          <p class="forma-fault__title" id="operational-fault-title"><strong data-text="operationalFaultTitle"></strong></p>
+          <p class="forma-fault__message" data-text="operationalFaultMessage"></p>
+          <p class="forma-fault-reference">Reference <code data-text="operationalFaultReference"></code></p>
         </div>
       </div>
-    </ef-fault-inline>
+    </forma-fault-inline>
   </template>
 
-  <section id="repos" class="ef-surface ef-stack" aria-labelledby="repos-title">
+  <section id="repos" class="forma-surface forma-stack" aria-labelledby="repos-title">
     <h2 id="repos-title">Registered repositories</h2>
-    <form id="register-form" class="ef-stack" data-event="registerSubmitted">
+    <form id="register-form" class="forma-stack" data-event="registerSubmitted">
       <div class="form-row">
-        <div class="ef-field">
-          <label class="ef-field__label" for="register-path">Repository path</label>
+        <div class="forma-field">
+          <label class="forma-field__label" for="register-path">Repository path</label>
           <input id="register-path" type="text" placeholder="/absolute/path/to/repo" required
                  data-event="registerPathChanged" data-on="input" data-bind-value="registerPath" />
         </div>
-        <div class="ef-field">
-          <label class="ef-field__label" for="register-name">Display name</label>
+        <div class="forma-field">
+          <label class="forma-field__label" for="register-name">Display name</label>
           <input id="register-name" type="text" placeholder="display name (optional)"
                  data-event="registerNameChanged" data-on="input" data-bind-value="registerName" />
         </div>
       </div>
-      <div class="ef-cluster"><button id="register-submit" type="submit">Register</button></div>
+      <div class="forma-cluster"><button id="register-submit" type="submit">Register</button></div>
     </form>
 
     <template data-if="hasReposError">
-      <ef-alert class="ef-component-tag">
-        <aside class="ef-alert" role="alert" data-tone="attention">
-          <div class="ef-alert__icon" aria-hidden="true">!</div>
+      <forma-alert class="forma-component-tag">
+        <aside class="forma-alert" role="alert" data-tone="attention">
+          <div class="forma-alert__icon" aria-hidden="true">!</div>
           <p id="repos-error" data-text="reposError"></p>
         </aside>
-      </ef-alert>
+      </forma-alert>
     </template>
 
-    <ef-data-grid class="ef-component-tag">
-      <div class="ef-data-grid" role="region" tabindex="0" aria-labelledby="repos-title">
+    <forma-data-grid class="forma-component-tag">
+      <div class="forma-data-grid" role="region" tabindex="0" aria-labelledby="repos-title">
         <table id="repos-table">
-          <caption class="ef-visually-hidden">Registered repositories</caption>
+          <caption class="forma-visually-hidden">Registered repositories</caption>
           <thead>
-            <tr><th scope="col">ID</th><th scope="col">Name</th><th scope="col">Path</th><th scope="col"><span class="ef-visually-hidden">Actions</span></th></tr>
+            <tr><th scope="col">ID</th><th scope="col">Name</th><th scope="col">Path</th><th scope="col"><span class="forma-visually-hidden">Actions</span></th></tr>
           </thead>
           <tbody id="repos-table-body">
             <template data-each="repos" data-key="id">
@@ -88,38 +88,38 @@
           </tbody>
         </table>
       </div>
-    </ef-data-grid>
+    </forma-data-grid>
     <template data-if="noRepos">
       <p class="muted">No repositories are registered yet.</p>
     </template>
   </section>
 
-  <section id="create" class="ef-surface ef-stack" aria-labelledby="create-title">
+  <section id="create" class="forma-surface forma-stack" aria-labelledby="create-title">
     <h2 id="create-title">Create work item</h2>
-    <form id="create-form" class="ef-stack" data-event="createSubmitted">
+    <form id="create-form" class="forma-stack" data-event="createSubmitted">
       <div class="form-row">
-        <div class="ef-field">
-          <label class="ef-field__label" for="create-repo">Repository</label>
+        <div class="forma-field">
+          <label class="forma-field__label" for="create-repo">Repository</label>
           <select id="create-repo" required data-event="createRepoChanged">
             <template data-each="createOptions" data-key="id">
               <option data-bind-value="id" data-bind-selected="selected" data-text="name"></option>
             </template>
           </select>
         </div>
-        <div class="ef-field">
-          <label class="ef-field__label" for="create-title-input">Title</label>
+        <div class="forma-field">
+          <label class="forma-field__label" for="create-title-input">Title</label>
           <input id="create-title-input" type="text" placeholder="Describe the work" required
                  data-event="createTitleChanged" data-on="input" data-bind-value="createTitle" />
         </div>
       </div>
       <div class="form-row">
-        <div class="ef-field">
-          <label class="ef-field__label" for="create-tags">Tags</label>
+        <div class="forma-field">
+          <label class="forma-field__label" for="create-tags">Tags</label>
           <input id="create-tags" type="text" placeholder="tags, comma, separated"
                  data-event="createTagsChanged" data-on="input" data-bind-value="createTags" />
         </div>
-        <div class="ef-field">
-          <label class="ef-field__label" for="create-priority">Priority</label>
+        <div class="forma-field">
+          <label class="forma-field__label" for="create-priority">Priority</label>
           <select id="create-priority" data-event="createPriorityChanged" data-bind-value="createPriority">
             <option value="medium">medium</option>
             <option value="high">high</option>
@@ -127,41 +127,41 @@
           </select>
         </div>
       </div>
-      <div class="ef-field">
-        <label class="ef-field__label" for="create-description">Description</label>
+      <div class="forma-field">
+        <label class="forma-field__label" for="create-description">Description</label>
         <textarea id="create-description" placeholder="Optional longer description"
                   data-event="createDescriptionChanged" data-on="input" data-bind-value="createDescription"></textarea>
       </div>
-      <fieldset class="ef-file-upload file-rows">
+      <fieldset class="forma-file-upload file-rows">
         <legend>Attachments</legend>
-        <ul class="ef-file-upload__queue" id="create-files">
+        <ul class="forma-file-upload__queue" id="create-files">
           <template data-each="createFiles" data-key="key">
             <li class="file-row" data-bind-data-files-key="key">
-              <label class="ef-field__label">File <input type="file" data-files-input="create-file" /></label>
-              <label class="ef-field__label">Name <input type="text" placeholder="name (optional)"
+              <label class="forma-field__label">File <input type="file" data-files-input="create-file" /></label>
+              <label class="forma-field__label">Name <input type="text" placeholder="name (optional)"
                      data-event="createFileNameChanged" data-on="input" data-bind-value="name" /></label>
             </li>
           </template>
         </ul>
         <button id="create-add-file" type="button" data-event="createFileRowAdded">+ file</button>
       </fieldset>
-      <div class="ef-cluster"><button id="create-submit" type="submit">Create</button></div>
+      <div class="forma-cluster"><button id="create-submit" type="submit">Create</button></div>
     </form>
     <template data-if="hasCreateError">
-      <ef-alert class="ef-component-tag">
-        <aside class="ef-alert" role="alert" data-tone="attention">
-          <div class="ef-alert__icon" aria-hidden="true">!</div>
+      <forma-alert class="forma-component-tag">
+        <aside class="forma-alert" role="alert" data-tone="attention">
+          <div class="forma-alert__icon" aria-hidden="true">!</div>
           <p id="create-error" data-text="createError"></p>
         </aside>
-      </ef-alert>
+      </forma-alert>
     </template>
   </section>
 
-  <section id="filters" class="ef-surface ef-stack" aria-labelledby="filters-title">
+  <section id="filters" class="forma-surface forma-stack" aria-labelledby="filters-title">
     <h2 id="filters-title">Filter</h2>
     <div class="form-row">
-      <div class="ef-field">
-        <label class="ef-field__label" for="filter-repo">Repository</label>
+      <div class="forma-field">
+        <label class="forma-field__label" for="filter-repo">Repository</label>
         <select id="filter-repo" data-event="repoFilterChanged">
           <option value="" data-bind-selected="filterAllRepos">all</option>
           <template data-each="filterOptions" data-key="id">
@@ -169,13 +169,13 @@
           </template>
         </select>
       </div>
-      <div class="ef-field">
-        <label class="ef-field__label" for="filter-tag">Tag</label>
+      <div class="forma-field">
+        <label class="forma-field__label" for="filter-tag">Tag</label>
         <input id="filter-tag" type="text" placeholder="e.g. wasm"
                data-event="tagFilterChanged" data-on="input" data-bind-value="filterTag" />
       </div>
-      <div class="ef-field">
-        <label class="ef-field__label" for="filter-status">Status</label>
+      <div class="forma-field">
+        <label class="forma-field__label" for="filter-status">Status</label>
         <select id="filter-status" data-event="statusFilterChanged" data-bind-value="filterStatus">
           <option value="">any</option>
           <option value="captured">captured</option>
@@ -187,28 +187,28 @@
         </select>
       </div>
     </div>
-    <div class="ef-cluster"><button id="filter-clear" type="button" data-event="filtersCleared">Clear</button></div>
+    <div class="forma-cluster"><button id="filter-clear" type="button" data-event="filtersCleared">Clear</button></div>
   </section>
 
-  <section id="queue" class="ef-stack" aria-labelledby="queue-title">
-    <header class="queue-header ef-cluster">
+  <section id="queue" class="forma-stack" aria-labelledby="queue-title">
+    <header class="queue-header forma-cluster">
       <h2 id="queue-title">Aggregated queue</h2>
-      <span class="ef-status-lozenge" id="row-count" role="status" data-text="rowCount"></span>
+      <span class="forma-status-lozenge" id="row-count" role="status" data-text="rowCount"></span>
     </header>
 
     <template data-if="hasListError">
-      <ef-alert class="ef-component-tag">
-        <aside class="ef-alert" role="alert" data-tone="attention">
-          <div class="ef-alert__icon" aria-hidden="true">!</div>
+      <forma-alert class="forma-component-tag">
+        <aside class="forma-alert" role="alert" data-tone="attention">
+          <div class="forma-alert__icon" aria-hidden="true">!</div>
           <p id="error" data-text="listError"></p>
         </aside>
-      </ef-alert>
+      </forma-alert>
     </template>
 
-    <ef-data-grid class="ef-component-tag">
-      <div class="ef-data-grid" role="region" tabindex="0" aria-labelledby="queue-title">
+    <forma-data-grid class="forma-component-tag">
+      <div class="forma-data-grid" role="region" tabindex="0" aria-labelledby="queue-title">
         <table id="work-table">
-          <caption class="ef-visually-hidden">Work items across repositories</caption>
+          <caption class="forma-visually-hidden">Work items across repositories</caption>
           <thead>
             <tr>
               <th scope="col">Repo</th>
@@ -231,7 +231,7 @@
                 <template data-if="isWork"><td data-label="ID" data-text="id"></td></template>
                 <template data-if="isWork"><td data-label="Work" data-text="title"></td></template>
                 <template data-if="isWork">
-                  <td data-label="Status"><span class="ef-status-lozenge" data-bind-data-state="statusTone" data-bind-hidden="hasNoStatus" data-text="status"></span></td>
+                  <td data-label="Status"><span class="forma-status-lozenge" data-bind-data-state="statusTone" data-bind-hidden="hasNoStatus" data-text="status"></span></td>
                 </template>
                 <template data-if="isWork"><td data-label="Tags" data-text="tags"></td></template>
                 <template data-if="isWork"><td data-label="Priority" data-text="priority"></td></template>
@@ -240,16 +240,16 @@
           </tbody>
         </table>
       </div>
-    </ef-data-grid>
+    </forma-data-grid>
 
     <template data-if="isEmpty">
-      <ef-empty-state class="ef-component-tag">
-        <section class="ef-empty-state" aria-labelledby="empty-title">
-          <div class="ef-empty-state__symbol" aria-hidden="true">□</div>
+      <forma-empty-state class="forma-component-tag">
+        <section class="forma-empty-state" aria-labelledby="empty-title">
+          <div class="forma-empty-state__symbol" aria-hidden="true">□</div>
           <h3 id="empty-title">No work items</h3>
           <p>No registered repository has work matching these filters.</p>
         </section>
-      </ef-empty-state>
+      </forma-empty-state>
     </template>
   </section>
 
@@ -294,13 +294,13 @@
   </ef-print-document>
 </main>
 
-<dialog class="ef-dialog" id="unregister-dialog" aria-labelledby="unregister-dialog-title" aria-describedby="unregister-dialog-text">
+<dialog class="forma-dialog" id="unregister-dialog" aria-labelledby="unregister-dialog-title" aria-describedby="unregister-dialog-text">
   <form method="dialog">
-    <div class="ef-dialog__body ef-stack">
+    <div class="forma-dialog__body forma-stack">
       <h2 id="unregister-dialog-title">Unregister repository</h2>
       <p id="unregister-dialog-text" data-text="unregisterText"></p>
     </div>
-    <div class="ef-dialog__actions">
+    <div class="forma-dialog__actions">
       <button value="cancel" formnovalidate>Cancel</button>
       <button id="unregister-dialog-confirm" value="confirm" data-event="unregisterConfirmed">Unregister</button>
     </div>
