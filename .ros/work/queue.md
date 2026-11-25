@@ -64,4 +64,4 @@
 | WI-0050 | Summa: adopt echelon-current 1.19.0 (Arca 0.5.0): batched read-cache save and pinned reads without a ref fetch | complete | summa, arca, performance | medium |
 | WI-0051 | Summa: local books encrypted at rest in the browser (SUM3-024 remainder) | captured | summa, security, encryption | medium |
 | WI-0052 | Summa: adopt Forma and Folio through Conditor 0.9.0 (step 1: echelon-current 1.19.0, step 2: 1.20.0) | complete | summa, foundations, forma, folio | medium |
-| WI-0053 | Upgrade Aegis 1.0.0 -> 2.0.0 (echelon-current 1.40.0) | ready |  | medium |
+| WI-0053 | Upgrade Aegis 1.0.0 -> 2.0.0 (echelon-current 1.40.0) | complete |  | medium |
