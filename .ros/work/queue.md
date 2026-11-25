@@ -67,4 +67,4 @@
 | WI-0053 | Upgrade Aegis 1.0.0 -> 2.0.0 (echelon-current 1.40.0) | complete |  | medium |
 | WI-0054 | Aegis 2.x capture hangs the browser on a fault: record faults without Async.RunSynchronously in the WASM boundary | complete |  | medium |
 | WI-0055 | Upgrade Aegis 2.0.1 -> 2.0.2 (detached capture no longer blocks) | complete |  | medium |
-| WI-0056 | Upgrade to echelon-current 1.42.0 (praxis 3.25.0, ordo 1.20.0, Arca 0.7.0, Forma 1.0.1, Folio 0.4.1, Limen 0.9.1) | ready |  | medium |
+| WI-0056 | Upgrade to echelon-current 1.42.0 (praxis 3.25.0, ordo 1.20.0, Arca 0.7.0, Forma 1.0.1, Folio 0.4.1, Limen 0.9.1) | complete |  | medium |
