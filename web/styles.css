@@ -1,7 +1,8 @@
 /* Project presentation overrides for `praxis web serve`.
 
    Pages are presented by the pinned Forma release (vendor/forma/forma.lock,
-   served at /forma/<version>/all.css). Praxis ships no presentation of its
-   own (SAF-FORMA-2, SAF-FORMA-3). This file is loaded after Forma and is
+   served at /forma/<version>/all.css) and the pinned Echelon theme
+   (vendor/echelon-theme/echelon-theme.lock). Praxis ships no presentation of its
+   own (SAF-FORMA-2, SAF-FORMA-3). This file is loaded after Forma and the theme and is
    empty by design; a project may add brand overrides here, scoped as Forma's
    branding guide describes, never a copy of Forma. */
