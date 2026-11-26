@@ -45,6 +45,7 @@ this file.
 | Ordo through Conditor 0.10.1 (echelon-current 1.22.0) | Ordo 1.7.0 | `54d185e` | 2026-10-13 | WI-0052, PR #93 |
 | Praxis, Ordo, Forma through Conditor 0.10.6 (echelon-current 1.24.0) | Praxis 3.12.0, Ordo 1.8.2, Forma 0.9.0 | — | 2026-10-17 | GH-110 / this PR |
 | Praxis, Ordo, Arca, Forma, Folio and Limen (npm, declared) through Conditor 0.10.29 (echelon-current 1.42.0) | Praxis 3.25.0, Ordo 1.20.0, Arca 0.7.0, Forma 1.0.1, Folio 0.4.1, Limen 0.9.1 | — | 2026-11-25 | WI-0056 / this PR |
+| Praxis, Arca through Conditor 0.10.30 (echelon-current 1.43.0) | Praxis 3.26.0, Arca 0.7.1 | — | 2026-11-26 | WI-0057 / this PR |
 | Visual Engineering | 1.0.1 (in the Conditor set since `f6cdac5`); context 0.1.0 synced in `7718b18` | — | — | — |
 
 ## Not adopted in this repository (as of 2026-10-13)
